@@ -29,13 +29,17 @@ jobs:
           node-version: '${{ env.NODE_VERSION }}'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Generated types are current
-        # payload-types.ts is committed so typecheck needs no codegen step and schema
-        # changes show up in review. Regenerating here proves the committed copy matches
-        # the schema — a stale copy would let a breaking field change typecheck clean.
+      - name: Generated artifacts are current
+        # payload-types.ts and importMap.js are committed so typecheck and build need no
+        # codegen step, and schema changes show up in review. Regenerating here proves the
+        # committed copies match the config:
+        #   - a stale types file lets a breaking field change typecheck clean
+        #   - a stale import map builds fine and then fails at RUNTIME, when the admin
+        #     cannot resolve a component it was told exists
         run: |
           pnpm run generate:types
-          git diff --exit-code src/payload-types.ts
+          pnpm run generate:importmap
+          git diff --exit-code src/payload-types.ts 'src/app/(payload)/admin/importMap.js'
       - name: Typecheck
         run: pnpm run typecheck
       - name: Lint (includes both Phase 0 guardrails)
@@ -104,6 +108,12 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - name: Build
         run: pnpm run build
+      - name: Seed tenants
+        # The public site resolves a tenant from the request Host and 404s an unknown one
+        # by design (`02` §4.1), so without seeded tenants there is nothing to serve — the
+        # server would not even pass Playwright's readiness check. `*.localhost` hostnames
+        # resolve to loopback with no /etc/hosts entry (`06` §4).
+        run: pnpm run seed
       - name: E2E smoke + axe gate (zero critical/serious to merge)
         run: pnpm run test:e2e:smoke
       - uses: actions/upload-artifact@v4

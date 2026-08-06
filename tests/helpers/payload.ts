@@ -71,9 +71,15 @@ export async function seed(payload: Payload): Promise<Fixtures> {
       })
     ).id as number
 
-  const district = await mk('District', 'district', 'district.test', 'district')
-  const tenantA = await mk('School A', 'school-a', 'a.district.test', 'school')
-  const tenantB = await mk('School B', 'school-b', 'b.district.test', 'school')
+  /**
+   * `*.localhost` hostnames, per the local/CI environment in `06` §4. The district is
+   * mapped to bare `localhost` so the dev server and Playwright's readiness check resolve
+   * to a real tenant — the proxy 404s an unknown Host by design (`02` §4.1), so without
+   * this the server would never report ready.
+   */
+  const district = await mk('District', 'district', 'localhost', 'district')
+  const tenantA = await mk('School A', 'school-a', 'a.localhost', 'school')
+  const tenantB = await mk('School B', 'school-b', 'b.localhost', 'school')
 
   const mkUser = async (email: string, roles: Role[], tenants: number[]): Promise<TypedUser> =>
     (await payload.create({
