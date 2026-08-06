@@ -14,6 +14,13 @@ import type { Role } from '@/access/types'
 export const TEST_DATABASE_URI =
   process.env.TEST_DATABASE_URI ?? 'postgres:///dd2_test?host=/var/run/postgresql'
 
+/**
+ * Meets the interim local-auth policy (src/auth/password-policy.ts). Note it deliberately
+ * avoids the word "password", which the policy rejects as a common fragment — the earlier
+ * placeholder here failed its own check once the policy landed.
+ */
+export const SEED_PASSWORD = 'seed-otter-marble-91'
+
 let cached: Payload | null = null
 
 export async function getTestPayload(): Promise<Payload> {
@@ -73,7 +80,7 @@ export async function seed(payload: Payload): Promise<Fixtures> {
       collection: 'users',
       data: {
         email,
-        password: 'test-password-not-a-secret',
+        password: SEED_PASSWORD,
         name: email,
         roles,
         tenants: tenants.map((tenant) => ({ tenant })),

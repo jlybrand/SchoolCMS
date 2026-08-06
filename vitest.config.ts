@@ -14,6 +14,17 @@ export default defineConfig({
     include: ['tests/unit/**/*.test.ts', 'tests/integration/**/*.test.ts'],
     // Guardrail tests shell out to ESLint and Stylelint; give them room.
     testTimeout: 30_000,
+    /**
+     * Integration files share ONE Postgres and each calls `seed()`, which truncates and
+     * recreates fixtures. Running files in parallel makes them race — two seeds inserting
+     * the same unique tenant slug.
+     *
+     * Serialized rather than made "mostly fine" with retries: the isolation suite is the
+     * tenant guarantee (`06` §2.2) and must never be flaky-and-ignored. Total runtime is a
+     * few seconds, so this costs nothing worth optimizing. If it ever does, give each file
+     * its own database rather than re-enabling parallelism.
+     */
+    fileParallelism: false,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],

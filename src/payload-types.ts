@@ -155,7 +155,7 @@ export interface User {
   id: number;
   name?: string | null;
   /**
-   * Durable Entra identity (`03` §2). Survives email and name changes.
+   * Durable Entra identity (`03` §2). UNUSED under interim local auth — kept as the seam so existing accounts can be linked to Entra objects at switchover rather than recreated.
    */
   entraObjectId?: string | null;
   /**

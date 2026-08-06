@@ -1,5 +1,6 @@
-import type { CollectionConfig } from 'payload'
+import { ValidationError, type CollectionConfig } from 'payload'
 
+import { validatePassword } from '@/auth/password-policy'
 import {
   denyAllField,
   districtOnly,
@@ -9,23 +10,52 @@ import {
 import { ROLES } from '@/access/types'
 
 /**
- * `users` — Payload auth collection, backed by Entra ID (`03` §2, `02` §7).
+ * `users` — Payload auth collection (`03` §2).
  *
- * No password is stored for Entra-authenticated staff. Roles and tenant assignments refresh
- * from Entra group membership at login, and **deprovisioning is automatic** — when IT
- * disables a district account, platform access ends with it. That is the material advantage
- * over local accounts, where removal depends on someone remembering.
+ * ============================================================================
+ * INTERIM POSTURE: Payload local authentication.
+ * The design specifies Entra ID OIDC (`02` §7, ADR-6). Local auth is a
+ * deliberate, temporary deviation to avoid a district IT dependency during
+ * development. See "Authentication" in CLAUDE.md for what it costs and the
+ * switch trigger. NOT for production use with real staff accounts.
+ * ============================================================================
+ *
+ * What survives the eventual switch, unchanged: roles, tenant assignment, every access
+ * function, and the whole isolation suite. Authentication answers *who you are*;
+ * authorization answers *what you may touch*, and only the former changes. That separation
+ * is why this deviation is affordable.
  *
  * The `tenants` array field is added by @payloadcms/plugin-multi-tenant.
  */
 export const Users: CollectionConfig = {
   slug: 'users',
   auth: {
-    // Local auth remains enabled ONLY for the single break-glass admin (`02` §7).
-    // Every other account authenticates through Entra; see src/auth/entra.ts.
     tokenExpiration: 60 * 60 * 8,
+    // Interim-auth controls. Under Entra, MFA and lockout are inherited from the district
+    // directory and none of this is ours to get right (`02` §7).
     maxLoginAttempts: 5,
     lockTime: 10 * 60 * 1000,
+  },
+  hooks: {
+    beforeValidate: [
+      ({ data }) => {
+        /**
+         * Password strength (NIST SP 800-63B — length over composition).
+         *
+         * Enforced in a hook rather than only on the form so the REST and Local API paths
+         * cannot bypass it, which is the same reasoning as required alt text (`07` §4.3).
+         * Deleted along with local auth when Entra lands.
+         */
+        const password = (data as { password?: unknown } | undefined)?.password
+        if (password === undefined || password === null || password === '') return data
+
+        const result = validatePassword(password)
+        if (result !== true)
+          throw new ValidationError({ errors: [{ path: 'password', message: result }] })
+
+        return data
+      },
+    ],
   },
   admin: {
     useAsTitle: 'email',
@@ -61,7 +91,8 @@ export const Users: CollectionConfig = {
       },
       admin: {
         readOnly: true,
-        description: 'Durable Entra identity (`03` §2). Survives email and name changes.',
+        description:
+          'Durable Entra identity (`03` §2). UNUSED under interim local auth — kept as the seam so existing accounts can be linked to Entra objects at switchover rather than recreated.',
       },
     },
     {
