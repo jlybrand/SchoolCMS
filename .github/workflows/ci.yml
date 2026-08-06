@@ -29,6 +29,13 @@ jobs:
           node-version: '${{ env.NODE_VERSION }}'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Generated types are current
+        # payload-types.ts is committed so typecheck needs no codegen step and schema
+        # changes show up in review. Regenerating here proves the committed copy matches
+        # the schema — a stale copy would let a breaking field change typecheck clean.
+        run: |
+          pnpm run generate:types
+          git diff --exit-code src/payload-types.ts
       - name: Typecheck
         run: pnpm run typecheck
       - name: Lint (includes both Phase 0 guardrails)

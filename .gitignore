@@ -6,9 +6,10 @@ node_modules/
 out/
 next-env.d.ts
 
-# Payload — payload-types.ts is generated from the schema on every build.
-# importMap.js IS committed so CI builds without a codegen step.
-/src/payload-types.ts
+# Payload — payload-types.ts and importMap.js ARE committed.
+# Types are generated from the schema (no DB needed), so committing them means typecheck
+# works without a codegen step AND schema changes are visible in review. CI regenerates
+# and fails on drift, so the committed copy can never go stale.
 
 # Env — only .env.example is committed
 .env
