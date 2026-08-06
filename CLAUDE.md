@@ -272,8 +272,24 @@ design system legible to whoever maintains this next.
 
 ## Git
 
-- Trunk-based with short-lived branches; every change goes through a PR and the full gate
-  set. Releases are tagged; the production promote is a deliberate, approved step.
+**Branch model.** `develop` is the integration branch and the **default base for every
+PR**. `main` is the release branch — it reflects what is deployed, and only ever advances
+by merging `develop` at a tagged release. Nothing lands directly on either.
+
+```
+feature/phase-N-thing ──PR──> develop ──release──> main (tagged)
+```
+
+- Branch from `develop`, keep branches short-lived, one phase-slice per PR. Every change
+  goes through a PR and the full gate set (`06` §3) — no exceptions for "small" changes,
+  because the guardrails are the point.
+- **Production promote is a deliberate, approved step** (`09` §2): tag on `main`, manual
+  approval, then deploy. Rollback is always one redeploy away.
+- **Payload version bumps are their own PR** — never bundled with feature work, always with
+  a full a11y and isolation run (`09` §2).
+- Deviation from `09` §9, which describes trunk-based development. The two-branch model is
+  the deliberate choice here; `develop` carries the same gate set, so the enforcement story
+  is unchanged.
 - **Never mention Claude, Claude Code, or any AI assistant in commit messages or pull
   requests.** No `Co-Authored-By: Claude` trailer, no "Generated with Claude Code" footer,
   no attribution in the body or title. Write commits and PRs as the maintainer would.
