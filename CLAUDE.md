@@ -47,14 +47,51 @@ package. Next **16.3.0**, React **19.2.8**.
 Three dependencies are deliberately **not** on `latest`. Do not "helpfully" bump them
 without re-checking the constraint that pinned them:
 
-| Package    | Pinned  | `latest` | Why not latest                                                                                                                                                         |
-| ---------- | ------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| TypeScript | 6.0.3   | 7.0.2    | typescript-eslint peers `>=4.8.4 <6.1.0`. TS 7 (the native port) would disable the lint layer — which is where both Phase 0 guardrails live. Not a trade worth making. |
-| ESLint     | 9.39.5  | 10.8.0   | `eslint-config-next` bundles eslint-plugin-import/react/jsx-a11y, all capped at `^9`. ESLint 10 leaves jsx-a11y unmet, silently weakening the a11y lint.               |
-| graphql    | 16.14.2 | 17.0.2   | Payload peers `^16.8.1`.                                                                                                                                               |
+| Package    | Pinned  | `latest` | Why not latest                                                                                                                                           |
+| ---------- | ------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TypeScript | 6.0.3   | 7.0.2    | TS 7 is the native Go port and **ships no JS compiler API** — see below. It breaks the entire lint layer, which is where both Phase 0 guardrails live.   |
+| ESLint     | 9.39.5  | 10.8.0   | `eslint-config-next` bundles eslint-plugin-import/react/jsx-a11y, all capped at `^9`. ESLint 10 leaves jsx-a11y unmet, silently weakening the a11y lint. |
+| graphql    | 16.14.2 | 17.0.2   | Payload peers `^16.8.1`.                                                                                                                                 |
 
 Revisit each when its blocker clears. Payload version bumps are always a separate PR
 (`09` §2).
+
+#### TypeScript 7 — measured, deferred (decision: 2026-08-06)
+
+This was tested against the real repo, not assumed. Under `typescript@7.0.2`:
+
+| Step            | Result                                               |
+| --------------- | ---------------------------------------------------- |
+| `tsc --noEmit`  | passes                                               |
+| `next build`    | passes                                               |
+| `eslint .`      | **hard error** — typescript-eslint refuses to load   |
+| guardrail tests | **13 of 44 fail** — the whole content-boundary suite |
+
+TS 7's npm package exports only `./lib/version.cjs`; `lib/typescript.js` is gone, so
+`createProgram` is `undefined` and the new API lives behind `typescript/unstable/*`.
+typescript-eslint therefore throws at config load rather than degrading. Its tracking issue
+([#10940](https://github.com/typescript-eslint/typescript-eslint/issues/10940)) is blocked
+on ESLint async-parser support, so this is not landing soon.
+
+So TS 7 costs exactly one thing: the lint layer. On a project whose whole thesis is that
+conformance is structural and CI-enforced, trading the enforcement layer for ~2s of
+typecheck time is a bad trade.
+
+**When we do want it,** Microsoft's documented side-by-side layout works and needs no
+workaround — TS 6 keeps the name (so tooling and the IDE resolve it) while TS 7 provides
+`tsc`. The two binaries do not collide (`tsc` vs `tsc6`):
+
+```jsonc
+"devDependencies": {
+  "@typescript/native": "npm:typescript@7.0.2",          // provides `tsc`
+  "typescript": "npm:@typescript/typescript6@6.0.2"      // provides `tsc6` + the JS API
+}
+```
+
+Note the cost that layout carries: the compiler that gates CI would no longer be the one
+the IDE and typed lint rules use, so run **both** (`typecheck` and `typecheck:compat`) to
+catch divergence. **Revisit trigger:** typescript-eslint ships TS 7 support, or a typecheck
+slow enough to hurt the dev loop. Neither is true today.
 
 **Plugins are deliberately minimal:** `plugin-multi-tenant`, `plugin-seo`,
 `plugin-cloud-storage` (R2). Nothing else without weighing swap cost (`02` §11).
