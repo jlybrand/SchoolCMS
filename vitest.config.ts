@@ -12,6 +12,12 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['tests/unit/**/*.test.ts', 'tests/integration/**/*.test.ts'],
+    /**
+     * Runs before any test module is imported. Required because the Payload config reads
+     * env at module-evaluation time, and importing a content-layer function pulls it in
+     * transitively — too early for a helper to configure.
+     */
+    setupFiles: ['tests/setup/env.ts'],
     // Guardrail tests shell out to ESLint and Stylelint; give them room.
     testTimeout: 30_000,
     /**
