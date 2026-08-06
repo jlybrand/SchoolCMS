@@ -8,8 +8,9 @@ Guidance for Claude Code working in this repository.
 district domain and 27 school subdomains (**28 tenants**) from a single codebase and
 deployment. It replaces the rented Finalsite Composer CMS.
 
-**Status: Phase 0 complete — scaffold and guardrails.** Phase 1 (tenancy, Entra auth,
-access control, adversarial isolation suite) is next. `starterDocs/` holds the 12-document
+**Status: Phase 1 in progress.** Phase 0 (scaffold + guardrails) is complete. Phase 1 has
+tenancy, roles, access control and the adversarial isolation suite landed; authentication
+is on an **interim local-auth posture** — see "Authentication" below. `starterDocs/` holds the 12-document
 design suite (v2.1, August 2026) and is the specification. Treat it as authoritative; when
 code and docs disagree, that is a bug in one of them — say which.
 
@@ -32,8 +33,9 @@ Read `starterDocs/00-README.md` first. The others in order:
 ## Stack
 
 TypeScript end to end. **Payload CMS 3 (pinned)** + **Next.js App Router** +
-**PostgreSQL** (Drizzle adapter). Auth is **Entra ID OIDC** via a Payload custom strategy —
-no password storage except one audited break-glass admin. Media/docs on **Cloudflare R2**;
+**PostgreSQL** (Drizzle adapter). Auth is **designed** as Entra ID OIDC with no password
+storage, but currently runs on **interim Payload local auth** — see "Authentication" below
+before touching anything in `src/auth/`. Media/docs on **Cloudflare R2**;
 CDN/DNS/WAF on **Cloudflare**; translation via **Azure AI Translator** behind a swappable
 interface; transactional email via **Resend**. Testing: Vitest, Playwright, axe-core,
 Lighthouse CI, k6. CI on GitHub Actions.
@@ -97,9 +99,48 @@ slow enough to hurt the dev loop. Neither is true today.
 `plugin-cloud-storage` (R2). Nothing else without weighing swap cost (`02` §11).
 `plugin-form-builder` is a _deferred add-on_, not adopted in v1.
 
-**Never introduce:** MongoDB, local password auth, drag-and-drop composition for school
-users, per-field manual localization as the primary mechanism, `localStorage` for
-application state, or a bespoke reimplementation of anything Payload already provides.
+**Never introduce:** MongoDB, drag-and-drop composition for school users, per-field manual
+localization as the primary mechanism, `localStorage` for application state, or a bespoke
+reimplementation of anything Payload already provides.
+
+_(Local password auth was on this list and is temporarily in use — as a recorded, dated
+deviation with a switch trigger, not as a reversal. See "Authentication" below. Do not read
+its presence as permission to add more credential handling.)_
+
+## Authentication — interim deviation from ADR-6
+
+**Current: Payload local authentication (email + password).**
+**Designed: Entra ID OIDC (`02` §7, ADR-6).**
+
+A deliberate, temporary deviation to avoid a district IT dependency during development.
+Recorded here rather than left implicit, because an undocumented auth deviation is exactly
+the kind of thing that quietly ships.
+
+**What survives the switch, unchanged:** roles, tenant assignment, every access function,
+and the whole isolation suite. Authentication answers _who you are_; authorization answers
+_what you may touch_. Only the former changes — which is what makes this affordable. The
+`entraObjectId` field is already present and unused, so existing accounts get linked to
+Entra objects at switchover rather than recreated.
+
+**What local auth costs — all of it re-solved by the switch, none of it solved now:**
+
+| Lost                                     | Consequence                                                                                                                                                                                                                               |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Automatic deprovisioning**             | `02` §7 calls this the material advantage over local accounts. A departing employee keeps platform access until someone remembers to remove them. **This is the one that matters** — it is a standing security gap, not an inconvenience. |
+| **Inherited MFA**                        | District MFA policy does not apply. The platform has none.                                                                                                                                                                                |
+| **No credential storage**                | We now store password hashes, so credential handling, reset flows and lockout become ours to get right. `src/auth/password-policy.ts` exists solely for this.                                                                             |
+| **No new password for infrequent users** | School managers log in a few times a year (`04` §2.1). They will forget, so password reset becomes a load-bearing path against the "no training, no documentation" bar.                                                                   |
+
+**Switch trigger — before production with real staff accounts, not later.** The
+deprovisioning gap is acceptable for development and a closed pilot; it is not acceptable
+once ~30–50 school staff hold accounts. Concretely, switch before Phase 9 pilot cutover
+(`05`), since that is the first point real DD2 staff log in.
+
+**To switch:** provision an Entra app registration per environment (`09` §1), implement the
+OIDC strategy against `src/auth/entra-mapping.ts` (already written and tested — it is the
+security-critical half), populate `entraObjectId` on existing users, set
+`disableLocalStrategy` except for the break-glass account, and delete
+`src/auth/password-policy.ts`.
 
 ## Non-negotiable rules
 
