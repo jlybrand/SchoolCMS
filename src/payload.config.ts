@@ -2,18 +2,21 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { postgresAdapter } from '@payloadcms/db-postgres'
+import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { buildConfig } from 'payload'
 
+import { isDistrictAdmin } from './access/predicates'
+import type { AuthUser } from './access/types'
+import { Tenants } from './collections/Tenants'
 import { Users } from './collections/Users'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
 /**
- * Payload 3, pinned (ADR-4). The plugin surface is deliberately minimal — every plugin is
- * a swap cost (`02` §2). Phase 1 adds `@payloadcms/plugin-multi-tenant`; Phase 3 adds
- * `@payloadcms/plugin-seo`; Phase 6 adds cloud storage for R2. Nothing else is adopted
- * without weighing its contribution to the switching cost (`02` §11).
+ * Payload 3, pinned (ADR-4). The plugin surface is deliberately minimal — every plugin is a
+ * swap cost (`02` §2). Phase 3 adds `plugin-seo`; Phase 6 adds cloud storage for R2.
+ * Nothing else is adopted without weighing its contribution to the switching cost.
  */
 export default buildConfig({
   admin: {
@@ -21,7 +24,7 @@ export default buildConfig({
     importMap: { baseDir: path.resolve(dirname) },
   },
 
-  collections: [Users],
+  collections: [Tenants, Users],
 
   // Postgres, never Mongo — portability is a hard requirement (`00`, ADR-10).
   db: postgresAdapter({
@@ -29,14 +32,35 @@ export default buildConfig({
   }),
 
   /**
-   * Constrained rich text (`07` §4.4). The element allowlist is an accessibility control
-   * and a security control simultaneously: editors cannot express a formatting idea the
-   * design system has not already made accessible.
-   *
-   * Phase 3 adds the paste normalizer on top of this — normalization happens ON PASTE, not
-   * on render, so the database never holds the garbage (`07` §4.2).
+   * Constrained rich text (`07` §4.4) — an accessibility control and a security control
+   * simultaneously. Phase 3 narrows this to the fixed element allowlist and adds the paste
+   * normalizer, which runs ON PASTE so the database never holds the garbage (`07` §4.2).
    */
   editor: lexicalEditor(),
+
+  plugins: [
+    /**
+     * Multi-tenancy (`02` §4.2). The plugin adds the `tenant` relationship to tenant-owned
+     * collections and the `tenants` array to users, and applies base filters.
+     *
+     * IMPORTANT — what this plugin is and is not. It is scoping convenience, NOT the
+     * isolation guarantee. Because Payload owns the connection and Postgres RLS is
+     * unavailable (`02` §4.2), isolation rests on the access functions in `src/access/`
+     * plus the adversarial suite that exercises them over every route. The plugin's
+     * `useTenantAccess` is left on so its constraints compose with ours, but the suite
+     * asserts denial independently of it — if the plugin changed behaviour on upgrade, the
+     * tests must fail rather than the isolation quietly weakening.
+     */
+    multiTenantPlugin<{ user: AuthUser }>({
+      tenantsSlug: 'tenants',
+      // district-admin works across all 28 sites by design (`04` §3.2).
+      userHasAccessToAllTenants: (user) => isDistrictAdmin(user),
+      collections: {
+        // Tenant-owned content collections register here as they land (Phase 3+):
+        // pages, posts, events, people, documents, media, alerts, redirects.
+      },
+    }),
+  ],
 
   secret: process.env.PAYLOAD_SECRET ?? '',
   typescript: { outputFile: path.resolve(dirname, 'payload-types.ts') },
