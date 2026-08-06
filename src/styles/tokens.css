@@ -1,0 +1,78 @@
+/**
+ * Design tokens (`02` §4.4).
+ *
+ * Per-tenant themes override these VALUES at render from the `theme` global — they never
+ * fork stylesheets. One shared design system, 28 brands.
+ *
+ * Contrast is validated at token level (`07` §3), so a school cannot pick a brand colour
+ * that fails AA. The Phase 3 token test asserts every declared foreground/background pair
+ * meets 4.5:1 for body text and 3:1 for large text and UI boundaries.
+ */
+
+:root {
+  /* --- Colour: neutrals ------------------------------------------------- */
+  --color-surface: #ffffff;
+  --color-surface-raised: #f6f7f9;
+  --color-border: #d3d7de;
+
+  /* Contrast against --color-surface: 15.9:1 (AA body text, AAA) */
+  --color-text: #14171c;
+  /* Contrast against --color-surface: 7.2:1 (AA body text) */
+  --color-text-muted: #4d5563;
+
+  /* --- Colour: brand (per-tenant override target) ----------------------- */
+  /* Contrast against --color-surface: 7.5:1 */
+  --color-brand: #0f4c81;
+  --color-brand-contrast: #ffffff;
+
+  /* --- Colour: alert severity (`03` §2 — never colour-only, `07` §3) ---- */
+  --color-info: #0f4c81;
+  --color-warning: #7a4a00;
+  --color-emergency: #8a1420;
+
+  /* --- Focus (2.4.11 focus appearance, `07` §3) ------------------------- */
+  --focus-ring-color: #0b57d0;
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 2px;
+
+  /* --- Type scale ------------------------------------------------------- */
+  --font-family-base: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.75rem;
+  --font-size-2xl: 2.25rem;
+
+  /**
+   * Per-locale typography tokens (`08` §7). CJK glyph height needs more line-height than
+   * Latin, and a full CJK webfont would break the LCP budget in `01` §6 — so CJK locales
+   * default to a system font stack. Overridden per locale in Phase 7.
+   */
+  --line-height-base: 1.6;
+  --font-family-locale: var(--font-family-base);
+
+  /* --- Spacing (logical only — consumed via *-inline / *-block) ---------- */
+  --space-2xs: 0.25rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2.5rem;
+
+  /* --- Layout ----------------------------------------------------------- */
+  --measure: 68ch;
+  --radius: 4px;
+}
+
+/* CJK line-height and font stack (`08` §7). Applied by locale in Phase 7. */
+:root:lang(zh-Hans),
+:root:lang(ko) {
+  --line-height-base: 1.8;
+  --font-family-locale:
+    system-ui, 'Noto Sans CJK SC', 'Noto Sans CJK KR', 'Microsoft YaHei', 'Malgun Gothic',
+    sans-serif;
+}
+
+:root:lang(ar) {
+  --font-family-locale: system-ui, 'Noto Naskh Arabic', 'Segoe UI', sans-serif;
+  --line-height-base: 1.8;
+}

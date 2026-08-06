@@ -1,0 +1,26 @@
+# Local development database only. Production uses managed Postgres with HA + PITR (`09` §3).
+# Postgres 18 matches the intended managed major. Never MongoDB (`00`, ADR-10).
+#
+# Works with `docker compose` or `podman compose`. If neither is installed, see
+# README.md — a locally-installed Postgres works fine; only the connection string matters.
+services:
+  postgres:
+    image: postgres:18
+    container_name: dd2-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dd2
+      POSTGRES_PASSWORD: dd2_local_dev
+      POSTGRES_DB: dd2
+    ports:
+      - '5433:5432'
+    volumes:
+      - dd2-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U dd2 -d dd2']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  dd2-pgdata:

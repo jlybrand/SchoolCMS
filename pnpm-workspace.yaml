@@ -1,0 +1,8 @@
+# pnpm 11 reads build-script approvals here rather than from package.json.
+# Only these packages may run install scripts — everything else is blocked by default,
+# which is a supply-chain control, not a convenience setting. Adding an entry means
+# allowing that package to execute arbitrary code at install time; do it deliberately.
+allowBuilds:
+  sharp: true # image derivatives for the media library (`03` §2)
+  esbuild: true # transitive: vite/vitest
+  unrs-resolver: true # transitive: eslint-import-resolver-typescript

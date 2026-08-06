@@ -1,0 +1,285 @@
+# CLAUDE.md
+
+Guidance for Claude Code working in this repository.
+
+## What this is
+
+**DD2 Website Platform** — a district-owned, accessibility-native web platform serving one
+district domain and 27 school subdomains (**28 tenants**) from a single codebase and
+deployment. It replaces the rented Finalsite Composer CMS.
+
+**Status: Phase 0 complete — scaffold and guardrails.** Phase 1 (tenancy, Entra auth,
+access control, adversarial isolation suite) is next. `starterDocs/` holds the 12-document
+design suite (v2.1, August 2026) and is the specification. Treat it as authoritative; when
+code and docs disagree, that is a bug in one of them — say which.
+
+Read `starterDocs/00-README.md` first. The others in order:
+
+| Doc                                       | Covers                                                             |
+| ----------------------------------------- | ------------------------------------------------------------------ |
+| `01-project-scope.md`                     | Scope, personas, NFRs, deferred add-ons, acceptance criteria       |
+| `02-system-architecture.md`               | Stack, tenancy, delivery, availability, security, ADRs             |
+| `03-data-model-access-control.md`         | Collections, fields, access model, **isolation invariants (§6.4)** |
+| `04-authoring-model-approval-workflow.md` | Two admin planes, approval workflow, auto-approval grants          |
+| `05-build-order-roadmap.md`               | Phase sequencing and dependency graph                              |
+| `06-testing-strategy.md`                  | Test layers, CI gate order, fixtures, coverage philosophy          |
+| `07-accessibility-conformance-plan.md`    | WCAG 2.1 AA by construction; paste normalizer spec                 |
+| `08-localization-pipeline.md`             | Render-layer translation; locale tiers; RTL/CJK handling           |
+| `09-deployment-operations.md`             | CI/CD, hosting, DR, monitoring, runbooks, dependency governance    |
+| `10-migration-cutover.md`                 | Template census, extraction, per-tenant wave cutover               |
+| `11-integrations-powerschool.md`          | Read-only staff sync; **no student data, ever**                    |
+
+## Stack
+
+TypeScript end to end. **Payload CMS 3 (pinned)** + **Next.js App Router** +
+**PostgreSQL** (Drizzle adapter). Auth is **Entra ID OIDC** via a Payload custom strategy —
+no password storage except one audited break-glass admin. Media/docs on **Cloudflare R2**;
+CDN/DNS/WAF on **Cloudflare**; translation via **Azure AI Translator** behind a swappable
+interface; transactional email via **Resend**. Testing: Vitest, Playwright, axe-core,
+Lighthouse CI, k6. CI on GitHub Actions.
+
+### Pinned versions — and three places "latest" is wrong
+
+Node **24.19.0** (Krypton, Active LTS — see `.nvmrc`; Node 20 is EOL). pnpm **11.20.0** via
+corepack. Postgres **18**. Payload **3.87.0** exact-pinned across every `@payloadcms/*`
+package. Next **16.3.0**, React **19.2.8**.
+
+Three dependencies are deliberately **not** on `latest`. Do not "helpfully" bump them
+without re-checking the constraint that pinned them:
+
+| Package    | Pinned  | `latest` | Why not latest                                                                                                                                                         |
+| ---------- | ------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TypeScript | 6.0.3   | 7.0.2    | typescript-eslint peers `>=4.8.4 <6.1.0`. TS 7 (the native port) would disable the lint layer — which is where both Phase 0 guardrails live. Not a trade worth making. |
+| ESLint     | 9.39.5  | 10.8.0   | `eslint-config-next` bundles eslint-plugin-import/react/jsx-a11y, all capped at `^9`. ESLint 10 leaves jsx-a11y unmet, silently weakening the a11y lint.               |
+| graphql    | 16.14.2 | 17.0.2   | Payload peers `^16.8.1`.                                                                                                                                               |
+
+Revisit each when its blocker clears. Payload version bumps are always a separate PR
+(`09` §2).
+
+**Plugins are deliberately minimal:** `plugin-multi-tenant`, `plugin-seo`,
+`plugin-cloud-storage` (R2). Nothing else without weighing swap cost (`02` §11).
+`plugin-form-builder` is a _deferred add-on_, not adopted in v1.
+
+**Never introduce:** MongoDB, local password auth, drag-and-drop composition for school
+users, per-field manual localization as the primary mechanism, `localStorage` for
+application state, or a bespoke reimplementation of anything Payload already provides.
+
+## Non-negotiable rules
+
+These are release-blocking. Do not weaken, skip, or mark flaky-and-ignored.
+
+1. **The public rendering layer never imports the Payload SDK.** All content access goes
+   through `src/content/*`, which returns hand-written DD2 domain types — never Payload's
+   generated types (`02` §11). Enforced by ESLint `no-restricted-imports` over
+   `src/app/(frontend)/`, `src/components/`, and `src/blocks/`, not by convention. This is
+   the entire hedge against the Payload dependency; it is cheap only if maintained from day
+   one.
+   _Scope note:_ `05` states this as "no file under `src/app/**`", which is unimplementable
+   literally — Payload 3 mounts its admin and API as App Router routes under
+   `src/app/(payload)/` that must import the SDK. That directory is exempt and holds no DD2
+   rendering logic. `tests/unit/guardrails/content-boundary.test.ts` pins both the
+   enforcement and the exemption.
+2. **Tenant isolation is application-layer**, enforced in Payload access functions, because
+   Payload owns the connection and Postgres RLS is unavailable (`02` §4.2). The adversarial
+   cross-tenant test suite (`03` §6.4, `06` §2.2) is therefore the _primary guarantee_, not a
+   secondary check. Reads return **query constraints, never booleans**.
+3. **A `school-manager` cannot publish by any route** — admin, REST, GraphQL, or bulk op.
+   Gated at both the access and hook layer.
+4. **No student data enters the platform.** The PowerSchool sync is staff-only, enforced in
+   five independent layers (`11` §4). The `people` collection has no fields where student
+   data could land. Proven by a test seeded with student records (`11` §9).
+5. **CSS logical properties only.** No `margin-left`, no `text-align: left`, anywhere — RTL
+   correctness is structural. Stylelint bans physical properties and direction keywords.
+6. **Zero critical/serious axe violations to merge** — on public templates _and_ both admin
+   planes. The gate fails closed from Phase 0, before there is anything to gate.
+7. **Alt text is required at upload** unless `isDecorative` is set — enforced by field
+   validation _and_ a `beforeValidate` hook, so the API path cannot bypass it.
+8. **Auto-approval is off by default and granted per named user**, never by role, tenant, or
+   content type. A mixed submission queues in full (`04` §4.3).
+9. **Postgres, never Mongo.** Portability is a hard requirement.
+
+## Commands
+
+```bash
+nvm use                 # honours .nvmrc — Node 24.19.0; engine-strict blocks anything else
+pnpm install
+pnpm dev                # Next + Payload admin at /admin
+pnpm build
+
+pnpm typecheck
+pnpm lint               # eslint + stylelint + prettier — BOTH guardrails run here
+pnpm test               # vitest: unit + integration
+pnpm test:unit          # includes tests/unit/guardrails — the guards' own tests
+pnpm test:e2e:smoke     # playwright smoke + the failing-closed axe gate
+pnpm test:perf          # lighthouse budget
+
+pnpm db:up              # Postgres 18 on :5433 (needs docker/podman compose)
+pnpm generate:types     # regenerate src/payload-types.ts from the schema
+pnpm migrate:create     # generate a reversible migration
+```
+
+## Repo layout
+
+```
+src/
+  app/
+    (frontend)/         public site. NEVER imports Payload — this is the guarded surface.
+      [locale]/         Phase 2: locale path prefix; en is unprefixed
+    (payload)/          Payload's OWN mount point (admin UI + REST/GraphQL).
+                        Imports @payloadcms/next by construction; exempt from the
+                        boundary rule. No DD2 rendering logic goes here.
+  content/              THE BOUNDARY. Payload lives behind this.
+    types.ts            hand-written DD2 domain types — never generated
+    pages.ts posts.ts events.ts people.ts documents.ts alerts.ts   (Phase 2+)
+  collections/          Payload collection configs + colocated access functions
+  blocks/               district-only block library (Phase 3)
+  components/           shared design system; logical properties only (Phase 3)
+  styles/               tokens.css (design tokens) + globals.css
+  lib/                  tenant resolution, paste normalizer, i18n pipeline, mappers
+migrations/             generated from the Payload schema; reversible, tested up and down
+tests/
+  unit/guardrails/      tests for the guards THEMSELVES — keep these green
+  integration/ e2e/ fixtures/
+starterDocs/            the design suite — specification, keep in sync
+```
+
+## Build order
+
+Phases are units of _dependency_ (`05`). Do not run them out of order — each is the
+dependency root for the next.
+
+```
+0 Setup + guards → 1 Tenancy/Auth → 2 Delivery + content layer → 3 Components + pages
+→ 4 Approval + admin planes → 5 Content modules ─┐
+                            → 6 Media/Docs/Search ┴→ 7 Localization → 8 Hardening
+→ 9 Migration/Pilot → 10 Rollout/Decommission
+```
+
+Three things are nearly free at the start and expensive to retrofit across a finished
+codebase. All three land in Phase 0–2, before the first component ships:
+the **content-access layer**, **CSS logical properties**, and the **failing-closed axe gate**.
+
+**Definition of done for every phase** (`05`): types clean; unit + integration + e2e passing;
+zero critical/serious axe violations on public _and_ admin; RTL verified for new layout;
+isolation tests green; boundary lint green; ADRs updated; add-on register reviewed.
+
+## Test-driven development
+
+**This project is TDD.** Write the failing test first, make it pass, then refactor. The
+design suite already assumes this posture — the axe gate fails closed from Phase 0 before
+any feature exists, and the adversarial isolation tests are written in Phase 1 as the
+deliverable, not after it (`05`, `06`).
+
+**TDD is mandatory** — no exceptions — for the five areas carrying 100%-intent coverage
+(`06` §7), plus everything else that is a pure function of its inputs:
+
+- Access-control and tenant-isolation functions (table-driven: role × tenant × collection)
+- The publish gate — a `school-manager` cannot publish by any route
+- The PowerSchool no-student-data invariant, driven from a fixture seeded with student records
+- The auto-approval grant boundary — nothing auto-approves without an explicit grant
+- The **paste normalizer** — the highest-value unit suite in the project; fixtures of real
+  Word and Google Docs payloads come first, the normalizer second
+- Utilities and mappers: tenant resolution from hostname, slug generation, recurrence
+  expansion, iCal serialization, SEO/OG assembly, migration field mappers, translation
+  string hashing
+- Hooks: revalidation tags, COPE purge fan-out, `alt` required unless `isDecorative`
+
+**Where test-first is the wrong tool** — say so and use the stated alternative rather than
+writing a test you will delete:
+
+| Surface                                                                | Why                                                                                                                           | Instead                                                                                                                  |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Custom Payload admin React views (task plane, diff viewer, block list) | Layout and interaction shape are discovered by looking at them; test-first yields brittle assertions rewritten each iteration | Build, then lock behaviour with a Playwright flow + axe assertion in the same PR — non-negotiable before merge           |
+| Payload collection configs and field declarations                      | Largely declarative; asserting "this field exists" restates the schema                                                        | TDD the access functions, hooks, and validators attached to them — that is where the behaviour lives                     |
+| Theme tokens, visual and typographic work                              | No meaningful failing test to write                                                                                           | Contrast validated at token level; visual regression + RTL check                                                         |
+| First contact with an external API (OneRoster, Entra OIDC)             | You cannot write an honest test before seeing a real payload                                                                  | **Spike → capture the response as a fixture → delete the spike → TDD against the fixture.** No spike code reaches `main` |
+
+The caveat that makes this stick: a TDD rule with no stated exceptions gets cargo-culted on
+the surfaces it fits badly, then quietly abandoned everywhere. The table above is the
+exception list; anything not on it is test-first.
+
+**Nothing merges without its tests** (`05`). A PR that adds behaviour and no test is
+incomplete, not fast.
+
+## Styling
+
+**Plain CSS. No Tailwind, no CSS-in-JS, no Sass.** This follows design principle 6 —
+boring, mainstream technology, nothing bespoke where a standard exists — and keeps the
+design system legible to whoever maintains this next.
+
+- **Design tokens are CSS custom properties** in `src/styles/tokens.css`. Per-tenant themes
+  override token values at render from the `theme` global (`02` §4.4); they never fork
+  stylesheets. Per-locale typography tokens (CJK line-height, font stacks) are tokens too.
+- **Component styles are CSS Modules** (`Component.module.css`) — Next's built-in scoping,
+  still plain CSS syntax, no runtime. Global styles stay in `src/styles/`.
+- **Logical properties only**, enforced by stylelint (non-negotiable rule 5). Use
+  `margin-inline-start`, `padding-block`, `inset-inline`, `inline-size`/`block-size`,
+  `text-align: start`, `float: inline-start`.
+- **Contrast is validated at token level**, so a per-tenant brand palette cannot ship a
+  combination that fails AA (`07` §3).
+- Avoid inline `style` props for anything layout-bearing — stylelint cannot see them, which
+  puts them outside the RTL guard.
+
+## Working conventions
+
+- **Vertical slices.** A content module is built schema → access → approval integration →
+  block/template → migration mapper → tests, before the next module starts.
+- **Every new block ships with a Storybook entry and an axe test in the same PR.** Blocks own
+  their heading levels — an editor must not be able to produce a heading-order violation by
+  reordering.
+- **Migration mappers are built alongside the module they target**, not saved for the end.
+- **Payload version bumps are a deliberate, separate PR** — never bundled with feature work,
+  always with a full a11y and isolation run.
+- Migrations are expand/contract; no destructive change without a two-step migration.
+- Secrets live in platform secret stores, never the repo.
+
+## Git
+
+- Trunk-based with short-lived branches; every change goes through a PR and the full gate
+  set. Releases are tagged; the production promote is a deliberate, approved step.
+- **Never mention Claude, Claude Code, or any AI assistant in commit messages or pull
+  requests.** No `Co-Authored-By: Claude` trailer, no "Generated with Claude Code" footer,
+  no attribution in the body or title. Write commits and PRs as the maintainer would.
+
+## The two design bars that drive most decisions
+
+**Usability:** _a school manager who last logged in five months ago, attended no training,
+and reads no documentation completes their task unaided._ This is measured on real DD2
+staff who were not involved in the build. It rules out collection-oriented navigation, the
+word "collection," draft-vs-published as a visible concept, tenant switchers, and any screen
+where the primary action is ambiguous. The school plane shows **verbs, not collections**, and
+every form submits with one button: **"Send for approval."**
+
+**Approval throughput:** approve must be **one click from an inline diff**. If approving
+requires opening each document, the district becomes the bottleneck, schools stop
+submitting, and the sites go stale — which is the exact failure this platform exists to
+prevent. Content staleness, not bad edits, is the real failure mode.
+
+## Scope discipline
+
+Every capability must trace to something DD2 actually does. **Finalsite usage parity, not
+Finalsite feature parity.** Payload's unused capabilities are not requirements.
+
+Deferred add-ons (`01` §4) are preserved as **seams — a permission boundary, a nullable
+field, an interface — never speculative infrastructure.** Do not build the submissions
+store, retention job, PII machinery, `teams` collection, portal auth collection, or PDF/UA
+validator. Their attachment points already exist (`03` §4).
+
+Out of scope entirely: mass communications, native forms in v1 (MS Forms embedded),
+athletics as a structured module, PDF/UA remediation, SIS/LMS/billing, native mobile apps,
+social publishing out.
+
+**If a form would ever collect student information, stop.** That is a FERPA decision
+requiring counsel, not a feature decision.
+
+## Open items requiring a human decision
+
+Do not resolve these in code; flag them:
+
+- **ADA Title II compliance bracket** — likely April 26, 2028 under DOJ's April 2026 interim
+  final rule, but **confirm with counsel** (`00`, `07`).
+- **Title VI language-access obligation** — which locales DD2 must serve is a policy
+  question for counsel and the Title VI coordinator (`08` §10).
+- **Document remediation ownership** and the legacy backlog policy (`07` §5).
+- **The identical-school-layouts assumption** (`01` §8) — falsified or confirmed by the
+  template census (`10` §2), which should start during Phase 3, not at migration.

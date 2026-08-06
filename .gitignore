@@ -1,0 +1,28 @@
+node_modules/
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+
+# Payload — payload-types.ts is generated from the schema on every build.
+# importMap.js IS committed so CI builds without a codegen step.
+/src/payload-types.ts
+
+# Env — only .env.example is committed
+.env
+.env.*
+!.env.example
+
+# Test + tooling output
+coverage/
+test-results/
+playwright-report/
+blob-report/
+.lighthouseci/
+*.tsbuildinfo
+
+# OS / editor
+.DS_Store
+*.log

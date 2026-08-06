@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json.schemastore.org/stylelintrc.json",
+  "rules": {
+    "property-disallowed-list": [
+      [
+        "margin-left",
+        "margin-right",
+        "margin-top",
+        "margin-bottom",
+        "padding-left",
+        "padding-right",
+        "padding-top",
+        "padding-bottom",
+        "border-left",
+        "border-right",
+        "border-top",
+        "border-bottom",
+        "border-left-width",
+        "border-right-width",
+        "border-top-width",
+        "border-bottom-width",
+        "border-left-color",
+        "border-right-color",
+        "border-top-color",
+        "border-bottom-color",
+        "border-left-style",
+        "border-right-style",
+        "border-top-style",
+        "border-bottom-style",
+        "border-top-left-radius",
+        "border-top-right-radius",
+        "border-bottom-left-radius",
+        "border-bottom-right-radius",
+        "left",
+        "right",
+        "top",
+        "bottom",
+        "width",
+        "height",
+        "min-width",
+        "max-width",
+        "min-height",
+        "max-height",
+        "overflow-x",
+        "overflow-y"
+      ],
+      {
+        "message": "GUARDRAIL: physical CSS property. Use the logical equivalent (margin-inline-start, padding-block, inset-inline, inline-size, block-size, overflow-inline/block). RTL correctness is structural and must not be retrofitted (07 §3, 08 §7)."
+      }
+    ],
+    "declaration-property-value-disallowed-list": [
+      {
+        "text-align": ["left", "right"],
+        "float": ["left", "right"],
+        "clear": ["left", "right"],
+        "resize": ["horizontal", "vertical"]
+      },
+      {
+        "message": "GUARDRAIL: physical direction keyword. Use start/end (text-align: start, float: inline-start) so Arabic and future RTL locales mirror correctly (08 §7)."
+      }
+    ]
+  },
+  "ignoreFiles": ["**/node_modules/**", ".next/**", "coverage/**"]
+}

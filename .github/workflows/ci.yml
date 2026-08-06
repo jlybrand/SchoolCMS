@@ -1,0 +1,143 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Pinned Node LTS line — see .nvmrc. Node 20 is EOL; Node 24 (Krypton) is Active LTS.
+  NODE_VERSION: '24.19.0'
+  PNPM_VERSION: '11.20.0'
+
+jobs:
+  # Gate order per `06` §3 — fail fast:
+  # typecheck -> lint -> unit -> integration -> build -> e2e smoke -> axe -> lighthouse
+  static:
+    name: typecheck + lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with: { version: '${{ env.PNPM_VERSION }}' }
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '${{ env.NODE_VERSION }}'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm run typecheck
+      - name: Lint (includes both Phase 0 guardrails)
+        run: pnpm run lint
+
+  test:
+    name: unit + integration
+    runs-on: ubuntu-latest
+    needs: static
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: dd2
+          POSTGRES_PASSWORD: dd2_ci
+          POSTGRES_DB: dd2_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U dd2 -d dd2_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URI: postgres://dd2:dd2_ci@localhost:5432/dd2_test
+      PAYLOAD_SECRET: ci-only-not-a-real-secret
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with: { version: '${{ env.PNPM_VERSION }}' }
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '${{ env.NODE_VERSION }}'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Unit tests (includes the guardrail suites)
+        run: pnpm run test:unit
+      - name: Integration tests
+        run: pnpm run test:integration
+
+  e2e:
+    name: build + e2e smoke + axe gate
+    runs-on: ubuntu-latest
+    needs: test
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: dd2
+          POSTGRES_PASSWORD: dd2_ci
+          POSTGRES_DB: dd2_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U dd2 -d dd2_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URI: postgres://dd2:dd2_ci@localhost:5432/dd2_test
+      PAYLOAD_SECRET: ci-only-not-a-real-secret
+      NEXT_PUBLIC_SERVER_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with: { version: '${{ env.PNPM_VERSION }}' }
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '${{ env.NODE_VERSION }}'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Build
+        run: pnpm run build
+      - name: E2E smoke + axe gate (zero critical/serious to merge)
+        run: pnpm run test:e2e:smoke
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  lighthouse:
+    name: lighthouse budget
+    runs-on: ubuntu-latest
+    needs: e2e
+    env:
+      DATABASE_URI: postgres://dd2:dd2_ci@localhost:5432/dd2_test
+      PAYLOAD_SECRET: ci-only-not-a-real-secret
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with: { version: '${{ env.PNPM_VERSION }}' }
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '${{ env.NODE_VERSION }}'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - name: Core Web Vitals + a11y budget
+        run: pnpm run test:perf
+
+  # Dependency scanning per `06` §2.7. Payload version bumps are always a deliberate,
+  # separate PR — never bundled with feature work (`09` §2).
+  security:
+    name: dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with: { version: '${{ env.PNPM_VERSION }}' }
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '${{ env.NODE_VERSION }}'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --audit-level high
