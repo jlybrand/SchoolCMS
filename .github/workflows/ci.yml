@@ -62,6 +62,13 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       DATABASE_URI: postgres://dd2:dd2_ci@localhost:5432/dd2_test
+      # tests/setup/env.ts reads THIS, not DATABASE_URI, and overwrites DATABASE_URI with
+      # it before the Payload config is evaluated. It deliberately refuses to inherit an
+      # ambient DATABASE_URI, so that a local `pnpm test` can never point the isolation
+      # suite — which truncates collections between runs — at a developer's dev database.
+      # An environment that wants the integration tests to reach a database has to say so
+      # explicitly, which is what this line does.
+      TEST_DATABASE_URI: postgres://dd2:dd2_ci@localhost:5432/dd2_test
       PAYLOAD_SECRET: ci-only-not-a-real-secret
     steps:
       - uses: actions/checkout@v5
@@ -75,6 +82,10 @@ jobs:
       - name: Unit tests (includes the guardrail suites)
         run: pnpm run test:unit
       - name: Integration tests
+        # Includes the adversarial cross-tenant suite, which is the primary isolation
+        # guarantee (`03` §6.4, `06` §2.2) rather than a secondary check. If this step is
+        # not reaching Postgres, that guarantee is unenforced — it must fail loudly, never
+        # be skipped.
         run: pnpm run test:integration
 
   e2e:
