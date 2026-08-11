@@ -8,3 +8,6 @@ pnpm-lock.yaml
 src/payload-types.ts
 src/app/(payload)/admin/importMap.js
 starterDocs/
+# Clipboard payloads, kept byte-for-byte as Word and Google Docs emit them.
+# Reformatting them would change what the normalizer is tested against (`06` §5).
+tests/fixtures/paste/
