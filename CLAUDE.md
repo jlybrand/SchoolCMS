@@ -8,8 +8,9 @@ Guidance for Claude Code working in this repository.
 district domain and 27 school subdomains (**28 tenants**) from a single codebase and
 deployment. It replaces the rented Finalsite Composer CMS.
 
-**Status: Phase 1 in progress.** Phase 0 (scaffold + guardrails) is complete. Phase 1 has
-tenancy, roles, access control and the adversarial isolation suite landed; authentication
+**Status: Phases 0–2 complete; Phase 3 next.** Phase 0 (scaffold + guardrails), Phase 1
+(tenancy, roles, access control, the adversarial isolation suite) and Phase 2 (edge tenant
+routing, locale plumbing, the content-access layer, cache tags) have landed. Authentication
 is on an **interim local-auth posture** — see "Authentication" below. `starterDocs/` holds the 12-document
 design suite (v2.1, August 2026) and is the specification. Treat it as authoritative; when
 code and docs disagree, that is a bug in one of them — say which.
@@ -202,13 +203,17 @@ pnpm migrate:create     # generate a reversible migration
 src/
   app/
     (frontend)/         public site. NEVER imports Payload — this is the guarded surface.
-      [locale]/         Phase 2: locale path prefix; en is unprefixed
+      sites/[hostname]/[locale]/   the rewrite target; en is unprefixed
     (payload)/          Payload's OWN mount point (admin UI + REST/GraphQL).
                         Imports @payloadcms/next by construction; exempt from the
                         boundary rule. No DD2 rendering logic goes here.
+  proxy.ts              edge tenant + locale routing (Next 16's middleware convention)
+  access/               role/tenant predicates + Payload access functions
+  auth/                 entra-mapping.ts (unwired), password-policy.ts (interim)
   content/              THE BOUNDARY. Payload lives behind this.
     types.ts            hand-written DD2 domain types — never generated
-    pages.ts posts.ts events.ts people.ts documents.ts alerts.ts   (Phase 2+)
+    tenants.ts          getTenantByHostname, listActiveTenants
+    pages.ts posts.ts events.ts people.ts documents.ts alerts.ts   (Phase 3+)
   collections/          Payload collection configs + colocated access functions
   blocks/               district-only block library (Phase 3)
   components/           shared design system; logical properties only (Phase 3)
@@ -219,6 +224,8 @@ tests/
   unit/guardrails/      tests for the guards THEMSELVES — keep these green
   integration/ e2e/ fixtures/
 starterDocs/            the design suite — specification, keep in sync
+docs/phases/            per-phase FUNCTIONAL maps: what calls what, no rationale.
+                        Written or updated as part of that phase's PR.
 ```
 
 ## Build order
