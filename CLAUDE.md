@@ -190,7 +190,11 @@ pnpm lint               # eslint + stylelint + prettier — BOTH guardrails run 
 pnpm test               # vitest: unit + integration
 pnpm test:unit          # includes tests/unit/guardrails — the guards' own tests
 pnpm test:e2e:smoke     # playwright smoke + the failing-closed axe gate
+pnpm test:a11y:components  # axe over every Storybook story, LTR and RTL — boots Storybook itself
 pnpm test:perf          # lighthouse budget
+
+pnpm storybook          # component workbench on :6006
+pnpm build-storybook    # static build
 
 pnpm db:up              # Postgres 18 on :5433 (needs docker/podman compose)
 pnpm generate:types     # regenerate src/payload-types.ts from the schema
@@ -216,12 +220,17 @@ src/
     pages.ts posts.ts events.ts people.ts documents.ts alerts.ts   (Phase 3+)
   collections/          Payload collection configs + colocated access functions
   blocks/               district-only block library (Phase 3)
-  components/           shared design system; logical properties only (Phase 3)
+  components/           shared design system; logical properties only. One directory per
+                        component: Component.tsx + .module.css + .stories.tsx + index.ts
   styles/               tokens.css (design tokens) + globals.css
-  lib/                  tenant resolution, paste normalizer, i18n pipeline, mappers
+  lib/                  tenant resolution, paste normalizer, contrast checker, i18n
+                        pipeline, mappers
+.storybook/             component workbench; also the fixture set for the component axe gate
 migrations/             generated from the Payload schema; reversible, tested up and down
 tests/
   unit/guardrails/      tests for the guards THEMSELVES — keep these green
+  a11y/                 the component axe gate — every story, LTR + RTL
+                        (playwright.storybook.config.ts, needs no database)
   integration/ e2e/ fixtures/
 starterDocs/            the design suite — specification, keep in sync
 docs/phases/            per-phase FUNCTIONAL maps: what calls what, no rationale.

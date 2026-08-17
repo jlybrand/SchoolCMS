@@ -1,6 +1,11 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
+import { Container } from '@/components/Container'
+import { Heading, PAGE_TITLE_LEVEL } from '@/components/Heading'
+import { Link } from '@/components/Link'
+import { MAIN_CONTENT_ID } from '@/components/SkipLink'
+import { Stack } from '@/components/Stack'
 import { getTenantByHostname } from '@/content/tenants'
 import { tenantTag } from '@/lib/cache-tags'
 import { ALL_LOCALES, hreflangAlternates, localizedPath } from '@/lib/locales'
@@ -59,41 +64,51 @@ export default async function SitePage({ params }: { params: Promise<Params> }) 
   const path = pathOf(segments)
 
   return (
-    <main data-cache-tag={tenantTag(tenant.id)}>
-      <h1>{tenant.name}</h1>
-      <p>
-        Phase 2 delivery scaffold. Tenant resolved from the request host; locale resolved from the
-        path. Page content arrives in Phase 3.
-      </p>
+    /**
+     * `id` comes from the `SkipLink` module rather than a literal, so the bypass-blocks
+     * target cannot be renamed out from under the link (`07` §3). The measure and gutters
+     * come from `Container` — the single owner of both, in logical properties.
+     */
+    <main id={MAIN_CONTENT_ID} data-cache-tag={tenantTag(tenant.id)}>
+      <Container>
+        <Stack space="lg">
+          <Heading level={PAGE_TITLE_LEVEL}>{tenant.name}</Heading>
+          <p>
+            Phase 2 delivery scaffold, now rendered through the Phase 3 component foundation. Tenant
+            resolved from the request host; locale resolved from the path. Page content arrives with
+            the `pages` collection.
+          </p>
 
-      <dl>
-        <dt>Tenant</dt>
-        <dd data-testid="tenant-slug">{tenant.slug}</dd>
-        <dt>Type</dt>
-        <dd data-testid="tenant-type">{tenant.type}</dd>
-        <dt>Locale</dt>
-        <dd data-testid="locale">{locale}</dd>
-        <dt>Path</dt>
-        <dd data-testid="path">{path}</dd>
-      </dl>
+          <dl>
+            <dt>Tenant</dt>
+            <dd data-testid="tenant-slug">{tenant.slug}</dd>
+            <dt>Type</dt>
+            <dd data-testid="tenant-type">{tenant.type}</dd>
+            <dt>Locale</dt>
+            <dd data-testid="locale">{locale}</dd>
+            <dt>Path</dt>
+            <dd data-testid="path">{path}</dd>
+          </dl>
 
-      <nav aria-label="Language">
-        {/*
-          `08` §6 — each language is listed in its OWN script and language, with `lang` on
-          each link. Never flag icons (a flag is a country, not a language) and never
-          "translate this page" as the only affordance. Labels stay untranslated here
-          deliberately; that is what a language switcher is for.
-        */}
-        <ul>
-          {ALL_LOCALES.map((code) => (
-            <li key={code}>
-              <a href={localizedPath(path, code)} lang={code} hrefLang={code}>
-                {LANGUAGE_NAMES[code] ?? code}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
+          <nav aria-label="Language">
+            {/*
+              `08` §6 — each language is listed in its OWN script and language, with `lang` on
+              each link. Never flag icons (a flag is a country, not a language) and never
+              "translate this page" as the only affordance. Labels stay untranslated here
+              deliberately; that is what a language switcher is for.
+            */}
+            <ul>
+              {ALL_LOCALES.map((code) => (
+                <li key={code}>
+                  <Link href={localizedPath(path, code)} lang={code} hrefLang={code}>
+                    {LANGUAGE_NAMES[code] ?? code}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </Stack>
+      </Container>
     </main>
   )
 }

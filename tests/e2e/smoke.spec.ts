@@ -77,6 +77,27 @@ test('@smoke @rtl @a11y html carries an explicit dir attribute', async ({ page }
   expect(['ltr', 'rtl']).toContain(dir)
 })
 
+test('@smoke @a11y the first tab stop skips past the header into main', async ({ page }) => {
+  /**
+   * Bypass blocks — WCAG 2.4.1 (`07` §3). Asserted as behaviour rather than as markup:
+   * a skip link that exists, is reachable, and points at an id that is not there still
+   * passes every static check and does nothing for the person using it.
+   */
+  await page.goto('/')
+  await page.keyboard.press('Tab')
+
+  const href = await page.evaluate(() => document.activeElement?.getAttribute('href'))
+  expect(href).toBe('#main-content')
+
+  await page.keyboard.press('Enter')
+  await page.keyboard.press('Tab')
+
+  const focusIsInsideMain = await page.evaluate(
+    () => document.querySelector('main#main-content')?.contains(document.activeElement) ?? false,
+  )
+  expect(focusIsInsideMain).toBe(true)
+})
+
 test('@smoke keyboard focus is visible on the first interactive element', async ({ page }) => {
   // 2.4.11 focus appearance (`07` §3). Keyboard-only completion is a release check for
   // every school task from Phase 4 onward (`04` §6).

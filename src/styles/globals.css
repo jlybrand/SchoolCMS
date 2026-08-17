@@ -29,11 +29,13 @@ body {
   font-size: var(--font-size-base);
 }
 
-/* Reflow at 200%/400% zoom without horizontal scrolling (1.4.10, `07` §7). */
+/**
+ * Vertical rhythm only. Measure and gutters belong to `Container`, which is the single owner
+ * of both — two sources for the reading measure is how one of them ends up in physical
+ * properties. Reflow at 200%/400% zoom (1.4.10, `07` §7) follows from the measure being a
+ * max, not a fixed size.
+ */
 main {
-  max-inline-size: var(--measure);
-  margin-inline: auto;
-  padding-inline: var(--space-md);
   padding-block: var(--space-xl);
 }
 

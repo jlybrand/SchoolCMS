@@ -1,0 +1,18 @@
+/**
+ * Variants are selected on `data-width` rather than by a second class. The attribute is the
+ * same value in the component, in jsdom, and in the Storybook axe run, so there is one thing
+ * to assert against instead of a class name that a CSS-module hash makes unstable.
+ */
+
+.container {
+  margin-inline: auto;
+  padding-inline: var(--space-md);
+}
+
+.container[data-width='prose'] {
+  max-inline-size: var(--measure);
+}
+
+.container[data-width='wide'] {
+  max-inline-size: var(--measure-wide);
+}

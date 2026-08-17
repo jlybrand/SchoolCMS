@@ -17,6 +17,8 @@ env:
 jobs:
   # Gate order per `06` §3 — fail fast:
   # typecheck -> lint -> unit -> integration -> build -> e2e smoke -> axe -> lighthouse
+  # The component axe gate runs alongside e2e: it needs neither a database nor a Next build,
+  # so there is nothing to gain by making it wait for one.
   static:
     name: typecheck + lint
     runs-on: ubuntu-latest
@@ -87,6 +89,34 @@ jobs:
         # not reaching Postgres, that guarantee is unenforced — it must fail loudly, never
         # be skipped.
         run: pnpm run test:integration
+
+  components:
+    name: component axe gate (Storybook, LTR + RTL)
+    runs-on: ubuntu-latest
+    needs: test
+    # No Postgres and no Next build: Storybook renders components in isolation. Keeping this
+    # job independent of the database means a component regression is diagnosable on its own,
+    # and it keeps working through phases where the page templates are still changing shape.
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with: { version: '${{ env.PNPM_VERSION }}' }
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '${{ env.NODE_VERSION }}'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: axe over every story, both directions (zero critical/serious to merge)
+        # `06` §2.4 — every block registers its axe test in the same PR. Driven from
+        # Storybook's story index, so a new story is in the gate the moment it exists.
+        run: pnpm run test:a11y:components
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-components
+          path: playwright-report/
+          retention-days: 7
 
   e2e:
     name: build + e2e smoke + axe gate
