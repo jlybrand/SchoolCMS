@@ -45,6 +45,11 @@ export async function getTestPayload(): Promise<Payload> {
 export type Fixtures = {
   tenantA: number
   tenantB: number
+  /** Page fixtures for the content-collection invariants (`03` §6.4 invariants 3–5). */
+  publishedPageA: number
+  draftPageA: number
+  staffPageA: number
+  publishedPageB: number
   districtAdmin: TypedUser
   managerA: TypedUser
   managerB: TypedUser
@@ -57,8 +62,8 @@ export type Fixtures = {
  * including a school-manager assigned to NO tenant — the shape most likely to fail open.
  */
 export async function seed(payload: Payload): Promise<Fixtures> {
-  // Order matters: users reference tenants.
-  for (const collection of ['users', 'tenants'] as const) {
+  // Order matters: pages reference tenants, users reference tenants.
+  for (const collection of ['pages', 'users', 'tenants'] as const) {
     await payload.delete({ collection, where: {}, overrideAccess: true })
   }
 
@@ -94,10 +99,48 @@ export async function seed(payload: Payload): Promise<Fixtures> {
       overrideAccess: true,
     })) as unknown as TypedUser
 
+  const districtAdmin = await mkUser('district-admin@test.local', ['district-admin'], [district])
+
+  /**
+   * Pages spanning every axis the public and isolation rules turn on: status
+   * (draft/published) and visibility (public/staff), across two tenants.
+   *
+   * CREATED AS THE DISTRICT ADMIN, and users are therefore seeded before pages. This is not
+   * incidental: the publish gate is a `beforeChange` hook, and Payload runs hooks even when
+   * `overrideAccess` is true. A publish with no actor at all is refused — correctly, since
+   * "nobody" is not a role that may publish. Handing the fixtures a real actor keeps the
+   * gate strict rather than teaching it an exception that production code could then use.
+   */
+  const mkPage = async (
+    tenant: number,
+    slug: string,
+    status: 'draft' | 'published',
+    visibility: 'public' | 'staff' = 'public',
+  ): Promise<number> =>
+    (
+      await payload.create({
+        collection: 'pages',
+        data: {
+          tenant,
+          title: slug.replace(/-/g, ' '),
+          slug,
+          pageType: 'standard',
+          visibility,
+          _status: status,
+        },
+        user: districtAdmin,
+        overrideAccess: true,
+      })
+    ).id as number
+
   return {
     tenantA,
     tenantB,
-    districtAdmin: await mkUser('district-admin@test.local', ['district-admin'], [district]),
+    publishedPageA: await mkPage(tenantA, 'published-page-a', 'published'),
+    draftPageA: await mkPage(tenantA, 'draft-page-a', 'draft'),
+    staffPageA: await mkPage(tenantA, 'staff-page-a', 'published', 'staff'),
+    publishedPageB: await mkPage(tenantB, 'published-page-b', 'published'),
+    districtAdmin,
     managerA: await mkUser('manager-a@test.local', ['school-manager'], [tenantA]),
     managerB: await mkUser('manager-b@test.local', ['school-manager'], [tenantB]),
     systemSync: await mkUser('system-sync@test.local', ['system-sync'], [tenantA]),

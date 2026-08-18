@@ -69,6 +69,7 @@ export interface Config {
   collections: {
     tenants: Tenant;
     users: User;
+    pages: Page;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -78,6 +79,7 @@ export interface Config {
   collectionsSelect: {
     tenants: TenantsSelect<false> | TenantsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
+    pages: PagesSelect<false> | PagesSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -199,6 +201,45 @@ export interface User {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "pages".
+ */
+export interface Page {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  /**
+   * What this page is called. Shown as the page heading.
+   */
+  title: string;
+  /**
+   * The page's address, filled in from the title. Changing it changes the URL and breaks existing links.
+   */
+  slug: string;
+  /**
+   * Decides which fields this page offers. "Composed" is the district-only block layout (`03` §2).
+   */
+  pageType: 'standard' | 'about' | 'contact' | 'staff' | 'calendar' | 'documents' | 'composed';
+  /**
+   * Sits this page underneath another one. Drives the URL and the menus.
+   */
+  parent?: (number | null) | Page;
+  /**
+   * Staff-only pages never appear on the public site or in the public API (`03` §6.4).
+   */
+  visibility: 'public' | 'staff';
+  /**
+   * Optional. Goes live at this time instead of immediately.
+   */
+  publishAt?: string | null;
+  /**
+   * Hold translations of this page until a person has checked them.
+   */
+  requiresTranslationReview?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -228,6 +269,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'users';
         value: number | User;
+      } | null)
+    | ({
+        relationTo: 'pages';
+        value: number | Page;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -319,6 +364,23 @@ export interface UsersSelect<T extends boolean = true> {
         createdAt?: T;
         expiresAt?: T;
       };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "pages_select".
+ */
+export interface PagesSelect<T extends boolean = true> {
+  tenant?: T;
+  title?: T;
+  slug?: T;
+  pageType?: T;
+  parent?: T;
+  visibility?: T;
+  publishAt?: T;
+  requiresTranslationReview?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

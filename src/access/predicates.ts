@@ -44,6 +44,16 @@ export const tenantIdOf = (ref: TenantRef | null | undefined): string | null => 
   return null
 }
 
+/**
+ * Same normalization, named for the general case.
+ *
+ * Payload returns every relationship the same way — an id at depth 0, a document when
+ * populated — so `pages.parent` needs exactly this logic. Aliased rather than duplicated:
+ * one implementation means one place where a coercion bug could hide, and this one is
+ * already covered by the predicate suite.
+ */
+export const relationshipIdOf = tenantIdOf
+
 /** Tenant ids assigned to the user. Empty for district-admin — see `hasTenant`. */
 export const tenantIdsFor = (user: AuthUser | null | undefined): string[] => {
   const rows = Array.isArray(user?.tenants) ? user.tenants : []
