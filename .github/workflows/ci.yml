@@ -138,9 +138,26 @@ jobs:
     name: lighthouse budget
     runs-on: ubuntu-latest
     needs: e2e
+    # Postgres and the seed step mirror the `e2e` job above, and for the same reason: the
+    # public site resolves a tenant from the request Host and 404s an unknown one by design
+    # (`02` §4.1). Without them `lhci` audited a 404 rendered outside `SiteLayout` — no
+    # `<html lang>`, no page content — so the `07` §7 budget scored a page the site never
+    # serves and had never measured the real thing.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: dd2
+          POSTGRES_PASSWORD: dd2_ci
+          POSTGRES_DB: dd2_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U dd2 -d dd2_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       DATABASE_URI: postgres://dd2:dd2_ci@localhost:5432/dd2_test
       PAYLOAD_SECRET: ci-only-not-a-real-secret
+      NEXT_PUBLIC_SERVER_URL: http://localhost:3000
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -151,6 +168,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
+      - name: Seed tenants
+        # `lighthouserc.json` audits `http://localhost:3000/`, and bare `localhost` is the
+        # district tenant in the seed set. `lhci` starts the server itself, so this has to
+        # land before `test:perf`, not inside it.
+        run: pnpm run seed
       - name: Core Web Vitals + a11y budget
         run: pnpm run test:perf
 
