@@ -63,11 +63,9 @@ export const FIXED_PAGE_TYPES: readonly PageType[] = [
 /**
  * A page as the rendering layer sees it.
  *
- * SCOPE: this is the page SPINE — identity, hierarchy, type, visibility, status. Body
- * content is deliberately absent. Fixed-type bodies arrive with the constrained rich-text
- * slice and `composed` bodies with the block library, each defining its own hand-written
- * node types. Declaring a body shape here before either exists would be the speculative
- * modelling `03` §4 warns against, and the wrong shape is more expensive than none.
+ * SCOPE: identity, hierarchy, type, visibility, and body prose. `composed` pages also carry
+ * a block array, which arrives with the block library and defines its own node types — it
+ * is deliberately not modelled here before it exists (`03` §4).
  */
 export type Page = {
   id: string
@@ -83,4 +81,67 @@ export type Page = {
   parentId: string | null
   /** Gates locale publication for high-stakes content (`08` §7.1). */
   requiresTranslationReview: boolean
+  /** Body prose. Empty is legitimate — see `RichText` below. */
+  body: RichText
 }
+
+/**
+ * RICH TEXT (`07` §4.4).
+ *
+ * Hand-written domain nodes, deliberately NOT Lexical's editor state. The renderer consumes
+ * these; `src/content/rich-text.ts` maps Lexical into them exactly once. That mapping is the
+ * whole reason a CMS swap costs one file rather than every template (`02` §11, ADR-5).
+ *
+ * The vocabulary is the `07` §4.2 allowlist and nothing else. There is no node here for
+ * alignment, colour, underline or a table, because there is no way to author one — see
+ * `src/lib/editor.ts`. Adding a node type to this file is a conformance decision.
+ */
+export type RichTextMark = 'strong' | 'em'
+
+export type RichTextText = {
+  kind: 'text'
+  text: string
+  marks: RichTextMark[]
+}
+
+export type RichTextLink = {
+  kind: 'link'
+  href: string
+  /** The renderer announces this; a new tab that opens unannounced is a WCAG 3.2.5 problem. */
+  newTab: boolean
+  children: RichTextText[]
+}
+
+export type RichTextInline = RichTextText | RichTextLink
+
+export type RichTextListItem = {
+  children: RichTextInline[]
+  /** A nested list, or null. Preserved rather than flattened — agendas nest. */
+  list: RichTextList | null
+}
+
+export type RichTextList = {
+  kind: 'list'
+  ordered: boolean
+  items: RichTextListItem[]
+}
+
+export type RichTextParagraph = {
+  kind: 'paragraph'
+  children: RichTextInline[]
+}
+
+/**
+ * Levels 2 and 3 only. Level 1 is the page title, owned by the template — a body `h1` would
+ * give the page two (`03` §3, `07` §3).
+ */
+export type RichTextHeading = {
+  kind: 'heading'
+  level: 2 | 3
+  children: RichTextInline[]
+}
+
+export type RichTextBlock = RichTextParagraph | RichTextHeading | RichTextList
+
+/** A whole rich-text document. Empty is a legitimate value, not an error. */
+export type RichText = RichTextBlock[]

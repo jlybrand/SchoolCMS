@@ -108,6 +108,19 @@ export const Pages: CollectionConfig = {
       },
     },
     {
+      name: 'body',
+      type: 'richText',
+      /**
+       * Uses the global constrained editor (`07` §4.4) — no per-field override, so the
+       * allowlist cannot be widened here without widening it everywhere, visibly.
+       *
+       * Not required: a `calendar` or `documents` page is a typed listing whose content
+       * comes from its module, and forcing prose onto it would invite the "paragraph
+       * describing the thing next to the thing" pattern `07` §4.5 exists to reduce.
+       */
+      admin: { description: 'The words on the page.' },
+    },
+    {
       name: 'pageType',
       type: 'select',
       required: true,
