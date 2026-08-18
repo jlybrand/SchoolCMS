@@ -15,11 +15,18 @@ env:
   PNPM_VERSION: '11.20.0'
 
 jobs:
+  # Every job carries `timeout-minutes`. GitHub's default is 360, so a step that hangs
+  # rather than fails — `playwright install --with-deps` waiting on an unreachable apt
+  # mirror is the one we hit — blocks the branch for six hours and burns a runner the
+  # whole time. Every job here runs in under 2.5 minutes; these limits are five to eight
+  # times that, which is headroom for a cold cache and still fails a hang in minutes.
+  #
   # Gate order per `06` §3 — fail fast:
   # typecheck -> lint -> unit -> integration -> build -> e2e smoke -> axe -> lighthouse
   static:
     name: typecheck + lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -48,6 +55,7 @@ jobs:
   test:
     name: unit + integration
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: static
     services:
       postgres:
@@ -91,6 +99,7 @@ jobs:
   e2e:
     name: build + e2e smoke + axe gate
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: test
     services:
       postgres:
@@ -137,6 +146,7 @@ jobs:
   lighthouse:
     name: lighthouse budget
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: e2e
     # Postgres and the seed step mirror the `e2e` job above, and for the same reason: the
     # public site resolves a tenant from the request Host and 404s an unknown one by design
@@ -181,6 +191,7 @@ jobs:
   security:
     name: dependency audit
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
