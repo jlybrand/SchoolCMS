@@ -101,6 +101,7 @@ jobs:
   components:
     name: component axe gate (Storybook, LTR + RTL)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: test
     # No Postgres and no Next build: Storybook renders components in isolation. Keeping this
     # job independent of the database means a component regression is diagnosable on its own,
