@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 
 import { buildPagePath, splitPagePath } from '@/lib/slug'
+import { toRichText } from './rich-text'
 import type { ContentContext, Page, PageType, Visibility } from './types'
 
 /**
@@ -34,6 +35,8 @@ type PayloadPage = {
   visibility: Visibility
   parent?: string | number | { id: string | number } | null
   requiresTranslationReview?: boolean | null
+  /** Lexical editor state. Deliberately `unknown` — see `toRichText`. */
+  body?: unknown
   _status?: 'draft' | 'published' | null
 }
 
@@ -53,6 +56,8 @@ const toDomain = (doc: PayloadPage, path: string): Page => ({
   visibility: doc.visibility,
   parentId: idOf(doc.parent ?? null),
   requiresTranslationReview: doc.requiresTranslationReview === true,
+  // The single point where Lexical becomes DD2 nodes. Nothing downstream sees editor state.
+  body: toRichText(doc.body),
 })
 
 /**

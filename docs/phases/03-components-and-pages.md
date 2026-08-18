@@ -257,13 +257,81 @@ whose stored path disagrees with their position — a silent wrong-page bug, and
 
 ## 12. What `pages` does not have yet
 
-| Absent            | Arrives with                                                                     |
-| ----------------- | -------------------------------------------------------------------------------- |
-| Body content      | The constrained rich-text slice (`07` §4), which also wires the paste normalizer |
-| `layout` (blocks) | The block library. `pageType: composed` is already selectable and already gated  |
-| `seo` group       | `plugin-seo` — hand-rolling one now would mean deleting it later                 |
-| Page templates    | The next slice: rendering a fixed-type page through the Phase 3 components       |
+| Absent            | Arrives with                                                                    |
+| ----------------- | ------------------------------------------------------------------------------- |
+| `layout` (blocks) | The block library. `pageType: composed` is already selectable and already gated |
+| `seo` group       | `plugin-seo` — hand-rolling one now would mean deleting it later                |
+| Page templates    | The next slice: rendering a fixed-type page through the Phase 3 components      |
 
-The domain `Page` type in `src/content/types.ts` is therefore the page **spine** — identity,
-hierarchy, type, visibility. Declaring a body shape before either body mechanism exists
-would be the speculative modelling `03` §4 warns against.
+`body` was absent when this collection first landed and arrived with the constrained editor
+in §13. The block array is still deliberately unmodelled: declaring its shape before the
+block library exists would be the speculative modelling `03` §4 warns against.
+
+---
+
+## 13. Constrained rich text — the editor allowlist
+
+`07` §4.4 states this as a product decision: an editor cannot express a formatting idea the
+design system has not already made accessible. `src/lib/editor.ts` is that decision as code,
+and `tests/unit/editor.test.ts` is what stops it decaying.
+
+### What is enabled
+
+`paragraph`, `heading` (h2/h3 only), `bold`, `italic`, `link`, `unorderedList`,
+`orderedList`, plus `toolbarFixed`. That last one is presentation, not a content capability:
+fixed rather than floating, because the usability bar is a school manager who logs in twice a
+year and needs to _see_ the controls.
+
+Headings stop at h2. `h1` is the page title, rendered by the template through
+`PAGE_TITLE_LEVEL` — a body `h1` would give the page two.
+
+Set as the **global** editor in `payload.config.ts`, not per field. A field that had to opt
+in to the constraint is a field someone can forget to opt in.
+
+### The triage table, and why it exists
+
+The realistic threat to this control is not someone widening it on purpose. It is a Payload
+upgrade shipping a new Lexical feature that nobody notices — and `09` §2 makes version bumps
+their own PR, which does not read as a policy change.
+
+So `TRIAGED_FEATURES` lists **every** feature the package exports with a verdict, and the
+test fails until a new one is triaged. Each denial carries a reason, because a denial without
+one is indistinguishable from an oversight. `align`, `indent`, `underline`, `strikethrough`
+and `textState` are the substantive exclusions; `upload`, `relationship` and `blocks` are
+denied because they belong to other governed flows.
+
+A second test asserts the editor's element set equals the paste normalizer's
+`ALLOWED_ELEMENTS`. They are the same `07` §4.2 rule at two layers — what an author can
+_type_ and what survives a _paste_ — and divergence means one of them is wrong.
+
+### The Lexical -> DD2 mapper
+
+`src/content/rich-text.ts` maps editor state to hand-written domain nodes
+(`RichText` in `src/content/types.ts`). Nothing downstream sees Lexical, which is what keeps
+a CMS swap at one file rather than every template (`02` §11).
+
+**It never throws.** It runs over content authored years apart, including migrated Finalsite
+pages (`10` §5) and pages written before the editor was constrained. A node it cannot
+understand becomes nothing, because a build that dies on one bad page takes 28 sites with it.
+
+What it drops rather than rescues, and why:
+
+| Input                          | Result                     | Reason                                                                     |
+| ------------------------------ | -------------------------- | -------------------------------------------------------------------------- |
+| `h1`                           | Dropped                    | Demoting to `h2` would silently move content into a hierarchy nobody chose |
+| Strikethrough, underline marks | Text kept, styling dropped | The words are the content; the styling was never authorable                |
+| Anchor with no `href`          | Unwrapped to text          | Unfocusable and unannounced while still looking clickable                  |
+| Empty or whitespace paragraph  | Dropped                    | Word pastes use them as spacing, which the design system owns              |
+| Unknown node type              | Skipped, siblings kept     | Forward compatibility with whatever Payload does next                      |
+
+Nested lists are preserved rather than flattened — agendas nest, and flattening turns two
+levels of meaning into one.
+
+### Still open
+
+**The paste normalizer is still not wired to the editor.** `src/lib/paste-normalizer.ts` and
+its Word and Google Docs fixtures have been complete since PR #6; what is missing is the
+Lexical paste handler that calls it and the heading-promotion prompt (`07` §4.2). That is
+client-side admin React, which per CLAUDE.md's TDD exception table is built first and locked
+with a Playwright flow plus an axe assertion in the same PR — a different kind of work from
+the pure functions above, and the reason it is a separate slice.

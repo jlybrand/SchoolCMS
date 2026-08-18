@@ -215,6 +215,24 @@ export interface Page {
    */
   slug: string;
   /**
+   * The words on the page.
+   */
+  body?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  /**
    * Decides which fields this page offers. "Composed" is the district-only block layout (`03` §2).
    */
   pageType: 'standard' | 'about' | 'contact' | 'staff' | 'calendar' | 'documents' | 'composed';
@@ -373,6 +391,7 @@ export interface PagesSelect<T extends boolean = true> {
   tenant?: T;
   title?: T;
   slug?: T;
+  body?: T;
   pageType?: T;
   parent?: T;
   visibility?: T;

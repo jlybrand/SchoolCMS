@@ -3,7 +3,6 @@ import { fileURLToPath } from 'node:url'
 
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
-import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { buildConfig } from 'payload'
 
 import { isDistrictAdmin } from './access/predicates'
@@ -11,6 +10,7 @@ import type { AuthUser } from './access/types'
 import { Pages } from './collections/Pages'
 import { Tenants } from './collections/Tenants'
 import { Users } from './collections/Users'
+import { constrainedEditor } from './lib/editor'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -34,10 +34,13 @@ export default buildConfig({
 
   /**
    * Constrained rich text (`07` §4.4) — an accessibility control and a security control
-   * simultaneously. Phase 3 narrows this to the fixed element allowlist and adds the paste
-   * normalizer, which runs ON PASTE so the database never holds the garbage (`07` §4.2).
+   * simultaneously. The feature allowlist and the reasoning behind every exclusion live in
+   * src/lib/editor.ts, guarded by tests/unit/editor.test.ts.
+   *
+   * Set GLOBALLY rather than per field, so a rich-text field added later is constrained by
+   * default. A field that had to opt in is a field someone can forget to opt in.
    */
-  editor: lexicalEditor(),
+  editor: constrainedEditor(),
 
   plugins: [
     /**
