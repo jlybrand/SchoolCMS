@@ -1,0 +1,30 @@
+/**
+ * Sizes are driven by `data-size`, not by the element, so `h4` and `h2` can look the same
+ * without either of them being the wrong level. The attribute selector also outranks the
+ * `h1`–`h3` base rules in `globals.css`, which stay in place for headings that come out of
+ * rich text rather than from this component.
+ */
+
+.heading {
+  margin-block-start: var(--space-xl);
+  margin-block-end: var(--space-sm);
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.heading[data-size='2xl'] {
+  font-size: var(--font-size-2xl);
+}
+
+.heading[data-size='xl'] {
+  font-size: var(--font-size-xl);
+}
+
+.heading[data-size='lg'] {
+  font-size: var(--font-size-lg);
+}
+
+/* First heading in a region should not push the region open. */
+.heading:first-child {
+  margin-block-start: 0;
+}

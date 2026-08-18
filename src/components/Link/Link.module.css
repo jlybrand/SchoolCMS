@@ -1,0 +1,11 @@
+/**
+ * Underline is not decoration here — it is the non-colour cue required by 1.4.1. Do not
+ * remove it on hover-only or for "cleaner" navigation styling; a nav link still needs a
+ * cue that is not its colour.
+ */
+
+.link {
+  color: var(--color-brand);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}

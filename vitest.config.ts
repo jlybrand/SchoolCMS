@@ -11,7 +11,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['tests/unit/**/*.test.ts', 'tests/integration/**/*.test.ts'],
+    // `.tsx` for the component suites, which opt into jsdom per file with a
+    // `@vitest-environment` docblock rather than paying for a DOM in every unit test.
+    include: ['tests/unit/**/*.test.{ts,tsx}', 'tests/integration/**/*.test.ts'],
     /**
      * Runs before any test module is imported. Required because the Payload config reads
      * env at module-evaluation time, and importing a content-layer function pulls it in
@@ -36,7 +38,7 @@ export default defineConfig({
       reporter: ['text', 'lcov'],
       // `06` §7 — coverage is a signal, not a goal, EXCEPT on the five load-bearing
       // areas. Thresholds are added per-area as those modules land (Phase 1+).
-      include: ['src/**/*.ts'],
+      include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/payload-types.ts', 'src/**/*.d.ts'],
     },
   },

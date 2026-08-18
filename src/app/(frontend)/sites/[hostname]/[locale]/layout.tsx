@@ -1,5 +1,6 @@
 import type React from 'react'
 
+import { SkipLink } from '@/components/SkipLink'
 import { dirFor } from '@/lib/locales'
 
 import '@/styles/globals.css'
@@ -30,7 +31,16 @@ export default async function SiteLayout({
 
   return (
     <html lang={locale} dir={dirFor(locale)}>
-      <body>{children}</body>
+      <body>
+        {/*
+          First element in the body so it is the first thing focus reaches — WCAG 2.4.1
+          (`07` §3). Its target id comes from the component, so the link and the `<main>` it
+          points at cannot drift apart. The label is English until the render-layer
+          translation pipeline lands (Phase 7, `08` §4), like every other string on the page.
+        */}
+        <SkipLink>Skip to main content</SkipLink>
+        {children}
+      </body>
     </html>
   )
 }

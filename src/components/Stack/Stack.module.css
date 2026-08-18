@@ -1,0 +1,29 @@
+.stack {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Children own no outer margin; the gap is the only source of spacing. */
+.stack > * {
+  margin-block: 0;
+}
+
+.stack[data-space='xs'] {
+  gap: var(--space-xs);
+}
+
+.stack[data-space='sm'] {
+  gap: var(--space-sm);
+}
+
+.stack[data-space='md'] {
+  gap: var(--space-md);
+}
+
+.stack[data-space='lg'] {
+  gap: var(--space-lg);
+}
+
+.stack[data-space='xl'] {
+  gap: var(--space-xl);
+}

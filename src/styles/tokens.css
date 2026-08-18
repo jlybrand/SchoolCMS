@@ -5,23 +5,34 @@
  * fork stylesheets. One shared design system, 28 brands.
  *
  * Contrast is validated at token level (`07` §3), so a school cannot pick a brand colour
- * that fails AA. The Phase 3 token test asserts every declared foreground/background pair
- * meets 4.5:1 for body text and 3:1 for large text and UI boundaries.
+ * that fails AA. `tests/unit/tokens.test.ts` asserts every pair in
+ * `REQUIRED_CONTRAST_PAIRS` (`src/lib/contrast.ts`) meets 4.5:1 for body text and 3:1 for
+ * large text, interactive boundaries and focus indicators. The ratios quoted in the
+ * comments below are what that suite computes; adding a colour token without adding its
+ * pair fails the suite.
  */
 
 :root {
   /* --- Colour: neutrals ------------------------------------------------- */
   --color-surface: #ffffff;
   --color-surface-raised: #f6f7f9;
-  --color-border: #d3d7de;
 
-  /* Contrast against --color-surface: 15.9:1 (AA body text, AAA) */
+  /**
+   * Decorative hairline — separators and card edges only. Not contrast-checked: 1.4.11
+   * covers the boundaries of interactive components and meaningful graphics, not every rule
+   * on a page. Anything a user can operate uses --color-border-strong.
+   */
+  --color-border: #d3d7de;
+  /* Interactive boundaries (inputs, controls). 3.56:1 on surface, 3.32:1 on raised. */
+  --color-border-strong: #828893;
+
+  /* Contrast against --color-surface: 17.9:1 (AAA body text) */
   --color-text: #14171c;
-  /* Contrast against --color-surface: 7.2:1 (AA body text) */
+  /* Contrast against --color-surface: 7.5:1 (AAA body text) */
   --color-text-muted: #4d5563;
 
   /* --- Colour: brand (per-tenant override target) ----------------------- */
-  /* Contrast against --color-surface: 7.5:1 */
+  /* Contrast against --color-surface: 8.8:1 */
   --color-brand: #0f4c81;
   --color-brand-contrast: #ffffff;
 
@@ -31,7 +42,14 @@
   --color-emergency: #8a1420;
 
   /* --- Focus (2.4.11 focus appearance, `07` §3) ------------------------- */
+  /* 6.4:1 on surface, 6.0:1 on raised. */
   --focus-ring-color: #0b57d0;
+  /**
+   * The ring for controls sitting on a brand fill, where the dark ring above scores 1.4:1
+   * and is effectively invisible. This is not a hypothetical: the first focusable element on
+   * every page is the skip link, which is brand-filled (8.8:1 against --color-brand).
+   */
+  --focus-ring-color-inverse: #ffffff;
   --focus-ring-width: 3px;
   --focus-ring-offset: 2px;
 
@@ -59,7 +77,10 @@
   --space-xl: 2.5rem;
 
   /* --- Layout ----------------------------------------------------------- */
+  /* Reading measure for prose. `Container` is the single consumer (`width="prose"`). */
   --measure: 68ch;
+  /* Composition width for block layouts that hold more than one column of content. */
+  --measure-wide: 72rem;
   --radius: 4px;
 }
 

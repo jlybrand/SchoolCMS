@@ -1,0 +1,19 @@
+/**
+ * The clip-and-shrink technique. `clip-path: inset(50%)` hides the box without taking it out
+ * of the accessible tree; the 1px box keeps it laid out so screen readers still reach it.
+ *
+ * `white-space: nowrap` matters: without it a long string wraps inside a 1px box and some
+ * screen readers announce it one word per line.
+ */
+
+.visuallyHidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border-width: 0;
+}
