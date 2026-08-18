@@ -20,4 +20,13 @@
  * Each is added in the phase that builds its module, not speculatively now.
  */
 
-export type { ContentContext, Locale, Tenant, TenantType, Visibility } from './types'
+export type {
+  ContentContext,
+  Locale,
+  Page,
+  PageType,
+  Tenant,
+  TenantType,
+  Visibility,
+} from './types'
+export { FIXED_PAGE_TYPES } from './types'

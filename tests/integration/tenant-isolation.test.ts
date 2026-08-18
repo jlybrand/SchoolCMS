@@ -22,10 +22,13 @@ import { getTestPayload, isDenied, readsNothing, seed, type Fixtures } from '../
  *     plugin changes behaviour on upgrade the tests fail loudly rather than isolation
  *     quietly weakening.
  *
- * Phase 1 proves invariants 1, 2 and 4 as far as the collections that exist allow.
- * Invariant 3 (syndicated published content is the only permitted cross-tenant read) and
- * invariant 5 (a school-manager cannot publish by any route) attach to content collections
- * and are asserted when those land in Phases 3 and 5.
+ * Phase 1 proved invariants 1, 2 and 4 as far as the collections that existed allowed.
+ * Phase 3 adds `pages`, so invariant 5 — a school-manager cannot publish BY ANY ROUTE — is
+ * asserted here for the first time, against the real stack rather than against the access
+ * functions in isolation (those have their own suite in tests/unit/access/pages.test.ts).
+ *
+ * Invariant 3 (syndicated published content is the only permitted cross-tenant read)
+ * attaches to `posts` and `events` and lands with them in Phase 5.
  */
 
 let payload: Payload
@@ -353,5 +356,319 @@ describe('privilege escalation — the user collection is all permissions', () =
       }),
     )
     expect(denied).toBe(true)
+  })
+})
+
+describe('pages — invariant 1 extended to content', () => {
+  it("school-manager B cannot read tenant A's draft page", async () => {
+    // A draft is the most sensitive thing a content collection holds: unreviewed content,
+    // visible to no one outside the tenant (`03` §6.4 invariant 1).
+    const denied = await isDenied(() =>
+      payload.findByID({
+        collection: 'pages',
+        id: f.draftPageA,
+        user: f.managerB,
+        overrideAccess: false,
+      }),
+    )
+    expect(denied).toBe(true)
+  })
+
+  it("school-manager A lists only their own tenant's pages", async () => {
+    const { docs } = await payload.find({
+      collection: 'pages',
+      user: f.managerA,
+      draft: true,
+      limit: 100,
+      // depth 0 so `tenant` is the id rather than a populated document — comparing against
+      // a populated object stringifies to "[object Object]" and passes for ANY tenant.
+      depth: 0,
+      overrideAccess: false,
+    })
+    expect(docs.length).toBeGreaterThan(0)
+    expect(docs.every((d) => String(d.tenant) === String(f.tenantA))).toBe(true)
+    // Named explicitly, so a regression reads as "B leaked into A's list".
+    expect(docs.map((d) => Number(d.id))).not.toContain(f.publishedPageB)
+  })
+
+  it('system-sync reads NO pages at all — it owns none', async () => {
+    /**
+     * `03` §6.1 and `11`: the sync actor touches `people` source-owned fields in mapped
+     * tenants and nothing else. Reusing the generic tenant-scoped read would have handed it
+     * a constraint over pages instead of a flat denial.
+     */
+    expect(
+      await readsNothing(() =>
+        payload.find({ collection: 'pages', user: f.systemSync, overrideAccess: false }),
+      ),
+    ).toBe(true)
+  })
+})
+
+describe('pages — invariant 4: the public surface', () => {
+  it('an anonymous read returns published, public pages ONLY', async () => {
+    const { docs } = await payload.find({
+      collection: 'pages',
+      limit: 100,
+      overrideAccess: false,
+    })
+
+    const ids = docs.map((d) => Number(d.id))
+    expect(ids).toContain(f.publishedPageA)
+    // The two that must never appear.
+    expect(ids).not.toContain(f.draftPageA)
+    expect(ids).not.toContain(f.staffPageA)
+  })
+
+  it('an anonymous request cannot fetch a draft by direct id', async () => {
+    const denied = await isDenied(() =>
+      payload.findByID({ collection: 'pages', id: f.draftPageA, overrideAccess: false }),
+    )
+    expect(denied).toBe(true)
+  })
+
+  it('an anonymous request cannot fetch a staff-only page by direct id', async () => {
+    const denied = await isDenied(() =>
+      payload.findByID({ collection: 'pages', id: f.staffPageA, overrideAccess: false }),
+    )
+    expect(denied).toBe(true)
+  })
+
+  it('a hand-crafted where clause cannot surface a draft', async () => {
+    // The attack: ask for drafts explicitly and hope the public constraint is replaced
+    // rather than intersected.
+    const { docs } = await payload.find({
+      collection: 'pages',
+      where: { _status: { equals: 'draft' } },
+      limit: 100,
+      overrideAccess: false,
+    })
+    expect(docs).toHaveLength(0)
+  })
+})
+
+describe('invariant 5 — a school-manager cannot PUBLISH by any route', () => {
+  /**
+   * ==========================================================================
+   * RELEASE-BLOCKING (CLAUDE.md rule 3, `03` §6.4 invariant 5, `05`).
+   * Every route Payload offers is exercised here, because "cannot publish"
+   * is only true if it is true everywhere.
+   * ==========================================================================
+   */
+
+  it('cannot create a page already marked published', async () => {
+    const denied = await isDenied(() =>
+      payload.create({
+        collection: 'pages',
+        data: {
+          tenant: f.tenantA,
+          title: 'Sneaky',
+          slug: 'sneaky',
+          pageType: 'standard',
+          visibility: 'public',
+          _status: 'published',
+        },
+        user: f.managerA,
+        overrideAccess: false,
+      }),
+    )
+    expect(denied).toBe(true)
+
+    // And nothing landed — a denial that still wrote the row would be worse than no gate.
+    const { docs } = await payload.find({
+      collection: 'pages',
+      where: { slug: { equals: 'sneaky' } },
+      draft: true,
+      overrideAccess: true,
+    })
+    expect(docs).toHaveLength(0)
+  })
+
+  it('cannot update their own draft to published', async () => {
+    const denied = await isDenied(() =>
+      payload.update({
+        collection: 'pages',
+        id: f.draftPageA,
+        data: { _status: 'published' },
+        user: f.managerA,
+        overrideAccess: false,
+      }),
+    )
+    expect(denied).toBe(true)
+
+    const still = await payload.findByID({
+      collection: 'pages',
+      id: f.draftPageA,
+      draft: true,
+      overrideAccess: true,
+    })
+    expect(still._status).toBe('draft')
+  })
+
+  it('cannot publish via a BULK update', async () => {
+    /**
+     * The route a per-document gate misses. `05` names bulk operations explicitly, because
+     * a where-clause update does not carry the same payload shape as a single write.
+     */
+    await isDenied(() =>
+      payload.update({
+        collection: 'pages',
+        where: { tenant: { equals: f.tenantA } },
+        data: { _status: 'published' },
+        user: f.managerA,
+        overrideAccess: false,
+      }),
+    )
+
+    const still = await payload.findByID({
+      collection: 'pages',
+      id: f.draftPageA,
+      draft: true,
+      overrideAccess: true,
+    })
+    expect(still._status).toBe('draft')
+  })
+
+  it('cannot schedule a publish with publishAt', async () => {
+    // A deferred publish is a publish. Leaving this open lets a school-manager publish by
+    // waiting.
+    await isDenied(() =>
+      payload.update({
+        collection: 'pages',
+        id: f.draftPageA,
+        data: { publishAt: '2026-09-01T00:00:00.000Z' },
+        user: f.managerA,
+        overrideAccess: false,
+      }),
+    )
+
+    const still = await payload.findByID({
+      collection: 'pages',
+      id: f.draftPageA,
+      draft: true,
+      overrideAccess: true,
+    })
+    expect(still.publishAt ?? null).toBeNull()
+    expect(still._status).toBe('draft')
+  })
+
+  it('CAN still save a draft — the gate blocks publishing, not working', async () => {
+    /**
+     * The other half of the guarantee, and the one that makes the platform usable: a school
+     * manager edits freely and submits for approval (`04` §5). A gate that also blocked
+     * ordinary editing would be a bug, not extra safety.
+     */
+    const updated = await payload.update({
+      collection: 'pages',
+      id: f.draftPageA,
+      data: { title: 'Edited by the school' },
+      user: f.managerA,
+      overrideAccess: false,
+    })
+    expect(updated.title).toBe('Edited by the school')
+    expect(updated._status).toBe('draft')
+  })
+
+  it('district-admin CAN publish — the gate is about role, not about the action', async () => {
+    const published = await payload.update({
+      collection: 'pages',
+      id: f.draftPageA,
+      data: { _status: 'published' },
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+    expect(published._status).toBe('published')
+  })
+})
+
+describe('composed pages are district-only (`03` §2–3)', () => {
+  it('a school-manager cannot create a composed page', async () => {
+    const denied = await isDenied(() =>
+      payload.create({
+        collection: 'pages',
+        data: {
+          tenant: f.tenantA,
+          title: 'Composed attempt',
+          slug: 'composed-attempt',
+          pageType: 'composed',
+          visibility: 'public',
+        },
+        user: f.managerA,
+        overrideAccess: false,
+      }),
+    )
+    expect(denied).toBe(true)
+  })
+
+  it('a school-manager cannot convert an existing page to composed', async () => {
+    await isDenied(() =>
+      payload.update({
+        collection: 'pages',
+        id: f.draftPageA,
+        data: { pageType: 'composed' },
+        user: f.managerA,
+        overrideAccess: false,
+      }),
+    )
+
+    const still = await payload.findByID({
+      collection: 'pages',
+      id: f.draftPageA,
+      draft: true,
+      overrideAccess: true,
+    })
+    expect(still.pageType).toBe('standard')
+  })
+
+  it('district-admin can create a composed page', async () => {
+    const page = await payload.create({
+      collection: 'pages',
+      data: {
+        tenant: f.tenantA,
+        title: 'District composed',
+        slug: 'district-composed',
+        pageType: 'composed',
+        visibility: 'public',
+      },
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+    expect(page.pageType).toBe('composed')
+  })
+})
+
+describe('sibling slugs stay unique within a parent', () => {
+  it('rejects a second top-level page with an existing slug in the same tenant', async () => {
+    const denied = await isDenied(() =>
+      payload.create({
+        collection: 'pages',
+        data: {
+          tenant: f.tenantA,
+          title: 'Duplicate',
+          slug: 'published-page-a',
+          pageType: 'standard',
+          visibility: 'public',
+        },
+        overrideAccess: true,
+      }),
+    )
+    expect(denied).toBe(true)
+  })
+
+  it('ALLOWS the same slug in a different tenant', async () => {
+    // Every school may have an /about. Scoping the uniqueness check by tenant is what makes
+    // 28 sites from one collection work at all.
+    const page = await payload.create({
+      collection: 'pages',
+      data: {
+        tenant: f.tenantB,
+        title: 'Published page a',
+        slug: 'published-page-a',
+        pageType: 'standard',
+        visibility: 'public',
+      },
+      overrideAccess: true,
+    })
+    expect(page.slug).toBe('published-page-a')
   })
 })

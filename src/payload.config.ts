@@ -8,6 +8,7 @@ import { buildConfig } from 'payload'
 
 import { isDistrictAdmin } from './access/predicates'
 import type { AuthUser } from './access/types'
+import { Pages } from './collections/Pages'
 import { Tenants } from './collections/Tenants'
 import { Users } from './collections/Users'
 
@@ -24,7 +25,7 @@ export default buildConfig({
     importMap: { baseDir: path.resolve(dirname) },
   },
 
-  collections: [Tenants, Users],
+  collections: [Tenants, Users, Pages],
 
   // Postgres, never Mongo — portability is a hard requirement (`00`, ADR-10).
   db: postgresAdapter({
@@ -56,8 +57,13 @@ export default buildConfig({
       // district-admin works across all 28 sites by design (`04` §3.2).
       userHasAccessToAllTenants: (user) => isDistrictAdmin(user),
       collections: {
-        // Tenant-owned content collections register here as they land (Phase 3+):
-        // pages, posts, events, people, documents, media, alerts, redirects.
+        /**
+         * Registering here is what injects the `tenant` relationship field — which is why
+         * src/collections/Pages.ts does not declare one. The remaining tenant-owned
+         * collections join as they land: posts, events, people, documents, media, alerts,
+         * redirects.
+         */
+        pages: {},
       },
     }),
   ],

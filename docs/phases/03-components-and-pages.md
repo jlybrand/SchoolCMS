@@ -5,14 +5,15 @@ contrast checker, and the two accessibility gates that sit under all of it.
 
 Phase 3 lands across several PRs. This document is written as each one merges.
 
-| Slice                            | State                                                     |
-| -------------------------------- | --------------------------------------------------------- |
-| Component foundation             | **Landed** — §1–§7 below                                  |
-| Paste normalizer                 | Landed early (PR #6); not yet wired to an editor — see §8 |
-| `pages` collection and templates | Not started                                               |
-| Block library                    | Not started                                               |
-| Constrained rich text (Lexical)  | Not started                                               |
-| Navigation global, SEO, sitemap  | Not started                                               |
+| Slice                                      | State                                                     |
+| ------------------------------------------ | --------------------------------------------------------- |
+| Component foundation                       | **Landed** — §1–§7 below                                  |
+| Paste normalizer                           | Landed early (PR #6); not yet wired to an editor — see §8 |
+| `pages` collection (schema, access, gates) | **Landed** — §9–§12 below                                 |
+| Page templates and rendering               | Not started                                               |
+| Block library                              | Not started                                               |
+| Constrained rich text (Lexical)            | Not started                                               |
+| Navigation global, SEO, sitemap            | Not started                                               |
 
 ---
 
@@ -180,3 +181,89 @@ same output predates this work — it comes from Vitest's own Vite.)
 - **`Container` and `Stack` take no `className`.** Deliberate — a `className` escape hatch is
   how the logical-properties guardrail gets bypassed one component at a time. If a block
   genuinely needs a variant, it goes in the component as a named prop.
+
+---
+
+## 9. File inventory — the `pages` collection
+
+### Added
+
+| File                                     | Holds                                                                                |
+| ---------------------------------------- | ------------------------------------------------------------------------------------ |
+| `src/lib/slug.ts`                        | `slugify`, `isReservedSlug`, `buildPagePath`, `splitPagePath`                        |
+| `src/access/pages.ts`                    | `canPublish`, `canComposePages`, the four access functions, `PUBLIC_PAGE_CONSTRAINT` |
+| `src/collections/Pages.ts`               | The collection config                                                                |
+| `src/collections/hooks/publish-gate.ts`  | `publishGate`, `composedPagesAreDistrictOnly`                                        |
+| `src/collections/hooks/page-slug.ts`     | `deriveSlugFromTitle`, `uniqueSlugWithinParent`                                      |
+| `src/content/pages.ts`                   | `getPageByPath`, `listPagePaths` — behind the boundary                               |
+| `tests/unit/slug.test.ts`                | 25 cases                                                                             |
+| `tests/unit/access/pages.test.ts`        | 41 cases                                                                             |
+| `tests/unit/access/publish-gate.test.ts` | 16 cases                                                                             |
+| `tests/unit/access/page-slug.test.ts`    | 15 cases                                                                             |
+
+### Changed
+
+| File                                         | Change                                                              |
+| -------------------------------------------- | ------------------------------------------------------------------- |
+| `src/content/types.ts`                       | `Page`, `PageType`, `FIXED_PAGE_TYPES`                              |
+| `src/access/predicates.ts`                   | `relationshipIdOf` — alias of `tenantIdOf` for non-tenant relations |
+| `src/payload.config.ts`                      | Registers `Pages`, and `pages: {}` with the multi-tenant plugin     |
+| `tests/helpers/payload.ts`                   | Four page fixtures spanning status × visibility × tenant            |
+| `tests/integration/tenant-isolation.test.ts` | Invariant 5, plus invariants 1 and 4 extended to `pages`            |
+
+## 10. The publish gate — two layers, and why
+
+`school-manager` cannot publish by any route (CLAUDE.md rule 3, `03` §6.4 invariant 5). Two
+independent enforcement points, because one is a refactor away from being none:
+
+| Layer                                   | Sees                                 | Catches                                                    |
+| --------------------------------------- | ------------------------------------ | ---------------------------------------------------------- |
+| `pagesCreateAccess`/`pagesUpdateAccess` | The incoming request `data`          | The direct attempt — fails early, before any write         |
+| `publishGate` (`beforeChange`)          | The write merged over the stored doc | Bulk operations, partial updates, any future payload shape |
+
+Both treat `publishAt` as publishing. A scheduled publish defers the transition rather than
+cancelling it, so a gate that ignored it would let a school-manager publish by waiting.
+`publishAt` is _additionally_ district-only at field level.
+
+What the gate deliberately does **not** block: a school-manager editing a page that is
+already live. That lands as a `draft`-status write against a published original — a new
+version awaiting approval (`04` §5), not a publish. Blocking it would make live pages
+uneditable by the people who maintain them.
+
+**Hooks run even under `overrideAccess`.** A publish with no actor at all is therefore
+refused, since "nobody" is not a role that may publish. This surfaced in the test fixtures,
+which now create pages as the district admin rather than as no one — the gate stayed strict
+and the fixtures grew an actor. Anything that publishes programmatically later (the Phase 4
+approval transition, a scheduled-publish job) needs to run as an actor who may publish.
+
+## 11. Slugs and paths
+
+`deriveSlugFromTitle` fills the slug in from the title so an editor never has to know what a
+slug is. **The title is used only on create** — renaming a live page must not move its URL,
+because that breaks inbound links and the redirect map assembled in `10` §6. Moving a page
+is a deliberate edit to the slug itself.
+
+`uniqueSlugWithinParent` enforces uniqueness per **(tenant, parent, slug)**. Payload's
+field-level `unique` cannot express this: two schools may both have `/about`, and so may two
+parents within one school. A `null` parent queries as `{ parent: { exists: false } }` rather
+than omitting the clause — omitting it would let a top-level `/about` collide with a nested
+`/handbook/about`.
+
+**Paths are walked, not stored.** `getPageByPath('/about/staff')` runs one indexed query per
+segment. Denormalizing a `path` column would buy a single-query lookup and cost a cascade:
+renaming one slug would have to rewrite every descendant, and a missed cascade leaves rows
+whose stored path disagrees with their position — a silent wrong-page bug, and a cached one
+(`02` §5). These queries never run per visitor (`02` §5), so the cheaper failure mode wins.
+
+## 12. What `pages` does not have yet
+
+| Absent            | Arrives with                                                                     |
+| ----------------- | -------------------------------------------------------------------------------- |
+| Body content      | The constrained rich-text slice (`07` §4), which also wires the paste normalizer |
+| `layout` (blocks) | The block library. `pageType: composed` is already selectable and already gated  |
+| `seo` group       | `plugin-seo` — hand-rolling one now would mean deleting it later                 |
+| Page templates    | The next slice: rendering a fixed-type page through the Phase 3 components       |
+
+The domain `Page` type in `src/content/types.ts` is therefore the page **spine** — identity,
+hierarchy, type, visibility. Declaring a body shape before either body mechanism exists
+would be the speculative modelling `03` §4 warns against.
