@@ -1,0 +1,96 @@
+/**
+ * DD2 tokens, not Payload's admin theme variables.
+ *
+ * Deliberate: contrast is validated at token level (`07` §3), so a palette that fails AA
+ * cannot ship. Styling this from `--theme-elevation-*` would look more native in the admin
+ * but would mean the component axe gate measures a fallback palette while the admin renders
+ * a different one — the gate would be checking colours nobody sees. What Storybook measures
+ * here is what the admin paints.
+ *
+ * LOGICAL PROPERTIES ONLY. The admin plane is localized too (`08` §6), and stylelint does not
+ * exempt it.
+ */
+
+.dialog {
+  max-inline-size: min(34rem, calc(100vw - 2 * var(--space-lg)));
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-family-locale);
+  line-height: var(--line-height-base);
+}
+
+.dialog::backdrop {
+  /* Not a token: the backdrop tints whatever is behind it and carries no text. */
+  background: rgb(0 0 0 / 55%);
+}
+
+.body {
+  padding: var(--space-lg);
+}
+
+.title {
+  margin-block: 0 var(--space-md);
+  font-size: var(--font-size-lg);
+}
+
+.section {
+  margin-block-end: var(--space-md);
+}
+
+.sectionTitle {
+  margin-block: 0 var(--space-xs);
+  font-size: var(--font-size-base);
+}
+
+.list {
+  margin-block: 0;
+  padding-inline-start: var(--space-lg);
+}
+
+.list > li + li {
+  margin-block-start: var(--space-xs);
+}
+
+/**
+ * The candidate lines are quoted content, not UI copy, so they are set apart from the
+ * question above them. Bold is how the author expressed "this is a heading" in the first
+ * place — showing them bold is showing them what was pasted.
+ */
+.candidate {
+  font-weight: 700;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  /* `end` rather than `right`: the actions follow the writing direction. */
+  justify-content: flex-end;
+  margin-block-start: var(--space-lg);
+}
+
+.button {
+  padding-block: var(--space-xs);
+  padding-inline: var(--space-md);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  cursor: pointer;
+}
+
+.primary {
+  border-color: var(--color-brand);
+  background: var(--color-brand);
+  color: var(--color-brand-contrast);
+}
+
+.button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}

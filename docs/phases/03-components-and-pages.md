@@ -401,3 +401,100 @@ asserts reachability only.
 form is a client component with controlled inputs, so a fill landing between first paint and
 hydration is discarded when React mounts, and the form submits blank reporting both fields
 required. It reproduced with three workers against a cold server and never in a single run.
+
+## 15. The paste normalizer, wired to the editor
+
+`src/lib/paste-normalizer.ts` has been complete and unwired since PR #6. This is the wiring
+and the prompt. The transform is unchanged — no normalization logic lives in this slice.
+
+### Added
+
+| File                                                  | What it does                                           |
+| ----------------------------------------------------- | ------------------------------------------------------ |
+| `src/admin/PasteNormalizer/feature.client.tsx`        | `createClientFeature`, registers the plugin            |
+| `src/admin/PasteNormalizer/PasteNormalizerPlugin.tsx` | `PASTE_COMMAND` handler, insertion, prompt state       |
+| `src/admin/PastePrompt/PastePrompt.tsx`               | the dialog — removals and the heading question         |
+| `src/admin/PastePrompt/PastePrompt.module.css`        | DD2 tokens, logical properties                         |
+| `src/admin/PastePrompt/PastePrompt.stories.tsx`       | four states; puts the dialog in the component axe gate |
+| `tests/e2e/paste-normalizer.spec.ts`                  | the flow through the real editor, plus an axe pass     |
+| `tests/e2e/admin-session.setup.ts`                    | signs in once per run                                  |
+
+`src/admin/` is new: admin-plane React, as distinct from `src/components/`, which is the
+public design system and may not import the Payload SDK. Phase 4's task plane and diff viewer
+belong here too.
+
+### Changed
+
+| File                                   | Change                                                             |
+| -------------------------------------- | ------------------------------------------------------------------ |
+| `src/lib/editor.ts`                    | `PasteNormalizerFeature` + `DD2_FEATURE_KEYS`                      |
+| `tests/unit/editor.test.ts`            | the allowlist now expects `pasteNormalizer`                        |
+| `playwright.config.ts`                 | an `admin-setup` project both browser projects depend on           |
+| `tests/a11y/storybook.spec.ts`         | the fail-closed guard injects into an open modal when there is one |
+| `src/app/(payload)/admin/importMap.js` | regenerated                                                        |
+
+### The flow
+
+1. `PASTE_COMMAND` fires. No `text/html` on the clipboard → return `false`, and Lexical's own
+   plain-text path runs.
+2. `normalizePastedHtml` runs on the HTML flavour.
+3. No rejections and no heading candidates → insert, no dialog. The common case costs nothing.
+4. Otherwise the result is held in state and the prompt opens.
+5. On resolve, `promoteHeadings` is applied if the answer was yes, and the result is inserted.
+
+**Nothing is inserted before the prompt resolves.** Promoting after insertion would mean
+tracking which nodes came from this paste and rewriting them through a selection the author may
+have moved; asking first uses `promoteHeadings` exactly as it is unit-tested, and the author
+never sees content change under them.
+
+**Every exit inserts** — yes, no, Escape, backdrop. A dismissal that discarded the paste would
+lose a whole agenda to a keypress that means "stop asking me".
+
+### The prompt
+
+One modal per paste, carrying both messages: what was removed, then the heading question. The
+wording of the question is fixed by `07` §4.2 and is not paraphrased. The answer is one yes for
+all candidate lines — the lines are listed so the answer is informed, but a per-line checklist
+would require the author to know what a heading is in order to answer.
+
+A native `<dialog>` with `showModal()`. Focus moving in, focus trapped, Escape, focus restored
+to the editor, background inert — all from the element. Payload's own modal was the alternative
+and would have meant adopting `@payloadcms/ui` as a directly pinned dependency for behaviour
+the platform already has.
+
+Styled from DD2 tokens rather than Payload's `--theme-elevation-*`, so what the component axe
+gate measures is what the admin paints. Payload's own admin chrome enters the gate in Phase 4
+(`07` §2), which is why the e2e axe pass is scoped to the dialog.
+
+### Lexical imports
+
+Everything comes through Payload's proxy — `@payloadcms/richtext-lexical/lexical`,
+`/lexical/html`, `/lexical/react/LexicalComposerContext`. Importing `lexical` directly would
+mean a second copy of the library and therefore a second node registry, where nodes created
+against one are unrecognisable to the other. It also adds no dependency to `package.json`.
+
+### `DD2_FEATURE_KEYS`
+
+`TRIAGED_FEATURES` answers "what did Payload ship that nobody has decided about", and its
+assertion compares against the package's own exports — so a feature we wrote cannot go in it
+without breaking the upgrade guard. `DD2_FEATURE_KEYS` is the separate list, and the test
+asserts no key in it collides with a Payload one.
+
+### One login per run
+
+`admin-session.setup.ts` runs as a setup project both browser projects depend on, so it
+completes before any worker starts. Payload 3 puts a session id in the token and tracks live
+sessions on the user document: several concurrent logins as the same user race on that list, the
+last write wins, and the other tokens reference sessions that no longer exist. Seven parallel
+specs each authenticated successfully and then found themselves logged out. Per-worker
+authentication has the same defect; the barrier is the fix.
+
+Side effect worth having: the e2e suite went from 33s to 6s.
+
+### Tenant assignment is part of the flow
+
+A district-admin works across all 28 sites (`04` §3.2), so the multi-tenant plugin asks which
+tenant a new page belongs to before the form is usable. The spec answers the modal rather than
+seeding a default tenant to skip it — it is a step every district author takes. It is waited
+for, not probed for: the modal renders after hydration, so an "if present" check passes on a
+fast machine and then the modal opens over the form mid-test.

@@ -114,8 +114,22 @@ test('@a11y the component axe gate fails closed', async ({ page }) => {
   await page.evaluate(() => {
     const img = document.createElement('img')
     img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+
+    /**
+     * Into the open modal when the story has one, otherwise into the root.
+     *
+     * A story that calls `showModal()` — `Admin/PastePrompt` — makes everything OUTSIDE the
+     * dialog inert, and axe is right to report nothing there. Appending to `#storybook-root`
+     * unconditionally therefore made this guard depend on which story happens to sort first
+     * in the index, which is not a property anyone maintains on purpose. Injecting where axe
+     * will actually look keeps the assertion about axe rather than about story ordering.
+     */
+    const host =
+      document.querySelector('#storybook-root dialog[open]') ??
+      document.querySelector('#storybook-root')
+
     // Deliberately no alt attribute -> axe "image-alt", impact: critical.
-    document.querySelector('#storybook-root')?.appendChild(img)
+    host?.appendChild(img)
   })
 
   const results = await new AxeBuilder({ page })

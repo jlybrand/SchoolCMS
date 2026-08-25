@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   CONSTRAINED_FEATURES,
   CONSTRAINED_FEATURE_KEYS,
+  DD2_FEATURE_KEYS,
   EDITOR_ELEMENTS,
   TRIAGED_FEATURES,
 } from '@/lib/editor'
@@ -43,6 +44,12 @@ describe('the editor allowlist', () => {
         // to SEE the controls rather than discover a floating toolbar (CLAUDE.md usability
         // bar).
         'toolbarFixed',
+        /**
+         * DD2's own, not Payload's: it wires the paste normalizer into the editor's paste
+         * path (`07` §4.2). It adds no formatting capability — it REMOVES what arrives —
+         * which is why it belongs in a set otherwise chosen for what authors may express.
+         */
+        'pasteNormalizer',
       ].sort(),
     )
   })
@@ -116,11 +123,32 @@ describe('feature triage', () => {
   })
 
   it('every feature marked allowed is actually enabled, and no denied one is', () => {
-    const allowedKeys = Object.values(TRIAGED_FEATURES)
-      .filter((verdict) => verdict.allowed)
-      .map((verdict) => verdict.key)
+    /**
+     * DD2's own features are added to the comparison rather than triaged. `TRIAGED_FEATURES`
+     * answers "what did Payload ship that we have not decided about", so putting a feature
+     * we wrote in it would be answering our own question — and the exported-names assertion
+     * above, which is the actual upgrade guard, would fail because the package does not
+     * export it.
+     */
+    const allowedKeys = [
+      ...Object.values(TRIAGED_FEATURES)
+        .filter((verdict) => verdict.allowed)
+        .map((verdict) => verdict.key),
+      ...DD2_FEATURE_KEYS,
+    ]
 
     expect(allowedKeys.sort()).toEqual([...CONSTRAINED_FEATURE_KEYS].sort())
+  })
+
+  it('no DD2 feature shadows a Payload feature key', () => {
+    // A collision would silently replace a triaged feature with ours, or be replaced by it,
+    // depending on load order — and the allowlist assertions would still pass.
+    const payloadKeys = new Set(
+      Object.values(TRIAGED_FEATURES)
+        .filter((verdict) => verdict.allowed)
+        .map((verdict) => verdict.key),
+    )
+    for (const key of DD2_FEATURE_KEYS) expect(payloadKeys).not.toContain(key)
   })
 
   it('every denied feature carries a reason', () => {
