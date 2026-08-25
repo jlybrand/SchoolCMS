@@ -27,3 +27,4 @@ blob-report/
 # OS / editor
 .DS_Store
 *.log
+tests/.auth/
