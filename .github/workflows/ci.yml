@@ -147,6 +147,23 @@ jobs:
       DATABASE_URI: postgres://dd2:dd2_ci@localhost:5432/dd2_test
       PAYLOAD_SECRET: ci-only-not-a-real-secret
       NEXT_PUBLIC_SERVER_URL: http://localhost:3000
+      # The admin plane needs a real session from Phase 3's paste normalizer onward, and
+      # `scripts/seed.ts` creates no admin unless BOTH of these are set. That policy is not
+      # relaxed here: no credential is committed for anyone to reuse, CI states its own.
+      #
+      # Inline rather than a repository secret, matching PAYLOAD_SECRET above and for the
+      # same reason. This pair authenticates against a Postgres service container that is
+      # created for this job and destroyed with the runner, is never reachable off it, and
+      # grants nothing anywhere else. Putting it in the secret store would imply it guards
+      # something, and would silently break CI on every fork.
+      #
+      # NOT a template for any deployed environment: real environments hold real staff
+      # accounts and their secrets live in the platform secret store (`09` §1).
+      #
+      # The password must satisfy src/auth/password-policy.ts — 8+ characters, no banned
+      # fragment ("admin", "district", "dd2", "password", ...) — or the seed step throws.
+      SEED_ADMIN_EMAIL: ci-e2e@example.invalid
+      SEED_ADMIN_PASSWORD: ci-ephemeral-runner-phrase
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -159,11 +176,16 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - name: Build
         run: pnpm run build
-      - name: Seed tenants
+      - name: Seed tenants + the CI district admin
         # The public site resolves a tenant from the request Host and 404s an unknown one
         # by design (`02` §4.1), so without seeded tenants there is nothing to serve — the
         # server would not even pass Playwright's readiness check. `*.localhost` hostnames
         # resolve to loopback with no /etc/hosts entry (`06` §4).
+        #
+        # This is also the first time the admin path of the seed runs in CI. The admin-plane
+        # specs fail rather than skip when the credentials are absent here
+        # (tests/e2e/support/admin-session.ts) — a gate that silently stops covering the
+        # admin plane while still reporting green is the failure mode being avoided.
         run: pnpm run seed
       - name: E2E smoke + axe gate (zero critical/serious to merge)
         run: pnpm run test:e2e:smoke

@@ -335,3 +335,69 @@ Lexical paste handler that calls it and the heading-promotion prompt (`07` §4.2
 client-side admin React, which per CLAUDE.md's TDD exception table is built first and locked
 with a Playwright flow plus an axe assertion in the same PR — a different kind of work from
 the pure functions above, and the reason it is a separate slice.
+
+## 14. The authenticated admin session in e2e
+
+Prerequisite for that slice, and for every admin-plane flow after it. Added ahead of the
+paste handler because none of those flows can be locked with a Playwright run without a
+session to run them in.
+
+### Added
+
+| File                                 | What it does                                                         |
+| ------------------------------------ | -------------------------------------------------------------------- |
+| `tests/e2e/support/admin-session.ts` | reads the credentials, fills Payload's login form, lands in `/admin` |
+| `tests/e2e/admin-session.spec.ts`    | tests the session harness itself — three specs, all `@smoke`         |
+
+### Changed
+
+| File                       | Change                                                      |
+| -------------------------- | ----------------------------------------------------------- |
+| `.github/workflows/ci.yml` | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` on the `e2e` job |
+| `.env.example`             | both variables documented under Authentication              |
+
+### Where the credentials come from
+
+`scripts/seed.ts` (Phase 2) creates a district-admin only when both `SEED_ADMIN_EMAIL` and
+`SEED_ADMIN_PASSWORD` are set, and ships no default. Unchanged by this slice. The `e2e` job
+now supplies its own pair inline, alongside the `PAYLOAD_SECRET` that was already there; the
+`lighthouse` job does not, because it audits public pages only.
+
+`.env` supplies them locally, per developer, opt-in.
+
+### Present / absent behaviour
+
+| Environment           | Credentials set | Behaviour                                    |
+| --------------------- | --------------- | -------------------------------------------- |
+| CI (`process.env.CI`) | yes             | specs run                                    |
+| CI                    | no              | `adminCredentials()` **throws** at file load |
+| Local                 | yes             | specs run                                    |
+| Local                 | no              | `test.skip` — a missing local opt-in         |
+
+The asymmetry is the point: absent credentials locally are a developer who has not opted in,
+while absent credentials in CI mean the gate stopped covering the admin plane and would
+otherwise still report green.
+
+### The three specs
+
+| Spec                       | Asserts                                        |
+| -------------------------- | ---------------------------------------------- |
+| seeded admin reaches admin | login succeeds and lands on `/admin`           |
+| unreachable without one    | anonymous `/admin` redirects to `/admin/login` |
+| wrong password             | a bad password stays on `/admin/login`         |
+
+The second and third exist so the first cannot pass vacuously — an `/admin` open to everyone,
+or a helper that types nothing, would satisfy the first alone. The wrong-password spec makes
+exactly one attempt: `users` sets `maxLoginAttempts: 5` with a 10-minute lock.
+
+### Locators, and the hydration retry
+
+Fields are found by label and the submit by role, not by Payload's `#field-email` ids — those
+are internal markup, and a login form whose inputs have no reachable accessible name is a
+defect worth failing on. Both admin planes enter the axe gate in Phase 4 (`07` §2); this
+asserts reachability only.
+
+`fillLoginForm` fills and then asserts the value stuck, retrying via `toPass`. Payload's login
+form is a client component with controlled inputs, so a fill landing between first paint and
+hydration is discarded when React mounts, and the form submits blank reporting both fields
+required. It reproduced with three workers against a cold server and never in a single run.
