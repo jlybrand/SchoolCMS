@@ -7,6 +7,7 @@ import {
   OrderedListFeature,
   ParagraphFeature,
   UnorderedListFeature,
+  createServerFeature,
   lexicalEditor,
 } from '@payloadcms/richtext-lexical'
 
@@ -31,6 +32,40 @@ import {
  * verdict, which turns "a new capability appeared" into a decision someone has to make.
  */
 
+/**
+ * THE PASTE NORMALIZER, wired into the editor (`07` §4.2).
+ *
+ * DD2's own feature, not Payload's — the only entry in `CONSTRAINED_FEATURES` that is not a
+ * package export, and the reason `DD2_FEATURE_KEYS` exists below.
+ *
+ * It is in a list otherwise chosen for what an author may EXPRESS because it is the same
+ * control at the other end: the allowlist decides what can be typed, this decides what
+ * survives being pasted. `src/lib/paste-normalizer.ts` does the work and has since PR #6;
+ * this is the wiring, and the client half is where the prompt lives.
+ *
+ * `ClientFeature` is a path resolved through the admin import map, whose `baseDir` is `src/`
+ * (`src/payload.config.ts`). It must be regenerated and committed — `pnpm run
+ * generate:importmap` — or the admin fails at RUNTIME rather than at build, because a
+ * component it was told exists cannot be resolved. CI asserts the committed copy matches.
+ */
+export const PasteNormalizerFeature = createServerFeature({
+  feature: {
+    ClientFeature: '/admin/PasteNormalizer/feature.client#PasteNormalizerFeatureClient',
+  },
+  key: 'pasteNormalizer',
+})
+
+/**
+ * Feature keys DD2 wrote, as opposed to ones Payload ships.
+ *
+ * `TRIAGED_FEATURES` answers "what did Payload ship that nobody has decided about yet", so a
+ * feature we wrote does not belong in it — it would be us answering our own question, and it
+ * would break the exported-names assertion that makes the triage table an upgrade guard at
+ * all. `tests/unit/editor.test.ts` reads this list instead, and asserts no key here collides
+ * with a Payload one.
+ */
+export const DD2_FEATURE_KEYS: readonly string[] = ['pasteNormalizer']
+
 /** The features the editor enables. Everything else in the package is denied below. */
 export const CONSTRAINED_FEATURES = [
   ParagraphFeature(),
@@ -52,6 +87,11 @@ export const CONSTRAINED_FEATURES = [
    * to be visible, not discovered.
    */
   FixedToolbarFeature(),
+  /**
+   * Last, so its `PASTE_COMMAND` handler registers after the features whose nodes it
+   * produces. It contributes no toolbar control and no node type of its own.
+   */
+  PasteNormalizerFeature(),
 ]
 
 export const CONSTRAINED_FEATURE_KEYS: readonly string[] = CONSTRAINED_FEATURES.map((f) => f.key)
