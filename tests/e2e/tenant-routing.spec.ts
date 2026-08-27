@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test } from '@playwright/test'
+import { expect, test, type APIRequestContext } from '@playwright/test'
 
 /**
  * Tenant + locale delivery path (`02` §4.1, §5; `03` §2; `08` §5–6).
@@ -27,16 +27,51 @@ import { expect, test } from '@playwright/test'
 const PORT = Number(process.env.PORT ?? 3000)
 const site = (host: string) => ({ baseURL: `http://${host}:${PORT}` })
 
+/**
+ * Metadata is asserted on the HTTP RESPONSE, not the live DOM.
+ *
+ * Next streams metadata after the body when `generateMetadata` resolves later than the shell,
+ * and React hoists it into `<head>` during hydration — so a fresh server puts these tags in
+ * `<head>` and a warm one does not, and `head link[...]` is a locator whose truth depends on
+ * timing. It failed deterministically once other specs had warmed the server and passed when
+ * run alone.
+ *
+ * Asserting the response is also the more honest test. `hreflang` and the document title are
+ * signals for crawlers and link previews, which parse the bytes and never hydrate. What
+ * matters is that the markup is IN the response, not where the browser eventually files it.
+ */
+const documentFor = async (request: APIRequestContext, path: string) => {
+  const response = await request.get(path)
+  expect(response.status()).toBe(200)
+  const html = await response.text()
+
+  return {
+    title: /<title>([^<]*)<\/title>/.exec(html)?.[1],
+    /**
+     * Parsed into a map rather than probed one tag at a time, so the assertion can be an
+     * equality against the WHOLE set — a missing locale and a stray extra one both fail.
+     * Case-insensitive because React emits the JSX prop spelling, `hrefLang`.
+     */
+    alternates: Object.fromEntries(
+      [...html.matchAll(/<link[^>]*rel="alternate"[^>]*>/gi)].map((match) => [
+        /hreflang="([^"]+)"/i.exec(match[0])?.[1],
+        /href="([^"]+)"/i.exec(match[0])?.[1],
+      ]),
+    ),
+  }
+}
+
 test.describe('tenant resolution by Host', () => {
   test.use(site('a.localhost'))
 
-  test('@smoke resolves the correct tenant', async ({ page }) => {
+  test('@smoke resolves the correct tenant', async ({ page, request }) => {
     await page.goto('/')
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Home')
+
     // The front page is titled with the site's name — see `generateMetadata`. Every tenant's
     // front page ROW is called "Home", so the title is what distinguishes one site's front
     // page from another's.
-    await expect(page).toHaveTitle('School A')
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Home')
+    expect((await documentFor(request, '/')).title).toBe('School A')
   })
 
   test('@smoke renders the page body, not an empty shell', async ({ page }) => {
@@ -59,15 +94,14 @@ test.describe('tenant resolution by Host', () => {
 test.describe('a second tenant is served its own content', () => {
   test.use(site('b.localhost'))
 
-  test('@smoke does not receive tenant A from a shared cache entry', async ({ page }) => {
+  test('@smoke does not receive tenant A from a shared cache entry', async ({ request }) => {
     /**
      * THE REASON THE REWRITE EXISTS. Next caches by pathname, not by Host. Without folding
      * the hostname into the cache key, 28 tenants would share one entry per path and this
      * assertion would return School A — a tenant leak occurring in the CDN, where no access
      * function could ever catch it.
      */
-    await page.goto('/')
-    await expect(page).toHaveTitle('School B')
+    expect((await documentFor(request, '/')).title).toBe('School B')
   })
 })
 
@@ -123,26 +157,22 @@ test.describe('locale routing', () => {
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl')
   })
 
-  test('@smoke emits an hreflang alternate for every enabled locale', async ({ page }) => {
+  test('@smoke emits an hreflang alternate for every enabled locale', async ({ request }) => {
     /**
      * `08` §5 — every locale plus `x-default`, built from the page's RESOLVED path so the
      * alternates point at this page in another language rather than at whatever was typed.
      */
-    await page.goto('/about')
+    const { alternates } = await documentFor(request, '/about')
 
-    for (const [hrefLang, href] of [
-      ['en', '/about'],
-      ['es', '/es/about'],
-      ['zh-Hans', '/zh-Hans/about'],
-      ['ko', '/ko/about'],
-      ['pt', '/pt/about'],
-      ['ar', '/ar/about'],
-      ['x-default', '/about'],
-    ]) {
-      await expect(
-        page.locator(`head link[rel="alternate"][hreflang="${hrefLang}"]`),
-      ).toHaveAttribute('href', new RegExp(`${href}$`))
-    }
+    expect(alternates).toEqual({
+      en: '/about',
+      es: '/es/about',
+      'zh-Hans': '/zh-Hans/about',
+      ko: '/ko/about',
+      pt: '/pt/about',
+      ar: '/ar/about',
+      'x-default': '/about',
+    })
   })
 
   test('@smoke language switcher lists each language in its own script', async ({ page }) => {

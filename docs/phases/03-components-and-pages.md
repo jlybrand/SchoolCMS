@@ -581,3 +581,18 @@ It now asserts the rendered page: `<title>` distinguishes tenants, the `h1` and 
 Lexical -> `toRichText` -> `RichText` chain end to end, `/about/staff` proves parent-chain
 walking, and `/athletics` and `/home` prove the two 404s. A testid can stay green while the
 page a visitor sees is wrong; a title and a heading cannot.
+
+### Metadata is asserted on the response, not the DOM
+
+**Next streams metadata after the body** when `generateMetadata` resolves later than the shell,
+and React hoists it into `<head>` during hydration. A fresh server therefore emits `<title>` and
+the `hreflang` links inside `<head>`; a warm one emits them after `</body>` and lets the client
+file them. `page.locator('head link[rel="alternate"]')` is a locator whose truth depends on
+which of those happened — it passed run alone and failed deterministically once other specs had
+warmed the server.
+
+`documentFor()` fetches the page and parses the HTML instead. That is also the more honest
+assertion: `hreflang` and the document title are signals for crawlers and link previews, which
+parse the bytes and never hydrate. What matters is that the markup is IN the response, not where
+a browser eventually files it. The alternates are compared as a whole map, so a missing locale
+and a stray extra one both fail.
