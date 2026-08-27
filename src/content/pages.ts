@@ -2,7 +2,7 @@ import { getPayload } from 'payload'
 
 import config from '@payload-config'
 
-import { buildPagePath, splitPagePath } from '@/lib/slug'
+import { ROOT_SLUG, buildPagePath, splitPagePath } from '@/lib/slug'
 import { toRichText } from './rich-text'
 import type { ContentContext, Page, PageType, Visibility } from './types'
 
@@ -87,6 +87,13 @@ const publishedAndPublic = [
  * queries do not run per visitor, the cheaper failure mode is worth more than the cheaper
  * query.
  *
+ * THE TENANT ROOT. `/` has no segment to walk, so it resolves to the top-level page slugged
+ * `ROOT_SLUG` — the reserved-slug convention rather than a slug-less row, which keeps `slug`
+ * required and therefore keeps `listPagePaths`' parent-chain assembly total. `/home` is
+ * REFUSED, so the front page has exactly one URL instead of two competing for one CDN cache
+ * entry (`02` §5). Refusing rather than redirecting keeps this a pure lookup; a redirect is a
+ * routing concern if DD2 ever wants one.
+ *
  * Returns null when any segment is missing, when the page is a draft, or when it is
  * staff-only. Never falls back to a parent or a sibling — a near-miss served as a hit is
  * how one page's content ends up under another page's URL.
@@ -95,15 +102,25 @@ export const getPageByPath = async (
   ctx: ContentContext,
   path: string | null | undefined,
 ): Promise<Page | null> => {
+  /**
+   * `null`/`undefined` mean nothing was asked for; `/` and `''` are requests for the front
+   * page. Kept distinct so a caller's missing argument cannot look like a successful lookup.
+   */
+  if (path === null || path === undefined) return null
+
   const segments = splitPagePath(path)
-  if (segments.length === 0) return null
+
+  // The front page is reachable at `/` only.
+  if (segments[0] === ROOT_SLUG) return null
+
+  const lookup = segments.length === 0 ? [ROOT_SLUG] : segments
 
   const payload = await getPayload({ config })
 
   let parentId: string | null = null
   let current: PayloadPage | null = null
 
-  for (const slug of segments) {
+  for (const slug of lookup) {
     const { docs } = await payload.find({
       collection: 'pages',
       where: {
@@ -126,7 +143,7 @@ export const getPageByPath = async (
     parentId = String(doc.id)
   }
 
-  return current ? toDomain(current, buildPagePath(segments)) : null
+  return current ? toDomain(current, buildPagePath(lookup)) : null
 }
 
 /**
@@ -137,7 +154,8 @@ export const getPageByPath = async (
  *
  * A page whose parent is missing or unpublished is SKIPPED, not hoisted to the root. Its
  * URL genuinely does not exist while the parent is unpublished, and inventing a shorter one
- * would publish a page the editor did not intend to expose.
+ * would publish a page the editor did not intend to expose. A page nested under the front page
+ * is skipped for the same reason — see `segmentsFor`.
  */
 export const listPagePaths = async (
   ctx: ContentContext,
@@ -171,7 +189,21 @@ export const listPagePaths = async (
       chain.unshift(cursor.slug)
 
       const parent = idOf(cursor.parent ?? null)
-      if (parent === null) return chain
+      if (parent === null) {
+        /**
+         * A page NESTED under the front page has no reachable URL: its path would start
+         * `/home/...`, and `getPageByPath` refuses anything under `/home` so that the front
+         * page has one URL. Emitting it would generate a static param for a route that 404s
+         * at request time.
+         *
+         * `rootPageCannotBeParent` refuses this shape on write, so it should not exist — but
+         * validation and resolution are separate guarantees, and a migration or a direct
+         * database write only has to defeat the first one.
+         */
+        if (chain.length > 1 && chain[0] === ROOT_SLUG) return null
+
+        return chain
+      }
 
       cursor = byId.get(parent)
     }

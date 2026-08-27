@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildPagePath, isReservedSlug, slugify, splitPagePath } from '@/lib/slug'
+import { ROOT_SLUG, buildPagePath, isReservedSlug, slugify, splitPagePath } from '@/lib/slug'
 
 /**
  * Slug generation and page-path assembly (`03` §2).
@@ -84,6 +84,20 @@ describe('isReservedSlug', () => {
   })
 })
 
+describe('ROOT_SLUG — the tenant front page', () => {
+  it('is "home"', () => {
+    expect(ROOT_SLUG).toBe('home')
+  })
+
+  it('is NOT reserved — an author has to be able to create the front page', () => {
+    /**
+     * The mechanism is a real page with this slug, so reserving it would make the front page
+     * uncreatable. `RESERVED_SLUGS` is for slugs that collide with a platform ROUTE.
+     */
+    expect(isReservedSlug(ROOT_SLUG)).toBe(false)
+  })
+})
+
 describe('buildPagePath', () => {
   it('renders the home page as a bare slash', () => {
     expect(buildPagePath([])).toBe('/')
@@ -99,6 +113,26 @@ describe('buildPagePath', () => {
 
   it('never emits a trailing slash', () => {
     expect(buildPagePath(['about']).endsWith('/')).toBe(false)
+  })
+
+  it('collapses a lone root slug to the bare root path', () => {
+    // The front page has exactly ONE url. `/home` is not it.
+    expect(buildPagePath([ROOT_SLUG])).toBe('/')
+  })
+
+  it('does not strip a leading root slug from a deeper chain', () => {
+    /**
+     * `['home', 'about']` must NOT become `/about`. That would collide with a real top-level
+     * `about`, putting two pages at one path — the silent-wrong-page bug, cached at the edge.
+     * A page nested under the front page has no reachable url, and `listPagePaths` skips it;
+     * quietly shortening its path here would hide that instead.
+     */
+    expect(buildPagePath([ROOT_SLUG, 'about'])).toBe('/home/about')
+  })
+
+  it('treats a nested page called home as an ordinary page', () => {
+    // Only a TOP-LEVEL `home` is the front page.
+    expect(buildPagePath(['about', ROOT_SLUG])).toBe('/about/home')
   })
 
   it('drops empty and whitespace-only segments rather than emitting //', () => {

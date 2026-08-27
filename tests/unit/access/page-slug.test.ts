@@ -1,7 +1,11 @@
 import { ValidationError } from 'payload'
 import { describe, expect, it, vi } from 'vitest'
 
-import { deriveSlugFromTitle, uniqueSlugWithinParent } from '@/collections/hooks/page-slug'
+import {
+  deriveSlugFromTitle,
+  rootPageCannotBeParent,
+  uniqueSlugWithinParent,
+} from '@/collections/hooks/page-slug'
 
 /**
  * Sibling-slug uniqueness for `pages`.
@@ -176,5 +180,72 @@ describe('deriveSlugFromTitle', () => {
     const result = derive({ title: 'About', visibility: 'staff', tenant: 'A' })
     expect(result.visibility).toBe('staff')
     expect(result.tenant).toBe('A')
+  })
+})
+
+/**
+ * The front page cannot be a parent.
+ *
+ * `getPageByPath` resolves the tenant root at `/` and refuses `/home`, so a page nested under
+ * the front page has no reachable URL — `listPagePaths` skips it, and the resolver would 404
+ * it. That makes this a USABILITY guard as much as a correctness one: a page that saves
+ * cleanly and then cannot be visited, with nothing on screen explaining why, is exactly the
+ * failure the "no training, no documentation" bar rules out.
+ *
+ * The resolver is safe whether or not this hook runs — the integration suite proves that with
+ * the hook bypassed. This exists so the author finds out at the point of the mistake.
+ */
+describe('rootPageCannotBeParent', () => {
+  /** Hook args whose parent lookup returns one page. */
+  const withParent = (parent: unknown, parentDoc: unknown) => {
+    const findByID = vi.fn(async () => parentDoc)
+    return {
+      args: {
+        data: { tenant: 'A', slug: 'about', parent },
+        req: { payload: { findByID } },
+        operation: 'create',
+      } as never,
+      findByID,
+    }
+  }
+
+  it('allows a page with no parent', async () => {
+    const { args, findByID } = withParent(null, null)
+    await expect(rootPageCannotBeParent(args)).resolves.toBeDefined()
+    // No parent means nothing to look up — a query here would be a wasted round trip per save.
+    expect(findByID).not.toHaveBeenCalled()
+  })
+
+  it('allows an ordinary top-level page as a parent', async () => {
+    const { args } = withParent('p1', { id: 'p1', slug: 'about', parent: null })
+    await expect(rootPageCannotBeParent(args)).resolves.toBeDefined()
+  })
+
+  it('REJECTS the top-level home page as a parent', async () => {
+    const { args } = withParent('p1', { id: 'p1', slug: 'home', parent: null })
+    const message = await fieldErrorFrom(rootPageCannotBeParent(args))
+
+    // Plain language, and it says what to do instead.
+    expect(message).toMatch(/home page/i)
+    expect(message).toMatch(/top level|leave/i)
+  })
+
+  it('allows a NESTED page called home as a parent', async () => {
+    /**
+     * Only a top-level `home` is the front page (`src/lib/slug.ts`). `/about/home` is an
+     * ordinary page and may have children at `/about/home/x`.
+     */
+    const { args } = withParent('p1', { id: 'p1', slug: 'home', parent: 'p0' })
+    await expect(rootPageCannotBeParent(args)).resolves.toBeDefined()
+  })
+
+  it('does not reject when the parent cannot be read', async () => {
+    /**
+     * A missing parent is someone else's error — the relationship field and
+     * `uniqueSlugWithinParent` own it. Inventing a slug error for it would send the author to
+     * the wrong field.
+     */
+    const { args } = withParent('gone', null)
+    await expect(rootPageCannotBeParent(args)).resolves.toBeDefined()
   })
 })

@@ -24,6 +24,22 @@ const MAX_SLUG_LENGTH = 80
 const RESERVED_SLUGS: readonly string[] = ['sites', 'admin', 'api', '_next'] as const
 
 /**
+ * The slug of a tenant's front page.
+ *
+ * `/` resolves to the top-level page with this slug; `/home` deliberately resolves to
+ * nothing, so the front page has exactly one URL rather than two competing for one CDN cache
+ * entry (`02` §5).
+ *
+ * DELIBERATELY NOT IN `RESERVED_SLUGS`. The mechanism IS an ordinary page with this slug, so
+ * reserving it would make the front page uncreatable. That list is for slugs colliding with a
+ * platform ROUTE, which is a different problem.
+ *
+ * Only a TOP-LEVEL `home` is the front page. A page called "Home" nested under another page
+ * is an ordinary page at an ordinary path.
+ */
+export const ROOT_SLUG = 'home'
+
+/**
  * Title -> URL slug.
  *
  * Unicode NFD splits an accented character into its base letter plus a combining mark, so
@@ -71,7 +87,20 @@ export const buildPagePath = (segments: readonly (string | null | undefined)[]):
     .map((segment) => (segment ?? '').trim())
     .filter((segment) => segment.length > 0)
 
-  return clean.length === 0 ? '/' : `/${clean.join('/')}`
+  if (clean.length === 0) return '/'
+
+  /**
+   * A LONE root slug is the front page, at `/`.
+   *
+   * Only the lone case. Stripping a LEADING `home` from a deeper chain would turn
+   * `['home', 'about']` into `/about`, colliding with a real top-level `about` — two pages at
+   * one path, resolved non-deterministically and then cached. A page nested under the front
+   * page genuinely has no reachable URL; `listPagePaths` skips it, and leaving its path
+   * visibly wrong here is better than quietly making it look right.
+   */
+  if (clean.length === 1 && clean[0] === ROOT_SLUG) return '/'
+
+  return `/${clean.join('/')}`
 }
 
 /** Inverse of `buildPagePath`. Tolerant of leading, trailing and repeated slashes. */
