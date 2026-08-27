@@ -261,7 +261,7 @@ whose stored path disagrees with their position — a silent wrong-page bug, and
 | ----------------- | ------------------------------------------------------------------------------- |
 | `layout` (blocks) | The block library. `pageType: composed` is already selectable and already gated |
 | `seo` group       | `plugin-seo` — hand-rolling one now would mean deleting it later                |
-| Page templates    | The next slice: rendering a fixed-type page through the Phase 3 components      |
+| Page templates    | Landed — see §16. Fixed-type pages render title + body; blocks still pending    |
 
 `body` was absent when this collection first landed and arrived with the constrained editor
 in §13. The block array is still deliberately unmodelled: declaring its shape before the
@@ -498,3 +498,101 @@ tenant a new page belongs to before the form is usable. The spec answers the mod
 seeding a default tenant to skip it — it is a step every district author takes. It is waited
 for, not probed for: the modal renders after hydration, so an "if present" check passes on a
 fast machine and then the modal opens over the form mid-test.
+
+---
+
+## 16. The tenant front page, and the public page template
+
+### Added
+
+| File                                       | What it does                                                          |
+| ------------------------------------------ | --------------------------------------------------------------------- |
+| `src/components/RichText/`                 | Renders a DD2 rich-text body. `RichText.tsx` + `index.ts` + 2 stories |
+| `tests/unit/components/rich-text.test.tsx` | 11 tests over blocks, marks, links, nested lists, heading levels      |
+
+### Changed
+
+| File                                      | Change                                                                             |
+| ----------------------------------------- | ---------------------------------------------------------------------------------- |
+| `src/lib/slug.ts`                         | `ROOT_SLUG`; `buildPagePath` collapses a lone `['home']` to `/`                    |
+| `src/content/pages.ts`                    | `/` resolves the front page; `/home` refused; `listPagePaths` skips pages under it |
+| `src/collections/hooks/page-slug.ts`      | `rootPageCannotBeParent`, registered on `Pages.hooks.beforeValidate`               |
+| `src/app/(frontend)/.../page.tsx`         | Renders the resolved page; the Phase 2 diagnostic `<dl>` is gone                   |
+| `scripts/seed.ts`                         | Seeds `home`, `about`, and `staff` (nested) per tenant                             |
+| `tests/e2e/tenant-routing.spec.ts`        | Asserts rendered pages instead of `data-testid` diagnostics                        |
+| `tests/integration/content-layer.test.ts` | 21 tests over `getPageByPath` / `listPagePaths`, which had none                    |
+
+### How `/` resolves
+
+A tenant's front page is an ordinary top-level page slugged `home` (`ROOT_SLUG`). `/` has no
+segment to walk, so `getPageByPath` looks up that slug with no parent.
+
+**`/home` is refused, not redirected.** One page, one URL, one CDN cache entry, one canonical.
+Refusing keeps `getPageByPath` a pure lookup; a redirect is a routing concern if DD2 ever wants
+one.
+
+**Only a lone `home` is the front page.** `buildPagePath` collapses `['home']` to `/` and
+nothing else — stripping a leading `home` from `['home','about']` would produce `/about` and
+collide with a real top-level `about`, giving two pages one path.
+
+`home` is deliberately **not** in `RESERVED_SLUGS`. That list is for slugs colliding with a
+platform _route_; reserving this one would make the front page uncreatable. `rootPageCannotBeParent`
+refuses the nested shape on write, and `listPagePaths` skips it on read — validation and
+resolution are separate guarantees, and a migration only has to defeat the first.
+
+### What the route does
+
+`resolve()` is shared by `generateMetadata` and the component so the two cannot describe
+different pages — metadata for one page above another's body is exactly the mismatch that then
+gets cached. The duplicate query is affordable: neither caller runs per visitor.
+
+Four conditions produce a 404, and they are deliberately indistinguishable: unknown host,
+missing page, draft, staff-only. A "not published yet" message would leak the existence and
+title of unpublished content to anyone guessing URLs (`03` §6.4).
+
+The template owns the `h1` (`PAGE_TITLE_LEVEL`) and `RichText` clamps the author's headings to
+`h2` and below, so an editor cannot produce a heading-order violation by writing one.
+
+`data-cache-tag` now carries both the tenant tag and the page's document tag: publishing one
+page purges its own artifact, and a tenant-wide change purges every page (`09` §4.2).
+
+The front page's `<title>` is the **tenant's** name, not the page's. Every tenant's front page
+row is called "Home"; putting that in the tab and the search result would describe 28 sites
+identically.
+
+### Seeded fixtures
+
+`pnpm run seed` gives every tenant `home`, `about`, and `staff` nested under `about` — enough
+for the e2e suite to exercise segment walking, and deliberately **not** `/athletics`, which is
+the path the suite asserts 404s.
+
+The seed writes as a district-admin. `overrideAccess` bypasses access functions but not
+`beforeChange` hooks, so `publishGate` throws `Forbidden` on a published write with no user —
+the gate working, not something to route around by relaxing it.
+
+### Why the e2e spec was reworked
+
+`tenant-routing.spec.ts` read `data-testid` diagnostics (`tenant-slug`, `locale`, `path`) at
+paths with no pages behind them. Those existed because the Phase 2 route rendered no content
+and there was nothing else to look at. Once the route 404s unknown paths — the correct
+behaviour — those assertions could not survive.
+
+It now asserts the rendered page: `<title>` distinguishes tenants, the `h1` and body prove the
+Lexical -> `toRichText` -> `RichText` chain end to end, `/about/staff` proves parent-chain
+walking, and `/athletics` and `/home` prove the two 404s. A testid can stay green while the
+page a visitor sees is wrong; a title and a heading cannot.
+
+### Metadata is asserted on the response, not the DOM
+
+**Next streams metadata after the body** when `generateMetadata` resolves later than the shell,
+and React hoists it into `<head>` during hydration. A fresh server therefore emits `<title>` and
+the `hreflang` links inside `<head>`; a warm one emits them after `</body>` and lets the client
+file them. `page.locator('head link[rel="alternate"]')` is a locator whose truth depends on
+which of those happened — it passed run alone and failed deterministically once other specs had
+warmed the server.
+
+`documentFor()` fetches the page and parses the HTML instead. That is also the more honest
+assertion: `hreflang` and the document title are signals for crawlers and link previews, which
+parse the bytes and never hydrate. What matters is that the markup is IN the response, not where
+a browser eventually files it. The alternates are compared as a whole map, so a missing locale
+and a stray extra one both fail.

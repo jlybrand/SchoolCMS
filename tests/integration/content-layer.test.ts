@@ -1,6 +1,9 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 
+import { getPageByPath, listPagePaths } from '@/content/pages'
 import { getTenantByHostname, listActiveTenants } from '@/content/tenants'
+import type { ContentContext, Tenant } from '@/content/types'
+import { ROOT_SLUG } from '@/lib/slug'
 import type { Payload } from 'payload'
 
 import { getTestPayload, seed } from '../helpers/payload'
@@ -19,10 +22,11 @@ import { getTestPayload, seed } from '../helpers/payload'
  */
 
 let payload: Payload
+let fixtures: Awaited<ReturnType<typeof seed>>
 
 beforeAll(async () => {
   payload = await getTestPayload()
-  await seed(payload)
+  fixtures = await seed(payload)
 }, 120_000)
 
 describe('getTenantByHostname', () => {
@@ -101,5 +105,170 @@ describe('the boundary — domain types only', () => {
   it('excludes hidden tenants from listActiveTenants', async () => {
     const tenants = await listActiveTenants()
     expect(tenants.every((t) => t.slug !== 'hidden')).toBe(true)
+  })
+})
+
+/**
+ * PAGE LOOKUPS (`02` §11).
+ *
+ * These had no integration coverage before the tenant-root slice, which is why this block
+ * covers the whole resolver rather than only the root behaviour it was added for. A
+ * segment-walking resolver's failure mode is serving a NEAR MISS as a hit — one page's content
+ * under another page's URL, then cached at the edge (`02` §5) — so the negative cases carry as
+ * much weight as the positive ones.
+ */
+describe('getPageByPath', () => {
+  let district: Tenant
+  let ctx: ContentContext
+
+  const mkPage = async (data: Record<string, unknown>) =>
+    (
+      await payload.create({
+        collection: 'pages',
+        data: {
+          pageType: 'standard',
+          visibility: 'public',
+          _status: 'published',
+          ...data,
+        } as never,
+        user: fixtures.districtAdmin,
+        overrideAccess: true,
+      })
+    ).id
+
+  beforeAll(async () => {
+    const resolved = await getTenantByHostname('localhost')
+    if (!resolved) throw new Error('district tenant missing from the seed')
+    district = resolved
+    ctx = { tenant: district, locale: 'en' }
+
+    const home = await mkPage({ tenant: district.id, title: 'Home', slug: ROOT_SLUG })
+    const about = await mkPage({ tenant: district.id, title: 'About', slug: 'about' })
+    await mkPage({ tenant: district.id, title: 'Staff', slug: 'staff', parent: about })
+    await mkPage({ tenant: district.id, title: 'Draft', slug: 'draft-only', _status: 'draft' })
+    await mkPage({
+      tenant: district.id,
+      title: 'Staff only',
+      slug: 'internal',
+      visibility: 'staff',
+    })
+
+    /**
+     * A page nested under the front page. It should never exist — `rootPageCannotBeParent`
+     * refuses it — so it is written through the DATABASE ADAPTER, under the hooks, to prove
+     * the RESOLVER is safe even when the data is not.
+     *
+     * `overrideAccess` would not do it: Payload runs hooks regardless, which is the point of
+     * putting the guard in one. Going under them is also the honest simulation, because a
+     * migration or a direct database write is exactly how this row could appear in production
+     * — validation and resolution are separate guarantees, and only one of them survives that.
+     */
+    const orphan = await mkPage({ tenant: district.id, title: 'Orphan', slug: 'orphan' })
+    await payload.db.updateOne({
+      collection: 'pages',
+      id: orphan,
+      data: { parent: home },
+    })
+  }, 120_000)
+
+  it('resolves the bare root path to the top-level home page', () => {
+    return expect(getPageByPath(ctx, '/')).resolves.toMatchObject({
+      slug: ROOT_SLUG,
+      path: '/',
+    })
+  })
+
+  it('reports the front page at "/" rather than at its slug', async () => {
+    // The path is what templates, canonicals and hreflang all read (`08` §5).
+    expect((await getPageByPath(ctx, '/'))?.path).toBe('/')
+  })
+
+  it('refuses /home, so the front page has exactly one URL', async () => {
+    /**
+     * Both URLs resolving would be duplicate content and two CDN cache entries for one page.
+     * Refusing rather than redirecting keeps the resolver a pure lookup; a redirect is a
+     * routing concern if DD2 ever wants one.
+     */
+    expect(await getPageByPath(ctx, '/home')).toBeNull()
+  })
+
+  it('does not resolve a page nested under the front page', async () => {
+    // Its path would be `/home/orphan`, and `/home` is refused. It has no reachable URL.
+    expect(await getPageByPath(ctx, '/home/orphan')).toBeNull()
+    expect(await getPageByPath(ctx, '/orphan')).toBeNull()
+  })
+
+  it('resolves a top-level page and a nested one', async () => {
+    expect((await getPageByPath(ctx, '/about'))?.slug).toBe('about')
+    expect((await getPageByPath(ctx, '/about/staff'))?.path).toBe('/about/staff')
+  })
+
+  it('never serves a near miss as a hit', async () => {
+    /**
+     * The failure this resolver exists to avoid. `staff` is real, but only under `about` — as
+     * a top-level path it must 404 rather than falling back to the child, and a path with a
+     * missing middle segment must not skip it.
+     */
+    expect(await getPageByPath(ctx, '/staff')).toBeNull()
+    expect(await getPageByPath(ctx, '/missing/staff')).toBeNull()
+    expect(await getPageByPath(ctx, '/about/staff/deeper')).toBeNull()
+  })
+
+  it('does not resolve drafts or staff-only pages', async () => {
+    // The public filter lives in this file, not in an access function — see `publishedAndPublic`.
+    expect(await getPageByPath(ctx, '/draft-only')).toBeNull()
+    expect(await getPageByPath(ctx, '/internal')).toBeNull()
+  })
+
+  it('does not resolve another tenant’s page', async () => {
+    const other = await getTenantByHostname('a.localhost')
+    if (!other) throw new Error('school-a missing from the seed')
+
+    expect(await getPageByPath({ tenant: other, locale: 'en' }, '/about')).toBeNull()
+  })
+
+  it('distinguishes "no path given" from the root path', async () => {
+    /**
+     * `/` and `''` are requests for the front page. `null` and `undefined` are nothing being
+     * asked for at all, and answering those with the front page would let a caller's missing
+     * argument look like a successful lookup.
+     */
+    expect((await getPageByPath(ctx, ''))?.slug).toBe(ROOT_SLUG)
+    expect(await getPageByPath(ctx, null)).toBeNull()
+    expect(await getPageByPath(ctx, undefined)).toBeNull()
+  })
+
+  describe('listPagePaths', () => {
+    it('lists the front page at "/" and never at its slug', async () => {
+      const paths = (await listPagePaths(ctx)).map((entry) => entry.path)
+
+      expect(paths).toContain('/')
+      expect(paths).not.toContain('/home')
+    })
+
+    it('skips a page nested under the front page', async () => {
+      /**
+       * Every path here becomes a static param, so a path this list emits and
+       * `getPageByPath` refuses would build a route that 404s at request time.
+       */
+      const paths = (await listPagePaths(ctx)).map((entry) => entry.path)
+
+      expect(paths).not.toContain('/home/orphan')
+      expect(paths).not.toContain('/orphan')
+    })
+
+    it('agrees with getPageByPath on every path it emits', async () => {
+      // The invariant that keeps the build and the resolver from disagreeing.
+      for (const { path } of await listPagePaths(ctx)) {
+        expect(await getPageByPath(ctx, path), `listPagePaths emitted ${path}`).not.toBeNull()
+      }
+    })
+
+    it('omits drafts and staff-only pages', async () => {
+      const paths = (await listPagePaths(ctx)).map((entry) => entry.path)
+
+      expect(paths).not.toContain('/draft-only')
+      expect(paths).not.toContain('/internal')
+    })
   })
 })

@@ -7,7 +7,11 @@ import {
   pagesUpdateAccess,
 } from '@/access/pages'
 import { districtOnlyField } from '@/access/tenant-scoped'
-import { deriveSlugFromTitle, uniqueSlugWithinParent } from '@/collections/hooks/page-slug'
+import {
+  deriveSlugFromTitle,
+  rootPageCannotBeParent,
+  uniqueSlugWithinParent,
+} from '@/collections/hooks/page-slug'
 import { composedPagesAreDistrictOnly, publishGate } from '@/collections/hooks/publish-gate'
 import { isReservedSlug, slugify } from '@/lib/slug'
 
@@ -69,8 +73,12 @@ export const Pages: CollectionConfig = {
   },
 
   hooks: {
-    // Order matters: derive the slug, then check the DERIVED value for collisions.
-    beforeValidate: [deriveSlugFromTitle, uniqueSlugWithinParent],
+    /**
+     * Order matters: derive the slug, then check the DERIVED value for collisions. The
+     * parent guard is independent of both and runs last, so a page with two problems reports
+     * the slug one first — the field the author was most likely editing.
+     */
+    beforeValidate: [deriveSlugFromTitle, uniqueSlugWithinParent, rootPageCannotBeParent],
     /**
      * The hook half of two release-blocking gates. The access functions above are the other
      * half; see src/collections/hooks/publish-gate.ts for why one layer is not enough.

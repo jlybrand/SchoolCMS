@@ -1,7 +1,7 @@
 import { ValidationError, type CollectionBeforeValidateHook } from 'payload'
 
 import { relationshipIdOf } from '@/access/predicates'
-import { slugify } from '@/lib/slug'
+import { ROOT_SLUG, slugify } from '@/lib/slug'
 
 /**
  * Slug derivation and sibling uniqueness for `pages`.
@@ -101,4 +101,55 @@ export const uniqueSlugWithinParent: CollectionBeforeValidateHook = async ({
   }
 
   return data
+}
+
+/**
+ * Refuses the tenant front page as a parent.
+ *
+ * `getPageByPath` resolves the root at `/` and refuses `/home`, so the front page has exactly
+ * one URL. A page nested under it would therefore have NONE: `listPagePaths` skips it and the
+ * resolver 404s it.
+ *
+ * So this is a usability guard as much as a correctness one. The resolver is already safe
+ * without it — the integration suite proves that with this hook bypassed — but a page that
+ * saves cleanly and then cannot be visited, with nothing on screen saying why, is the failure
+ * the "no training, no documentation" bar exists to rule out. The error arrives at the moment
+ * the author picks the parent.
+ *
+ * Only a TOP-LEVEL `home` is the front page. `/about/home` is an ordinary page and may have
+ * children.
+ */
+export const rootPageCannotBeParent: CollectionBeforeValidateHook = async ({
+  data,
+  originalDoc,
+  req,
+}) => {
+  const parent = relationshipIdOf((data?.parent ?? originalDoc?.parent) as never)
+  if (parent === null) return data
+
+  /**
+   * A parent that cannot be read is someone else's error — the relationship field owns it.
+   * Reporting it as a parent error here would point the author at the wrong problem.
+   */
+  const doc = (await req.payload.findByID({
+    collection: 'pages',
+    id: parent,
+    depth: 0,
+    overrideAccess: true,
+    disableErrors: true,
+  })) as { slug?: unknown; parent?: unknown } | null
+
+  if (!doc) return data
+  if (doc.slug !== ROOT_SLUG) return data
+  if (relationshipIdOf(doc.parent as never) !== null) return data
+
+  throw new ValidationError({
+    errors: [
+      {
+        path: 'parent',
+        message:
+          'The home page cannot have pages underneath it, because it lives at the top of the site. Leave the parent empty to put this page at the top level, or choose a different parent.',
+      },
+    ],
+  })
 }
