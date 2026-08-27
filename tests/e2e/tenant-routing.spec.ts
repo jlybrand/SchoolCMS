@@ -2,13 +2,20 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 
 /**
- * Tenant + locale delivery path (`02` §4.1, §5; `08` §5–6).
+ * Tenant + locale delivery path (`02` §4.1, §5; `03` §2; `08` §5–6).
  *
- * Proves the Phase 2 exit criteria that can be proven locally: a request resolves to the
- * right tenant by Host, locale routing works with correct `lang`/`dir`, and an unknown host
- * 404s rather than falling back to a default tenant.
+ * Proves that a request resolves to the right tenant by Host, that locale routing produces
+ * correct `lang`/`dir`/`hreflang`, that a path resolves to the tenant's own page, and that an
+ * unknown host or unknown path 404s rather than falling back to something.
  *
- * Fixtures come from `pnpm run seed` (`06` §4). Tenants are reached by their REAL
+ * WHAT THIS ASSERTS ON. The rendered page — its title, its heading, its `<head>` — not the
+ * `data-testid` diagnostics it used to read. Those existed because the Phase 2 route rendered
+ * no content and there was nothing else to look at. Now that it renders real pages, asserting
+ * the page is both the stronger gate and the one that keeps working as templates change: a
+ * testid can stay green while the page a visitor sees is wrong.
+ *
+ * Fixtures come from `pnpm run seed` (`06` §4), which gives every tenant a front page
+ * (`home`), an `about` page, and `staff` nested under it. Tenants are reached by their REAL
  * hostnames: `*.localhost` resolves to loopback per RFC 6761, so no `/etc/hosts` entry and
  * no DNS setup is needed — which is exactly why the local environment is specified that way.
  *
@@ -25,13 +32,25 @@ test.describe('tenant resolution by Host', () => {
 
   test('@smoke resolves the correct tenant', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByTestId('tenant-slug')).toHaveText('school-a')
-    await expect(page.getByTestId('tenant-type')).toHaveText('school')
+    // The front page is titled with the site's name — see `generateMetadata`. Every tenant's
+    // front page ROW is called "Home", so the title is what distinguishes one site's front
+    // page from another's.
+    await expect(page).toHaveTitle('School A')
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Home')
+  })
+
+  test('@smoke renders the page body, not an empty shell', async ({ page }) => {
+    await page.goto('/')
+    // Proves the whole chain: Lexical in the database -> `toRichText` -> `RichText`. A route
+    // that resolved the page but dropped its body would otherwise pass every other test here.
+    await expect(page.getByText('Welcome. This is the seeded front page')).toBeVisible()
+    // The author's "top-level heading" renders as h2, one step under the page title, because
+    // the template owns the h1 (`07` §3). An editor cannot reach the element.
+    await expect(page.getByRole('heading', { level: 2 })).toHaveText('What is on this site')
   })
 
   test('@smoke defaults to the source locale on an unprefixed path', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByTestId('locale')).toHaveText('en')
     await expect(page.locator('html')).toHaveAttribute('lang', 'en')
     await expect(page.locator('html')).toHaveAttribute('dir', 'ltr')
   })
@@ -44,11 +63,45 @@ test.describe('a second tenant is served its own content', () => {
     /**
      * THE REASON THE REWRITE EXISTS. Next caches by pathname, not by Host. Without folding
      * the hostname into the cache key, 28 tenants would share one entry per path and this
-     * assertion would return school-a — a tenant leak occurring in the CDN, where no access
+     * assertion would return School A — a tenant leak occurring in the CDN, where no access
      * function could ever catch it.
      */
     await page.goto('/')
-    await expect(page.getByTestId('tenant-slug')).toHaveText('school-b')
+    await expect(page).toHaveTitle('School B')
+  })
+})
+
+test.describe('page resolution', () => {
+  test.use(site('a.localhost'))
+
+  test('@smoke resolves a nested page through its parent chain', async ({ page }) => {
+    /**
+     * `/about/staff` is walked segment by segment rather than read from a stored path
+     * (`03` §2). It also proves `about` is read as a path segment and not mistaken for a
+     * locale prefix.
+     */
+    await page.goto('/about/staff')
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Staff Directory')
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+  })
+
+  test('@smoke an unknown path 404s rather than falling back to the front page', async ({
+    page,
+  }) => {
+    // Serving the front page for a mistyped URL would put content under an address the
+    // editor never published, and it would be cached there (`02` §5).
+    const response = await page.goto('/athletics')
+    expect(response?.status()).toBe(404)
+  })
+
+  test('@smoke the front page has exactly one URL', async ({ page }) => {
+    /**
+     * `/home` is REFUSED, not redirected. The front page is a top-level page slugged `home`,
+     * and answering on both `/` and `/home` would give one page two URLs competing for one
+     * CDN cache entry, and two candidates for the canonical.
+     */
+    const response = await page.goto('/home')
+    expect(response?.status()).toBe(404)
   })
 })
 
@@ -56,10 +109,11 @@ test.describe('locale routing', () => {
   test.use(site('a.localhost'))
 
   test('@smoke serves a Tier 1 locale under its path prefix', async ({ page }) => {
-    await page.goto('/es/athletics')
-    await expect(page.getByTestId('locale')).toHaveText('es')
-    await expect(page.getByTestId('path')).toHaveText('/athletics')
+    await page.goto('/es/about')
     await expect(page.locator('html')).toHaveAttribute('lang', 'es')
+    // Untranslated until the render-layer pipeline lands (Phase 7, `08` §4) — the locale
+    // routing is what is under test here, not the translation.
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('About Our School')
   })
 
   test('@smoke @rtl sets dir="rtl" for Arabic', async ({ page }) => {
@@ -69,10 +123,26 @@ test.describe('locale routing', () => {
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl')
   })
 
-  test('@smoke treats an unknown prefix as a path, not a locale', async ({ page }) => {
-    await page.goto('/staff/directory')
-    await expect(page.getByTestId('locale')).toHaveText('en')
-    await expect(page.getByTestId('path')).toHaveText('/staff/directory')
+  test('@smoke emits an hreflang alternate for every enabled locale', async ({ page }) => {
+    /**
+     * `08` §5 — every locale plus `x-default`, built from the page's RESOLVED path so the
+     * alternates point at this page in another language rather than at whatever was typed.
+     */
+    await page.goto('/about')
+
+    for (const [hrefLang, href] of [
+      ['en', '/about'],
+      ['es', '/es/about'],
+      ['zh-Hans', '/zh-Hans/about'],
+      ['ko', '/ko/about'],
+      ['pt', '/pt/about'],
+      ['ar', '/ar/about'],
+      ['x-default', '/about'],
+    ]) {
+      await expect(
+        page.locator(`head link[rel="alternate"][hreflang="${hrefLang}"]`),
+      ).toHaveAttribute('href', new RegExp(`${href}$`))
+    }
   })
 
   test('@smoke language switcher lists each language in its own script', async ({ page }) => {
