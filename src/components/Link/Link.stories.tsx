@@ -37,3 +37,26 @@ export const InRunningText: Story = {
     </p>
   ),
 }
+
+/**
+ * The button variant — a page's primary action (`CallToAction`). Still an `<a>`: it
+ * navigates, so it announces itself as a link and works before hydration.
+ *
+ * This is the one place the underline comes off, and the axe gate is what holds the trade
+ * honest — the filled brand pair is contrast-checked in both themes and both directions.
+ */
+export const AsAButton: Story = {
+  args: { href: '/enroll', children: 'Start enrollment', variant: 'button' },
+}
+
+/**
+ * A translated label runs half again as long. It must wrap inside the affordance rather than
+ * clip, which is why the variant is `inline-block` rather than a fixed-height pill (`08` §6).
+ */
+export const ButtonWithALongLabel: Story = {
+  args: {
+    href: '/enroll',
+    children: 'Anmeldung für das kommende Schuljahr beginnen',
+    variant: 'button',
+  },
+}

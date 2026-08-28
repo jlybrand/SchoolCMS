@@ -24,6 +24,8 @@ import styles from './Link.module.css'
 
 const ABSOLUTE_HTTP = /^https?:\/\//i
 
+export type LinkVariant = 'inline' | 'button'
+
 export type LinkProps = {
   readonly href: string
   readonly children: ReactNode
@@ -46,6 +48,20 @@ export type LinkProps = {
   readonly lang?: string
   /** The language of the destination document. A UA and search-engine hint (`08` §5). */
   readonly hrefLang?: string
+  /**
+   * How the link presents. `inline` is a link in running text; `button` is a filled
+   * affordance for a page's primary action (`CallToAction`).
+   *
+   * A VARIANT RATHER THAN A `className` PROP, deliberately. `className` would let any caller
+   * remove the underline this component exists to guarantee, and the removal would be
+   * invisible at the call site — a class name says nothing about what it overrides. A closed
+   * set keeps every presentation a decision made here, where the reasoning for dropping the
+   * underline can sit next to the rule that normally requires it.
+   *
+   * It is still an `<a>` in both cases: a button-shaped link navigates, so it must announce
+   * itself as a link, work on middle-click, and work before hydration.
+   */
+  readonly variant?: LinkVariant
 }
 
 export const Link = ({
@@ -55,9 +71,10 @@ export const Link = ({
   newWindowLabel = 'opens in a new window',
   lang,
   hrefLang,
+  variant = 'inline',
 }: LinkProps) => (
   <a
-    className={styles.link}
+    className={variant === 'button' ? styles.button : styles.link}
     href={href}
     lang={lang}
     hrefLang={hrefLang}

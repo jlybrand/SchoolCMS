@@ -9,3 +9,30 @@
   text-decoration: underline;
   text-underline-offset: 0.15em;
 }
+
+/*
+ * The button variant. Logical properties only (CLAUDE.md rule 5) — the inline padding
+ * follows the writing direction, so the affordance mirrors for Arabic with no RTL rules.
+ *
+ * THIS IS THE ONE PLACE THE UNDERLINE COMES OFF, and only because the cue it provides is
+ * replaced rather than dropped: a filled block of brand colour with its own border radius
+ * and padding does not read as body text, so 1.4.1's "not by colour alone" is satisfied by
+ * shape. The pair is validated at token level, so a per-tenant brand palette cannot ship a
+ * combination that fails AA (`07` §3).
+ *
+ * `inline-block`, not a fixed-height pill: a translated label runs half again as long in
+ * German or Arabic, and it has to wrap rather than clip (`08` §6).
+ */
+.button {
+  background-color: var(--color-brand);
+  border-radius: var(--radius);
+  color: var(--color-brand-contrast);
+  display: inline-block;
+  padding-block: var(--space-sm);
+  padding-inline: var(--space-lg);
+  text-decoration: none;
+}
+
+.button:hover {
+  background-color: var(--color-text);
+}
