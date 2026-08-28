@@ -163,7 +163,7 @@ before the collection it reads. 16 blocks; 8 have no unmet dependency.
 | `CallToAction` | Heading, short text, one link styled as a button                                                                                                 |
 | `Accordion`    | Array of heading + rich text; the block owns the heading level                                                                                   |
 | `CardGrid`     | Cards of title, blurb, link. Text-only until `media` lands                                                                                       |
-| `ChildPageNav` | Auto-lists children of the current page via `pages.parent`. Covers Finalsite's Navigation _element_ — distinct from the `navigation` global (§5). **The first block that reads data it is not given** — see §3.3 |
+| `ChildPageNav` | Auto-lists children of the current page via `pages.parent`. Covers Finalsite's Navigation _element_ — distinct from the `navigation` global (§5). Stores only an optional heading: the list is `Page.children`, resolved by the content layer and threaded through `BlockList` (§3.2) |
 | `Embed`        | Domain-allowlisted iframe (`02` §7, `07` §6). Required `title`. Carries YouTube video (§3.4)                                                     |
 | `Divider`      | Decorative separator, `aria-hidden`                                                                                                              |
 
@@ -209,6 +209,34 @@ Every block ships with:
   support for Arabic depends on this from the first block (`08` §6).
 - A Storybook entry and an axe test in the same PR (`06`).
 
+**A block never fetches. Decided 2026-08-28.** `src/blocks/` may not import the Payload SDK
+(rule 1), so a block renders its own row plus whatever the template threads down — today
+`baseLevel` and, for `ChildPageNav`, the page's children.
+
+`Page.children` sits on the **page**, beside `path` and `parentId`, because a page's position
+in its own tree is a fact about the page rather than about any block that displays it —
+breadcrumbs and a section menu want the same data. The content layer resolves it (one query in
+`getPageByPath`; grouped in memory from the query `listPagePaths` already runs, so the
+28-tenant build pays nothing). Only children with a **reachable URL** appear: drafts,
+staff-only pages, and the front page's children are absent, because a menu entry that 404s is
+worse than a missing one and would be cached (`02` §5).
+
+Two consequences worth stating, since neither is obvious from the code:
+
+- `ChildPageNav` is the **only** block whose emptiness the mapper cannot judge — its content is
+  not in its own row — so the renderer drops it, and `BlockList` filters it before `Stack` can
+  give a null block a gap on both sides. Everywhere else, emptiness is a mapper decision.
+- It is the first **cross-document dependency in the render**: publishing a child changes the
+  parent's page. The parent emits only its own `documentTag`, so whoever wires the revalidation
+  hooks (`09` §4.2) has to purge the parent too.
+
+This does **not** generalise to `FeedBlock`, `StaffList`, `DocumentList` or `Gallery`. Those
+render an editor-**configured** query — a genuinely different problem, decided in Phase 5 when
+the first of them is real rather than guessed at from the one block that did not need it. The
+shape then most likely to fit is a resolve pass between the mapper and the renderer, keeping
+`toPageBlocks` a pure function over JSON so the Phase 9 migration mappers can still run it with
+no CMS (`10` §5).
+
 ### 3.3 Open — require a decision before building
 
 | Item                                                     | State                                                                                                                                                                                                                                                                                                                                                                                                                                          |
@@ -217,7 +245,7 @@ Every block ships with:
 | **`Tabs`**                                               | Same nesting cost, plus content hidden from in-page search, print, and site search. Leaning no                                                                                                                                                                                                                                                                                                                                                 |
 | **`SocialFeed`** (Facebook, Instagram)                   | In scope by `01` §5 — embeds _in_ are permitted. But `07` §6 makes third-party embeds DD2's accessibility obligation, and these widgets conform poorly and change without notice. Separately, they load third-party tracking onto pages visited by minors — **a district policy question, not a feature decision**. Low-cost alternative: a link-out card rather than a live feed. YouTube is unaffected; it goes through `Embed`              |
 | **`Container`** | Listed in Batch 1 on 2026-08-28 and **withdrawn the same day**: a section wrapper's whole purpose is to contain other blocks, and blocks do not nest (§3.2). Without nesting it is a styling field wearing a block's clothes, which §3.2 also rules out. It belongs with the column layouts above — resolve those first, and `Container` either follows or stays unnecessary |
-| **How a data-backed block gets its data** | `src/blocks/` may not import the Payload SDK (rule 1), so a block cannot fetch for itself, and every block built so far renders only what its own row holds. `ChildPageNav` is the first that does not — it needs the current page's children — and `FeedBlock`, `StaffList`, `DocumentList` and `Gallery` all follow it. Either resolve the data in `src/content/pages.ts` during mapping (block mapping becomes async and the mapper couples to page context), or resolve it in the template and thread it through `BlockList` as props. **Decide before building `ChildPageNav`** — four later blocks inherit the shape |
+| **Manual ordering for `ChildPageNav`** | The menu is alphabetical by title, which is the only deterministic order available — `pages` has no ordering field. Adding one is an authoring-model decision (a `sort` field every editor then has to maintain, and a second place the site's structure is expressed) rather than a block decision. Leave it until a real section reads wrong alphabetically |
 | **`SharedBlock`**                                        | A genuine gap. Finalsite's shared elements have no equivalent — COPE syndication (`02` §6) covers `posts`, `events`, and `alerts`, not arbitrary page sections. Needs a snippets collection plus a decision on whether editing a shared element re-triggers approval on every page referencing it. Not first batch                                                                                                                             |
 
 ### 3.4 Not building — recorded so it is not re-proposed

@@ -1,11 +1,12 @@
 import { BLOCK_HEADING_LEVEL, clampHeadingLevel } from '@/components/Heading'
 import type { HeadingLevel } from '@/components/Heading'
 import { Stack } from '@/components/Stack'
-import type { PageBlock } from '@/content/types'
+import type { PageBlock, PageLink } from '@/content/types'
 
 import { Accordion } from './Accordion'
 import { CallToAction } from './CallToAction'
 import { CardGrid } from './CardGrid'
+import { ChildPageNav } from './ChildPageNav'
 import { Divider } from './Divider'
 import { RichTextBlock } from './RichTextBlock'
 
@@ -38,6 +39,20 @@ import { RichTextBlock } from './RichTextBlock'
 export type BlockListProps = {
   readonly blocks: readonly PageBlock[]
   /**
+   * The current page's children, for `ChildPageNav` (`03` §3.3, decided 2026-08-28).
+   *
+   * REQUIRED, AND NOT DEFAULTED TO EMPTY. A default would let a template that forgot it render
+   * a section menu as nothing — present in the admin, blank on the published page — which is
+   * the silent failure the exhaustive switch below exists to prevent. Making it required moves
+   * that back to a compile error. Most layouts pass `[]` and that is fine; passing it is the
+   * point.
+   *
+   * Note what this is NOT: a general data bag for blocks. It is one field of the page being
+   * rendered, forwarded. Blocks whose data is an editor-configured query (`FeedBlock`,
+   * `StaffList`, `DocumentList`, `Gallery`) are a Phase 5 decision, not more entries here.
+   */
+  readonly childPages: readonly PageLink[]
+  /**
    * The level a block's own heading becomes. Defaults to one below the page title.
    *
    * A prop for the same reason `RichText` has one: a layout rendered inside a named region is
@@ -50,9 +65,11 @@ export type BlockListProps = {
 const Block = ({
   block,
   baseLevel,
+  childPages,
 }: {
   readonly block: PageBlock
   readonly baseLevel: HeadingLevel
+  readonly childPages: readonly PageLink[]
 }) => {
   switch (block.kind) {
     case 'richText':
@@ -63,6 +80,9 @@ const Block = ({
       return <Accordion baseLevel={baseLevel} block={block} />
     case 'cardGrid':
       return <CardGrid baseLevel={baseLevel} block={block} />
+    case 'childPageNav':
+      // The only block handed anything beyond its own row — see `BlockListProps.childPages`.
+      return <ChildPageNav baseLevel={baseLevel} block={block} pages={childPages} />
     case 'divider':
       // No heading, so no level to thread — see `Divider`.
       return <Divider />
@@ -77,7 +97,11 @@ const Block = ({
   }
 }
 
-export const BlockList = ({ blocks, baseLevel = BLOCK_HEADING_LEVEL }: BlockListProps) => {
+export const BlockList = ({
+  blocks,
+  childPages,
+  baseLevel = BLOCK_HEADING_LEVEL,
+}: BlockListProps) => {
   /**
    * FLOORED AT `h2`, here and not in each block. `Heading` clamps to the 1-6 range but does
    * not refuse `h1` — it cannot, since the page title legitimately needs one. So a caller
@@ -90,16 +114,28 @@ export const BlockList = ({ blocks, baseLevel = BLOCK_HEADING_LEVEL }: BlockList
   const resolved = clampHeadingLevel(Math.max(BLOCK_HEADING_LEVEL, baseLevel))
 
   /**
-   * A composed page with no blocks renders nothing rather than an empty `Stack`, which would
-   * still contribute a gap to the page above whatever follows it. The mapper already dropped
-   * the blocks that would have rendered empty, so this is reachable in normal use.
+   * `ChildPageNav` is the one block the mapper cannot drop for being empty — its content is
+   * the page's children rather than its own row, so emptiness is not knowable until here
+   * (`src/content/blocks.ts`). It renders null in that case, and a null inside `Stack` is
+   * still a flex item: it would take a gap on both sides and put a hole in the page.
+   *
+   * So the filter is about SPACING and belongs to the thing that owns spacing. The component
+   * keeps its own guard for the same case, because it is exported and can be rendered
+   * directly — the two answer different questions.
    */
-  if (blocks.length === 0) return null
+  const visible = blocks.filter((block) => block.kind !== 'childPageNav' || childPages.length > 0)
+
+  /**
+   * A composed page with nothing to show renders nothing rather than an empty `Stack`, which
+   * would still contribute a gap to the page above whatever follows it. The mapper already
+   * dropped the blocks that would have rendered empty, so this is reachable in normal use.
+   */
+  if (visible.length === 0) return null
 
   return (
     <Stack space="xl">
-      {blocks.map((block) => (
-        <Block baseLevel={resolved} block={block} key={block.id} />
+      {visible.map((block) => (
+        <Block baseLevel={resolved} block={block} childPages={childPages} key={block.id} />
       ))}
     </Stack>
   )

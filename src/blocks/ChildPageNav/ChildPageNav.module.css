@@ -1,0 +1,18 @@
+/**
+ * Logical properties only (CLAUDE.md rule 5). Nothing here has a side: the list flows in the
+ * block direction and the gutter it drops is `padding-inline-start`, so RTL needs no rule.
+ */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  /*
+   * Bullets off. The affordance that lets a screen-reader user skip this menu is the `<nav>`
+   * landmark, not the list — which is why an unstyled list is not load-bearing here the way it
+   * is in `CardGrid`, where there is no landmark to skip to.
+   */
+  list-style: none;
+  margin-block-start: var(--space-sm);
+  padding-inline-start: 0;
+}

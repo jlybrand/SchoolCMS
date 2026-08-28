@@ -251,7 +251,8 @@ export interface Page {
   /**
    * The sections of this page, top to bottom. Drag to reorder.
    */
-  layout?: (RichTextBlock | AccordionBlock | CardGridBlock | CallToActionBlock | DividerBlock)[] | null;
+  layout?:
+    (RichTextBlock | AccordionBlock | CardGridBlock | CallToActionBlock | ChildPageNavBlock | DividerBlock)[] | null;
   /**
    * Hold translations of this page until a person has checked them.
    */
@@ -369,6 +370,19 @@ export interface CallToActionBlock {
   id?: string | null;
   blockName?: string | null;
   blockType: 'callToAction';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ChildPageNavBlock".
+ */
+export interface ChildPageNavBlock {
+  /**
+   * Optional. A title for the menu, like "In this section" — it also names the menu for screen readers. The menu itself lists every page saved underneath this one, in alphabetical order, and keeps itself up to date.
+   */
+  heading?: string | null;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'childPageNav';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -526,6 +540,7 @@ export interface PagesSelect<T extends boolean = true> {
         accordion?: T | AccordionBlockSelect<T>;
         cardGrid?: T | CardGridBlockSelect<T>;
         callToAction?: T | CallToActionBlockSelect<T>;
+        childPageNav?: T | ChildPageNavBlockSelect<T>;
         divider?: T | DividerBlockSelect<T>;
       };
   requiresTranslationReview?: T;
@@ -585,6 +600,15 @@ export interface CallToActionBlockSelect<T extends boolean = true> {
   href?: T;
   linkLabel?: T;
   newTab?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ChildPageNavBlock_select".
+ */
+export interface ChildPageNavBlockSelect<T extends boolean = true> {
+  heading?: T;
   id?: T;
   blockName?: T;
 }

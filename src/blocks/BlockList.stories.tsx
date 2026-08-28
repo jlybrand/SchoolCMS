@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 
-import type { PageBlock } from '@/content/types'
+import type { PageBlock, PageLink } from '@/content/types'
 
 import { BlockList } from './BlockList'
 
@@ -76,7 +76,7 @@ const OUTRO: PageBlock = {
 }
 
 export const ComposedPage: Story = {
-  args: { blocks: [INTRO, ACTION, OUTRO] },
+  args: { blocks: [INTRO, ACTION, OUTRO], childPages: [] },
 }
 
 /**
@@ -86,10 +86,35 @@ export const ComposedPage: Story = {
  * structural property rather than a review checklist item.
  */
 export const Reordered: Story = {
-  args: { blocks: [ACTION, OUTRO, INTRO] },
+  args: { blocks: [ACTION, OUTRO, INTRO], childPages: [] },
 }
 
 /** A layout rendered inside an already-named region starts a step deeper. */
 export const NestedInASection: Story = {
-  args: { blocks: [INTRO, ACTION], baseLevel: 3 },
+  args: { blocks: [INTRO, ACTION], baseLevel: 3, childPages: [] },
+}
+
+const SECTION_MENU: PageBlock = { kind: 'childPageNav', id: 'section', heading: null }
+
+const CHILDREN: PageLink[] = [
+  { id: '1', title: 'Bell schedule', path: '/about/bell-schedule' },
+  { id: '2', title: 'Staff directory', path: '/about/staff-directory' },
+]
+
+/**
+ * The section menu in a real layout. It is the one block rendered from something other than
+ * its own row — `childPages` is the page's own children, resolved by `src/content/pages.ts`
+ * and threaded through here (`03` §3.3).
+ */
+export const WithASectionMenu: Story = {
+  args: { blocks: [INTRO, SECTION_MENU, OUTRO], childPages: CHILDREN },
+}
+
+/**
+ * The same layout on a page that has no children beneath it. The menu is absent rather than
+ * empty, and — the part worth an axe run — the blocks around it keep their spacing, because
+ * `BlockList` drops it before `Stack` can give a null block a gap on both sides.
+ */
+export const SectionMenuOnALeafPage: Story = {
+  args: { blocks: [INTRO, SECTION_MENU, OUTRO], childPages: [] },
 }

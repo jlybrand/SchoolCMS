@@ -11,7 +11,7 @@ Phase 3 lands across several PRs. This document is written as each one merges.
 | Paste normalizer                           | Landed early (PR #6); not yet wired to an editor — see §8 |
 | `pages` collection (schema, access, gates) | **Landed** — §9–§12 below                                 |
 | Page templates and rendering               | Not started                                               |
-| Block library                              | Not started                                               |
+| Block library                              | **Batch 1 all but `Embed`** — §17, §18, §19               |
 | Constrained rich text (Lexical)            | Not started                                               |
 | Navigation global, SEO, sitemap            | Not started                                               |
 
@@ -748,3 +748,113 @@ it is a styling field wearing a block's clothes, which `03` §3.2 also rules out
 `pnpm test:e2e` boots a **production** server, which does not push schema. After a block is
 added, run `pnpm run seed` (or a dev server) first, or the suite dies with `42P01` on the new
 tables. That is CI's ordering too — build, seed, e2e.
+
+---
+
+## 19. `ChildPageNav` — the section menu, and how a block gets page context
+
+The sixth Batch 1 block, and the first that renders something it was not stored with. It holds
+one optional heading; the list of pages is the current page's children.
+
+### Added
+
+| File                       | Holds                                     |
+| -------------------------- | ----------------------------------------- |
+| `src/blocks/ChildPageNav/` | A `<nav>` of links to the page's children |
+
+### Changed
+
+| File                              | Change                                                                     |
+| --------------------------------- | -------------------------------------------------------------------------- |
+| `src/content/types.ts`            | `PageLink`; `Page.children`; `ChildPageNavBlock`                           |
+| `src/content/pages.ts`            | `childrenOf` query in `getPageByPath`; children grouped in `listPagePaths` |
+| `src/content/blocks.ts`           | `toChildPageNav`                                                           |
+| `src/collections/blocks/index.ts` | `childPageNavBlock`                                                        |
+| `src/blocks/BlockList.tsx`        | Required `childPages` prop; the `case`; the empty-menu filter              |
+| `.../[[...segments]]/page.tsx`    | Passes `page.children`                                                     |
+| `src/payload-types.ts`            | Regenerated                                                                |
+| `starterDocs/03-...md`            | §3.2 gains the page-context rule; §3.3's data-shape item resolved          |
+
+### The data path
+
+```
+getPageByPath      -> resolves the page, then ONE query for its published, public children
+listPagePaths      -> groups children in memory from the tenant-wide query it already runs
+  toDomain(doc, path, children)  ->  Page.children: PageLink[]
+    route          ->  <BlockList blocks={page.layout} childPages={page.children} />
+      BlockList    ->  <ChildPageNav pages={childPages} />
+```
+
+`src/blocks/` may not import the Payload SDK (rule 1), so the block cannot fetch. The children
+ride on the **page** — beside `path` and `parentId` — rather than on the block, because a
+page's position in its own tree is a fact about the page. `toPageBlocks` therefore stays a pure
+function over JSON, which is what lets the Phase 9 migration mappers run it with no CMS
+(`10` §5).
+
+`listPagePaths` maps every published page in the tenant (`limit: 5000`), so a per-page child
+query there would be an N+1 across 28 tenant builds. It already holds every row and every
+resolved path, so grouping is free. A test asserts the two paths return the same children for
+the same page — the build and the resolver must not disagree.
+
+### Only children with a reachable URL
+
+The same `publishedAndPublic` filter the page itself passed, plus one case that is easy to
+miss: **the front page has no children.** A page under `home` would have the path
+`/home/<slug>`, which `getPageByPath` refuses so the front page has exactly one URL — so it has
+no URL at all, and `listPagePaths` already skips it. `rootPageCannotBeParent` refuses the shape
+on write; this is the resolution half of the same guarantee, and only one of the two survives a
+migration or a direct database write.
+
+A draft or staff-only child would leak its title and URL into a public menu and 404 when
+clicked (`03` §6.4).
+
+### Two places decide emptiness, and they answer different questions
+
+`ChildPageNav` is the only block whose emptiness the mapper cannot judge — its content is not
+in its own row. So:
+
+- **`ChildPageNav`** returns null when handed no pages. That is the component's contract; it is
+  exported and can be rendered directly.
+- **`BlockList`** filters it out _before_ mapping, because a null inside `Stack` is still a flex
+  item and would take a gap on both sides — a hole in the page. Spacing belongs to the thing
+  that owns spacing.
+
+### `childPages` is required, not defaulted
+
+A default of `[]` would let a template that forgot the prop render a section menu as nothing —
+in the admin, in the database, blank on the published page. That is exactly the silent failure
+`BlockList`'s exhaustive `switch` exists to prevent, so it is a compile error instead. Layouts
+with no menu pass `[]`; passing it is the point.
+
+### Ordering, and what is deliberately absent
+
+Alphabetical by title, sorted **in memory** with an explicit `'en'` locale so the querying path
+and the grouping path cannot order the same children differently. `pages` has no ordering
+field, and adding one is an authoring-model decision — recorded as open in `03` §3.3.
+
+No depth field either: one level. Both are decisions the platform makes so a school manager
+does not have to.
+
+### Accessibility
+
+A `<nav>` landmark, named — by its own heading via `aria-labelledby` when it has one, so the
+announced name and the visible words cannot drift; otherwise `aria-label="In this section"`.
+The page template already renders a language `<nav>`, and two unnamed landmarks of the same
+role are worse than one.
+
+The child titles are **links, never headings**. Nine of them would otherwise put nine entries
+in the page outline and bury the page's real structure.
+
+### The cross-document dependency
+
+This is the first block whose output depends on a document other than the one being rendered:
+publishing a child changes the parent's page. The parent emits only `documentTag('pages', <own
+id>)`, so purging on a child publish is not covered. The revalidation hooks are not wired yet
+(the route emits `data-cache-tag` and nothing consumes it) — this is a note for whoever wires
+them (`09` §4.2).
+
+### Not a general mechanism
+
+`FeedBlock`, `StaffList`, `DocumentList` and `Gallery` render an editor-**configured** query,
+which is a different problem. `03` §3.2 records why they do not inherit this shape and what is
+likely to fit them instead, decided in Phase 5.

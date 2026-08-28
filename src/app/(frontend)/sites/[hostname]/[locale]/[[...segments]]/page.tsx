@@ -135,7 +135,7 @@ export default async function SitePage({ params }: { params: Promise<Params> }) 
             deferred add-on (`01` §4.1), it is an access-predicate change and nothing here
             moves (`03` §2).
           */}
-          <BlockList blocks={page.layout} />
+          <BlockList blocks={page.layout} childPages={page.children} />
 
           <nav aria-label="Language">
             {/*

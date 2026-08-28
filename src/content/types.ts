@@ -61,6 +61,20 @@ export const FIXED_PAGE_TYPES: readonly PageType[] = [
 ] as const
 
 /**
+ * A page as another page refers to it: enough to render a link, and nothing else.
+ *
+ * The only structured internal link in the rendering layer — everything else an editor links
+ * to is a string they typed. That makes this the single place locale-prefixed internal linking
+ * lands in Phase 7 (`08` §5); today `path` is the unprefixed path, as `Page.path` is.
+ */
+export type PageLink = {
+  id: string
+  title: string
+  /** Full path from the site root. Always one a resolver will actually serve — see below. */
+  path: string
+}
+
+/**
  * A page as the rendering layer sees it.
  *
  * SCOPE: identity, hierarchy, type, visibility, body prose, and — for `composed` pages —
@@ -88,6 +102,23 @@ export type Page = {
    * not ask for one.
    */
   layout: PageBlock[]
+  /**
+   * The pages directly beneath this one, in title order (`03` §3.3, decided 2026-08-28).
+   *
+   * ON THE PAGE, NOT ON THE BLOCK THAT RENDERS IT. `ChildPageNav` needs this, and
+   * `src/blocks/` may not import the Payload SDK (CLAUDE.md rule 1) — so rather than teach a
+   * block to fetch, the page carries its own position in the tree, the way it already carries
+   * its `path` and `parentId`. Breadcrumbs and a section menu want the same data.
+   *
+   * ONLY CHILDREN WITH A REACHABLE URL. Drafts, staff-only pages, and the front page's
+   * children (whose paths would start `/home/`, which the resolver refuses) are all absent. A
+   * menu entry that 404s is worse than a missing one, and it would be cached (`02` §5).
+   *
+   * Note what this is NOT: a general mechanism for blocks that need data. `FeedBlock`,
+   * `StaffList`, `DocumentList` and `Gallery` render an editor-CONFIGURED query — a different
+   * problem, decided in Phase 5 when the first of them is real (`03` §3.3).
+   */
+  children: readonly PageLink[]
 }
 
 /**
@@ -195,8 +226,30 @@ export type DividerBlock = BlockBase & {
   kind: 'divider'
 }
 
+/**
+ * A menu of the pages beneath this one (`03` §3.1).
+ *
+ * IT HAS NO LIST FIELD, AND MUST NOT GAIN ONE. The pages come from `Page.children` and are
+ * threaded through `BlockList` as a prop; putting them here would mean the mapper in
+ * `src/content/blocks.ts` needed page context and could no longer be a pure function over
+ * JSON — which is what lets the Phase 9 migration mappers reuse it offline (`10` §5).
+ *
+ * It also has no ordering or depth field. The order is the resolver's (by title) and the depth
+ * is one level, so there is no choice for an editor to get wrong and no way to author a menu
+ * that disagrees with the site's actual structure.
+ */
+export type ChildPageNavBlock = BlockBase & {
+  kind: 'childPageNav'
+  heading: string | null
+}
+
 export type PageBlock =
-  RichTextPageBlock | CallToActionBlock | AccordionBlock | CardGridBlock | DividerBlock
+  | RichTextPageBlock
+  | CallToActionBlock
+  | AccordionBlock
+  | CardGridBlock
+  | ChildPageNavBlock
+  | DividerBlock
 
 /**
  * RICH TEXT (`07` §4.4).
