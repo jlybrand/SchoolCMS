@@ -249,12 +249,72 @@ export interface Page {
    */
   publishAt?: string | null;
   /**
+   * The sections of this page, top to bottom. Drag to reorder.
+   */
+  layout?: (RichTextBlock | CallToActionBlock)[] | null;
+  /**
    * Hold translations of this page until a person has checked them.
    */
   requiresTranslationReview?: boolean | null;
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "RichTextBlock".
+ */
+export interface RichTextBlock {
+  /**
+   * Paragraphs, headings and lists.
+   */
+  content: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  };
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'richText';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "CallToActionBlock".
+ */
+export interface CallToActionBlock {
+  /**
+   * What this is asking the reader to do.
+   */
+  heading: string;
+  /**
+   * Optional. One or two sentences of context.
+   */
+  text?: string | null;
+  /**
+   * A path on this site, like /enroll, or a full web address.
+   */
+  href: string;
+  /**
+   * What the button says. Describe the destination — "Start enrollment", never "Click here" (WCAG 2.4.4).
+   */
+  linkLabel: string;
+  /**
+   * The button says so out loud when this is on, so people using a screen reader are not moved without warning.
+   */
+  newTab?: boolean | null;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'callToAction';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -396,10 +456,38 @@ export interface PagesSelect<T extends boolean = true> {
   parent?: T;
   visibility?: T;
   publishAt?: T;
+  layout?:
+    | T
+    | {
+        richText?: T | RichTextBlockSelect<T>;
+        callToAction?: T | CallToActionBlockSelect<T>;
+      };
   requiresTranslationReview?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "RichTextBlock_select".
+ */
+export interface RichTextBlockSelect<T extends boolean = true> {
+  content?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "CallToActionBlock_select".
+ */
+export interface CallToActionBlockSelect<T extends boolean = true> {
+  heading?: T;
+  text?: T;
+  href?: T;
+  linkLabel?: T;
+  newTab?: T;
+  id?: T;
+  blockName?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
