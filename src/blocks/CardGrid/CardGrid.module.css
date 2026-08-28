@@ -1,0 +1,34 @@
+/**
+ * Logical properties only (CLAUDE.md rule 5). Grid handles the direction itself: in an RTL
+ * context the columns fill from the inline-start edge without a single rule changing.
+ */
+
+.grid {
+  display: grid;
+  gap: var(--space-lg);
+  /*
+   * Intrinsic rather than a fixed column count. `auto-fit` + `minmax` means the same block
+   * holds two cards or seven without an editor choosing a column count — which is one fewer
+   * layout decision on a page-builder that deliberately offers none (`03` §3).
+   *
+   * No media query: the grid reflows on available space, so it is already correct at 320px
+   * and at 400% zoom, which is where 1.4.10 reflow is actually tested.
+   */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  /* The list semantics stay; only the bullets go. */
+  list-style: none;
+  margin-block-start: var(--space-md);
+  padding-inline-start: 0;
+}
+
+.card {
+  background-color: var(--color-surface-raised);
+  border-radius: var(--radius);
+  padding-block: var(--space-md);
+  padding-inline: var(--space-md);
+}
+
+.text {
+  color: var(--color-text-muted);
+  margin-block-start: var(--space-xs);
+}

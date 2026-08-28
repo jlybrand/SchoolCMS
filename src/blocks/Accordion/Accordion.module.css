@@ -1,0 +1,46 @@
+/**
+ * Logical properties only (CLAUDE.md rule 5). The disclosure marker is positioned by the
+ * browser and follows the writing direction on its own; nothing here names a physical side.
+ */
+
+.items {
+  border-block-start: 1px solid var(--color-border);
+  margin-block-start: var(--space-md);
+}
+
+.item {
+  border-block-end: 1px solid var(--color-border);
+}
+
+/*
+ * The marker is left to the browser rather than replaced with a custom glyph. A CSS triangle
+ * would need `transform: rotate()` under RTL and would drop out entirely in forced-colours
+ * mode, where the native marker survives.
+ */
+.summary {
+  cursor: pointer;
+  padding-block: var(--space-md);
+}
+
+/*
+ * `<summary>` is the interactive element, so the focus ring belongs to it. Without this the
+ * ring would be drawn around the heading inside and clip against the row.
+ */
+.summary:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* The heading inside the summary must not force its own line — the marker sits beside it. */
+.summary > * {
+  display: inline;
+}
+
+.answer {
+  padding-block-end: var(--space-md);
+  /*
+   * Indented from the marker so an open answer reads as belonging to its question. Inline
+   * padding, so it indents from the correct side in Arabic.
+   */
+  padding-inline-start: var(--space-lg);
+}

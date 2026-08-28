@@ -21,8 +21,13 @@
  */
 
 export type {
+  AccordionBlock,
+  AccordionItem,
   CallToActionBlock,
+  Card,
+  CardGridBlock,
   ContentContext,
+  DividerBlock,
   Locale,
   Page,
   PageBlock,

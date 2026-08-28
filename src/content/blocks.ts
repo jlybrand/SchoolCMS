@@ -1,5 +1,14 @@
 import { toRichText } from './rich-text'
-import type { CallToActionBlock, PageBlock, RichTextPageBlock } from './types'
+import type {
+  AccordionBlock,
+  AccordionItem,
+  Card,
+  CardGridBlock,
+  CallToActionBlock,
+  DividerBlock,
+  PageBlock,
+  RichTextPageBlock,
+} from './types'
 
 /**
  * Payload `layout` rows -> DD2 blocks (`02` §11, ADR-5, `03` §3).
@@ -75,6 +84,57 @@ const toCallToAction = (row: Row, index: number): CallToActionBlock | null => {
   }
 }
 
+/** Rows of a nested array field, or an empty list. Same tolerance as the outer array. */
+const rowsOf = (value: unknown): Row[] =>
+  Array.isArray(value) ? value.filter((row): row is Row => isRow(row)) : []
+
+const toAccordion = (row: Row, index: number): AccordionBlock | null => {
+  const items = rowsOf(row.items)
+    .map((item): AccordionItem | null => {
+      const heading = str(item.heading)
+      const content = toRichText(item.content)
+
+      /**
+       * A disclosure with no question is an unlabelled control; one with no answer opens onto
+       * nothing. Neither is worth rendering, and both are things an editor leaves behind
+       * mid-edit rather than intends.
+       */
+      if (heading === null || content.length === 0) return null
+
+      return { heading, content }
+    })
+    .filter((item): item is AccordionItem => item !== null)
+
+  if (items.length === 0) return null
+
+  return { kind: 'accordion', id: idOf(row, index), heading: str(row.heading), items }
+}
+
+const toCardGrid = (row: Row, index: number): CardGridBlock | null => {
+  const cards = rowsOf(row.cards)
+    .map((card): Card | null => {
+      // The title is the card's name — without one there is nothing to announce or link.
+      const title = str(card.title)
+      if (title === null) return null
+
+      return { title, text: str(card.text), href: str(card.href) }
+    })
+    .filter((card): card is Card => card !== null)
+
+  if (cards.length === 0) return null
+
+  return { kind: 'cardGrid', id: idOf(row, index), heading: str(row.heading), cards }
+}
+
+/**
+ * The one block with no content to validate, and therefore the only one that can never be
+ * dropped for being empty.
+ */
+const toDivider = (row: Row, index: number): DividerBlock => ({
+  kind: 'divider',
+  id: idOf(row, index),
+})
+
 /**
  * One entry per block in the register (`03` §3.1). A `blockType` absent from this table is
  * dropped — which is the forward-compatibility property, not an oversight.
@@ -82,6 +142,9 @@ const toCallToAction = (row: Row, index: number): CallToActionBlock | null => {
 const MAPPERS: Record<string, (row: Row, index: number) => PageBlock | null> = {
   richText: toRichTextBlock,
   callToAction: toCallToAction,
+  accordion: toAccordion,
+  cardGrid: toCardGrid,
+  divider: toDivider,
 }
 
 /**

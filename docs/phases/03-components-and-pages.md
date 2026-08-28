@@ -678,3 +678,73 @@ it — fill, radius and padding mean the affordance does not read as body text.
 
 `migrationDir` is configured only under `NODE_ENV=production`, and no migrations are committed
 yet, so `layout` needs none today. It is additive when they start — expand, never contract.
+
+## 18. Three more Batch 1 blocks — Accordion, CardGrid, Divider
+
+`03` §3.1 is the register. This is the mechanical addition to §17's infrastructure — a block
+is now four things, and none of them is new machinery.
+
+### Added
+
+| File                    | What it does                    |
+| ----------------------- | ------------------------------- |
+| `src/blocks/Accordion/` | Native `<details>` disclosures  |
+| `src/blocks/CardGrid/`  | A list of short, parallel items |
+| `src/blocks/Divider/`   | An `<hr>` thematic break        |
+
+### Changed
+
+| File                              | Change                                                 |
+| --------------------------------- | ------------------------------------------------------ |
+| `src/collections/blocks/index.ts` | Three schemas; `blockLibrary` in editor-facing order   |
+| `src/content/blocks.ts`           | Three mapper cases                                     |
+| `src/content/types.ts`            | `AccordionBlock`, `CardGridBlock`, `DividerBlock`      |
+| `src/blocks/BlockList.tsx`        | Three `case`s                                          |
+| `src/payload-types.ts`            | Regenerated                                            |
+| `starterDocs/03-...md`            | `Container` withdrawn from Batch 1; two new open items |
+
+### The heading rule these three share
+
+A block with its own heading puts its children one level below it; a block **without** one
+makes its children the top level rather than skipping to leave a gap for a heading that does
+not exist:
+
+```
+itemLevel = block.heading === null ? baseLevel : nextHeadingLevel(baseLevel)
+```
+
+Skipping would be the outline gap `07` §3 rules out, and it is the easy mistake in this shape
+— hence a test for it on both `Accordion` and `CardGrid`.
+
+### Why native `<details>` rather than a scripted disclosure
+
+The browser supplies expand/collapse, keyboard handling, and the expanded/collapsed
+announcement. The block works before hydration and cannot drift out of conformance when the JS
+changes. The question is a heading **inside** the `<summary>` — valid per the HTML content
+model — which keeps every question in the page outline, so a screen-reader user can find one
+without tabbing through all of them.
+
+### Why the card link is on the title
+
+A card-sized click target is nicer with a mouse and worse with everything else: it either
+swallows the blurb into the link's accessible name or needs a script and an overlay that breaks
+text selection. A card is a heading that happens to link. The set is a `<ul>`, so a screen
+reader announces "list, N items" and offers to skip it.
+
+### The grid takes no column count
+
+`repeat(auto-fit, minmax(min(100%, 16rem), 1fr))` — no media query, no editor-chosen column
+count. It reflows on available space, so 1.4.10 holds at 320px and at 400% zoom, and the
+page-builder offers one fewer layout decision.
+
+### `Container` was withdrawn from Batch 1
+
+A section wrapper's purpose is to contain other blocks, and blocks do not nest. Without nesting
+it is a styling field wearing a block's clothes, which `03` §3.2 also rules out. It moved to
+`03` §3.3 alongside the column layouts.
+
+### Local gotcha
+
+`pnpm test:e2e` boots a **production** server, which does not push schema. After a block is
+added, run `pnpm run seed` (or a dev server) first, or the suite dies with `42P01` on the new
+tables. That is CI's ordering too — build, seed, e2e.

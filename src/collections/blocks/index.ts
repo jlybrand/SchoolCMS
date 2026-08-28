@@ -93,7 +93,97 @@ export const callToActionBlock: Block = {
 }
 
 /**
+ * Stacked disclosures — the FAQ shape.
+ *
+ * `heading` on an item is text, not rich text: it renders inside a `<summary>`, and a link
+ * there would be a second interactive target competing with the disclosure control itself.
+ */
+export const accordionBlock: Block = {
+  slug: 'accordion',
+  interfaceName: 'AccordionBlock',
+  labels: { singular: 'Questions and answers', plural: 'Questions and answers' },
+  fields: [
+    {
+      name: 'heading',
+      type: 'text',
+      label: 'Heading',
+      admin: { description: 'Optional. A title for the whole set, like "Common questions".' },
+    },
+    {
+      name: 'items',
+      type: 'array',
+      required: true,
+      minRows: 1,
+      label: 'Questions',
+      labels: { singular: 'Question', plural: 'Questions' },
+      fields: [
+        { name: 'heading', type: 'text', required: true, label: 'Question' },
+        { name: 'content', type: 'richText', required: true, label: 'Answer' },
+      ],
+    },
+  ],
+}
+
+/**
+ * Short, parallel items — programs, departments, quick links.
+ *
+ * TEXT-ONLY. The image field arrives with `media` in Phase 6 (`03` §3.1); an interim
+ * external-URL image would bypass alt-required-at-upload (rule 7).
+ */
+export const cardGridBlock: Block = {
+  slug: 'cardGrid',
+  interfaceName: 'CardGridBlock',
+  labels: { singular: 'Cards', plural: 'Cards' },
+  fields: [
+    {
+      name: 'heading',
+      type: 'text',
+      label: 'Heading',
+      admin: { description: 'Optional. A title for the whole set.' },
+    },
+    {
+      name: 'cards',
+      type: 'array',
+      required: true,
+      minRows: 1,
+      label: 'Cards',
+      labels: { singular: 'Card', plural: 'Cards' },
+      fields: [
+        { name: 'title', type: 'text', required: true, label: 'Title' },
+        { name: 'text', type: 'textarea', label: 'Description' },
+        {
+          name: 'href',
+          type: 'text',
+          label: 'Goes to',
+          admin: {
+            description:
+              'Optional. A path like /athletics, or a full web address. The title becomes the link.',
+          },
+        },
+      ],
+    },
+  ],
+}
+
+/**
+ * A thematic break. No fields — it carries no content, which is also why the mapper can never
+ * drop one for being empty.
+ */
+export const dividerBlock: Block = {
+  slug: 'divider',
+  interfaceName: 'DividerBlock',
+  labels: { singular: 'Divider', plural: 'Dividers' },
+  fields: [],
+}
+
+/**
  * The library, in the order it is offered to an editor. Prose first — it is what most
  * sections are — then the block that interrupts prose to ask for something.
  */
-export const blockLibrary: Block[] = [richTextBlock, callToActionBlock]
+export const blockLibrary: Block[] = [
+  richTextBlock,
+  accordionBlock,
+  cardGridBlock,
+  callToActionBlock,
+  dividerBlock,
+]

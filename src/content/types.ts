@@ -143,7 +143,60 @@ export type CallToActionBlock = BlockBase & {
   newTab: boolean
 }
 
-export type PageBlock = RichTextPageBlock | CallToActionBlock
+/**
+ * A question and its answer. `content` is rich text because answers run to lists and links;
+ * `heading` is plain text because it renders inside a `<summary>`, where a link would be a
+ * second interactive target competing with the disclosure itself.
+ */
+export type AccordionItem = {
+  heading: string
+  content: RichText
+}
+
+/**
+ * Stacked disclosures — the FAQ shape. Items own their heading level like every other block
+ * (`03` §3.2); an author writes questions, never levels.
+ */
+export type AccordionBlock = BlockBase & {
+  kind: 'accordion'
+  heading: string | null
+  items: AccordionItem[]
+}
+
+/**
+ * One card. `href` is optional: a card can be a labelled fact rather than a link.
+ *
+ * `text` is plain rather than rich for the reason `CallToAction` gives — a card that links
+ * should have one destination, and a second link inside the blurb competes with the title.
+ */
+export type Card = {
+  title: string
+  text: string | null
+  href: string | null
+}
+
+/**
+ * A grid of short, parallel items — programs, departments, quick links.
+ *
+ * TEXT-ONLY IN BATCH 1. The image field arrives with `media` in Phase 6 (`03` §3.1); an
+ * interim external-URL image would bypass alt-required-at-upload (rule 7).
+ */
+export type CardGridBlock = BlockBase & {
+  kind: 'cardGrid'
+  heading: string | null
+  cards: Card[]
+}
+
+/**
+ * A thematic break. Carries no content and therefore no field — which is why the mapper
+ * cannot drop one for being empty, and why it is the only block that always survives.
+ */
+export type DividerBlock = BlockBase & {
+  kind: 'divider'
+}
+
+export type PageBlock =
+  RichTextPageBlock | CallToActionBlock | AccordionBlock | CardGridBlock | DividerBlock
 
 /**
  * RICH TEXT (`07` §4.4).
