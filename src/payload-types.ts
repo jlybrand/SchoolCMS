@@ -252,7 +252,16 @@ export interface Page {
    * The sections of this page, top to bottom. Drag to reorder.
    */
   layout?:
-    (RichTextBlock | AccordionBlock | CardGridBlock | CallToActionBlock | ChildPageNavBlock | DividerBlock)[] | null;
+    | (
+        | RichTextBlock
+        | AccordionBlock
+        | CardGridBlock
+        | CallToActionBlock
+        | ChildPageNavBlock
+        | EmbedBlock
+        | DividerBlock
+      )[]
+    | null;
   /**
    * Hold translations of this page until a person has checked them.
    */
@@ -383,6 +392,23 @@ export interface ChildPageNavBlock {
   id?: string | null;
   blockName?: string | null;
   blockType: 'childPageNav';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "EmbedBlock".
+ */
+export interface EmbedBlock {
+  /**
+   * Paste the link from YouTube — the address bar, the Share button, or the embed code all work.
+   */
+  url: string;
+  /**
+   * Describe the video in a few words, like "Board meeting, 12 August". People using a screen reader hear this instead of seeing the video, and it is shown as the link below it.
+   */
+  title: string;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'embed';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -541,6 +567,7 @@ export interface PagesSelect<T extends boolean = true> {
         cardGrid?: T | CardGridBlockSelect<T>;
         callToAction?: T | CallToActionBlockSelect<T>;
         childPageNav?: T | ChildPageNavBlockSelect<T>;
+        embed?: T | EmbedBlockSelect<T>;
         divider?: T | DividerBlockSelect<T>;
       };
   requiresTranslationReview?: T;
@@ -609,6 +636,16 @@ export interface CallToActionBlockSelect<T extends boolean = true> {
  */
 export interface ChildPageNavBlockSelect<T extends boolean = true> {
   heading?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "EmbedBlock_select".
+ */
+export interface EmbedBlockSelect<T extends boolean = true> {
+  url?: T;
+  title?: T;
   id?: T;
   blockName?: T;
 }

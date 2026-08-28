@@ -11,7 +11,7 @@ Phase 3 lands across several PRs. This document is written as each one merges.
 | Paste normalizer                           | Landed early (PR #6); not yet wired to an editor — see §8 |
 | `pages` collection (schema, access, gates) | **Landed** — §9–§12 below                                 |
 | Page templates and rendering               | Not started                                               |
-| Block library                              | **Batch 1 all but `Embed`** — §17, §18, §19               |
+| Block library                              | **Batch 1 complete** — §17–§20                            |
 | Constrained rich text (Lexical)            | Not started                                               |
 | Navigation global, SEO, sitemap            | Not started                                               |
 
@@ -858,3 +858,116 @@ them (`09` §4.2).
 `FeedBlock`, `StaffList`, `DocumentList` and `Gallery` render an editor-**configured** query,
 which is a different problem. `03` §3.2 records why they do not inherit this shape and what is
 likely to fit them instead, decided in Phase 5.
+
+---
+
+## 20. `Embed` — the allowlisted video block
+
+The seventh and last Batch 1 block. It stores a pasted link and a required title; what it
+renders is built from constants.
+
+### Added
+
+| File                           | Holds                                                   |
+| ------------------------------ | ------------------------------------------------------- |
+| `src/lib/embed-url.ts`         | `toEmbedTarget` — the normalizer and the allowlist      |
+| `tests/unit/embed-url.test.ts` | 19 tests: the shapes editors paste, and what is refused |
+| `src/blocks/Embed/`            | Frame plus the visible fallback link                    |
+
+### Changed
+
+| File                              | Change                                                 |
+| --------------------------------- | ------------------------------------------------------ |
+| `src/collections/blocks/index.ts` | `embedBlock`, with a `validate` calling the normalizer |
+| `src/content/blocks.ts`           | `toEmbed`                                              |
+| `src/content/types.ts`            | `EmbedBlock`                                           |
+| `src/blocks/BlockList.tsx`        | The `case`                                             |
+| `src/payload-types.ts`            | Regenerated                                            |
+| `starterDocs/03-...md`            | Register row; two new open items in §3.3               |
+
+### The allowlist applies to what we render, not to what was typed
+
+`02` §7 and `07` §6 both say "domain allowlist, no free-form iframe source". The naive reading
+is a host check on the pasted string, and it is not enough — a string that passes a host check
+is still a person's string going into a frame source.
+
+`toEmbedTarget` extracts the video id and **rebuilds** both URLs from constants:
+
+```
+<anything an editor pasted>  ->  { src:  https://www.youtube-nocookie.com/embed/<id>[?start=<n>]
+                                   href: https://www.youtube.com/watch?v=<id> }
+```
+
+Everything else is dropped: playlists, `si=` share tracking, `feature=`.
+
+### It normalizes rather than validates, because of who is pasting
+
+A school manager pastes whatever the share dialog gave them. All of these work:
+
+```
+https://www.youtube.com/watch?v=<id>        https://youtu.be/<id>?t=90
+https://www.youtube.com/live/<id>           https://www.youtube.com/shorts/<id>
+https://m.youtube.com/watch?v=<id>          www.youtube.com/watch?v=<id>   (no scheme)
+<iframe width="560" ... src="..."></iframe> ("copy embed code" — the other button on the dialog)
+```
+
+A validator refuses the last three and reads as broken software (`04` §2.1). The start time
+survives too, in all of `90`, `90s`, `1m30s`, `1h2m3s`, because "start at" is a checkbox on the
+same dialog.
+
+### What it refuses, and the two that are not obvious
+
+Non-YouTube hosts, non-http schemes, protocol-relative `//host/path`, and any id that is not
+eleven characters of `[A-Za-z0-9_-]` — a different length means the parse went wrong, and a
+misparse must fail rather than build a frame source out of whatever it found.
+
+Two cases worth naming because a reasonable implementation gets them wrong:
+
+- **The suffix attack.** `youtube.com.evil.test` passes `endsWith('youtube.com')` and
+  `includes('youtube.com')`. Hosts are matched exactly or as a subdomain, never as a substring.
+- **Markup laundering.** The `<iframe>` `src` is only extracted when the input _starts with_
+  `<`. Searching any string for an iframe means
+  `data:text/html,<iframe src="https://youtube.com/...">` yields a legitimate URL and the
+  scheme check never sees the `data:`. The test suite caught this one; it was a real bug in the
+  first draft.
+
+### The no-cookie host is deliberate
+
+Every embed renders through `www.youtube-nocookie.com`, which sets no tracking cookie unless
+the visitor plays the video. `03` §3.3 records third-party tracking on pages visited by minors
+as a district policy question rather than a feature decision — defaulting to the privacy host
+keeps this block out of that conversation.
+
+### Two layers, and why the second is the one that holds
+
+The field `validate` calls the normalizer so an editor is told at once. The **mapper** calls it
+again, and that is the real gate: it also covers rows written by a migration or a direct
+database write, which never reach a validator. One normalizer, so there is one definition of
+what is allowed.
+
+### The fallback link is not optional
+
+`07` §6: an embed is DD2's accessibility obligation even though DD2 did not build it. The frame
+can be blocked at the network, refused by a browser setting, or unusable with the visitor's
+assistive technology, and the visible link is what keeps the content reachable in every one of
+those cases. It points at the **watch page**, never the frame URL — an embed URL opened as a
+page is a bare player with no title, description or captions menu.
+
+Captions stay policy, not schema (`07` §6, 2026-08-28): they are configured on YouTube, so a
+field here would record a claim rather than enforce a state.
+
+### The stories use `about:blank` on purpose
+
+Storybook stories are the fixtures for the component axe gate, which runs in real Chromium on
+every PR. A live YouTube URL there would make this repo's accessibility gate depend on a third
+party being reachable from a CI runner. Nothing is lost: everything the component owns is
+outside the frame — the `title`, the ratio, the fallback link — and what is inside is the
+vendor's conformance, which axe cannot see across origins and which `07` §6 tracks through a
+VPAT. The real URL shape is pinned in `tests/unit/embed-url.test.ts`.
+
+### Open: the allowlist is one layer, not two
+
+`02` §7 calls for CSP at the edge, and there is **no CSP configured anywhere in the repo** — no
+`frame-src`, no security headers. So "domain-allowlisted" is currently an application-layer
+claim only. That belongs to Phase 8 hardening; it is recorded here so it is not mistaken for
+done.

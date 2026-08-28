@@ -7,6 +7,7 @@ import type {
   CallToActionBlock,
   CardGridBlock,
   ChildPageNavBlock,
+  EmbedBlock,
   PageBlock,
   PageLink,
   RichTextPageBlock,
@@ -338,5 +339,55 @@ describe('ChildPageNav', () => {
   it('does not put the child titles in the outline', () => {
     const { container } = renderComponent(<BlockList blocks={[block()]} childPages={CHILDREN} />)
     expect(levelsIn(container)).toEqual([2])
+  })
+})
+
+/**
+ * `Embed` (`03` §3.1, `07` §6).
+ *
+ * The component receives `src` and `href` already normalized and allowlisted by
+ * `src/lib/embed-url.ts` — it neither parses nor validates. These tests are about the two
+ * things `07` §6 requires of every embed: an accessible name on the frame, and a VISIBLE
+ * fallback link so the content is still reachable when the frame is blocked or unusable.
+ */
+describe('Embed', () => {
+  const block = (overrides: Partial<EmbedBlock> = {}): EmbedBlock => ({
+    kind: 'embed',
+    id: 'video',
+    src: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+    href: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    title: 'Board meeting, 12 August 2026',
+    ...overrides,
+  })
+
+  it('renders the frame with the allowlisted source and an accessible name', () => {
+    const { container } = renderComponent(<BlockList blocks={[block()]} childPages={[]} />)
+
+    const frame = container.querySelector('iframe')
+    expect(frame?.getAttribute('src')).toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')
+    // WCAG 4.1.2 — without this the frame is announced as "frame" and nothing else.
+    expect(frame?.getAttribute('title')).toBe('Board meeting, 12 August 2026')
+  })
+
+  /**
+   * `07` §6, and the reason it is not optional: an embed is DD2's accessibility obligation even
+   * though DD2 did not build it. When the frame fails — blocked at the network, refused by a
+   * browser setting, unusable with the visitor's assistive technology — the link is what keeps
+   * the content reachable. It points at the watch page, never the frame URL, because an embed
+   * URL opened as a page is a bare player with no title, description or captions menu.
+   */
+  it('renders a visible fallback link to the watch page', () => {
+    const { container } = renderComponent(<BlockList blocks={[block()]} childPages={[]} />)
+
+    const link = container.querySelector('figcaption a')
+    expect(link?.getAttribute('href')).toBe('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+    // Named for the destination, not "click here" (WCAG 2.4.4).
+    expect(link?.textContent).toContain('Board meeting, 12 August 2026')
+  })
+
+  /** No heading: the block has a title for the frame, and a title is not an outline entry. */
+  it('adds nothing to the page outline', () => {
+    const { container } = renderComponent(<BlockList blocks={[block()]} childPages={[]} />)
+    expect(levelsIn(container)).toEqual([])
   })
 })

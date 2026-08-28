@@ -1,5 +1,7 @@
 import type { Block } from 'payload'
 
+import { toEmbedTarget } from '@/lib/embed-url'
+
 /**
  * THE PAYLOAD SIDE of the block library (`03` §3).
  *
@@ -201,6 +203,61 @@ export const childPageNavBlock: Block = {
 }
 
 /**
+ * A third-party video (`07` §6).
+ *
+ * THE ALLOWLIST IS ENFORCED TWICE, and the two layers answer different questions:
+ *
+ *   - **here**, so an editor pasting the wrong thing is told at once rather than publishing a
+ *     block that silently vanishes;
+ *   - **in `src/content/blocks.ts`**, which is the gate that actually holds — it also covers
+ *     rows written by a migration or a direct database write, which never reach this validator.
+ *
+ * Both call the same normalizer, so there is one definition of what is allowed
+ * (`src/lib/embed-url.ts`). YouTube only, decided 2026-08-28: `07` §6 requires a current
+ * VPAT/ACR from any embedded vendor before allowlisting, which makes adding a host a
+ * procurement step rather than a code change (`03` §3.3).
+ */
+export const embedBlock: Block = {
+  slug: 'embed',
+  interfaceName: 'EmbedBlock',
+  labels: { singular: 'Video', plural: 'Videos' },
+  fields: [
+    {
+      name: 'url',
+      type: 'text',
+      required: true,
+      label: 'YouTube link',
+      admin: {
+        description:
+          'Paste the link from YouTube — the address bar, the Share button, or the embed code all work.',
+      },
+      validate: (value: unknown) => {
+        if (typeof value !== 'string' || value.trim() === '') {
+          return 'Paste a YouTube link.'
+        }
+        return toEmbedTarget(value) === null
+          ? 'That is not a YouTube link the district has approved. Only YouTube videos can be added at the moment.'
+          : true
+      },
+    },
+    {
+      name: 'title',
+      type: 'text',
+      required: true,
+      label: 'What the video is',
+      admin: {
+        /**
+         * Required, and said out loud: this is the frame's accessible name (WCAG 4.1.2), not a
+         * caption. `07` §6 requires one on every embed.
+         */
+        description:
+          'Describe the video in a few words, like "Board meeting, 12 August". People using a screen reader hear this instead of seeing the video, and it is shown as the link below it.',
+      },
+    },
+  ],
+}
+
+/**
  * A thematic break. No fields — it carries no content, which is also why the mapper can never
  * drop one for being empty.
  */
@@ -221,5 +278,6 @@ export const blockLibrary: Block[] = [
   cardGridBlock,
   callToActionBlock,
   childPageNavBlock,
+  embedBlock,
   dividerBlock,
 ]

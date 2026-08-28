@@ -1,3 +1,4 @@
+import { toEmbedTarget } from '@/lib/embed-url'
 import { toRichText } from './rich-text'
 import type {
   AccordionBlock,
@@ -7,6 +8,7 @@ import type {
   CallToActionBlock,
   ChildPageNavBlock,
   DividerBlock,
+  EmbedBlock,
   PageBlock,
   RichTextPageBlock,
 } from './types'
@@ -145,6 +147,29 @@ const toChildPageNav = (row: Row, index: number): ChildPageNavBlock => ({
 })
 
 /**
+ * A third-party video.
+ *
+ * TWO WAYS TO BE DROPPED, and both are conformance rather than tidiness:
+ *
+ *   - **Not an allowlisted video.** `toEmbedTarget` returns null for any host DD2 has not
+ *     allowlisted, for a malformed id, and for a non-http scheme. `07` §6 makes an embed DD2's
+ *     accessibility obligation and requires a current VPAT from the vendor before it can be
+ *     one, so an unknown host is a policy failure, not a typo to display.
+ *   - **No title.** It is the frame's accessible name (WCAG 4.1.2). An untitled frame is
+ *     announced as "frame" and nothing else — the same reasoning that drops an unnamed link.
+ *
+ * The block is also where the raw URL stops. Nothing downstream sees what the editor typed.
+ */
+const toEmbed = (row: Row, index: number): EmbedBlock | null => {
+  const target = toEmbedTarget(str(row.url))
+  const title = str(row.title)
+
+  if (target === null || title === null) return null
+
+  return { kind: 'embed', id: idOf(row, index), src: target.src, href: target.href, title }
+}
+
+/**
  * The one block with no content to validate, and therefore the only one that can never be
  * dropped for being empty.
  */
@@ -163,6 +188,7 @@ const MAPPERS: Record<string, (row: Row, index: number) => PageBlock | null> = {
   accordion: toAccordion,
   cardGrid: toCardGrid,
   childPageNav: toChildPageNav,
+  embed: toEmbed,
   divider: toDivider,
 }
 

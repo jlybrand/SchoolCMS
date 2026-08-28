@@ -320,6 +320,73 @@ describe('toPageBlocks — childPageNav', () => {
   })
 })
 
+describe('toPageBlocks — embed', () => {
+  const ID = 'dQw4w9WgXcQ'
+
+  it('normalizes the pasted URL rather than storing it', () => {
+    const [block] = toPageBlocks([
+      {
+        blockType: 'embed',
+        id: 'a',
+        url: `https://youtu.be/${ID}?t=30`,
+        title: 'Board meeting, 12 August 2026',
+      },
+    ])
+
+    expect(block).toEqual({
+      kind: 'embed',
+      id: 'a',
+      src: `https://www.youtube-nocookie.com/embed/${ID}?start=30`,
+      href: `https://www.youtube.com/watch?v=${ID}`,
+      title: 'Board meeting, 12 August 2026',
+    })
+  })
+
+  /**
+   * The block never carries the editor's string. `src` and `href` are built by
+   * `src/lib/embed-url.ts` from constants — the allowlist applies to what is rendered, not to
+   * what was typed (`02` §7, `07` §6).
+   */
+  it('never carries the raw url through to the renderer', () => {
+    const [block] = toPageBlocks([
+      { blockType: 'embed', id: 'a', url: `https://www.youtube.com/watch?v=${ID}`, title: 'T' },
+    ])
+    expect(Object.keys(block ?? {}).sort()).toEqual(['href', 'id', 'kind', 'src', 'title'])
+  })
+
+  /**
+   * A frame pointing somewhere the district has not allowlisted is dropped, not rendered
+   * empty. `07` §6 makes an embed DD2's accessibility obligation, and a vendor needs a current
+   * VPAT before it can be one — so an unknown host is a policy failure, not a typo to display.
+   */
+  it('drops an embed whose host is not allowlisted', () => {
+    const rows = [
+      { blockType: 'embed', id: 'a', url: 'https://vimeo.com/123456789', title: 'T' },
+      {
+        blockType: 'embed',
+        id: 'b',
+        url: 'https://youtube.com.evil.test/watch?v=' + ID,
+        title: 'T',
+      },
+      { blockType: 'embed', id: 'c', title: 'T' },
+    ]
+    expect(toPageBlocks(rows)).toEqual([])
+  })
+
+  /**
+   * `07` §6 requires a title on every embed. Without one the frame is announced as "frame" and
+   * nothing else, and a screen-reader user cannot tell what it holds — the same reasoning that
+   * drops an unlabelled call to action (WCAG 4.1.2).
+   */
+  it('drops an embed with no title', () => {
+    const rows = [
+      { blockType: 'embed', id: 'a', url: `https://youtu.be/${ID}` },
+      { blockType: 'embed', id: 'b', url: `https://youtu.be/${ID}`, title: '   ' },
+    ]
+    expect(toPageBlocks(rows)).toEqual([])
+  })
+})
+
 /**
  * THE COUPLING BETWEEN THE TWO HALVES OF A BLOCK.
  *
@@ -343,6 +410,7 @@ describe('the block library and the mapper agree', () => {
       accordion: { items: [{ heading: 'Q', content: lexical(paragraph('A')) }] },
       cardGrid: { cards: [{ title: 'Card' }] },
       childPageNav: {},
+      embed: { url: 'https://youtu.be/dQw4w9WgXcQ', title: 'A video' },
       divider: {},
     }
 

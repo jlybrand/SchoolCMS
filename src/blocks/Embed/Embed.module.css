@@ -1,0 +1,36 @@
+/**
+ * Logical properties only (CLAUDE.md rule 5). Nothing here has a side; the frame fills its
+ * inline size and takes its height from the ratio, so RTL needs no rule.
+ */
+
+.figure {
+  /* `figure` carries a browser default inline margin, which would indent it out of `Container`. */
+  margin-block: 0;
+  margin-inline: 0;
+}
+
+.frame {
+  /*
+   * 16:9 — YouTube's own ratio, and the wrapper rather than the frame owns it so the height is
+   * known before the third-party player loads. A vertical video is letterboxed inside it, which
+   * is what the player does anyway.
+   */
+  aspect-ratio: 16 / 9;
+  background-color: var(--color-surface-raised);
+  border-radius: var(--radius);
+  inline-size: 100%;
+  /* Keeps the player's own corners inside the radius. */
+  overflow: hidden;
+}
+
+.player {
+  block-size: 100%;
+  border: 0;
+  display: block;
+  inline-size: 100%;
+}
+
+.caption {
+  color: var(--color-text-muted);
+  margin-block-start: var(--space-sm);
+}
