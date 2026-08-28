@@ -3,7 +3,10 @@ import type { HeadingLevel } from '@/components/Heading'
 import { Stack } from '@/components/Stack'
 import type { PageBlock } from '@/content/types'
 
+import { Accordion } from './Accordion'
 import { CallToAction } from './CallToAction'
+import { CardGrid } from './CardGrid'
+import { Divider } from './Divider'
 import { RichTextBlock } from './RichTextBlock'
 
 /**
@@ -56,6 +59,13 @@ const Block = ({
       return <RichTextBlock baseLevel={baseLevel} block={block} />
     case 'callToAction':
       return <CallToAction baseLevel={baseLevel} block={block} />
+    case 'accordion':
+      return <Accordion baseLevel={baseLevel} block={block} />
+    case 'cardGrid':
+      return <CardGrid baseLevel={baseLevel} block={block} />
+    case 'divider':
+      // No heading, so no level to thread — see `Divider`.
+      return <Divider />
     default: {
       /**
        * Unreachable while the switch is exhaustive. If a new block type makes this line fail

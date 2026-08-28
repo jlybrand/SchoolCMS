@@ -251,7 +251,7 @@ export interface Page {
   /**
    * The sections of this page, top to bottom. Drag to reorder.
    */
-  layout?: (RichTextBlock | CallToActionBlock)[] | null;
+  layout?: (RichTextBlock | AccordionBlock | CardGridBlock | CallToActionBlock | DividerBlock)[] | null;
   /**
    * Hold translations of this page until a person has checked them.
    */
@@ -289,6 +289,60 @@ export interface RichTextBlock {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "AccordionBlock".
+ */
+export interface AccordionBlock {
+  /**
+   * Optional. A title for the whole set, like "Common questions".
+   */
+  heading?: string | null;
+  items: {
+    heading: string;
+    content: {
+      root: {
+        type: string;
+        children: {
+          type: any;
+          version: number;
+          [k: string]: unknown;
+        }[];
+        direction: ('ltr' | 'rtl') | null;
+        format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+        indent: number;
+        version: number;
+      };
+      [k: string]: unknown;
+    };
+    id?: string | null;
+  }[];
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'accordion';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "CardGridBlock".
+ */
+export interface CardGridBlock {
+  /**
+   * Optional. A title for the whole set.
+   */
+  heading?: string | null;
+  cards: {
+    title: string;
+    text?: string | null;
+    /**
+     * Optional. A path like /athletics, or a full web address. The title becomes the link.
+     */
+    href?: string | null;
+    id?: string | null;
+  }[];
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'cardGrid';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "CallToActionBlock".
  */
 export interface CallToActionBlock {
@@ -315,6 +369,15 @@ export interface CallToActionBlock {
   id?: string | null;
   blockName?: string | null;
   blockType: 'callToAction';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "DividerBlock".
+ */
+export interface DividerBlock {
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'divider';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -460,7 +523,10 @@ export interface PagesSelect<T extends boolean = true> {
     | T
     | {
         richText?: T | RichTextBlockSelect<T>;
+        accordion?: T | AccordionBlockSelect<T>;
+        cardGrid?: T | CardGridBlockSelect<T>;
         callToAction?: T | CallToActionBlockSelect<T>;
+        divider?: T | DividerBlockSelect<T>;
       };
   requiresTranslationReview?: T;
   updatedAt?: T;
@@ -478,6 +544,39 @@ export interface RichTextBlockSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "AccordionBlock_select".
+ */
+export interface AccordionBlockSelect<T extends boolean = true> {
+  heading?: T;
+  items?:
+    | T
+    | {
+        heading?: T;
+        content?: T;
+        id?: T;
+      };
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "CardGridBlock_select".
+ */
+export interface CardGridBlockSelect<T extends boolean = true> {
+  heading?: T;
+  cards?:
+    | T
+    | {
+        title?: T;
+        text?: T;
+        href?: T;
+        id?: T;
+      };
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "CallToActionBlock_select".
  */
 export interface CallToActionBlockSelect<T extends boolean = true> {
@@ -486,6 +585,14 @@ export interface CallToActionBlockSelect<T extends boolean = true> {
   href?: T;
   linkLabel?: T;
   newTab?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "DividerBlock_select".
+ */
+export interface DividerBlockSelect<T extends boolean = true> {
   id?: T;
   blockName?: T;
 }

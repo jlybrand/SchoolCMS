@@ -180,6 +180,110 @@ describe('toPageBlocks — callToAction', () => {
   })
 })
 
+describe('toPageBlocks — accordion', () => {
+  const item = (heading: string, body: string) => ({
+    heading,
+    content: lexical(paragraph(body)),
+  })
+
+  it('maps items in order', () => {
+    const [block] = toPageBlocks([
+      {
+        blockType: 'accordion',
+        id: 'a',
+        heading: 'Common questions',
+        items: [item('When does the bus run?', 'From 6:45 a.m.'), item('Where?', 'Main lot.')],
+      },
+    ])
+
+    expect(block).toMatchObject({ kind: 'accordion', heading: 'Common questions' })
+    expect(block?.kind === 'accordion' && block.items.map((i) => i.heading)).toEqual([
+      'When does the bus run?',
+      'Where?',
+    ])
+  })
+
+  /**
+   * A disclosure whose question is blank is an unlabelled control, and one whose answer is
+   * blank opens onto nothing. Both are dropped rather than rendered — the same reasoning as a
+   * call to action with no destination.
+   */
+  it('drops an item with no heading or no content', () => {
+    const [block] = toPageBlocks([
+      {
+        blockType: 'accordion',
+        id: 'a',
+        items: [
+          item('Kept', 'Answer.'),
+          { heading: '  ', content: lexical(paragraph('Orphan answer.')) },
+          { heading: 'No answer', content: lexical() },
+        ],
+      },
+    ])
+    expect(block?.kind === 'accordion' && block.items.map((i) => i.heading)).toEqual(['Kept'])
+  })
+
+  it('drops the block when no item survives', () => {
+    expect(toPageBlocks([{ blockType: 'accordion', id: 'a', items: [] }])).toEqual([])
+    expect(toPageBlocks([{ blockType: 'accordion', id: 'a' }])).toEqual([])
+  })
+
+  it('keeps the block without its own heading', () => {
+    const [block] = toPageBlocks([{ blockType: 'accordion', id: 'a', items: [item('Q', 'A')] }])
+    expect(block).toMatchObject({ heading: null })
+  })
+})
+
+describe('toPageBlocks — cardGrid', () => {
+  it('maps cards in order', () => {
+    const [block] = toPageBlocks([
+      {
+        blockType: 'cardGrid',
+        id: 'a',
+        heading: 'Programs',
+        cards: [
+          { title: 'Athletics', text: 'Fall sign-ups are open.', href: '/athletics' },
+          { title: 'Arts' },
+        ],
+      },
+    ])
+
+    expect(block).toMatchObject({ kind: 'cardGrid', heading: 'Programs' })
+    expect(block?.kind === 'cardGrid' && block.cards).toEqual([
+      { title: 'Athletics', text: 'Fall sign-ups are open.', href: '/athletics' },
+      { title: 'Arts', text: null, href: null },
+    ])
+  })
+
+  /** The title is the card's name. Without one there is nothing to announce or link. */
+  it('drops a card with no title', () => {
+    const [block] = toPageBlocks([
+      {
+        blockType: 'cardGrid',
+        id: 'a',
+        cards: [{ title: 'Kept' }, { text: 'Orphan blurb', href: '/x' }, { title: '  ' }],
+      },
+    ])
+    expect(block?.kind === 'cardGrid' && block.cards.map((c) => c.title)).toEqual(['Kept'])
+  })
+
+  it('drops the block when no card survives', () => {
+    expect(toPageBlocks([{ blockType: 'cardGrid', id: 'a', cards: [] }])).toEqual([])
+  })
+})
+
+describe('toPageBlocks — divider', () => {
+  /**
+   * The only block with no content to validate, so the only one that cannot be dropped for
+   * being empty. It still needs an id, which is what the row supplies.
+   */
+  it('always survives', () => {
+    expect(toPageBlocks([{ blockType: 'divider', id: 'a' }])).toEqual([
+      { kind: 'divider', id: 'a' },
+    ])
+  })
+})
+
 /**
  * THE COUPLING BETWEEN THE TWO HALVES OF A BLOCK.
  *
@@ -200,6 +304,9 @@ describe('the block library and the mapper agree', () => {
     const COMPLETE: Record<string, Record<string, unknown>> = {
       richText: { content: lexical(paragraph('Words')) },
       callToAction: { href: '/enroll', linkLabel: 'Enroll' },
+      accordion: { items: [{ heading: 'Q', content: lexical(paragraph('A')) }] },
+      cardGrid: { cards: [{ title: 'Card' }] },
+      divider: {},
     }
 
     for (const block of blockLibrary) {

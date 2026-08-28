@@ -2,7 +2,13 @@
 import { describe, expect, it } from 'vitest'
 
 import { BlockList } from '@/blocks'
-import type { CallToActionBlock, PageBlock, RichTextPageBlock } from '@/content/types'
+import type {
+  AccordionBlock,
+  CallToActionBlock,
+  CardGridBlock,
+  PageBlock,
+  RichTextPageBlock,
+} from '@/content/types'
 
 import { renderComponent } from '../../helpers/render'
 
@@ -120,5 +126,122 @@ describe('CallToAction', () => {
 
     expect(levelsIn(container)).toEqual([])
     expect(container.querySelector('a[href="/enroll"]')).not.toBeNull()
+  })
+})
+
+const prose = (value: string) => [
+  { kind: 'paragraph' as const, children: [{ kind: 'text' as const, text: value, marks: [] }] },
+]
+
+describe('Accordion', () => {
+  const block = (overrides: Partial<AccordionBlock> = {}): AccordionBlock => ({
+    kind: 'accordion',
+    id: 'faq',
+    heading: 'Common questions',
+    items: [
+      { heading: 'When does the bus run?', content: prose('From 6:45 a.m.') },
+      { heading: 'Where does it stop?', content: prose('The main lot.') },
+    ],
+    ...overrides,
+  })
+
+  /**
+   * The browser supplies expand/collapse, keyboard handling, and the expanded state. A
+   * scripted disclosure would be more code to keep conformant for no gain.
+   */
+  it('uses native disclosures', () => {
+    const { container } = renderComponent(<BlockList blocks={[block()]} />)
+    expect(container.querySelectorAll('details')).toHaveLength(2)
+    expect(container.querySelectorAll('summary')).toHaveLength(2)
+  })
+
+  /** Questions stay in the page outline, so they can be navigated without tabbing. */
+  it('puts each question in the outline below the set heading', () => {
+    const { container } = renderComponent(<BlockList blocks={[block()]} />)
+    expect(levelsIn(container)).toEqual([2, 3, 3])
+
+    const questions = [...container.querySelectorAll('summary h3')].map((el) => el.textContent)
+    expect(questions).toEqual(['When does the bus run?', 'Where does it stop?'])
+  })
+
+  /**
+   * Without a set heading the questions ARE the block's top level. Skipping to h3 to leave
+   * room for a heading that does not exist is the outline gap `07` §3 rules out.
+   */
+  it('does not skip a level when the set has no heading', () => {
+    const { container } = renderComponent(<BlockList blocks={[block({ heading: null })]} />)
+    expect(levelsIn(container)).toEqual([2, 2])
+  })
+
+  /** An author's headings inside an answer sit below the question they belong to. */
+  it('nests an answer’s own headings under its question', () => {
+    const withHeading = block({
+      heading: null,
+      items: [
+        {
+          heading: 'What do I bring?',
+          content: [
+            { kind: 'heading', level: 2, children: [{ kind: 'text', text: 'Forms', marks: [] }] },
+          ],
+        },
+      ],
+    })
+    const { container } = renderComponent(<BlockList blocks={[withHeading]} />)
+    expect(levelsIn(container)).toEqual([2, 3])
+  })
+})
+
+describe('CardGrid', () => {
+  const block = (overrides: Partial<CardGridBlock> = {}): CardGridBlock => ({
+    kind: 'cardGrid',
+    id: 'programs',
+    heading: 'Programs',
+    cards: [
+      { title: 'Athletics', text: 'Fall sign-ups are open.', href: '/athletics' },
+      { title: 'Arts', text: null, href: null },
+    ],
+    ...overrides,
+  })
+
+  /** "List, 2 items" is what lets a screen-reader user skip the set instead of hearing it. */
+  it('renders the cards as a list', () => {
+    const { container } = renderComponent(<BlockList blocks={[block()]} />)
+    expect(container.querySelectorAll('ul > li')).toHaveLength(2)
+  })
+
+  it('puts each card title in the outline below the set heading', () => {
+    const { container } = renderComponent(<BlockList blocks={[block()]} />)
+    expect(levelsIn(container)).toEqual([2, 3, 3])
+  })
+
+  it('does not skip a level when the set has no heading', () => {
+    const { container } = renderComponent(<BlockList blocks={[block({ heading: null })]} />)
+    expect(levelsIn(container)).toEqual([2, 2])
+  })
+
+  /**
+   * The link is the title, not the card. A card-sized target either swallows the blurb into
+   * the link's accessible name or needs an overlay that breaks text selection.
+   */
+  it('links from the title and leaves an unlinked card unlinked', () => {
+    const { container } = renderComponent(<BlockList blocks={[block()]} />)
+
+    const links = [...container.querySelectorAll('a')]
+    expect(links).toHaveLength(1)
+    expect(links[0]?.getAttribute('href')).toBe('/athletics')
+    expect(links[0]?.closest('h3')).not.toBeNull()
+  })
+})
+
+describe('Divider', () => {
+  /** `<hr>` means thematic break — the semantic the editor is reaching for. */
+  it('renders a thematic break, not a hidden decoration', () => {
+    const { container } = renderComponent(
+      <BlockList blocks={[{ kind: 'divider', id: 'd' } as PageBlock]} />,
+    )
+
+    const rule = container.querySelector('hr')
+    expect(rule).not.toBeNull()
+    expect(rule?.getAttribute('aria-hidden')).toBeNull()
   })
 })

@@ -11,5 +11,8 @@
 
 export { BlockList } from './BlockList'
 export type { BlockListProps } from './BlockList'
+export { Accordion } from './Accordion'
 export { CallToAction } from './CallToAction'
+export { CardGrid } from './CardGrid'
+export { Divider } from './Divider'
 export { RichTextBlock } from './RichTextBlock'
