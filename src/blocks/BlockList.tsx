@@ -8,6 +8,7 @@ import { CallToAction } from './CallToAction'
 import { CardGrid } from './CardGrid'
 import { ChildPageNav } from './ChildPageNav'
 import { Divider } from './Divider'
+import { Embed } from './Embed'
 import { RichTextBlock } from './RichTextBlock'
 
 /**
@@ -83,6 +84,10 @@ const Block = ({
     case 'childPageNav':
       // The only block handed anything beyond its own row — see `BlockListProps.childPages`.
       return <ChildPageNav baseLevel={baseLevel} block={block} pages={childPages} />
+    case 'embed':
+      // No heading, so no level to thread — the frame's title is an accessible name, not an
+      // outline entry.
+      return <Embed block={block} />
     case 'divider':
       // No heading, so no level to thread — see `Divider`.
       return <Divider />

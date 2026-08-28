@@ -219,6 +219,27 @@ export type CardGridBlock = BlockBase & {
 }
 
 /**
+ * A third-party video (`03` §3.1, `07` §6).
+ *
+ * IT CARRIES NO URL AN EDITOR TYPED. `src` and `href` are both built by
+ * `src/lib/embed-url.ts` from constants — the allowlist applies to what is rendered, not to
+ * what was pasted (`02` §7). A row whose URL is not an allowlisted video never becomes one of
+ * these; the mapper drops it.
+ *
+ * `title` is required rather than nullable, unlike every other block's heading. It is the
+ * frame's accessible name (WCAG 4.1.2): without it the embed is announced as "frame" and
+ * nothing else, so an untitled one is dropped rather than rendered.
+ */
+export type EmbedBlock = BlockBase & {
+  kind: 'embed'
+  /** The frame source, on the no-cookie host. */
+  src: string
+  /** The visible fallback link's destination — the watch page (`07` §6). */
+  href: string
+  title: string
+}
+
+/**
  * A thematic break. Carries no content and therefore no field — which is why the mapper
  * cannot drop one for being empty, and why it is the only block that always survives.
  */
@@ -249,6 +270,7 @@ export type PageBlock =
   | AccordionBlock
   | CardGridBlock
   | ChildPageNavBlock
+  | EmbedBlock
   | DividerBlock
 
 /**
