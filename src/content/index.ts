@@ -21,9 +21,11 @@
  */
 
 export type {
+  CallToActionBlock,
   ContentContext,
   Locale,
   Page,
+  PageBlock,
   PageType,
   RichText,
   RichTextBlock,
@@ -33,6 +35,7 @@ export type {
   RichTextList,
   RichTextListItem,
   RichTextMark,
+  RichTextPageBlock,
   RichTextParagraph,
   RichTextText,
   Tenant,

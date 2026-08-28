@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
+import { BlockList } from '@/blocks'
 import { Container } from '@/components/Container'
 import { Heading, PAGE_TITLE_LEVEL } from '@/components/Heading'
 import { Link } from '@/components/Link'
@@ -28,8 +29,8 @@ const pathOf = (segments: string[] | undefined) => `/${(segments ?? []).join('/'
  * returns DD2 domain types (`02` §11, ADR-5). The renderer never learns what a Lexical node
  * is — `src/content/rich-text.ts` already turned those into DD2 nodes.
  *
- * Blocks and the `composed` layout arrive with the block library and slot in beside
- * `RichText` without changing the routing or caching shape (`03` §3).
+ * The `composed` layout renders through `BlockList`, which slots in beside `RichText`
+ * without changing the routing or caching shape (`03` §3).
  */
 export const revalidate = 3600
 
@@ -122,6 +123,19 @@ export default async function SitePage({ params }: { params: Promise<Params> }) 
           <Heading level={PAGE_TITLE_LEVEL}>{page.title}</Heading>
 
           <RichText content={page.body} />
+
+          {/*
+            NO BRANCH ON `pageType`. Both renderers return null when they have nothing:
+            `RichText` for an empty body, `BlockList` for an empty layout — and the mapper
+            already dropped blocks that would have rendered empty. A fixed-type page
+            therefore renders prose and no layout, and a composed page renders its layout,
+            without this template knowing which it is holding.
+
+            That matters beyond tidiness: when school-level composition stops being a
+            deferred add-on (`01` §4.1), it is an access-predicate change and nothing here
+            moves (`03` §2).
+          */}
+          <BlockList blocks={page.layout} />
 
           <nav aria-label="Language">
             {/*

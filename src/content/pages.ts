@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 
 import { ROOT_SLUG, buildPagePath, splitPagePath } from '@/lib/slug'
+import { toPageBlocks } from './blocks'
 import { toRichText } from './rich-text'
 import type { ContentContext, Page, PageType, Visibility } from './types'
 
@@ -37,6 +38,8 @@ type PayloadPage = {
   requiresTranslationReview?: boolean | null
   /** Lexical editor state. Deliberately `unknown` — see `toRichText`. */
   body?: unknown
+  /** Block rows. Deliberately `unknown` — see `toPageBlocks`. */
+  layout?: unknown
   _status?: 'draft' | 'published' | null
 }
 
@@ -58,6 +61,8 @@ const toDomain = (doc: PayloadPage, path: string): Page => ({
   requiresTranslationReview: doc.requiresTranslationReview === true,
   // The single point where Lexical becomes DD2 nodes. Nothing downstream sees editor state.
   body: toRichText(doc.body),
+  // Likewise for blocks: nothing downstream sees a `blockType` discriminator (`03` §3).
+  layout: toPageBlocks(doc.layout),
 })
 
 /**

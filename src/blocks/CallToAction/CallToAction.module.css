@@ -1,0 +1,27 @@
+/**
+ * Logical properties only (CLAUDE.md rule 5, `08` §6). Nothing here names a physical side,
+ * so the block mirrors for Arabic without an RTL stylesheet — the padding, the border accent
+ * and the button's inline padding all follow the writing direction.
+ */
+
+.callToAction {
+  background-color: var(--color-surface-raised);
+  border-inline-start: 4px solid var(--color-brand);
+  border-radius: var(--radius);
+  padding-block: var(--space-lg);
+  padding-inline: var(--space-lg);
+}
+
+.text {
+  color: var(--color-text-muted);
+  margin-block-start: var(--space-xs);
+  /*
+   * Narrower than the page measure: a supporting line is short by construction, and a
+   * paragraph that runs the full measure stops reading as support for the button below it.
+   */
+  max-inline-size: 60ch;
+}
+
+.action {
+  margin-block-start: var(--space-md);
+}

@@ -596,3 +596,85 @@ assertion: `hreflang` and the document title are signals for crawlers and link p
 parse the bytes and never hydrate. What matters is that the markup is IN the response, not where
 a browser eventually files it. The alternates are compared as a whole map, so a missing locale
 and a stray extra one both fail.
+
+## 17. The block library — infrastructure and the first two blocks
+
+`03` §3 holds the register (what exists, in which dependency batch, and what is deliberately
+absent). This section is the mechanical map: what calls what.
+
+### Added
+
+| File                                    | What it does                                                    |
+| --------------------------------------- | --------------------------------------------------------------- |
+| `src/collections/blocks/index.ts`       | Payload block schemas; exports `blockLibrary`                   |
+| `src/content/blocks.ts`                 | `toPageBlocks` — Payload rows to DD2 blocks                     |
+| `src/blocks/BlockList.tsx`              | The renderer registry; owns heading level and inter-block space |
+| `src/blocks/RichTextBlock/`             | Prose block — a wrapper over `RichText`                         |
+| `src/blocks/CallToAction/`              | Heading, supporting line, one button-styled link                |
+| `src/blocks/index.ts`                   | Public surface of the library                                   |
+| `tests/unit/blocks.test.ts`             | The mapper, plus the schema-to-mapper coupling check            |
+| `tests/unit/components/blocks.test.tsx` | Heading levels, order independence, link semantics              |
+| `src/blocks/*/**.stories.tsx`           | Storybook entries — enter the axe gate automatically            |
+
+### Changed
+
+| File                              | Change                                                         |
+| --------------------------------- | -------------------------------------------------------------- |
+| `src/collections/Pages.ts`        | `layout` blocks field, district-only, shown only on `composed` |
+| `src/content/types.ts`            | `PageBlock` union; `Page.layout`                               |
+| `src/content/pages.ts`            | `toDomain` maps `layout` through `toPageBlocks`                |
+| `src/content/index.ts`            | Exports the block types                                        |
+| `src/components/Link/Link.tsx`    | `variant: 'inline' \| 'button'`                                |
+| `src/app/(frontend)/.../page.tsx` | Renders `<BlockList>` after `<RichText>`                       |
+| `src/payload-types.ts`            | Regenerated                                                    |
+
+### The call chain
+
+```
+Payload `pages.layout` rows
+  -> src/content/pages.ts        toDomain()
+  -> src/content/blocks.ts       toPageBlocks()   <- the only place `blockType` is read
+  -> PageBlock[]                 (DD2 domain types)
+  -> src/app/(frontend)/.../page.tsx
+  -> src/blocks/BlockList.tsx    exhaustive switch on `block.kind`
+  -> src/blocks/*/               one renderer per block
+```
+
+The two halves of a block sit in different directories because `src/blocks/` may not import
+the Payload SDK (rule 1) while the schema must. They are joined by one string: the Payload
+`slug` is the `blockType` the mapper switches on. `tests/unit/blocks.test.ts` pins that join —
+renaming a slug without updating the mapper fails there, because it iterates the real
+`blockLibrary` rather than a restated list.
+
+### Where each guarantee is enforced
+
+| Guarantee                                      | Enforced in                                                                          |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Blocks are district-only                       | `pagesUpdateAccess`, `districtOnlyField` on `layout`, `composedPagesAreDistrictOnly` |
+| No block can break heading order               | No level field in the schema; `BlockList` derives and floors it                      |
+| A block never becomes the page's second `h1`   | `BlockList` floors `baseLevel` at `BLOCK_HEADING_LEVEL`                              |
+| An unknown block never breaks a build          | `toPageBlocks` drops unrecognised `blockType`s                                       |
+| A new block type cannot be silently unrendered | `BlockList`'s `never` check — a compile error, not a blank space                     |
+| No physical properties                         | stylelint; the RTL half of the story axe gate                                        |
+
+### `BlockList` floors the heading level, and why that is not `Heading`'s job
+
+`Heading` clamps to the 1–6 range but does not refuse `h1` — it cannot, because the page title
+legitimately needs one. So `baseLevel={1}` would give every block a second `h1`. `BlockList`
+floors it once, centrally; `RichText` does the same on the fixed-page path. A block that had to
+remember this could forget, and the claim in `03` §3.2 is that no block author has to remember
+anything about levels.
+
+### `Link` gained a variant rather than a `className`
+
+A call to action's button is an `<a>` — it navigates. It needed button styling, and `Link`
+takes no `className` on purpose: a class prop would let any caller silently remove the
+underline `Link` exists to guarantee. `variant: 'inline' | 'button'` keeps every presentation
+a decision made inside the component, with the reasoning for dropping the underline next to
+the rule that normally requires it. The `button` variant replaces the cue rather than dropping
+it — fill, radius and padding mean the affordance does not read as body text.
+
+### No migration
+
+`migrationDir` is configured only under `NODE_ENV=production`, and no migrations are committed
+yet, so `layout` needs none today. It is additive when they start — expand, never contract.

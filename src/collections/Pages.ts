@@ -12,6 +12,7 @@ import {
   rootPageCannotBeParent,
   uniqueSlugWithinParent,
 } from '@/collections/hooks/page-slug'
+import { blockLibrary } from '@/collections/blocks'
 import { composedPagesAreDistrictOnly, publishGate } from '@/collections/hooks/publish-gate'
 import { isReservedSlug, slugify } from '@/lib/slug'
 
@@ -27,9 +28,6 @@ import { isReservedSlug, slugify } from '@/lib/slug'
  *   - **Body content.** Fixed-type bodies arrive with the constrained rich-text slice
  *     (`07` §4), which is also what wires up the paste normalizer that already exists in
  *     `src/lib/paste-normalizer.ts`.
- *   - **`layout`** — the district-only block array (`03` §3) — arrives with the block
- *     library. `pageType: composed` is already selectable and already gated, so the field
- *     slots into a boundary that is tested before it exists.
  *   - **`seo`.** `plugin-seo` owns that group's shape (`05`); hand-rolling one now would
  *     mean deleting it when the plugin lands.
  *
@@ -194,6 +192,32 @@ export const Pages: CollectionConfig = {
       admin: {
         description: 'Optional. Goes live at this time instead of immediately.',
         position: 'sidebar',
+      },
+    },
+    {
+      name: 'layout',
+      type: 'blocks',
+      blocks: blockLibrary,
+      label: 'Sections',
+      /**
+       * The district-only block array (`03` §3). THREE layers gate it and none is
+       * decoration:
+       *   - this field-level access, which refuses the write;
+       *   - `composedPagesAreDistrictOnly`, which refuses a `layout` payload however it
+       *     arrives — including on a partial update that never mentions `pageType`;
+       *   - `pagesUpdateAccess`, which refuses the request before either runs.
+       * v1 has no school composition (`01` §4.1); enabling it later changes these
+       * predicates and nothing else — no new collection, no new block, no new template.
+       */
+      access: { create: districtOnlyField, update: districtOnlyField },
+      admin: {
+        /**
+         * Hidden on every fixed type. A school manager never reaches this field, but a
+         * district admin editing an `about` page should not see an empty block builder
+         * below the fields that page actually uses.
+         */
+        condition: (data: { pageType?: unknown } | undefined) => data?.pageType === 'composed',
+        description: 'The sections of this page, top to bottom. Drag to reorder.',
       },
     },
     {

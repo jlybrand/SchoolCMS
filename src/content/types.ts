@@ -63,9 +63,8 @@ export const FIXED_PAGE_TYPES: readonly PageType[] = [
 /**
  * A page as the rendering layer sees it.
  *
- * SCOPE: identity, hierarchy, type, visibility, and body prose. `composed` pages also carry
- * a block array, which arrives with the block library and defines its own node types — it
- * is deliberately not modelled here before it exists (`03` §4).
+ * SCOPE: identity, hierarchy, type, visibility, body prose, and — for `composed` pages —
+ * the district-only block array (`03` §3).
  */
 export type Page = {
   id: string
@@ -83,7 +82,68 @@ export type Page = {
   requiresTranslationReview: boolean
   /** Body prose. Empty is legitimate — see `RichText` below. */
   body: RichText
+  /**
+   * The block array, for `composed` pages only (`03` §3). Empty on every fixed type, which
+   * is not a special case: a fixed-type page has no layout to render and the template does
+   * not ask for one.
+   */
+  layout: PageBlock[]
 }
+
+/**
+ * BLOCKS (`03` §3).
+ *
+ * The register in `03` §3.1 is the source of truth for what exists and in which dependency
+ * batch. This union grows one member per block, and ONLY as that block is built — a member
+ * declared ahead of its renderer is a shape nothing produces and nothing consumes.
+ *
+ * WHAT IS NOT HERE, AND MUST NOT BE:
+ *
+ *   - **No heading level on any block.** Levels are derived from position and threaded as a
+ *     prop (`src/components/Heading/levels.ts`). The conformance claim — an editor cannot
+ *     produce a heading-order violation by reordering — is true only because there is no
+ *     field to set (`03` §3.2, `07` §3).
+ *   - **No nesting.** No block holds other blocks. Column layouts and tabs are open
+ *     questions, not omissions (`03` §3.3); resolving them yes would mean threading
+ *     `baseLevel` to arbitrary depth and owning RTL column order and mobile stack order.
+ *   - **No styling fields.** No alignment, no colour, no width. Per-tenant themes override
+ *     tokens at render (`02` §4.4); an editor who can set a colour can fail contrast, which
+ *     token-level validation exists to make impossible (`07` §3).
+ */
+
+/** Every block carries the id of its Payload array row — the render key. */
+type BlockBase = {
+  id: string
+}
+
+/** Prose within a composed page. The same nodes a fixed-type page's `body` carries. */
+export type RichTextPageBlock = BlockBase & {
+  kind: 'richText'
+  content: RichText
+}
+
+/**
+ * A heading, a line of text, and one link styled as a button.
+ *
+ * `heading` and `text` are nullable but `href` and `linkLabel` are not: the link is the
+ * block, and one without a destination or an accessible name is dropped at the mapper rather
+ * than rendered (WCAG 2.4.4 — see `src/content/blocks.ts`).
+ *
+ * `text` is a plain string rather than rich text, deliberately. A second link inside a call
+ * to action competes with the button for the same decision, and the block's whole job is to
+ * present one.
+ */
+export type CallToActionBlock = BlockBase & {
+  kind: 'callToAction'
+  heading: string | null
+  text: string | null
+  href: string
+  linkLabel: string
+  /** The renderer announces this; an unannounced new tab is a WCAG 3.2.5 problem. */
+  newTab: boolean
+}
+
+export type PageBlock = RichTextPageBlock | CallToActionBlock
 
 /**
  * RICH TEXT (`07` §4.4).
