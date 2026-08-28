@@ -5,7 +5,7 @@ import config from '@payload-config'
 import { ROOT_SLUG, buildPagePath, splitPagePath } from '@/lib/slug'
 import { toPageBlocks } from './blocks'
 import { toRichText } from './rich-text'
-import type { ContentContext, Page, PageType, Visibility } from './types'
+import type { ContentContext, Page, PageLink, PageType, Visibility } from './types'
 
 /**
  * Page lookups (`02` §11, ADR-5).
@@ -49,7 +49,26 @@ const idOf = (ref: PayloadPage['parent']): string | null => {
   return String(ref)
 }
 
-const toDomain = (doc: PayloadPage, path: string): Page => ({
+/**
+ * Child pages in the order a menu renders them: by title, always.
+ *
+ * SORTED IN MEMORY rather than by the database, so `getPageByPath` (which queries) and
+ * `listPagePaths` (which groups a result set it already has) cannot order the same page's
+ * children differently. An explicit locale keeps the build and the test environment agreeing.
+ *
+ * Alphabetical is the only deterministic order available: `pages` has no manual ordering
+ * field, and adding one is a decision about the authoring model, not something to invent here.
+ */
+const byTitle = (links: PageLink[]): PageLink[] =>
+  [...links].sort((a, b) => a.title.localeCompare(b.title, 'en'))
+
+/**
+ * Enough children for any real section menu. A page with more than this beneath it is a
+ * structure problem, and rendering two hundred links would be one too.
+ */
+const MAX_CHILDREN = 200
+
+const toDomain = (doc: PayloadPage, path: string, children: PageLink[]): Page => ({
   id: String(doc.id),
   tenantId: String(idOf(doc.tenant as PayloadPage['parent'])),
   title: doc.title,
@@ -63,6 +82,11 @@ const toDomain = (doc: PayloadPage, path: string): Page => ({
   body: toRichText(doc.body),
   // Likewise for blocks: nothing downstream sees a `blockType` discriminator (`03` §3).
   layout: toPageBlocks(doc.layout),
+  /**
+   * The page's own position in the tree, resolved HERE rather than by the block that renders
+   * it — `src/blocks/` may not import the SDK (`03` §3.3, decided 2026-08-28).
+   */
+  children,
 })
 
 /**
@@ -148,7 +172,59 @@ export const getPageByPath = async (
     parentId = String(doc.id)
   }
 
-  return current ? toDomain(current, buildPagePath(lookup)) : null
+  if (!current) return null
+
+  /**
+   * THE FRONT PAGE HAS NO CHILDREN, even if rows point at it. Their paths would start
+   * `/home/`, which this function refuses so the front page has exactly one URL — so they have
+   * no reachable URL and must not appear in a menu. `rootPageCannotBeParent` refuses the shape
+   * on write; this is the resolution half of the same guarantee, and only one of the two
+   * survives a migration or a direct database write.
+   */
+  const isFrontPage = lookup.length === 1 && lookup[0] === ROOT_SLUG
+
+  const children = isFrontPage ? [] : await childrenOf(payload, ctx, current, lookup)
+
+  return toDomain(current, buildPagePath(lookup), children)
+}
+
+/**
+ * The published, public pages directly beneath one page, as links.
+ *
+ * The same `publishedAndPublic` filter the page itself passed. A draft child in a menu would
+ * publish its title and its URL — enough to leak that unannounced content exists, and enough
+ * for the link to 404 (`03` §6.4).
+ *
+ * One query, at build or revalidate time, for a page that actually renders a section menu.
+ */
+const childrenOf = async (
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  ctx: ContentContext,
+  parent: PayloadPage,
+  parentSegments: string[],
+): Promise<PageLink[]> => {
+  const { docs } = await payload.find({
+    collection: 'pages',
+    where: {
+      and: [
+        { tenant: { equals: ctx.tenant.id } },
+        { parent: { equals: parent.id } },
+        ...publishedAndPublic,
+      ],
+    },
+    limit: MAX_CHILDREN,
+    depth: 0,
+    overrideAccess: true,
+  })
+
+  return byTitle(
+    (docs as PayloadPage[]).map((doc) => ({
+      id: String(doc.id),
+      title: doc.title,
+      // Assembled from the parent's own segments, so a child's path is the parent's plus one.
+      path: buildPagePath([...parentSegments, doc.slug]),
+    })),
+  )
 }
 
 /**
@@ -217,13 +293,33 @@ export const listPagePaths = async (
     return null
   }
 
-  const results: { path: string; page: Page }[] = []
+  const reachable: { doc: PayloadPage; path: string }[] = []
   for (const doc of pages) {
     const segments = segmentsFor(doc)
     if (!segments) continue
-    const path = buildPagePath(segments)
-    results.push({ path, page: toDomain(doc, path) })
+    reachable.push({ doc, path: buildPagePath(segments) })
   }
 
-  return results
+  /**
+   * Children assembled from the result set already in hand — NO extra query, and none per
+   * page. This function maps every published page in the tenant, so a per-page child lookup
+   * would be an N+1 across 28 tenant builds for data that costs nothing to group here.
+   *
+   * Built from `reachable` rather than from `pages`, which is what keeps it honest: a page
+   * with no reachable URL is not a menu entry, so skipping it once covers both.
+   */
+  const childrenByParent = new Map<string, PageLink[]>()
+  for (const { doc, path } of reachable) {
+    const parent = idOf(doc.parent ?? null)
+    if (parent === null) continue
+
+    const siblings = childrenByParent.get(parent) ?? []
+    siblings.push({ id: String(doc.id), title: doc.title, path })
+    childrenByParent.set(parent, siblings)
+  }
+
+  return reachable.map(({ doc, path }) => ({
+    path,
+    page: toDomain(doc, path, byTitle(childrenByParent.get(String(doc.id)) ?? [])),
+  }))
 }

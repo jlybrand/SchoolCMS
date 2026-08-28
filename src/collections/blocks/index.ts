@@ -166,6 +166,41 @@ export const cardGridBlock: Block = {
 }
 
 /**
+ * A menu of the pages beneath this one.
+ *
+ * ONE FIELD, AND THAT ONE OPTIONAL. The list itself is the page's own children, resolved at
+ * render (`src/content/pages.ts`) — so there is nothing here to keep in step with the site's
+ * structure, and no way to author a menu that disagrees with it. Adding a page beneath this
+ * one puts it in the menu; unpublishing it takes it out.
+ *
+ * NO ORDERING FIELD AND NO DEPTH FIELD. The order is alphabetical and the depth is one level.
+ * Both are decisions the platform makes so a school manager does not have to (`04` §2.1), and
+ * both are cheap to revisit — a manual order needs a sort field on `pages`, which is an
+ * authoring-model decision rather than a block one.
+ */
+export const childPageNavBlock: Block = {
+  slug: 'childPageNav',
+  interfaceName: 'ChildPageNavBlock',
+  labels: { singular: 'Pages in this section', plural: 'Pages in this section' },
+  fields: [
+    {
+      name: 'heading',
+      type: 'text',
+      label: 'Heading',
+      admin: {
+        /**
+         * The description carries what the block does, because the block has no other field
+         * and would otherwise look broken in the admin — empty here, a list of links on the
+         * site. Said out loud rather than left to be inferred (`04` §2.1).
+         */
+        description:
+          'Optional. A title for the menu, like "In this section" — it also names the menu for screen readers. The menu itself lists every page saved underneath this one, in alphabetical order, and keeps itself up to date.',
+      },
+    },
+  ],
+}
+
+/**
  * A thematic break. No fields — it carries no content, which is also why the mapper can never
  * drop one for being empty.
  */
@@ -185,5 +220,6 @@ export const blockLibrary: Block[] = [
   accordionBlock,
   cardGridBlock,
   callToActionBlock,
+  childPageNavBlock,
   dividerBlock,
 ]

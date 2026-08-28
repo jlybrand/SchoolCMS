@@ -284,6 +284,42 @@ describe('toPageBlocks — divider', () => {
   })
 })
 
+describe('toPageBlocks — childPageNav', () => {
+  /**
+   * THE ONLY BLOCK WHOSE EMPTINESS THIS MAPPER CANNOT JUDGE.
+   *
+   * Every other block is dropped here when it has nothing to show, because everything it
+   * shows is in its own row. A section menu's content is the page's children, which live in
+   * other rows and are resolved by `src/content/pages.ts` — so the mapper cannot know whether
+   * this one is empty, and the renderer owns the drop instead (see `src/blocks/ChildPageNav`).
+   */
+  it('survives with no fields of its own', () => {
+    expect(toPageBlocks([{ blockType: 'childPageNav', id: 'a' }])).toEqual([
+      { kind: 'childPageNav', id: 'a', heading: null },
+    ])
+  })
+
+  it('carries its heading through', () => {
+    const [block] = toPageBlocks([
+      { blockType: 'childPageNav', id: 'a', heading: '  In this section  ' },
+    ])
+    expect(block).toEqual({ kind: 'childPageNav', id: 'a', heading: 'In this section' })
+  })
+
+  /**
+   * No `children` field on the domain block, deliberately. The pages come from the page being
+   * rendered and are threaded through `BlockList` as a prop — putting them on the block would
+   * make this mapper need page context, which is what keeps it a pure function over JSON and
+   * therefore reusable by the Phase 9 migration mappers (`10` §5).
+   */
+  it('never carries the child pages themselves', () => {
+    const [block] = toPageBlocks([
+      { blockType: 'childPageNav', id: 'a', children: [{ title: 'Injected', path: '/nope' }] },
+    ])
+    expect(Object.keys(block ?? {}).sort()).toEqual(['heading', 'id', 'kind'])
+  })
+})
+
 /**
  * THE COUPLING BETWEEN THE TWO HALVES OF A BLOCK.
  *
@@ -306,6 +342,7 @@ describe('the block library and the mapper agree', () => {
       callToAction: { href: '/enroll', linkLabel: 'Enroll' },
       accordion: { items: [{ heading: 'Q', content: lexical(paragraph('A')) }] },
       cardGrid: { cards: [{ title: 'Card' }] },
+      childPageNav: {},
       divider: {},
     }
 

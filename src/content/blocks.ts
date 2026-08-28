@@ -5,6 +5,7 @@ import type {
   Card,
   CardGridBlock,
   CallToActionBlock,
+  ChildPageNavBlock,
   DividerBlock,
   PageBlock,
   RichTextPageBlock,
@@ -127,6 +128,23 @@ const toCardGrid = (row: Row, index: number): CardGridBlock | null => {
 }
 
 /**
+ * A menu of the pages beneath this one.
+ *
+ * THE ONE BLOCK WHOSE EMPTINESS THIS FILE CANNOT JUDGE. Every other block is dropped here
+ * when it has nothing to show, because everything it shows is in its own row. This one's
+ * content is `Page.children`, resolved in `pages.ts` and threaded to the renderer as a prop —
+ * so whether it is empty is not knowable here, and `ChildPageNav` drops it instead.
+ *
+ * Which is the whole point of the shape: this stays a pure function over JSON, and therefore
+ * stays reusable by the Phase 9 migration mappers with no CMS running (`10` §5).
+ */
+const toChildPageNav = (row: Row, index: number): ChildPageNavBlock => ({
+  kind: 'childPageNav',
+  id: idOf(row, index),
+  heading: str(row.heading),
+})
+
+/**
  * The one block with no content to validate, and therefore the only one that can never be
  * dropped for being empty.
  */
@@ -144,6 +162,7 @@ const MAPPERS: Record<string, (row: Row, index: number) => PageBlock | null> = {
   callToAction: toCallToAction,
   accordion: toAccordion,
   cardGrid: toCardGrid,
+  childPageNav: toChildPageNav,
   divider: toDivider,
 }
 

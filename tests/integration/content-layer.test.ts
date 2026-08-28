@@ -145,6 +145,30 @@ describe('getPageByPath', () => {
     const home = await mkPage({ tenant: district.id, title: 'Home', slug: ROOT_SLUG })
     const about = await mkPage({ tenant: district.id, title: 'About', slug: 'about' })
     await mkPage({ tenant: district.id, title: 'Staff', slug: 'staff', parent: about })
+    /**
+     * Children of `about`, seeded out of alphabetical order on purpose: the order the menu
+     * renders in is the resolver's, not the database's insertion order.
+     */
+    await mkPage({
+      tenant: district.id,
+      title: 'Bell schedule',
+      slug: 'bell-schedule',
+      parent: about,
+    })
+    await mkPage({
+      tenant: district.id,
+      title: 'Unfinished',
+      slug: 'unfinished',
+      parent: about,
+      _status: 'draft',
+    })
+    await mkPage({
+      tenant: district.id,
+      title: 'Internal note',
+      slug: 'internal-note',
+      parent: about,
+      visibility: 'staff',
+    })
     await mkPage({ tenant: district.id, title: 'Draft', slug: 'draft-only', _status: 'draft' })
     await mkPage({
       tenant: district.id,
@@ -236,6 +260,82 @@ describe('getPageByPath', () => {
     expect((await getPageByPath(ctx, ''))?.slug).toBe(ROOT_SLUG)
     expect(await getPageByPath(ctx, null)).toBeNull()
     expect(await getPageByPath(ctx, undefined)).toBeNull()
+  })
+
+  /**
+   * THE PAGE'S OWN TREE (`03` §3.3, decided 2026-08-28).
+   *
+   * `ChildPageNav` renders the pages beneath the current one, and `src/blocks/` may not import
+   * the Payload SDK (CLAUDE.md rule 1) — so the children arrive as part of the page rather
+   * than being fetched by the block. That makes this the resolver's job, and these are its
+   * tests.
+   *
+   * The rule the whole set turns on: **a child appears here only if it has a reachable URL.**
+   * A menu entry that 404s is worse than a missing one, and it would be cached (`02` §5).
+   */
+  describe('the page tree', () => {
+    it('lists a page’s published, public children in title order', async () => {
+      const page = await getPageByPath(ctx, '/about')
+
+      expect(page?.children).toEqual([
+        { id: expect.any(String), title: 'Bell schedule', path: '/about/bell-schedule' },
+        { id: expect.any(String), title: 'Staff', path: '/about/staff' },
+      ])
+    })
+
+    /**
+     * The same filter the resolver applies to the page itself. A draft child in a menu would
+     * publish its title and its URL — enough to leak that unannounced content exists, and
+     * enough for the link to 404 (`03` §6.4).
+     */
+    it('omits draft and staff-only children', async () => {
+      const titles = (await getPageByPath(ctx, '/about'))?.children.map((child) => child.title)
+
+      expect(titles).not.toContain('Unfinished')
+      expect(titles).not.toContain('Internal note')
+    })
+
+    it('gives a leaf page an empty tree rather than omitting the field', async () => {
+      expect((await getPageByPath(ctx, '/about/staff'))?.children).toEqual([])
+    })
+
+    /**
+     * The front page's children have no reachable URL — their path would start `/home/`, which
+     * `getPageByPath` refuses so the front page has exactly one URL. `rootPageCannotBeParent`
+     * refuses this shape on write and the `orphan` fixture was written under the hooks anyway,
+     * because validation and resolution are separate guarantees.
+     */
+    it('gives the front page no children, even when a row points at it', async () => {
+      expect((await getPageByPath(ctx, '/'))?.children).toEqual([])
+    })
+
+    /** Every path the menu will render has to resolve, or the menu links into a 404. */
+    it('emits child paths that resolve', async () => {
+      const children = (await getPageByPath(ctx, '/about'))?.children ?? []
+      expect(children).not.toHaveLength(0)
+
+      for (const child of children) {
+        expect(await getPageByPath(ctx, child.path), `child path ${child.path}`).not.toBeNull()
+      }
+    })
+
+    /**
+     * The build path and the request path must agree. `listPagePaths` assembles children in
+     * memory from the tenant-wide query it already runs — it must not answer differently from
+     * the resolver, which asks the database.
+     */
+    it('agrees with listPagePaths on the same page’s children', async () => {
+      const entry = (await listPagePaths(ctx)).find((item) => item.path === '/about')
+      const resolved = await getPageByPath(ctx, '/about')
+
+      expect(entry?.page.children).toEqual(resolved?.children)
+    })
+
+    /** The boundary again: a child is a link, not a leaked Payload document. */
+    it('returns link shapes only, with no Payload fields', async () => {
+      const [child] = (await getPageByPath(ctx, '/about'))?.children ?? []
+      expect(Object.keys(child ?? {}).sort()).toEqual(['id', 'path', 'title'])
+    })
   })
 
   describe('listPagePaths', () => {
