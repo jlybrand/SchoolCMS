@@ -53,6 +53,9 @@ export type Fixtures = {
   /** One `navigation` row per school — the per-tenant record a school-manager may not touch. */
   navigationA: number
   navigationB: number
+  /** One `theme` row per school, with different colours — same rule as the menus. */
+  themeA: number
+  themeB: number
   districtAdmin: TypedUser
   managerA: TypedUser
   managerB: TypedUser
@@ -65,8 +68,8 @@ export type Fixtures = {
  * including a school-manager assigned to NO tenant — the shape most likely to fail open.
  */
 export async function seed(payload: Payload): Promise<Fixtures> {
-  // Order matters: pages, navigation and users all reference tenants.
-  for (const collection of ['pages', 'navigation', 'users', 'tenants'] as const) {
+  // Order matters: pages, navigation, theme and users all reference tenants.
+  for (const collection of ['pages', 'navigation', 'theme', 'users', 'tenants'] as const) {
     await payload.delete({ collection, where: {}, overrideAccess: true })
   }
 
@@ -158,9 +161,26 @@ export async function seed(payload: Payload): Promise<Fixtures> {
       })
     ).id as number
 
+  /** Both valid, and different, so a leak reads as the wrong school's colour. */
+  const mkTheme = async (
+    tenant: number,
+    primaryColor: string,
+    secondaryColor?: string,
+  ): Promise<number> =>
+    (
+      await payload.create({
+        collection: 'theme',
+        data: { tenant, primaryColor, ...(secondaryColor ? { secondaryColor } : {}) },
+        overrideAccess: true,
+      })
+    ).id as number
+
   return {
     tenantA,
     tenantB,
+    // A has both colours and B only a main one, so the mapper's two shapes are both seeded.
+    themeA: await mkTheme(tenantA, '#7a1f2b', '#c9a227'),
+    themeB: await mkTheme(tenantB, '#14532d'),
     navigationA: await mkNavigation(tenantA, 'School A'),
     navigationB: await mkNavigation(tenantB, 'School B'),
     publishedPageA: await mkPage(tenantA, 'published-page-a', 'published'),

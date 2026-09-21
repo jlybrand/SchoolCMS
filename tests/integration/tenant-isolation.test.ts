@@ -777,6 +777,142 @@ describe('navigation — district-only, one row per tenant (`03` §5, §6.1)', (
   })
 })
 
+describe('theme — district-only, one row per tenant, never a failing palette (`03` §5, `07` §3)', () => {
+  // As for navigation: a manager is refused their OWN school's row too, so both are tried.
+  const rows = () =>
+    [
+      ['their own', f.themeA],
+      ["another tenant's", f.themeB],
+    ] as const
+
+  it('a school-manager reads no theme at all, by list or by id', async () => {
+    expect(
+      await readsNothing(() =>
+        payload.find({ collection: 'theme', user: f.managerA, overrideAccess: false }),
+      ),
+    ).toBe(true)
+
+    for (const [, id] of rows()) {
+      const denied = await isDenied(() =>
+        payload.findByID({ collection: 'theme', id, user: f.managerA, overrideAccess: false }),
+      )
+      expect(denied).toBe(true)
+    }
+  })
+
+  it("a school-manager cannot UPDATE or DELETE a theme — their own or anyone else's", async () => {
+    for (const [, id] of rows()) {
+      expect(
+        await isDenied(() =>
+          payload.update({
+            collection: 'theme',
+            id,
+            data: { primaryColor: '#000000' },
+            user: f.managerA,
+            overrideAccess: false,
+          }),
+        ),
+      ).toBe(true)
+      expect(
+        await isDenied(() =>
+          payload.delete({ collection: 'theme', id, user: f.managerA, overrideAccess: false }),
+        ),
+      ).toBe(true)
+    }
+
+    const { docs } = await payload.find({ collection: 'theme', overrideAccess: true })
+    expect(docs.map((doc) => doc.primaryColor).sort()).toEqual(['#14532d', '#7a1f2b'])
+  })
+
+  it('system-sync and anonymous callers read nothing', async () => {
+    expect(
+      await readsNothing(() =>
+        payload.find({ collection: 'theme', user: f.systemSync, overrideAccess: false }),
+      ),
+    ).toBe(true)
+    expect(
+      await readsNothing(() => payload.find({ collection: 'theme', overrideAccess: false })),
+    ).toBe(true)
+  })
+
+  it('a tenant has ONE theme — a second row is refused, even for the district admin', async () => {
+    const denied = await isDenied(() =>
+      payload.create({
+        collection: 'theme',
+        data: { tenant: f.tenantA, primaryColor: '#000000' },
+        user: f.districtAdmin,
+        overrideAccess: false,
+      }),
+    )
+    expect(denied).toBe(true)
+  })
+
+  it('refuses a colour that fails contrast — through the API, not just the admin form', async () => {
+    /**
+     * `07` §3: "a school cannot pick a brand colour that fails". The district admin is the
+     * only actor who can write here, so the district admin is who the check has to stop.
+     */
+    for (const primaryColor of ['#ffcc00', '#767676', 'navy', '#0f4c81;background:red']) {
+      const denied = await isDenied(() =>
+        payload.update({
+          collection: 'theme',
+          id: f.themeA,
+          data: { primaryColor },
+          user: f.districtAdmin,
+          overrideAccess: false,
+        }),
+      )
+      expect(denied, primaryColor).toBe(true)
+    }
+  })
+
+  it('takes a light colour as the SECOND colour — and still refuses one that is not a colour', async () => {
+    // The same gold the main colour refuses above. It is decorative here (`src/lib/theme.ts`).
+    const updated = await payload.update({
+      collection: 'theme',
+      id: f.themeA,
+      data: { secondaryColor: '#FFCC00' },
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+    expect(updated.secondaryColor).toBe('#ffcc00')
+
+    for (const secondaryColor of ['gold', '#ffcc00;background:red']) {
+      const denied = await isDenied(() =>
+        payload.update({
+          collection: 'theme',
+          id: f.themeA,
+          data: { secondaryColor },
+          user: f.districtAdmin,
+          overrideAccess: false,
+        }),
+      )
+      expect(denied, secondaryColor).toBe(true)
+    }
+  })
+
+  it('stores one spelling per colour, and lets the district admin clear it', async () => {
+    const updated = await payload.update({
+      collection: 'theme',
+      id: f.themeB,
+      data: { primaryColor: ' #123 ' },
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+    expect(updated.primaryColor).toBe('#112233')
+
+    // Empty means "the district's blue" — a theme can always be taken back off.
+    const cleared = await payload.update({
+      collection: 'theme',
+      id: f.themeB,
+      data: { primaryColor: null },
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+    expect(cleared.primaryColor ?? null).toBeNull()
+  })
+})
+
 describe('sibling slugs stay unique within a parent', () => {
   it('rejects a second top-level page with an existing slug in the same tenant', async () => {
     const denied = await isDenied(() =>

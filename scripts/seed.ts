@@ -73,6 +73,13 @@ const TENANTS = [
 ]
 
 /**
+ * Maroon and gold. The maroon is 10.9:1 on white, so it passes every pair `src/lib/theme.ts`
+ * checks; the gold would fail all of them, which is the point of seeding it as the second
+ * colour — it is decorative there and nothing is read against it.
+ */
+const THEMED_TENANT = { slug: 'school-a', primaryColor: '#7a1f2b', secondaryColor: '#c9a227' }
+
+/**
  * The pages every seeded tenant gets, ordered parents-first.
  *
  * Deliberately NOT `/athletics`. That is the path `tests/e2e/tenant-routing.spec.ts` asserts
@@ -258,6 +265,33 @@ const run = async () => {
         ...asDistrict,
       })
       payload.logger.info(`created menus for ${tenant.slug}`)
+    }
+
+    /**
+     * A theme for ONE school (`03` §5), created only when absent, as the menus are. One
+     * rather than all three so both render paths stay exercised locally and in e2e: School A
+     * overrides the brand colour, and the district and School B render the default palette.
+     */
+    if (tenant.slug === THEMED_TENANT.slug) {
+      const { totalDocs: themes } = await payload.count({
+        collection: 'theme',
+        where: { tenant: { equals: tenantId } },
+        overrideAccess: true,
+      })
+
+      if (themes === 0) {
+        await payload.create({
+          collection: 'theme',
+          data: {
+            tenant: tenantId,
+            primaryColor: THEMED_TENANT.primaryColor,
+            secondaryColor: THEMED_TENANT.secondaryColor,
+          },
+          overrideAccess: true,
+          ...asDistrict,
+        })
+        payload.logger.info(`created theme for ${tenant.slug}`)
+      }
     }
   }
 

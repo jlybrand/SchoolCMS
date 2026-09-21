@@ -14,7 +14,8 @@ Phase 3 lands across several PRs. This document is written as each one merges.
 | Block library                              | **Batch 1 complete** — §17–§20                            |
 | Constrained rich text (Lexical)            | **Landed** — §13, §15                                     |
 | Navigation                                 | **Landed** — §21                                          |
-| Theme, SEO, sitemap                        | Not started                                               |
+| Theme                                      | **Landed** — §22                                          |
+| SEO, sitemap                               | Not started                                               |
 
 ---
 
@@ -1098,3 +1099,139 @@ start, this is a new table — pure expand.
 - After adding `isGlobal`, run `pnpm exec payload generate:importmap`. Without it the admin logs
   `PayloadComponent not found in importMap` for `GlobalViewRedirect` and the redirect silently
   does nothing; no test fails.
+
+---
+
+## 22. Theme — a school's two colours, contrast-checked twice
+
+The second per-tenant record (`03` §5). Same collection shape as `navigation` (§21); what is new
+is the validator and the render path.
+
+### Added
+
+| File                          | Holds                                                                                             |
+| ----------------------------- | ------------------------------------------------------------------------------------------------- |
+| `src/lib/theme.ts`            | `DEFAULT_COLOR_TOKENS`, `THEME_FIELDS`, `toHexColor`, `checkThemeColors`, `describeThemeFailures` |
+| `src/collections/Theme.ts`    | `primaryColor`, `secondaryColor`; a normalizing hook and per-field validators                     |
+| `src/content/theme-tokens.ts` | `toTheme` — the pure mapper; re-validates                                                         |
+| `src/content/theme.ts`        | `getTheme({ tenant })` — the query                                                                |
+| `tests/unit/theme.test.ts`    | 50 tests: the mirror, hex parsing, the checker, the message, the mapper                           |
+
+### Changed
+
+| File                                         | Change                                                     |
+| -------------------------------------------- | ---------------------------------------------------------- |
+| `src/payload.config.ts`                      | Collection registered; `theme: { isGlobal: true }`         |
+| `src/content/types.ts`                       | `Theme`                                                    |
+| `src/styles/tokens.css`                      | `--color-accent` (default: the hairline grey)              |
+| `src/lib/contrast.ts`                        | New pair: `text on a hovered brand fill`                   |
+| `SiteHeader` / `SiteFooter` `.module.css`    | The boundary rule is now `--color-accent`                  |
+| `.../[locale]/layout.tsx`                    | Resolves tenant + theme; `style` on `<html>`               |
+| `scripts/seed.ts`                            | Maroon + gold for School A only, created when absent       |
+| `tests/helpers/payload.ts`                   | `themeA` (both colours) / `themeB` (main only)             |
+| `tests/unit/tokens.test.ts`                  | `--color-accent` joins `UNPAIRED_BY_DESIGN`                |
+| `tests/integration/tenant-isolation.test.ts` | 7 cases: district-only, one row, what each colour refuses  |
+| `tests/integration/content-layer.test.ts`    | `getTheme`: own tenant only; a failing row written by SQL  |
+| `tests/e2e/tenant-routing.spec.ts`           | Themed and unthemed tenant: computed link and rule colours |
+| `src/payload-types.ts`                       | Regenerated                                                |
+| `starterDocs/03-...md`                       | §5: what `theme` holds in v1                               |
+
+### The two colours are held to different standards
+
+| Field            | Token            | Used for                                   | Checked against                   |
+| ---------------- | ---------------- | ------------------------------------------ | --------------------------------- |
+| `primaryColor`   | `--color-brand`  | Link text, buttons, the skip link          | Every pair naming `--color-brand` |
+| `secondaryColor` | `--color-accent` | The rule under the header, over the footer | Hex format only                   |
+
+`--color-accent` is decorative: it is never text, never behind text, and never the only boundary
+of a control, so no pair names it and it sits in `UNPAIRED_BY_DESIGN` beside `--color-border`.
+The first component that puts text on it adds a pair to `REQUIRED_CONTRAST_PAIRS` and removes it
+from that list.
+
+A school whose main colour is its light one (gold and black) enters the dark one as
+`primaryColor`. The field description and the validation message both say so.
+
+### The call chain
+
+```
+SAVE   Theme.primaryColor / .secondaryColor
+         beforeValidate        toHexColor on each -> '#aabbcc' (left as typed when not a colour)
+         validate (per field)  checkThemeColors({ [field]: value })
+                                 not hex                  -> unevaluable-colour, outright
+                                 overrides laid over DEFAULT_COLOR_TOKENS
+                                 checkContrastPairs(pairs naming an overridden token)
+                               describeThemeFailures(failures) -> the error under that field
+
+RENDER layout.tsx
+         getTenantByHostname(hostname)      unknown host -> no theme; the page 404s
+         getTheme({ tenant })               src/content/theme.ts, overrideAccess + tenant clause
+           toTheme(docs[0])                 src/content/theme-tokens.ts
+             toHexColor per THEME_FIELDS    not a colour -> { tokens: {} }
+             checkThemeColors (both)        any failure  -> { tokens: {} }
+         <html style={theme.tokens}>        --color-brand: #7a1f2b; --color-accent: #c9a227
+```
+
+The render check judges both colours together and drops the whole palette on any failure, so a
+failing `primaryColor` written around the validator takes a valid `secondaryColor` with it.
+
+### What `primaryColor` has to pass
+
+| Pair                        | Against               | Needs |
+| --------------------------- | --------------------- | ----- |
+| link text on surface        | `#ffffff`             | 4.5:1 |
+| link text on raised surface | `#f6f7f9`             | 4.5:1 |
+| text on a brand fill        | `#ffffff` label on it | 4.5:1 |
+| focus ring on a brand fill  | `#ffffff` ring on it  | 3:1   |
+
+The raised-surface pair is the binding one: `#767676` passes on white (4.54) and fails there
+(4.23). All failures are returned together.
+
+`--color-brand-contrast` is not a field. Any colour at 4.5:1 against white carries white text at
+the same ratio, so it has no free choice in it.
+
+### Malformed values fail outright
+
+`checkThemeColors` reports a non-hex override as `unevaluable-colour` before consulting the
+pairs. It has to: no pair names `--color-accent`, so a malformed `secondaryColor` would otherwise
+have nothing to fail.
+
+### `DEFAULT_COLOR_TOKENS` mirrors `tokens.css`
+
+Production does not parse CSS, and the checker needs the platform's value for every token a pair
+names. `theme.test.ts` asserts the object's keys equal the set of tokens in
+`REQUIRED_CONTRAST_PAIRS` and that each value equals the stylesheet's. Editing `tokens.css` alone
+fails that test. It also asserts every `THEME_FIELDS` token is declared in the stylesheet.
+
+### The new contrast pair
+
+`Link`'s button variant sets `background-color: var(--color-text)` on hover and keeps
+`--color-brand-contrast` as its label colour. That pair was in the stylesheet and not in
+`REQUIRED_CONTRAST_PAIRS`. It is now; the defaults score 17.9:1.
+
+### Inline `style` on `<html>`
+
+`tokens.css` declares on `:root`; the overrides are an inline declaration on the same element.
+The property names come from `THEME_FIELDS`, never from the row, and each value is an exact
+`#rrggbb`. The e2e spec reads computed colours — a header link, the header's rule — rather than
+the attribute: no component references the theme.
+
+There is no CSP in the repo. When one lands it has to account for this attribute: a hash or
+nonce in `style-src` does not cover `style=""`, so either `style-src-attr 'unsafe-inline'` is
+allowed or the overrides move to a nonce'd `<style>` element.
+
+### Not built, and what each waits for
+
+| `02` §4.4 item | Waits for                                                  |
+| -------------- | ---------------------------------------------------------- |
+| Logo, favicon  | `media`, Phase 6 — an image URL would bypass alt-at-upload |
+| Hero style     | The hero block (Batch 2, which also needs `media`)         |
+| Type scale     | Nothing scheduled — no DD2 usage traced to it              |
+
+### Cache
+
+As §21: covered by the tenant tag, which nothing purges yet.
+
+### Local gotcha
+
+`pnpm run seed` before `pnpm test:e2e`, as for any new table. `generate:importmap` reports no new
+imports — `GlobalViewRedirect` was added with `navigation`.

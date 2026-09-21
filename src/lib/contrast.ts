@@ -6,8 +6,8 @@
  * only meaningful if one function answers the question everywhere it is asked —
  *
  *   - `tests/unit/tokens.test.ts` runs it over the shipped defaults in `tokens.css`
- *   - the `theme` global runs it over a tenant's overrides before they can be saved
- *     (Phase 4, `03` §5)
+ *   - `src/lib/theme.ts` runs it over a tenant's overrides, before they can be saved and
+ *     again before they are rendered (`03` §5)
  *
  * — because two implementations would eventually disagree, and the one that disagreed
  * generously would be the one that let a failing palette ship.
@@ -233,6 +233,17 @@ export const REQUIRED_CONTRAST_PAIRS: readonly ContrastPair[] = [
     foreground: '--focus-ring-color',
     background: '--color-surface-raised',
     requirement: 'nonText',
+  },
+  {
+    /**
+     * `Link`'s button variant swaps its fill to `--color-text` on hover and keeps its label
+     * colour. Unlisted, that was a pair the stylesheet used and nothing checked — harmless
+     * while both values were the platform's, and exactly the gap a tenant theme would find.
+     */
+    label: 'text on a hovered brand fill',
+    foreground: '--color-brand-contrast',
+    background: '--color-text',
+    requirement: 'bodyText',
   },
   {
     /**

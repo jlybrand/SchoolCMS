@@ -1,6 +1,8 @@
 import type React from 'react'
 
 import { SkipLink } from '@/components/SkipLink'
+import { getTenantByHostname } from '@/content/tenants'
+import { getTheme } from '@/content/theme'
 import { dirFor } from '@/lib/locales'
 
 import '@/styles/globals.css'
@@ -25,12 +27,32 @@ export default async function SiteLayout({
   params,
 }: {
   children: React.ReactNode
-  params: Promise<{ locale: string }>
+  params: Promise<{ hostname: string; locale: string }>
 }) {
-  const { locale } = await params
+  const { hostname, locale } = await params
+
+  /**
+   * The tenant's theme, as custom properties on `<html>` (`02` §4.4): "the shared component
+   * library reads tokens at render. No per-tenant CSS forks." Every stylesheet already reads
+   * `var(--color-brand)`; this changes what that resolves to, for this site only, and
+   * touches no component.
+   *
+   * ON `<html>`, because `tokens.css` declares on `:root` and an inline declaration on the
+   * same element is what outranks it without a specificity argument.
+   *
+   * An inline `style`, which CLAUDE.md warns off for anything LAYOUT-bearing because
+   * stylelint cannot see it. These are colours, from a closed map of property names, each
+   * value an exact `#rrggbb` that has already passed the contrast pairs (`toTheme`) — there
+   * is no direction in them to get wrong and no string in them a person typed freely.
+   *
+   * An unknown host gets no theme; the page below 404s it (`02` §4.1). Resolved at build or
+   * revalidate time like everything else here, never per visitor (`02` §5).
+   */
+  const tenant = await getTenantByHostname(decodeURIComponent(hostname))
+  const theme = tenant ? await getTheme({ tenant }) : { tokens: {} }
 
   return (
-    <html lang={locale} dir={dirFor(locale)}>
+    <html lang={locale} dir={dirFor(locale)} style={theme.tokens as React.CSSProperties}>
       <body>
         {/*
           First element in the body so it is the first thing focus reaches — WCAG 2.4.1

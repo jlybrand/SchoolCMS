@@ -10,6 +10,7 @@ import type { AuthUser } from './access/types'
 import { Navigation } from './collections/Navigation'
 import { Pages } from './collections/Pages'
 import { Tenants } from './collections/Tenants'
+import { Theme } from './collections/Theme'
 import { Users } from './collections/Users'
 import { constrainedEditor } from './lib/editor'
 
@@ -26,7 +27,7 @@ export default buildConfig({
     importMap: { baseDir: path.resolve(dirname) },
   },
 
-  collections: [Tenants, Users, Pages, Navigation],
+  collections: [Tenants, Users, Pages, Navigation, Theme],
 
   // Postgres, never Mongo — portability is a hard requirement (`00`, ADR-10).
   db: postgresAdapter({
@@ -76,6 +77,7 @@ export default buildConfig({
          * of a list of one. `theme` and `settings` join the same way.
          */
         navigation: { isGlobal: true },
+        theme: { isGlobal: true },
       },
     }),
   ],

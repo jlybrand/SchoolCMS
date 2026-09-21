@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
  * Reads design tokens out of `src/styles/tokens.css`.
  *
  * Test-only, deliberately. Production never parses CSS to learn token values — at render
- * the browser resolves them, and the Phase 4 `theme` global validates a tenant's overrides
+ * the browser resolves them, and `src/lib/theme.ts` validates a tenant's overrides
  * from its own field values. What the token suite needs is the *shipped defaults*, and the
  * only honest source for those is the stylesheet itself. A TypeScript mirror of the token
  * values would pass its own test while the CSS drifted.

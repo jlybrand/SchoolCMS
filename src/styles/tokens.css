@@ -36,6 +36,18 @@
   --color-brand: #0f4c81;
   --color-brand-contrast: #ffffff;
 
+  /**
+   * A school's SECOND colour (per-tenant override target). DECORATIVE ONLY — a rule under the
+   * header, a rule over the footer — and, like --color-border, not contrast-checked for that
+   * reason: 1.4.11 does not cover decoration, which is what lets a school's gold or sky blue
+   * be used at all. Never text, never behind text, never the only boundary of a control. The
+   * first component that needs either adds a pair to REQUIRED_CONTRAST_PAIRS, and the token
+   * suite stops excusing this token.
+   *
+   * The default is the hairline grey, so an unthemed site shows a quiet rule, not a colour.
+   */
+  --color-accent: #d3d7de;
+
   /* --- Colour: alert severity (`03` §2 — never colour-only, `07` §3) ---- */
   --color-info: #0f4c81;
   --color-warning: #7a4a00;
