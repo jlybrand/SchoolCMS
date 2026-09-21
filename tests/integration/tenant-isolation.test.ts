@@ -913,6 +913,48 @@ describe('theme — district-only, one row per tenant, never a failing palette (
   })
 })
 
+describe('page SEO fields ride the same gates as the page (`04` §4.3)', () => {
+  it('a school-manager may propose SEO text on a draft in their own tenant', async () => {
+    const updated = await payload.update({
+      collection: 'pages',
+      id: f.draftPageA,
+      data: { meta: { description: 'Proposed by the school.' } },
+      user: f.managerA,
+      draft: true,
+      overrideAccess: false,
+    })
+    expect(updated.meta?.description).toBe('Proposed by the school.')
+    // Still a draft: writing SEO text is not a route to publishing (invariant 5).
+    expect(updated._status).toBe('draft')
+  })
+
+  it("cannot write another tenant's, and cannot publish by way of it", async () => {
+    expect(
+      await isDenied(() =>
+        payload.update({
+          collection: 'pages',
+          id: f.publishedPageB,
+          data: { meta: { title: 'Hijacked' } },
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      ),
+    ).toBe(true)
+
+    expect(
+      await isDenied(() =>
+        payload.update({
+          collection: 'pages',
+          id: f.draftPageA,
+          data: { meta: { title: 'Live now' }, _status: 'published' },
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      ),
+    ).toBe(true)
+  })
+})
+
 describe('sibling slugs stay unique within a parent', () => {
   it('rejects a second top-level page with an existing slug in the same tenant', async () => {
     const denied = await isDenied(() =>

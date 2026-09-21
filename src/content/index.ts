@@ -31,6 +31,7 @@ export type {
   Locale,
   Page,
   PageBlock,
+  PageSeo,
   PageType,
   RichText,
   RichTextBlock,

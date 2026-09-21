@@ -60,7 +60,13 @@ Payload auth collection, backed by Entra ID (`02` §7).
 ### `pages`
 
 - `tenant`, `title`, `slug`, `pageType`, `parent` (self-relation for hierarchy/nav),
-  `visibility` (`public` | `staff`), `seo` (group), `publishAt`, plus drafts/versions.
+  `visibility` (`public` | `staff`), `seo` (group — stored as `meta`, see below),
+  `publishAt`, plus drafts/versions.
+- The SEO group is `meta.title` and `meta.description`: optional, plain fields, surfaced to
+  the rendering layer as `Page.seo`. Both fall back at render — the title to the page's, the
+  description to the first paragraph of the body — so a page nobody wrote them for is still
+  described. A share image joins with `media` (Phase 6). `plugin-seo` was evaluated and not
+  adopted (`02` §2); the group keeps its name and shape.
 - `requiresTranslationReview` (bool) — gates locale publication for high-stakes content
   (`08` §7.1).
 

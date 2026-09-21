@@ -56,5 +56,12 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    /**
+     * Indexing is OFF unless an environment says `allow` (`src/lib/seo.ts`), which would leave
+     * the sitemap route a 404 here and its wiring — `listPagePaths` into XML, per tenant —
+     * unexercised. The closed state is three one-line branches on a pure predicate and is
+     * covered in tests/unit/seo.test.ts; the open state is the one with moving parts.
+     */
+    env: { SITE_INDEXING: 'allow' },
   },
 })

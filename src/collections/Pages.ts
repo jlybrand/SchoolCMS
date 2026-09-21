@@ -28,8 +28,9 @@ import { isReservedSlug, slugify } from '@/lib/slug'
  *   - **Body content.** Fixed-type bodies arrive with the constrained rich-text slice
  *     (`07` §4), which is also what wires up the paste normalizer that already exists in
  *     `src/lib/paste-normalizer.ts`.
- *   - **`seo`.** `plugin-seo` owns that group's shape (`05`); hand-rolling one now would
- *     mean deleting it when the plugin lands.
+ *   - **A share image.** It is an upload, and `media` is Phase 6. Until then the `meta`
+ *     group has no image rather than a URL field that would bypass alt-required-at-upload
+ *     (CLAUDE.md rule 7).
  *
  * Per CLAUDE.md's TDD exception table, the field declarations here are not test-first —
  * asserting "this field exists" restates the schema. The behaviour attached to them (access
@@ -219,6 +220,63 @@ export const Pages: CollectionConfig = {
         condition: (data: { pageType?: unknown } | undefined) => data?.pageType === 'composed',
         description: 'The sections of this page, top to bottom. Drag to reorder.',
       },
+    },
+    {
+      /**
+       * SEO fields (`01` §3 item 13, `03` §2).
+       *
+       * PLAIN FIELDS, NOT `plugin-seo`, which `02` §2 names. The plugin was installed and
+       * measured (2026-09-21): its title and description components hardcode their hint text
+       * at `#9A9A9A` on white (2.81:1) and their length pills at white on `red`/`orangered`
+       * (3.4–4.0:1), as inline styles, in 3.87.0 and still in 3.90.1. That is a serious axe
+       * violation on the admin plane, which non-negotiable rule 6 does not allow, and an inline
+       * style leaves nothing to fix it with but `!important` selectors keyed to the plugin's
+       * literal colours. `tests/e2e/page-seo-fields.spec.ts` is the axe check that found it.
+       *
+       * THE GROUP IS NAMED `meta` AND ITS FIELDS `title` / `description` — the plugin's names
+       * and stored shape, on purpose. If the plugin fixes its contrast, adopting it is a config
+       * change with no migration. `src/content/pages.ts` surfaces the group as `seo`.
+       *
+       * What the plugin's UI would have added is a character counter and a search-result
+       * preview. What actually decides how a page is described is applied at RENDER
+       * (`src/lib/seo.ts`): with these empty — the usual case, since school managers log in a
+       * few times a year (`04` §2.1) — the title falls back to the page's and the description
+       * to its first paragraph.
+       *
+       * No access restriction: a school-manager may propose SEO text like any other edit, and
+       * `04` §4.3 already makes a change to it never auto-approvable.
+       */
+      name: 'meta',
+      type: 'group',
+      label: 'Search and sharing',
+      admin: {
+        description:
+          'How this page appears in search results and when its link is shared. Both are optional — leave them empty and the page title and its first paragraph are used.',
+      },
+      fields: [
+        {
+          name: 'title',
+          type: 'text',
+          label: 'Title in search results',
+          // Roomier than the ~60 a results page shows: a cap that bites mid-thought reads as
+          // broken software. Past this it is not a title.
+          maxLength: 70,
+          admin: {
+            description:
+              'Optional. About 50 to 60 characters shows in full. The school name is added to the end for you.',
+          },
+        },
+        {
+          name: 'description',
+          type: 'textarea',
+          label: 'Description in search results',
+          maxLength: 200,
+          admin: {
+            description:
+              'Optional. One or two sentences, up to about 160 characters, saying what someone will find on this page.',
+          },
+        },
+      ],
     },
     {
       name: 'requiresTranslationReview',

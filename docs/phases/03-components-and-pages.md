@@ -15,7 +15,7 @@ Phase 3 lands across several PRs. This document is written as each one merges.
 | Constrained rich text (Lexical)            | **Landed** — §13, §15                                     |
 | Navigation                                 | **Landed** — §21                                          |
 | Theme                                      | **Landed** — §22                                          |
-| SEO, sitemap                               | Not started                                               |
+| SEO, sitemap, robots                       | **Landed** — §23                                          |
 
 ---
 
@@ -262,7 +262,7 @@ whose stored path disagrees with their position — a silent wrong-page bug, and
 | Absent            | Arrives with                                                                    |
 | ----------------- | ------------------------------------------------------------------------------- |
 | `layout` (blocks) | The block library. `pageType: composed` is already selectable and already gated |
-| `seo` group       | `plugin-seo` — hand-rolling one now would mean deleting it later                |
+| `seo` group       | Landed — §23. Plain fields; `plugin-seo` was evaluated and not adopted          |
 | Page templates    | Landed — see §16. Fixed-type pages render title + body; blocks still pending    |
 
 `body` was absent when this collection first landed and arrived with the constrained editor
@@ -1235,3 +1235,136 @@ As §21: covered by the tenant tag, which nothing purges yet.
 
 `pnpm run seed` before `pnpm test:e2e`, as for any new table. `generate:importmap` reports no new
 imports — `GlobalViewRedirect` was added with `navigation`.
+
+---
+
+## 23. SEO — page metadata, `sitemap.xml`, `robots.txt`
+
+`01` §3 item 13. Three outputs, all for machines, all assembled by pure functions in
+`src/lib/seo.ts`.
+
+### Added
+
+| File                                    | Holds                                                                                                  |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `src/lib/seo.ts`                        | `siteOrigin`, `indexingAllowed`, `excerptOf`, `buildPageMetadata`, `buildRobotsTxt`, `buildSitemapXml` |
+| `.../sites/[hostname]/robots/route.ts`  | `GET` — answers `/robots.txt`                                                                          |
+| `.../sites/[hostname]/sitemap/route.ts` | `GET` — answers `/sitemap.xml`                                                                         |
+| `src/app/(payload)/admin-overrides.css` | `.field-description` contrast correction                                                               |
+| `tests/unit/seo.test.ts`                | 23 tests on exact output                                                                               |
+| `tests/unit/proxy.test.ts`              | 11 tests — the first unit coverage of `src/proxy.ts`                                                   |
+| `tests/e2e/page-seo-fields.spec.ts`     | The admin fields, with axe in both Payload themes                                                      |
+| `tests/e2e/support/admin-form.ts`       | `assignTenant`, moved out of the paste spec to be shared                                               |
+
+### Changed
+
+| File                                                 | Change                                                        |
+| ---------------------------------------------------- | ------------------------------------------------------------- |
+| `src/collections/Pages.ts`                           | `meta` group: `title` (max 70), `description` (max 200)       |
+| `src/content/pages.ts` / `types.ts`                  | `Page.seo`, mapped from `meta`; whitespace-only -> null       |
+| `src/proxy.ts`                                       | The two files rewritten per tenant; matcher covers `/sites/*` |
+| `.../[[...segments]]/page.tsx`                       | `generateMetadata` returns `buildPageMetadata(...)`           |
+| `src/app/(payload)/layout.tsx`                       | Imports `admin-overrides.css` after Payload's sheet           |
+| `src/lib/locales.ts`                                 | `hreflangAlternates` removed — superseded, and had no caller  |
+| `playwright.config.ts`                               | `webServer.env.SITE_INDEXING = 'allow'`                       |
+| `tests/e2e/tenant-routing.spec.ts`                   | hreflang now absolute; metadata, robots and sitemap specs     |
+| `tests/integration/*`                                | `Page.seo` mapping; SEO writes ride the page's gates          |
+| `.env.example`, `09` §1, `02` §2, `03` §2, CLAUDE.md | `SITE_INDEXING`; the plugin decision                          |
+
+### The call chain
+
+```
+GET /about (a.localhost)
+  page.tsx generateMetadata
+    resolve()                                tenant + page
+    buildPageMetadata({ tenant, page, locale, locales: ALL_LOCALES,
+                        indexable: indexingAllowed(process.env) })
+      title        seo.title ?? page.title, + " — " + tenant.name   (front page: tenant.name)
+      description  seo.description ?? excerptOf(page.body) ?? omitted
+      canonical    siteOrigin(tenant.hostname) + localizedPath(path, locale)
+      languages    one per locale + x-default, absolute
+      openGraph    title, description, url, siteName, locale
+      robots       { index, follow } = indexable
+
+GET /robots.txt | /sitemap.xml
+  proxy.ts       TENANT_FILES.get(pathname) -> rewrite /sites/<host>/robots | /sitemap
+  route.ts GET   getTenantByHostname        unknown host -> 404
+                 sitemap only: !indexingAllowed -> 404
+                 sitemap only: listPagePaths({ tenant, locale: 'en' })
+                 buildRobotsTxt | buildSitemapXml
+```
+
+### Title and description rules
+
+| Case                                      | `<title>`                      |
+| ----------------------------------------- | ------------------------------ |
+| No SEO title                              | `<page title> — <tenant name>` |
+| No SEO title, front page                  | `<tenant name>`                |
+| SEO title                                 | `<SEO title> — <tenant name>`  |
+| SEO title already ends in the tenant name | `<SEO title>`                  |
+
+The description is the SEO description, else the first non-empty **paragraph** of the body as
+plain text (headings and lists are skipped), cut at a word boundary to 160 characters with `…`,
+else absent. It is never the title repeated.
+
+### Origins are derived from the tenant, not the request
+
+`siteOrigin(hostname)` is `https://<hostname>`, or `http://` for `localhost` and `*.localhost`.
+No port. These functions run at build/revalidate time where there is no request, and a canonical
+taken from a `Host` header is one a visitor chooses. In e2e the canonical is therefore
+`http://a.localhost/about` while the server listens on `:3000`.
+
+### Indexing fails closed
+
+`indexingAllowed(env)` is `env.SITE_INDEXING === 'allow'` and nothing else. When false: robots is
+`User-agent: *` / `Disallow: /` with no `Sitemap:` line, every page carries
+`noindex, nofollow`, and `/sitemap.xml` is a 404. Production sets it (`09` §1). The e2e server
+sets it so the sitemap route's wiring is exercised; the closed state is covered by the unit
+suite only.
+
+### The sitemap
+
+One `<url>` per page per locale, each carrying the full `xhtml:link` alternate set including
+itself and `x-default`. Paths come from `listPagePaths`, so drafts, staff-only pages, pages with
+an unpublished parent, and anything under `/home` are absent by the same rule that keeps them
+unroutable. An e2e spec requests every `<loc>` and expects 200. No `<lastmod>`: `Page` carries no
+modification time.
+
+### Why the routes are `robots` and `sitemap`, not `robots.txt` and `sitemap.xml`
+
+A route folder literally named `sitemap.xml` is picked up by Next's metadata-route convention:
+the build listed it as `/sites/-/sitemap.xml`, prerendered with a placeholder hostname. The
+folders have no extension; `TENANT_FILES` in the proxy maps the public path to them.
+
+### The matcher now covers `/sites/*` as a whole
+
+The general matcher skips paths ending in a listed extension, so `/sites/b.localhost/x.xml` would
+bypass the proxy and with it the direct-access refusal. `'/sites/:path*'` is a separate matcher
+entry. `proxy.test.ts` pins the entry; the e2e spec requests four such paths and expects 404.
+
+### The SEO fields are plain fields
+
+`plugin-seo@3.87.0` was installed and its fields put under the axe spec. Failures, all inline
+styles in the plugin's components, all still present in 3.90.1:
+
+| Element                | Colours                  | Ratio  |
+| ---------------------- | ------------------------ | ------ |
+| Hint text under fields | `#9A9A9A` on `#ffffff`   | 2.81:1 |
+| "Too short" pill       | `#ffffff` on `orangered` | 3.44:1 |
+| "Missing" pill         | `#ffffff` on `red`       | 3.99:1 |
+
+The plugin was removed (`package.json` and the import map are unchanged from `main`). The group
+is named `meta` with `title` and `description` — the plugin's stored shape.
+
+### `admin-overrides.css`
+
+With plain fields the spec still failed: Payload's own `.field-description` is
+`--theme-elevation-400` (`#9a9a9a`, 2.81:1). One rule sets it to `--theme-elevation-800`.
+Payload's CSS is in `@layer payload-default`, so the unlayered rule wins without `!important`.
+The spec runs under `colorScheme: 'light'` and `'dark'`; the elevation scale inverts in dark.
+This applies to every field description in the admin, not only these two.
+
+### No migration
+
+As §17. When migrations start, `meta_title` and `meta_description` are two nullable columns on
+`pages` and `_pages_v` — pure expand.

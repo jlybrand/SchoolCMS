@@ -450,3 +450,51 @@ describe('getTheme', () => {
     expect(await getTheme(await tenantFor('a.localhost'))).toEqual({ tokens: {} })
   })
 })
+
+describe('page SEO fields (`03` §2, plugin-seo)', () => {
+  const ctxA = async (): Promise<ContentContext> => {
+    const tenant = await getTenantByHostname('a.localhost')
+    if (!tenant) throw new Error('fixture tenant a.localhost did not resolve')
+    return { tenant, locale: 'en' }
+  }
+
+  it('are null on a page nobody wrote them for — the usual case, not an error', async () => {
+    const page = await getPageByPath(await ctxA(), '/published-page-a')
+    expect(page?.seo).toEqual({ title: null, description: null })
+  })
+
+  it("surface the plugin's `meta` group as the domain's `seo`, and nothing else of it", async () => {
+    await payload.update({
+      collection: 'pages',
+      id: fixtures.publishedPageA,
+      data: { meta: { title: '  Meet School A ', description: 'Written by a person.' } },
+      user: fixtures.districtAdmin,
+      overrideAccess: true,
+    })
+
+    const page = await getPageByPath(await ctxA(), '/published-page-a')
+    expect(page?.seo).toEqual({ title: 'Meet School A', description: 'Written by a person.' })
+    // The Payload-side name must not cross the boundary (`02` §11).
+    expect(page && 'meta' in page).toBe(false)
+
+    const listed = (await listPagePaths(await ctxA())).find(
+      ({ path }) => path === '/published-page-a',
+    )
+    expect(listed?.page.seo).toEqual(page?.seo)
+  })
+
+  it('treats a whitespace-only value as none', async () => {
+    await payload.update({
+      collection: 'pages',
+      id: fixtures.publishedPageA,
+      data: { meta: { title: '   ', description: '' } },
+      user: fixtures.districtAdmin,
+      overrideAccess: true,
+    })
+
+    expect((await getPageByPath(await ctxA(), '/published-page-a'))?.seo).toEqual({
+      title: null,
+      description: null,
+    })
+  })
+})
