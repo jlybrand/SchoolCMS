@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test, type APIRequestContext } from '@playwright/test'
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 
 /**
  * Tenant + locale delivery path (`02` §4.1, §5; `03` §2; `08` §5–6).
@@ -189,6 +189,39 @@ test.describe('site menus (`03` §5)', () => {
       .getByRole('link', { name: 'Staff directory' })
       .click()
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Staff Directory')
+  })
+})
+
+test.describe('per-tenant theme (`02` §4.4)', () => {
+  const brandOf = (page: Page) =>
+    page.evaluate(() => ({
+      link: getComputedStyle(document.querySelector('header a') as Element).color,
+      rule: getComputedStyle(document.querySelector('header') as Element).borderBlockEndColor,
+    }))
+
+  test.describe('a themed tenant', () => {
+    test.use(site('a.localhost'))
+
+    test("@smoke renders the school's two colours, and components pick them up unchanged", async ({
+      page,
+    }) => {
+      await page.goto('/about')
+      // The link colour is the point: no component was told about the theme.
+      expect(await brandOf(page)).toEqual({
+        // Main colour: maroon. Second colour: gold, as the rule under the header.
+        link: 'rgb(122, 31, 43)',
+        rule: 'rgb(201, 162, 39)',
+      })
+    })
+  })
+
+  test.describe('an unthemed tenant', () => {
+    test.use(site('b.localhost'))
+
+    test("@smoke renders the default palette — never a neighbour's colour", async ({ page }) => {
+      await page.goto('/about')
+      expect(await brandOf(page)).toEqual({ link: 'rgb(15, 76, 129)', rule: 'rgb(211, 215, 222)' })
+    })
   })
 })
 

@@ -107,6 +107,18 @@ export type Navigation = {
 }
 
 /**
+ * A tenant's theme, as the custom properties it overrides (`02` §4.4).
+ *
+ * ALREADY VALIDATED. Every value is a `#rrggbb` that passed the contrast pairs against the
+ * platform palette (`src/lib/theme.ts`); a palette that fails is absent entirely, so the
+ * layout can put this on `<html>` without looking inside it. Empty means the default palette.
+ * The keys come from a closed map in that file — never from the stored row.
+ */
+export type Theme = {
+  tokens: Readonly<Record<string, string>>
+}
+
+/**
  * A page as the rendering layer sees it.
  *
  * SCOPE: identity, hierarchy, type, visibility, body prose, and — for `composed` pages —

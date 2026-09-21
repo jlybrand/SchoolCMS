@@ -2,7 +2,8 @@
 
 .footer {
   background-color: var(--color-surface-raised);
-  border-block-start: 1px solid var(--color-border-strong);
+  /* Decorative — see `SiteHeader.module.css`. */
+  border-block-start: var(--space-2xs) solid var(--color-accent);
   padding-block: var(--space-lg);
 }
 

@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { getNavigation } from '@/content/navigation'
 import { getPageByPath, listPagePaths } from '@/content/pages'
 import { getTenantByHostname, listActiveTenants } from '@/content/tenants'
+import { getTheme } from '@/content/theme'
 import type { ContentContext, Tenant } from '@/content/types'
 import { ROOT_SLUG } from '@/lib/slug'
 import type { Payload } from 'payload'
@@ -410,5 +411,42 @@ describe('getNavigation', () => {
     for (const link of [...nav.primary, ...nav.utility, ...nav.footer]) {
       expect(Object.keys(link).sort()).toEqual(['href', 'id', 'label', 'newTab'])
     }
+  })
+})
+
+describe('getTheme', () => {
+  const tenantFor = async (hostname: string) => {
+    const tenant = await getTenantByHostname(hostname)
+    if (!tenant) throw new Error(`fixture tenant ${hostname} did not resolve`)
+    return { tenant }
+  }
+
+  it("returns the resolved tenant's overrides, as custom properties", async () => {
+    expect(await getTheme(await tenantFor('a.localhost'))).toEqual({
+      tokens: { '--color-brand': '#7a1f2b', '--color-accent': '#c9a227' },
+    })
+  })
+
+  it("never returns another tenant's colour", async () => {
+    // Access is overridden on this path; the tenant filter is the only scoping (`02` §4.2).
+    expect(await getTheme(await tenantFor('b.localhost'))).toEqual({
+      tokens: { '--color-brand': '#14532d' },
+    })
+  })
+
+  it('returns no overrides for a tenant with no theme row', async () => {
+    expect(await getTheme(await tenantFor('localhost'))).toEqual({ tokens: {} })
+  })
+
+  it('returns no overrides for a failing palette that reached the database anyway', async () => {
+    /**
+     * The route the validator does not cover: a direct write. `07` §3's guarantee has to
+     * hold for what is SERVED, so the render path re-checks rather than trusting the row.
+     */
+    await payload.db.drizzle.execute(
+      `update theme set primary_color = '#ffcc00' where tenant_id = ${String(fixtures.tenantA)}`,
+    )
+
+    expect(await getTheme(await tenantFor('a.localhost'))).toEqual({ tokens: {} })
   })
 })

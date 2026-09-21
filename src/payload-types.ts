@@ -71,6 +71,7 @@ export interface Config {
     users: User;
     pages: Page;
     navigation: Navigation;
+    theme: Theme;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -82,6 +83,7 @@ export interface Config {
     users: UsersSelect<false> | UsersSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
     navigation: NavigationSelect<false> | NavigationSelect<true>;
+    theme: ThemeSelect<false> | ThemeSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -493,6 +495,24 @@ export interface Navigation {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "theme".
+ */
+export interface Theme {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  /**
+   * Used for links and buttons, so it has to be dark enough to read on a white page. Leave empty for the district's blue. If the school's main colour is a light one — a gold, a sky blue — put the darker of its two colours here and the light one below.
+   */
+  primaryColor?: string | null;
+  /**
+   * Used for the coloured lines under the header and above the footer. Any colour works here. Leave empty for a plain grey line.
+   */
+  secondaryColor?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -530,6 +550,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'navigation';
         value: number | Navigation;
+      } | null)
+    | ({
+        relationTo: 'theme';
+        value: number | Theme;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -763,6 +787,17 @@ export interface NavigationSelect<T extends boolean = true> {
         newTab?: T;
         id?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "theme_select".
+ */
+export interface ThemeSelect<T extends boolean = true> {
+  tenant?: T;
+  primaryColor?: T;
+  secondaryColor?: T;
   updatedAt?: T;
   createdAt?: T;
 }

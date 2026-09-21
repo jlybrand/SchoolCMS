@@ -5,7 +5,13 @@
 
 .header {
   background-color: var(--color-surface-raised);
-  border-block-end: 1px solid var(--color-border-strong);
+  /*
+   * The school's second colour (`--color-accent`), as a rule. DECORATIVE: it bounds nothing a
+   * visitor operates and nothing is read against it, which is why any colour is allowed here
+   * (see the token's declaration). The raised surface already separates the header from the
+   * page, so the header reads as a header when this is a gold nobody can see on white.
+   */
+  border-block-end: var(--space-2xs) solid var(--color-accent);
   padding-block: var(--space-md);
 }
 

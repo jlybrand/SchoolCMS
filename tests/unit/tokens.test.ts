@@ -16,7 +16,7 @@ import {
  *
  *   1. "Contrast is baked into theme tokens ... so a school cannot pick a brand colour that
  *      fails" — the same `checkContrastPairs` call runs here over the shipped defaults and,
- *      from Phase 4, over each tenant's `theme` overrides. If the default palette were
+ *      in `src/lib/theme.ts`, over each tenant's `theme` overrides. If the default palette were
  *      allowed to fail, the per-tenant validator would be enforcing a bar the platform
  *      itself does not meet.
  *   2. "Per-locale typography tokens" — a locale block that sets a CJK font stack but
@@ -49,7 +49,13 @@ describe('design tokens: contrast (`07` §3)', () => {
      * `REQUIRED_CONTRAST_PAIRS`: the two surfaces are only ever the background half of a
      * pair, and `--color-border` is a decorative hairline outside 1.4.11.
      */
-    const UNPAIRED_BY_DESIGN = ['--color-surface', '--color-surface-raised', '--color-border']
+    const UNPAIRED_BY_DESIGN = [
+      '--color-surface',
+      '--color-surface-raised',
+      '--color-border',
+      // Decorative rules only, like `--color-border` — see its declaration in tokens.css.
+      '--color-accent',
+    ]
 
     const colourTokens = Object.keys(tokens).filter(
       (name) => name.startsWith('--color-') || name === '--focus-ring-color',
@@ -84,7 +90,7 @@ describe('design tokens: contrast (`07` §3)', () => {
   )
 
   it('reports every default palette failure at once', () => {
-    // The per-pair cases above name the offender; this one is what the Phase 4 theme
+    // The per-pair cases above name the offender; this one is what the theme
     // validator will call, so it is exercised in the same shape production uses it.
     expect(checkContrastPairs(REQUIRED_CONTRAST_PAIRS, resolve)).toEqual([])
   })
