@@ -80,6 +80,33 @@ const TENANTS = [
 const THEMED_TENANT = { slug: 'school-a', primaryColor: '#7a1f2b', secondaryColor: '#c9a227' }
 
 /**
+ * Settings for the two schools and none for the district (`03` §5), so all three shapes
+ * render locally and in e2e: School A has contact details and every language (its row never
+ * narrows the list — the e2e locale tests run against it); School B renames itself and
+ * offers Spanish only; the district has no row and gets the defaults.
+ *
+ * The languages here are fixtures. Which ones DD2 serves is counsel's call (`08` §10).
+ */
+const SETTINGS: Record<string, Record<string, unknown>> = {
+  'school-a': {
+    contact: {
+      address: '100 School A Road\nSummerville, SC 29483',
+      phone: '(843) 555-0100',
+      email: 'office@a.localhost',
+    },
+    socialLinks: [
+      { platform: 'facebook', url: 'https://www.facebook.com/' },
+      { platform: 'youtube', url: 'https://www.youtube.com/' },
+    ],
+    defaultDescription: 'School A is a seeded school in Dorchester School District Two.',
+  },
+  'school-b': {
+    siteTitle: 'School B Elementary',
+    enabledLocales: { es: true, zhHans: false, ko: false, pt: false, ar: false },
+  },
+}
+
+/**
  * The pages every seeded tenant gets, ordered parents-first.
  *
  * Deliberately NOT `/athletics`. That is the path `tests/e2e/tenant-routing.spec.ts` asserts
@@ -291,6 +318,26 @@ const run = async () => {
           ...asDistrict,
         })
         payload.logger.info(`created theme for ${tenant.slug}`)
+      }
+    }
+
+    /** Settings, created only when absent, as the menus and the theme are. */
+    const settings = SETTINGS[tenant.slug]
+    if (settings) {
+      const { totalDocs: existing } = await payload.count({
+        collection: 'settings',
+        where: { tenant: { equals: tenantId } },
+        overrideAccess: true,
+      })
+
+      if (existing === 0) {
+        await payload.create({
+          collection: 'settings',
+          data: { tenant: tenantId, ...settings },
+          overrideAccess: true,
+          ...asDistrict,
+        })
+        payload.logger.info(`created settings for ${tenant.slug}`)
       }
     }
   }

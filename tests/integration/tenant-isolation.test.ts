@@ -913,6 +913,139 @@ describe('theme — district-only, one row per tenant, never a failing palette (
   })
 })
 
+describe('settings — district-only, one row per tenant (`03` §5, §6.1)', () => {
+  // As for navigation and theme: a manager is refused their OWN school's row too.
+  const rows = () =>
+    [
+      ['their own', f.settingsA],
+      ["another tenant's", f.settingsB],
+    ] as const
+
+  it('a school-manager reads no settings at all, by list or by id', async () => {
+    expect(
+      await readsNothing(() =>
+        payload.find({ collection: 'settings', user: f.managerA, overrideAccess: false }),
+      ),
+    ).toBe(true)
+
+    for (const [, id] of rows()) {
+      const denied = await isDenied(() =>
+        payload.findByID({ collection: 'settings', id, user: f.managerA, overrideAccess: false }),
+      )
+      expect(denied).toBe(true)
+    }
+  })
+
+  it("a school-manager cannot CREATE, UPDATE or DELETE settings — their own or anyone else's", async () => {
+    for (const [, id] of rows()) {
+      expect(
+        await isDenied(() =>
+          payload.update({
+            collection: 'settings',
+            id,
+            // The write with teeth: turning a language off is a language-access decision.
+            data: { enabledLocales: { es: false, ar: false } },
+            user: f.managerA,
+            overrideAccess: false,
+          }),
+        ),
+      ).toBe(true)
+      expect(
+        await isDenied(() =>
+          payload.delete({ collection: 'settings', id, user: f.managerA, overrideAccess: false }),
+        ),
+      ).toBe(true)
+    }
+
+    // The district tenant has no row, so this is refused on access, not on uniqueness.
+    const { docs: tenants } = await payload.find({
+      collection: 'tenants',
+      where: { type: { equals: 'district' } },
+      overrideAccess: true,
+    })
+    expect(
+      await isDenied(() =>
+        payload.create({
+          collection: 'settings',
+          data: { tenant: tenants[0]!.id, siteTitle: 'Mine now' },
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      ),
+    ).toBe(true)
+
+    const { docs } = await payload.find({
+      collection: 'settings',
+      sort: 'siteTitle',
+      overrideAccess: true,
+    })
+    expect(
+      docs.map((doc) => [doc.siteTitle, doc.enabledLocales?.es, doc.enabledLocales?.ar]),
+    ).toEqual([
+      ['Alpha School', true, true],
+      ['Bravo School', false, false],
+    ])
+  })
+
+  it('system-sync and anonymous callers read nothing', async () => {
+    expect(
+      await readsNothing(() =>
+        payload.find({ collection: 'settings', user: f.systemSync, overrideAccess: false }),
+      ),
+    ).toBe(true)
+    expect(
+      await readsNothing(() => payload.find({ collection: 'settings', overrideAccess: false })),
+    ).toBe(true)
+  })
+
+  it('a tenant has ONE settings row — a second is refused, even for the district admin', async () => {
+    const denied = await isDenied(() =>
+      payload.create({
+        collection: 'settings',
+        data: { tenant: f.tenantA, siteTitle: 'A second one' },
+        user: f.districtAdmin,
+        overrideAccess: false,
+      }),
+    )
+    expect(denied).toBe(true)
+  })
+
+  it('refuses a destination that is not one — through the API, not just the admin form', async () => {
+    const bad = [
+      { contact: { phone: 'call the office' } },
+      { contact: { email: 'office@dd2.example?bcc=someone@else.example' } },
+      { socialLinks: [{ platform: 'facebook' as const, url: 'javascript:alert(1)' }] },
+      { socialLinks: [{ platform: 'facebook' as const, url: 'http://www.facebook.com/dd2' }] },
+    ]
+
+    for (const data of bad) {
+      const denied = await isDenied(() =>
+        payload.update({
+          collection: 'settings',
+          id: f.settingsA,
+          data,
+          user: f.districtAdmin,
+          overrideAccess: false,
+        }),
+      )
+      expect(denied, JSON.stringify(data)).toBe(true)
+    }
+  })
+
+  it('the district admin can change them, and can empty a field back out', async () => {
+    const updated = await payload.update({
+      collection: 'settings',
+      id: f.settingsB,
+      data: { contact: { phone: '843.555.0299', email: null }, enabledLocales: { es: true } },
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+    expect(updated.contact?.phone).toBe('843.555.0299')
+    // One box ticked; the others keep the answer they had.
+    expect(updated.enabledLocales).toMatchObject({ es: true, ar: false })
+  })
+})
+
 describe('page SEO fields ride the same gates as the page (`04` §4.3)', () => {
   it('a school-manager may propose SEO text on a draft in their own tenant', async () => {
     const updated = await payload.update({

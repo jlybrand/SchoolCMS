@@ -12,10 +12,11 @@ import { MAIN_CONTENT_ID } from '@/components/SkipLink'
 import { Stack } from '@/components/Stack'
 import { getNavigation } from '@/content/navigation'
 import { getPageByPath } from '@/content/pages'
+import { getSettings } from '@/content/settings'
 import { getTenantByHostname } from '@/content/tenants'
-import type { ContentContext, Navigation, Page, Tenant } from '@/content/types'
+import type { ContentContext, Navigation, Page, SiteSettings, Tenant } from '@/content/types'
 import { documentTag, tenantTag } from '@/lib/cache-tags'
-import { ALL_LOCALES, localizedPath } from '@/lib/locales'
+import { LOCALE_NAMES, localizedPath } from '@/lib/locales'
 import { buildPageMetadata, indexingAllowed } from '@/lib/seo'
 
 type Params = { hostname: string; locale: string; segments?: string[] }
@@ -46,18 +47,37 @@ export const revalidate = 3600
  * kind of mismatch that then gets cached. The duplicate query is affordable because neither
  * caller runs per visitor.
  */
-type Resolved = { tenant: Tenant; page: Page; ctx: ContentContext }
+type Resolved = {
+  tenant: Tenant
+  page: Page
+  ctx: ContentContext
+  settings: SiteSettings
+  /** `settings.siteTitle`, else the tenant's name — decided once, for the tab and the chrome. */
+  siteName: string
+}
 
 const resolve = async (params: Params): Promise<Resolved | null> => {
   const tenant = await getTenantByHostname(decodeURIComponent(params.hostname))
   if (!tenant) return null
+
+  /**
+   * A locale this tenant has not enabled is NOT A PAGE (`03` §5, `08` §2). The proxy runs at
+   * the edge, where there is no database, so it recognises every platform locale and the
+   * per-tenant answer is given here — a 404, the same one an unknown path gets. Without it
+   * `/ar/about` would render on a site that offers no Arabic, outside `hreflang`, the
+   * sitemap and the language switcher, which all read the same list.
+   *
+   * A tenant with no `settings` row gets every platform locale, never null.
+   */
+  const settings = await getSettings({ tenant })
+  if (!settings.enabledLocales.includes(params.locale)) return null
 
   const ctx: ContentContext = { tenant, locale: params.locale }
 
   const page = await getPageByPath(ctx, pathOf(params.segments))
   if (!page) return null
 
-  return { tenant, page, ctx }
+  return { tenant, page, ctx, settings, siteName: settings.siteTitle ?? tenant.name }
 }
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
@@ -66,7 +86,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   // a page that is about to not exist.
   if (!resolved) return {}
 
-  const { tenant, page } = resolved
+  const { tenant, page, settings, siteName } = resolved
   const { locale } = await params
 
   /**
@@ -76,11 +96,12 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
    * page; what the tags say is decided, and tested, there.
    */
   return buildPageMetadata({
-    tenant,
+    tenant: { name: siteName, hostname: tenant.hostname },
     page,
     locale,
-    locales: ALL_LOCALES,
+    locales: settings.enabledLocales,
     indexable: indexingAllowed(process.env),
+    defaultDescription: settings.defaultDescription,
   })
 }
 
@@ -101,7 +122,7 @@ export default async function SitePage({ params }: { params: Promise<Params> }) 
    */
   if (!resolved) notFound()
 
-  const { tenant, page, ctx } = resolved
+  const { tenant, page, ctx, settings, siteName } = resolved
 
   /**
    * Fetched only once the page is known to exist, so a 404 costs no menu query. Not in
@@ -125,7 +146,7 @@ export default async function SitePage({ params }: { params: Promise<Params> }) 
      */
     <>
       <SiteHeader
-        siteName={tenant.name}
+        siteName={siteName}
         primary={navigation.primary}
         utility={navigation.utility}
         currentPath={page.path}
@@ -168,8 +189,10 @@ export default async function SitePage({ params }: { params: Promise<Params> }) 
           */}
             <BlockList blocks={page.layout} childPages={page.children} />
 
-            <nav aria-label="Language">
-              {/*
+            {/* One language is not a choice: English-only sites get no switcher. */}
+            {settings.enabledLocales.length > 1 && (
+              <nav aria-label="Language">
+                {/*
               `08` §6 — each language is listed in its OWN script and language, with `lang` on
               each link. Never flag icons (a flag is a country, not a language) and never
               "translate this page" as the only affordance. Labels stay untranslated here
@@ -178,35 +201,28 @@ export default async function SitePage({ params }: { params: Promise<Params> }) 
               Built from the page's resolved path rather than the requested one, so the
               switcher always points at this page in another language.
             */}
-              <ul>
-                {ALL_LOCALES.map((code) => (
-                  <li key={code}>
-                    <Link href={localizedPath(page.path, code)} hrefLang={code} lang={code}>
-                      {LANGUAGE_NAMES[code] ?? code}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </nav>
+                <ul>
+                  {settings.enabledLocales.map((code) => (
+                    <li key={code}>
+                      <Link href={localizedPath(page.path, code)} hrefLang={code} lang={code}>
+                        {LOCALE_NAMES[code] ?? code}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            )}
           </Stack>
         </Container>
       </main>
       <SiteFooter
-        siteName={tenant.name}
+        siteName={siteName}
         links={navigation.footer}
+        contact={settings.contact}
+        social={settings.social}
         currentPath={page.path}
         locale={ctx.locale}
       />
     </>
   )
-}
-
-/** Endonyms — each language named as its own speakers write it (`08` §6). */
-const LANGUAGE_NAMES: Record<string, string> = {
-  en: 'English',
-  es: 'Español',
-  'zh-Hans': '简体中文',
-  ko: '한국어',
-  pt: 'Português',
-  ar: 'العربية',
 }

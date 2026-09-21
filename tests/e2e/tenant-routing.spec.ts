@@ -101,7 +101,8 @@ test.describe('a second tenant is served its own content', () => {
      * assertion would return School A — a tenant leak occurring in the CDN, where no access
      * function could ever catch it.
      */
-    expect((await documentFor(request, '/')).title).toBe('School B')
+    // School B's `settings` rename it, so this is also the site title reaching the tab.
+    expect((await documentFor(request, '/')).title).toBe('School B Elementary')
   })
 })
 
@@ -286,6 +287,72 @@ test.describe('locale routing', () => {
       ['critical', 'serious'].includes(v.impact ?? ''),
     )
     expect(blocking.map((v) => v.id)).toEqual([])
+  })
+})
+
+test.describe('per-tenant settings (`03` §5)', () => {
+  test.describe('a tenant with contact details and every language', () => {
+    test.use(site('a.localhost'))
+
+    test('@smoke the footer carries the contact block and the social links', async ({ page }) => {
+      await page.goto('/es/about')
+      const footer = page.getByRole('contentinfo')
+
+      await expect(footer.locator('address')).toContainText('100 School A Road')
+      // Never locale-prefixed, on a Spanish page: neither is a path on this site.
+      await expect(footer.getByRole('link', { name: '(843) 555-0100' })).toHaveAttribute(
+        'href',
+        'tel:8435550100',
+      )
+      await expect(footer.getByRole('link', { name: 'office@a.localhost' })).toHaveAttribute(
+        'href',
+        'mailto:office@a.localhost',
+      )
+      await expect(
+        footer.getByRole('navigation', { name: 'Social media' }).getByRole('link'),
+      ).toHaveText(['Facebook', 'YouTube'])
+    })
+  })
+
+  test.describe('a tenant that offers Spanish only', () => {
+    test.use(site('b.localhost'))
+
+    test('@smoke its name is the one its settings give it, everywhere the site names itself', async ({
+      page,
+    }) => {
+      await page.goto('/about')
+      await expect(
+        page.getByRole('banner').getByRole('link', { name: 'School B Elementary' }),
+      ).toHaveAttribute('href', '/')
+      await expect(page.getByRole('contentinfo')).toContainText('School B Elementary')
+    })
+
+    test('@smoke a language it has not enabled is not a page', async ({ request }) => {
+      // The proxy recognises `/ar` for every tenant; the tenant's own list decides (`08` §2).
+      expect((await request.get('/es/about')).status()).toBe(200)
+      expect((await request.get('/ar/about')).status()).toBe(404)
+      expect((await request.get('/ko')).status()).toBe(404)
+    })
+
+    test('@smoke hreflang, the switcher and the sitemap all read the same list', async ({
+      page,
+      request,
+    }) => {
+      expect((await documentFor(request, '/about')).alternates).toEqual({
+        en: 'http://b.localhost/about',
+        es: 'http://b.localhost/es/about',
+        'x-default': 'http://b.localhost/about',
+      })
+
+      await page.goto('/about')
+      await expect(page.getByRole('navigation', { name: 'Language' }).getByRole('link')).toHaveText(
+        ['English', 'Español'],
+      )
+
+      const xml = await (await request.get('/sitemap.xml')).text()
+      expect(xml).toContain('<loc>http://b.localhost/es/about</loc>')
+      expect(xml).not.toContain('/ar/')
+    })
   })
 })
 

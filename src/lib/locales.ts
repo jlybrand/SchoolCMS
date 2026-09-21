@@ -27,6 +27,52 @@ export const RTL_LOCALES: readonly Locale[] = ['ar'] as const
 
 export const ALL_LOCALES: readonly Locale[] = [DEFAULT_LOCALE, ...TIER_1_LOCALES] as const
 
+/** Endonyms — each language named as its own speakers write it (`08` §6). */
+export const LOCALE_NAMES: Readonly<Record<string, string>> = {
+  en: 'English',
+  es: 'Español',
+  'zh-Hans': '简体中文',
+  ko: '한국어',
+  pt: 'Português',
+  ar: 'العربية',
+}
+
+/**
+ * The name a locale is stored under in `settings.enabledLocales`. A field name cannot carry
+ * a hyphen, so the script subtag is camel-cased — `zh-Hans` -> `zhHans` — in storage and
+ * nowhere else: URLs, `lang` and `hreflang` keep the BCP 47 tag.
+ */
+export const localeFieldName = (locale: Locale): string =>
+  locale.replace(/-([A-Za-z])/g, (_, first: string) => first.toUpperCase())
+
+/**
+ * `settings.enabledLocales` -> the locales a tenant is served in (`03` §5, `08` §2).
+ *
+ * The stored shape is one yes/no per platform locale (see src/collections/Settings.ts for why
+ * it is checkboxes). English is always first and always present: it is the source, and the
+ * unprefixed URL. The rest come back in the platform's order, so `hreflang` and the language
+ * switcher are stable.
+ *
+ * ONLY AN EXPLICIT `false` TURNS A LANGUAGE OFF. No row, no answer, a malformed answer, and a
+ * row saved before the platform gained a locale all serve it — when this is wrong it should
+ * be wrong towards MORE languages, because silently dropping one is the language-access
+ * failure (`08` §10) and serving an extra one is not.
+ *
+ * It iterates `ALL_LOCALES`, so a stored key outside it is never served. Tier 2 locales
+ * arrive with the translation pipeline (Phase 7); until then one would route to a page with
+ * no translation behind it.
+ */
+export const toEnabledLocales = (value: unknown): Locale[] => {
+  const answers: Record<string, unknown> =
+    typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {}
+
+  return ALL_LOCALES.filter(
+    (locale) => locale === DEFAULT_LOCALE || answers[localeFieldName(locale)] !== false,
+  )
+}
+
 export const isRtlLocale = (locale: string): boolean => RTL_LOCALES.includes(locale)
 
 /** `dir` for `<html>`. Total — an unknown locale degrades to `ltr`, never throws. */

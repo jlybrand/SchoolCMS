@@ -7,6 +7,30 @@
   padding-block: var(--space-lg);
 }
 
+/*
+ * Browsers italicise `<address>`; italics are harder to read in running text and are not a
+ * convention in CJK or Arabic (`08` §6).
+ */
+.contact {
+  font-style: normal;
+  margin-block: var(--space-md);
+}
+
+/*
+ * One line per line. `inline-size: fit-content` keeps a `dir="ltr"` line from stretching the
+ * full width, where it would sit at the wrong edge of a right-to-left footer.
+ */
+.line {
+  display: block;
+  inline-size: fit-content;
+}
+
+/* As `MenuList`: bring each link's target to 24px+ (2.5.8). */
+.line a {
+  display: inline-block;
+  padding-block: var(--space-2xs);
+}
+
 /* `--color-text-muted` on `--color-surface-raised` is a validated pair (`07` §3). */
 .siteName {
   color: var(--color-text-muted);

@@ -118,6 +118,45 @@ export type Theme = {
   tokens: Readonly<Record<string, string>>
 }
 
+/** The platforms a social link may point at — a closed list, so each has a known name. */
+export type SocialPlatform = 'facebook' | 'instagram' | 'x' | 'youtube' | 'linkedin'
+
+export type SocialLink = {
+  id: string
+  platform: SocialPlatform
+  /** The platform's name, which is the link's text until an icon set exists. */
+  label: string
+  href: string
+}
+
+/** Words as typed, beside the link built from them (`src/lib/contact.ts`). */
+export type ContactLink = {
+  text: string
+  href: string
+}
+
+export type ContactBlock = {
+  /** One entry per line; empty when there is no address. */
+  address: string[]
+  phone: ContactLink | null
+  email: ContactLink | null
+}
+
+/**
+ * A tenant's settings (`03` §5). Every tenant has one — a tenant with no `settings` row gets
+ * the defaults rather than a null, as `Navigation` does.
+ */
+export type SiteSettings = {
+  /** Replaces the tenant's name wherever the site names itself. Null means use the name. */
+  siteTitle: string | null
+  contact: ContactBlock
+  social: SocialLink[]
+  /** The description of last resort, for a page with none of its own (`src/lib/seo.ts`). */
+  defaultDescription: string | null
+  /** Always starts with `en`, in the platform's order (`toEnabledLocales`). */
+  enabledLocales: Locale[]
+}
+
 export type PageSeo = {
   /** Replaces the page part of the document title. The site name is always appended. */
   title: string | null

@@ -330,6 +330,22 @@ string checked against an allowlist of four shapes — a site path, an `http(s)`
 and `tel:` — by the field validator and again by the content mapper. Menus have no nesting; a
 section's own pages are reached through `ChildPageNav` (§3.1).
 
+`settings` is built: an optional site name that replaces the tenant's name wherever the site
+names itself; a contact block (address, phone, email) and up to six social accounts from a
+closed list of platforms, both rendered in the footer; a site description used only for a page
+with no description and no prose of its own; and the enabled languages. Phone, email and social
+addresses are checked by the field validator and again by the content mapper, as menu
+destinations are. A default Open Graph image waits for `media` (Phase 6).
+
+`enabledLocales` is one yes/no per Tier 1 locale, every one **on** by default, and English is
+not among them because it cannot be turned off. Only an explicit "no" removes a language: a
+tenant with no row, and a row saved before the platform gained a locale, both serve it. That
+direction is deliberate — which languages DD2 must offer is a Title VI decision (`08` §10), so
+the platform's failure mode is one language too many, never one too few. The list drives four
+things that must agree: which locale prefixes are pages at all (any other 404s), `hreflang`,
+the sitemap, and the language switcher. Tier 2 locales join it with the translation pipeline
+(`08` §2, Phase 7).
+
 ## 6. Access-control model
 
 Deny by default, function-based, tenant-scoped. Enforced in the API layer — the admin UI

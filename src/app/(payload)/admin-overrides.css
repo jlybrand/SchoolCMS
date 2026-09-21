@@ -25,3 +25,19 @@
 .field-description {
   color: var(--theme-elevation-800);
 }
+
+/**
+ * The "Add …" button under a list of rows — 1.4.3 Contrast (Minimum).
+ *
+ * Payload colours its label and icon `--theme-elevation-400`, the same 2.81:1 grey as the
+ * help text above, and only darkens it on hover — so the one control that grows a menu or a
+ * list of social accounts reads as disabled until it is pointed at. The resting state now
+ * uses the colour Payload already chose for hover.
+ *
+ * `:not(:disabled)`, because these rules are unlayered and would otherwise also outrank
+ * Payload's own disabled colour — at `maxRows` the button SHOULD look unavailable. Found by
+ * tests/e2e/settings-fields.spec.ts, which now pins it.
+ */
+.array-field__add-row.btn:not(:disabled) {
+  --btn-color: var(--theme-elevation-800);
+}

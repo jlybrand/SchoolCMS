@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import { SiteFooter } from '@/components/SiteFooter'
 import { SiteHeader } from '@/components/SiteHeader'
-import type { MenuLink } from '@/content/types'
+import type { ContactBlock, MenuLink, SocialLink } from '@/content/types'
 
 import { renderComponent } from '../../helpers/render'
 
@@ -163,5 +163,72 @@ describe('SiteFooter', () => {
     expect(getByRole('link', { name: 'Call the office' }).getAttribute('href')).toBe(
       'tel:+18435550100',
     )
+  })
+
+  describe('contact block and social links (`03` §5)', () => {
+    const contact: ContactBlock = {
+      address: ['123 Main Street', 'Summerville, SC 29483'],
+      phone: { text: '(843) 555-0100', href: 'tel:8435550100' },
+      email: { text: 'office@dd2.example', href: 'mailto:office@dd2.example' },
+    }
+    const social: SocialLink[] = [
+      { id: 's1', platform: 'facebook', label: 'Facebook', href: 'https://www.facebook.com/dd2' },
+    ]
+
+    it('renders the address as an <address>, one line per line, with dialable and mailable links', () => {
+      const { container, getByRole } = renderComponent(
+        <SiteFooter siteName="School A" links={[]} contact={contact} currentPath="/" locale="ar" />,
+      )
+
+      const address = container.querySelector('address')
+      expect(address?.textContent).toContain('123 Main Street')
+      expect(address?.textContent).toContain('Summerville, SC 29483')
+      // Never locale-prefixed: neither is a path on this site.
+      expect(getByRole('link', { name: '(843) 555-0100' }).getAttribute('href')).toBe(
+        'tel:8435550100',
+      )
+      expect(getByRole('link', { name: 'office@dd2.example' }).getAttribute('href')).toBe(
+        'mailto:office@dd2.example',
+      )
+    })
+
+    it('keeps a phone number and an email address left-to-right on a right-to-left page', () => {
+      const { getByRole } = renderComponent(
+        <SiteFooter siteName="School A" links={[]} contact={contact} currentPath="/" locale="ar" />,
+      )
+      // Without it the bidi algorithm reorders "(843) 555-0100" into something undialable.
+      expect(getByRole('link', { name: '(843) 555-0100' }).closest('[dir="ltr"]')).not.toBeNull()
+    })
+
+    it('renders no <address> for an empty contact block', () => {
+      const { container } = renderComponent(
+        <SiteFooter
+          siteName="School A"
+          links={[]}
+          contact={{ address: [], phone: null, email: null }}
+          currentPath="/"
+          locale="en"
+        />,
+      )
+      expect(container.querySelector('address')).toBeNull()
+    })
+
+    it('names the social links as their own landmark, and renders none when there are none', () => {
+      const { getByRole, queryByRole, rerender } = renderComponent(
+        <SiteFooter
+          siteName="School A"
+          links={footer}
+          social={social}
+          currentPath="/"
+          locale="es"
+        />,
+      )
+
+      const nav = getByRole('navigation', { name: 'Social media' })
+      expect(nav.querySelector('a')?.getAttribute('href')).toBe('https://www.facebook.com/dd2')
+
+      rerender(<SiteFooter siteName="School A" links={footer} currentPath="/" locale="es" />)
+      expect(queryByRole('navigation', { name: 'Social media' })).toBeNull()
+    })
   })
 })

@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { getNavigation } from '@/content/navigation'
 import { getPageByPath, listPagePaths } from '@/content/pages'
 import { getTenantByHostname, listActiveTenants } from '@/content/tenants'
+import { getSettings } from '@/content/settings'
 import { getTheme } from '@/content/theme'
 import type { ContentContext, Tenant } from '@/content/types'
 import { ROOT_SLUG } from '@/lib/slug'
@@ -448,6 +449,57 @@ describe('getTheme', () => {
     )
 
     expect(await getTheme(await tenantFor('a.localhost'))).toEqual({ tokens: {} })
+  })
+})
+
+describe('getSettings', () => {
+  const tenantFor = async (hostname: string) => {
+    const tenant = await getTenantByHostname(hostname)
+    if (!tenant) throw new Error(`fixture tenant ${hostname} did not resolve`)
+    return { tenant }
+  }
+
+  it("returns the resolved tenant's settings, as DD2 types", async () => {
+    expect(await getSettings(await tenantFor('a.localhost'))).toEqual({
+      siteTitle: 'Alpha School',
+      contact: {
+        address: ['1 Alpha Road', 'Summerville, SC 29483'],
+        phone: { text: '(843) 555-0101', href: 'tel:8435550101' },
+        email: null,
+      },
+      social: [
+        {
+          id: expect.any(String),
+          platform: 'facebook',
+          label: 'Facebook',
+          href: 'https://www.facebook.com/Alpha',
+        },
+      ],
+      defaultDescription: 'About Alpha.',
+      enabledLocales: ['en', 'es', 'ar'],
+    })
+  })
+
+  it("never returns another tenant's settings", async () => {
+    // Access is overridden on this path; the tenant filter is the only scoping (`02` §4.2).
+    const settings = await getSettings(await tenantFor('b.localhost'))
+    expect(settings.siteTitle).toBe('Bravo School')
+    expect(settings.contact.phone?.href).toBe('tel:8435550202')
+  })
+
+  it('every language turned off survives the database as English only', async () => {
+    // `false` has to come back as `false`, not null: only an explicit no turns one off.
+    expect((await getSettings(await tenantFor('b.localhost'))).enabledLocales).toEqual(['en'])
+  })
+
+  it('returns the defaults for a tenant with no settings row — every platform locale', async () => {
+    expect(await getSettings(await tenantFor('localhost'))).toEqual({
+      siteTitle: null,
+      contact: { address: [], phone: null, email: null },
+      social: [],
+      defaultDescription: null,
+      enabledLocales: ['en', 'es', 'zh-Hans', 'ko', 'pt', 'ar'],
+    })
   })
 })
 

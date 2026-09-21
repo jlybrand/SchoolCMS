@@ -226,6 +226,8 @@ src/
     tenants.ts          getTenantByHostname, listActiveTenants
     navigation.ts       getNavigation — per-tenant menus (pure mapper in menus.ts)
     theme.ts            getTheme — per-tenant token overrides (mapper in theme-tokens.ts)
+    settings.ts         getSettings — site name, contact, social, enabled locales
+                        (mapper in site-settings.ts)
     pages.ts posts.ts events.ts people.ts documents.ts alerts.ts   (Phase 3+)
   collections/          Payload collection configs + colocated access functions
   blocks/               district-only block library (Phase 3)

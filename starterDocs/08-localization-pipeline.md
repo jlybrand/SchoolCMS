@@ -24,7 +24,7 @@ derived from it.
 |---|---|---|
 | **Source** | `en` | Authored. The only language anyone edits. |
 | **Tier 1** | `es` (Spanish), `zh-Hans` (Simplified Chinese), `ko` (Korean), `pt` (Portuguese), `ar` (Arabic) | Pre-rendered for high-traffic pages, per-locale glossary, font stack tested, in the QA matrix (`06`), screen-reader verified in at least `es` and `ar`. Emergency alert templates human-verified (§7). |
-| **Tier 2** | Any additional locale enabled in `settings.enabled_locales` | Generated on demand, machine-only, labelled as machine translation. No pre-render, no glossary obligation, not in the QA matrix. |
+| **Tier 2** | Any additional locale enabled in `settings.enabledLocales` (`03` §5) | Generated on demand, machine-only, labelled as machine translation. No pre-render, no glossary obligation, not in the QA matrix. |
 
 **Adding a Tier 2 language is a configuration change**, not a migration or a build change.
 This is what makes "as many as possible" affordable: the translation cache is keyed by
