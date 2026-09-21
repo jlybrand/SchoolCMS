@@ -637,6 +637,146 @@ describe('composed pages are district-only (`03` §2–3)', () => {
   })
 })
 
+describe('navigation — district-only, one row per tenant (`03` §5, §6.1)', () => {
+  /**
+   * `03` §6.1: a school-manager "cannot touch theme, navigation…". That is stricter than
+   * tenant scoping — a manager is refused their OWN school's menus as well as another's — so
+   * every case below is run against both tenants, and the own-tenant half is the one a
+   * tenant-scoped access function would have got wrong.
+   */
+  const rows = () =>
+    [
+      ['their own', f.navigationA],
+      ["another tenant's", f.navigationB],
+    ] as const
+
+  it('a school-manager reads no menus at all, by list or by id', async () => {
+    expect(
+      await readsNothing(() =>
+        payload.find({ collection: 'navigation', user: f.managerA, overrideAccess: false }),
+      ),
+    ).toBe(true)
+
+    for (const [, id] of rows()) {
+      const denied = await isDenied(() =>
+        payload.findByID({
+          collection: 'navigation',
+          id,
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      )
+      expect(denied).toBe(true)
+    }
+  })
+
+  it("a school-manager cannot UPDATE menus — their own or anyone else's", async () => {
+    for (const [, id] of rows()) {
+      const denied = await isDenied(() =>
+        payload.update({
+          collection: 'navigation',
+          id,
+          data: { primary: [{ label: 'Hijacked', href: 'https://evil.example' }] },
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      )
+      expect(denied).toBe(true)
+    }
+
+    // Denial is only half of it: the rows are unchanged.
+    const { docs } = await payload.find({
+      collection: 'navigation',
+      overrideAccess: true,
+      limit: 100,
+    })
+    expect(JSON.stringify(docs)).not.toContain('Hijacked')
+  })
+
+  it('a school-manager cannot DELETE menus', async () => {
+    for (const [, id] of rows()) {
+      const denied = await isDenied(() =>
+        payload.delete({ collection: 'navigation', id, user: f.managerA, overrideAccess: false }),
+      )
+      expect(denied).toBe(true)
+    }
+  })
+
+  it('a school-manager cannot CREATE menus, even for a tenant with none', async () => {
+    const { docs } = await payload.find({
+      collection: 'tenants',
+      where: { slug: { equals: 'district' } },
+      overrideAccess: true,
+    })
+    const district = docs[0]?.id
+    if (district === undefined) throw new Error('fixture district tenant is missing')
+
+    const denied = await isDenied(() =>
+      payload.create({
+        collection: 'navigation',
+        data: { tenant: district, primary: [{ label: 'About', href: '/about' }] },
+        user: f.managerA,
+        overrideAccess: false,
+      }),
+    )
+    expect(denied).toBe(true)
+  })
+
+  it('system-sync and anonymous callers read nothing', async () => {
+    expect(
+      await readsNothing(() =>
+        payload.find({ collection: 'navigation', user: f.systemSync, overrideAccess: false }),
+      ),
+    ).toBe(true)
+    // No anonymous grant: the public site reads through `src/content/*`, never the API.
+    expect(
+      await readsNothing(() => payload.find({ collection: 'navigation', overrideAccess: false })),
+    ).toBe(true)
+  })
+
+  it("the district admin edits any tenant's menus", async () => {
+    const updated = await payload.update({
+      collection: 'navigation',
+      id: f.navigationB,
+      data: { footer: [{ label: 'Contact School B', href: '/contact' }] },
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+    expect(updated.footer?.[0]?.label).toBe('Contact School B')
+  })
+
+  it('a tenant has ONE set of menus — a second row is refused, even for the district admin', async () => {
+    /**
+     * The database's refusal, not a hook's: `isGlobal` makes `tenant` unique. Two rows would
+     * leave `getNavigation` choosing between them, and which one it chose would be cached.
+     */
+    const denied = await isDenied(() =>
+      payload.create({
+        collection: 'navigation',
+        data: { tenant: f.tenantA, primary: [{ label: 'Second', href: '/second' }] },
+        user: f.districtAdmin,
+        overrideAccess: false,
+      }),
+    )
+    expect(denied).toBe(true)
+  })
+
+  it('refuses an unsafe destination by every route the admin would not', async () => {
+    for (const href of ['javascript:alert(1)', '//evil.example', 'about']) {
+      const denied = await isDenied(() =>
+        payload.update({
+          collection: 'navigation',
+          id: f.navigationA,
+          data: { primary: [{ label: 'Bad', href }] },
+          user: f.districtAdmin,
+          overrideAccess: false,
+        }),
+      )
+      expect(denied).toBe(true)
+    }
+  })
+})
+
 describe('sibling slugs stay unique within a parent', () => {
   it('rejects a second top-level page with an existing slug in the same tenant', async () => {
     const denied = await isDenied(() =>

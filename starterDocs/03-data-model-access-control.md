@@ -304,6 +304,18 @@ seam; an unused collection is maintenance.
 - `settings` — site title, contact block, social links, default SEO/OG,
   **`enabledLocales`** (`08` §2).
 
+**How "per tenant" is expressed.** A Payload global is one document for the whole install, so
+these are not Payload globals. Each is a tenant-scoped **collection** registered with
+`plugin-multi-tenant` as `isGlobal: true`: the `tenant` field is unique, so the database holds
+one row per tenant, and the admin opens that row directly instead of a list. All three are
+district-only for every operation, reads included (§6.1); the public site reads them through
+`src/content/*` with access overridden and an explicit tenant filter.
+
+`navigation` is built: three flat menus of label / destination / new-tab. Destinations are a
+string checked against an allowlist of four shapes — a site path, an `http(s)` address, `mailto:`
+and `tel:` — by the field validator and again by the content mapper. Menus have no nesting; a
+section's own pages are reached through `ChildPageNav` (§3.1).
+
 ## 6. Access-control model
 
 Deny by default, function-based, tenant-scoped. Enforced in the API layer — the admin UI

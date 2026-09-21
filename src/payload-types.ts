@@ -70,6 +70,7 @@ export interface Config {
     tenants: Tenant;
     users: User;
     pages: Page;
+    navigation: Navigation;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -80,6 +81,7 @@ export interface Config {
     tenants: TenantsSelect<false> | TenantsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
+    navigation: NavigationSelect<false> | NavigationSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -421,6 +423,76 @@ export interface DividerBlock {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "navigation".
+ */
+export interface Navigation {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  /**
+   * Across the top of every page. Drag to reorder.
+   */
+  primary?:
+    | {
+        /**
+         * What the link says. Name the destination — "Lunch menus", never "Click here" (WCAG 2.4.4).
+         */
+        label: string;
+        /**
+         * A path on this site, like /about, or a full web address starting https://
+         */
+        href: string;
+        /**
+         * The link says so out loud when this is on, so people using a screen reader are not moved without warning.
+         */
+        newTab?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Small links above the main menu — staff email, the parent portal.
+   */
+  utility?:
+    | {
+        /**
+         * What the link says. Name the destination — "Lunch menus", never "Click here" (WCAG 2.4.4).
+         */
+        label: string;
+        /**
+         * A path on this site, like /about, or a full web address starting https://
+         */
+        href: string;
+        /**
+         * The link says so out loud when this is on, so people using a screen reader are not moved without warning.
+         */
+        newTab?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * At the bottom of every page.
+   */
+  footer?:
+    | {
+        /**
+         * What the link says. Name the destination — "Lunch menus", never "Click here" (WCAG 2.4.4).
+         */
+        label: string;
+        /**
+         * A path on this site, like /about, or a full web address starting https://
+         */
+        href: string;
+        /**
+         * The link says so out loud when this is on, so people using a screen reader are not moved without warning.
+         */
+        newTab?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -454,6 +526,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'pages';
         value: number | Page;
+      } | null)
+    | ({
+        relationTo: 'navigation';
+        value: number | Navigation;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -656,6 +732,39 @@ export interface EmbedBlockSelect<T extends boolean = true> {
 export interface DividerBlockSelect<T extends boolean = true> {
   id?: T;
   blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "navigation_select".
+ */
+export interface NavigationSelect<T extends boolean = true> {
+  tenant?: T;
+  primary?:
+    | T
+    | {
+        label?: T;
+        href?: T;
+        newTab?: T;
+        id?: T;
+      };
+  utility?:
+    | T
+    | {
+        label?: T;
+        href?: T;
+        newTab?: T;
+        id?: T;
+      };
+  footer?:
+    | T
+    | {
+        label?: T;
+        href?: T;
+        newTab?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

@@ -213,10 +213,13 @@ src/
                         boundary rule. No DD2 rendering logic goes here.
   proxy.ts              edge tenant + locale routing (Next 16's middleware convention)
   access/               role/tenant predicates + Payload access functions
+  admin/                admin-plane React (paste prompt; Phase 4's task plane + diff viewer).
+                        Separate from components/ — this side MAY import the Payload SDK.
   auth/                 entra-mapping.ts (unwired), password-policy.ts (interim)
   content/              THE BOUNDARY. Payload lives behind this.
     types.ts            hand-written DD2 domain types — never generated
     tenants.ts          getTenantByHostname, listActiveTenants
+    navigation.ts       getNavigation — per-tenant menus (pure mapper in menus.ts)
     pages.ts posts.ts events.ts people.ts documents.ts alerts.ts   (Phase 3+)
   collections/          Payload collection configs + colocated access functions
   blocks/               district-only block library (Phase 3)

@@ -62,6 +62,12 @@ export type LinkProps = {
    * itself as a link, work on middle-click, and work before hydration.
    */
   readonly variant?: LinkVariant
+  /**
+   * This link points at the page being read — `aria-current="page"`. A menu sets it so a
+   * screen-reader user hears where they are among the links, which a sighted visitor gets
+   * from the page title sitting under the menu.
+   */
+  readonly current?: boolean
 }
 
 export const Link = ({
@@ -72,12 +78,14 @@ export const Link = ({
   lang,
   hrefLang,
   variant = 'inline',
+  current = false,
 }: LinkProps) => (
   <a
     className={variant === 'button' ? styles.button : styles.link}
     href={href}
     lang={lang}
     hrefLang={hrefLang}
+    aria-current={current ? 'page' : undefined}
     {...(ABSOLUTE_HTTP.test(href) ? { 'data-external': 'true' } : {})}
     {...(newWindow ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
   >

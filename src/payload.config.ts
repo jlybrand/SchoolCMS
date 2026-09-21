@@ -7,6 +7,7 @@ import { buildConfig } from 'payload'
 
 import { isDistrictAdmin } from './access/predicates'
 import type { AuthUser } from './access/types'
+import { Navigation } from './collections/Navigation'
 import { Pages } from './collections/Pages'
 import { Tenants } from './collections/Tenants'
 import { Users } from './collections/Users'
@@ -25,7 +26,7 @@ export default buildConfig({
     importMap: { baseDir: path.resolve(dirname) },
   },
 
-  collections: [Tenants, Users, Pages],
+  collections: [Tenants, Users, Pages, Navigation],
 
   // Postgres, never Mongo — portability is a hard requirement (`00`, ADR-10).
   db: postgresAdapter({
@@ -67,6 +68,14 @@ export default buildConfig({
          * redirects.
          */
         pages: {},
+        /**
+         * `isGlobal` is how a per-tenant "global" (`03` §5) is expressed under this plugin: a
+         * Payload global is one document for the whole install, and there are 28 sites. It
+         * makes the injected `tenant` field UNIQUE — one row per site, refused by the
+         * database rather than by a hook — and has the admin open that row directly instead
+         * of a list of one. `theme` and `settings` join the same way.
+         */
+        navigation: { isGlobal: true },
       },
     }),
   ],

@@ -139,6 +139,59 @@ test.describe('page resolution', () => {
   })
 })
 
+test.describe('site menus (`03` §5)', () => {
+  test.use(site('a.localhost'))
+
+  test('@smoke the header and footer are landmarks, and every menu is named', async ({ page }) => {
+    await page.goto('/about')
+
+    const banner = page.getByRole('banner')
+    await expect(banner.getByRole('link', { name: 'School A' })).toHaveAttribute('href', '/')
+    await expect(banner.getByRole('navigation', { name: 'Main' })).toBeVisible()
+    await expect(banner.getByRole('navigation', { name: 'Quick links' })).toBeVisible()
+    await expect(
+      page.getByRole('contentinfo').getByRole('navigation', { name: 'Footer' }),
+    ).toBeVisible()
+  })
+
+  test('@smoke marks the current page in the main menu, and only there', async ({ page }) => {
+    await page.goto('/about')
+
+    const main = page.getByRole('navigation', { name: 'Main' })
+    await expect(main.getByRole('link', { name: 'About' })).toHaveAttribute('aria-current', 'page')
+    await expect(main.getByRole('link', { name: 'Staff directory' })).not.toHaveAttribute(
+      'aria-current',
+    )
+  })
+
+  test('@smoke menu links keep the visitor in their language', async ({ page }) => {
+    await page.goto('/es/about')
+
+    const main = page.getByRole('navigation', { name: 'Main' })
+    await expect(main.getByRole('link', { name: 'Staff directory' })).toHaveAttribute(
+      'href',
+      '/es/about/staff',
+    )
+    // Still current: the marker compares unprefixed paths, so it works in every locale.
+    await expect(main.getByRole('link', { name: 'About' })).toHaveAttribute('aria-current', 'page')
+    // An external destination is not a page of this site and takes no prefix.
+    await expect(
+      page.getByRole('navigation', { name: 'Quick links' }).getByRole('link'),
+    ).toHaveAttribute('href', 'https://outlook.office.com')
+  })
+
+  test('@smoke a menu link leads to the page it names — the seeded links all resolve', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await page
+      .getByRole('navigation', { name: 'Main' })
+      .getByRole('link', { name: 'Staff directory' })
+      .click()
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Staff Directory')
+  })
+})
+
 test.describe('locale routing', () => {
   test.use(site('a.localhost'))
 

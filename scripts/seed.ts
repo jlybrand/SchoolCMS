@@ -226,6 +226,39 @@ const run = async () => {
       seeded.set(page.slug, saved.id)
       payload.logger.info(`${existing ? 'updated' : 'created'} page ${tenant.slug}/${page.slug}`)
     }
+
+    /**
+     * Menus (`03` §5) — one row per tenant, pointing at the pages seeded above so every link
+     * resolves.
+     *
+     * CREATED ONLY WHEN ABSENT, where pages are upserted. A page upsert restates a few fields;
+     * restating three arrays would replace whatever menu a developer had built on top of the
+     * seed, and `tenant` is unique on this collection, so there is never a second row to fall
+     * back to.
+     */
+    const { totalDocs: menus } = await payload.count({
+      collection: 'navigation',
+      where: { tenant: { equals: tenantId } },
+      overrideAccess: true,
+    })
+
+    if (menus === 0) {
+      await payload.create({
+        collection: 'navigation',
+        data: {
+          tenant: tenantId,
+          primary: [
+            { label: 'About', href: '/about' },
+            { label: 'Staff directory', href: '/about/staff' },
+          ],
+          utility: [{ label: 'Staff email', href: 'https://outlook.office.com', newTab: true }],
+          footer: [{ label: `About ${tenant.name}`, href: '/about' }],
+        },
+        overrideAccess: true,
+        ...asDistrict,
+      })
+      payload.logger.info(`created menus for ${tenant.slug}`)
+    }
   }
 
   /**

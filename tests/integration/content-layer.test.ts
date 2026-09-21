@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 
+import { getNavigation } from '@/content/navigation'
 import { getPageByPath, listPagePaths } from '@/content/pages'
 import { getTenantByHostname, listActiveTenants } from '@/content/tenants'
 import type { ContentContext, Tenant } from '@/content/types'
@@ -370,5 +371,44 @@ describe('getPageByPath', () => {
       expect(paths).not.toContain('/draft-only')
       expect(paths).not.toContain('/internal')
     })
+  })
+})
+
+describe('getNavigation', () => {
+  const ctxFor = async (hostname: string): Promise<ContentContext> => {
+    const tenant = await getTenantByHostname(hostname)
+    if (!tenant) throw new Error(`fixture tenant ${hostname} did not resolve`)
+    return { tenant, locale: 'en' }
+  }
+
+  it("returns the resolved tenant's menus", async () => {
+    const nav = await getNavigation(await ctxFor('a.localhost'))
+
+    expect(nav.primary.map((link) => link.label)).toEqual(['About School A', 'Calendar'])
+    expect(nav.utility[0]).toMatchObject({ href: 'https://outlook.office.com', newTab: true })
+    expect(nav.footer.map((link) => link.label)).toEqual(['Contact School A'])
+  })
+
+  it("never returns another tenant's menus", async () => {
+    /**
+     * Access is overridden on this path, so the tenant filter in the query is the ONLY thing
+     * keeping School B's links off School A's header (`02` §4.2).
+     */
+    const nav = await getNavigation(await ctxFor('a.localhost'))
+    expect(JSON.stringify(nav)).not.toContain('School B')
+  })
+
+  it('returns empty menus for a tenant with no navigation row — never null, never a neighbour', async () => {
+    // The seeded district has no row.
+    const nav = await getNavigation(await ctxFor('localhost'))
+    expect(nav).toEqual({ primary: [], utility: [], footer: [] })
+  })
+
+  it('returns DD2 menu links, not Payload rows', async () => {
+    const nav = await getNavigation(await ctxFor('a.localhost'))
+    expect(Object.keys(nav).sort()).toEqual(['footer', 'primary', 'utility'])
+    for (const link of [...nav.primary, ...nav.utility, ...nav.footer]) {
+      expect(Object.keys(link).sort()).toEqual(['href', 'id', 'label', 'newTab'])
+    }
   })
 })
