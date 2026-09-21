@@ -6,11 +6,14 @@ import { Container } from '@/components/Container'
 import { Heading, PAGE_TITLE_LEVEL } from '@/components/Heading'
 import { Link } from '@/components/Link'
 import { RichText } from '@/components/RichText'
+import { SiteFooter } from '@/components/SiteFooter'
+import { SiteHeader } from '@/components/SiteHeader'
 import { MAIN_CONTENT_ID } from '@/components/SkipLink'
 import { Stack } from '@/components/Stack'
+import { getNavigation } from '@/content/navigation'
 import { getPageByPath } from '@/content/pages'
 import { getTenantByHostname } from '@/content/tenants'
-import type { ContentContext, Page, Tenant } from '@/content/types'
+import type { ContentContext, Navigation, Page, Tenant } from '@/content/types'
 import { documentTag, tenantTag } from '@/lib/cache-tags'
 import { ALL_LOCALES, hreflangAlternates, localizedPath } from '@/lib/locales'
 
@@ -42,7 +45,9 @@ export const revalidate = 3600
  * kind of mismatch that then gets cached. The duplicate query is affordable because neither
  * caller runs per visitor.
  */
-const resolve = async (params: Params): Promise<{ tenant: Tenant; page: Page } | null> => {
+type Resolved = { tenant: Tenant; page: Page; ctx: ContentContext }
+
+const resolve = async (params: Params): Promise<Resolved | null> => {
   const tenant = await getTenantByHostname(decodeURIComponent(params.hostname))
   if (!tenant) return null
 
@@ -51,7 +56,7 @@ const resolve = async (params: Params): Promise<{ tenant: Tenant; page: Page } |
   const page = await getPageByPath(ctx, pathOf(params.segments))
   if (!page) return null
 
-  return { tenant, page }
+  return { tenant, page, ctx }
 }
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
@@ -97,34 +102,61 @@ export default async function SitePage({ params }: { params: Promise<Params> }) 
    */
   if (!resolved) notFound()
 
-  const { tenant, page } = resolved
+  const { tenant, page, ctx } = resolved
+
+  /**
+   * Fetched only once the page is known to exist, so a 404 costs no menu query. Not in
+   * `resolve`, which `generateMetadata` shares: metadata has no use for the menus.
+   *
+   * A tenant with no `navigation` row gets three empty menus, never null — so there is no
+   * missing-data branch below, and a site created today renders a header with its name in it.
+   */
+  const navigation: Navigation = await getNavigation(ctx)
 
   return (
     /**
-     * `id` comes from the `SkipLink` module rather than a literal, so the bypass-blocks
-     * target cannot be renamed out from under the link (`07` §3). The measure and gutters
-     * come from `Container` — the single owner of both, in logical properties.
+     * THE HEADER AND FOOTER ARE RENDERED HERE, NOT IN THE LAYOUT, because the layout cannot
+     * see `segments`: it would render the menus without knowing which page they are on, and
+     * `aria-current` is the one thing a menu owes a screen-reader user. They are siblings of
+     * `<main>` directly under `<body>`, which is what makes them the banner and contentinfo
+     * landmarks; the skip link, in the layout, still comes first.
      *
-     * Both cache tags are emitted: publishing this page purges its own artifact, and a
-     * tenant-wide change (a theme or a rename) purges every page (`09` §4.2).
+     * The tenant cache tag on `<main>` covers them: a menu change is a tenant-wide change,
+     * and it purges every page of the site (`09` §4.2).
      */
-    <main
-      data-cache-tag={`${tenantTag(tenant.id)} ${documentTag('pages', page.id)}`}
-      id={MAIN_CONTENT_ID}
-    >
-      <Container>
-        <Stack space="lg">
-          {/*
+    <>
+      <SiteHeader
+        siteName={tenant.name}
+        primary={navigation.primary}
+        utility={navigation.utility}
+        currentPath={page.path}
+        locale={ctx.locale}
+      />
+      {/*
+        `id` comes from the `SkipLink` module rather than a literal, so the bypass-blocks
+        target cannot be renamed out from under the link (`07` §3). The measure and gutters
+        come from `Container` — the single owner of both, in logical properties.
+
+        Both cache tags are emitted: publishing this page purges its own artifact, and a
+        tenant-wide change (a menu, a theme or a rename) purges every page (`09` §4.2).
+      */}
+      <main
+        data-cache-tag={`${tenantTag(tenant.id)} ${documentTag('pages', page.id)}`}
+        id={MAIN_CONTENT_ID}
+      >
+        <Container>
+          <Stack space="lg">
+            {/*
             The page title is the page's only `h1`, owned here rather than by the body, which
             is why `RichText` clamps an author's headings to `h2` and below. An editor cannot
             reach the element and therefore cannot produce a heading-order violation
             (`03` §3, `07` §3).
           */}
-          <Heading level={PAGE_TITLE_LEVEL}>{page.title}</Heading>
+            <Heading level={PAGE_TITLE_LEVEL}>{page.title}</Heading>
 
-          <RichText content={page.body} />
+            <RichText content={page.body} />
 
-          {/*
+            {/*
             NO BRANCH ON `pageType`. Both renderers return null when they have nothing:
             `RichText` for an empty body, `BlockList` for an empty layout — and the mapper
             already dropped blocks that would have rendered empty. A fixed-type page
@@ -135,10 +167,10 @@ export default async function SitePage({ params }: { params: Promise<Params> }) 
             deferred add-on (`01` §4.1), it is an access-predicate change and nothing here
             moves (`03` §2).
           */}
-          <BlockList blocks={page.layout} childPages={page.children} />
+            <BlockList blocks={page.layout} childPages={page.children} />
 
-          <nav aria-label="Language">
-            {/*
+            <nav aria-label="Language">
+              {/*
               `08` §6 — each language is listed in its OWN script and language, with `lang` on
               each link. Never flag icons (a flag is a country, not a language) and never
               "translate this page" as the only affordance. Labels stay untranslated here
@@ -147,19 +179,26 @@ export default async function SitePage({ params }: { params: Promise<Params> }) 
               Built from the page's resolved path rather than the requested one, so the
               switcher always points at this page in another language.
             */}
-            <ul>
-              {ALL_LOCALES.map((code) => (
-                <li key={code}>
-                  <Link href={localizedPath(page.path, code)} hrefLang={code} lang={code}>
-                    {LANGUAGE_NAMES[code] ?? code}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        </Stack>
-      </Container>
-    </main>
+              <ul>
+                {ALL_LOCALES.map((code) => (
+                  <li key={code}>
+                    <Link href={localizedPath(page.path, code)} hrefLang={code} lang={code}>
+                      {LANGUAGE_NAMES[code] ?? code}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </Stack>
+        </Container>
+      </main>
+      <SiteFooter
+        siteName={tenant.name}
+        links={navigation.footer}
+        currentPath={page.path}
+        locale={ctx.locale}
+      />
+    </>
   )
 }
 

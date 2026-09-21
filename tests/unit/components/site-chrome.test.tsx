@@ -1,0 +1,167 @@
+// @vitest-environment jsdom
+import { describe, expect, it } from 'vitest'
+
+import { SiteFooter } from '@/components/SiteFooter'
+import { SiteHeader } from '@/components/SiteHeader'
+import type { MenuLink } from '@/content/types'
+
+import { renderComponent } from '../../helpers/render'
+
+/**
+ * The header and footer (`03` §5, `07` §3).
+ *
+ * Semantics only — landmarks, names, the current-page marker, locale prefixes. Contrast,
+ * focus appearance and RTL mirroring are checked where a layout engine exists, by the
+ * Storybook axe gate over these components' stories.
+ */
+
+const link = (label: string, href: string, newTab = false): MenuLink => ({
+  id: label,
+  label,
+  href,
+  newTab,
+})
+
+const primary = [link('About', '/about'), link('Calendar', '/calendar')]
+const utility = [link('Staff email', 'https://outlook.office.com', true)]
+const footer = [link('Contact', '/contact'), link('Call the office', 'tel:+18435550100')]
+
+describe('SiteHeader', () => {
+  it('is the banner landmark, holding the site name as a link home', () => {
+    const { getByRole } = renderComponent(
+      <SiteHeader
+        siteName="School A"
+        primary={primary}
+        utility={utility}
+        currentPath="/"
+        locale="en"
+      />,
+    )
+
+    const banner = getByRole('banner')
+    const home = getByRole('link', { name: 'School A' })
+    expect(banner.contains(home)).toBe(true)
+    expect(home.getAttribute('href')).toBe('/')
+  })
+
+  it('the site name is NOT a heading — the page title is the only h1 (`07` §3)', () => {
+    const { queryAllByRole } = renderComponent(
+      <SiteHeader siteName="School A" primary={primary} utility={[]} currentPath="/" locale="en" />,
+    )
+    expect(queryAllByRole('heading')).toEqual([])
+  })
+
+  it('names each navigation landmark distinctly', () => {
+    const { getByRole } = renderComponent(
+      <SiteHeader
+        siteName="School A"
+        primary={primary}
+        utility={utility}
+        currentPath="/"
+        locale="en"
+      />,
+    )
+
+    expect(getByRole('navigation', { name: 'Main' })).toBeTruthy()
+    expect(getByRole('navigation', { name: 'Quick links' })).toBeTruthy()
+  })
+
+  it('renders no landmark for an empty menu — an empty <nav> is a dead end in the landmark list', () => {
+    const { queryAllByRole, getByRole } = renderComponent(
+      <SiteHeader siteName="School A" primary={[]} utility={[]} currentPath="/" locale="en" />,
+    )
+
+    expect(queryAllByRole('navigation')).toEqual([])
+    // A brand-new tenant still gets a header with its name in it.
+    expect(getByRole('link', { name: 'School A' })).toBeTruthy()
+  })
+
+  it('marks the current page, and only the current page', () => {
+    const { getByRole } = renderComponent(
+      <SiteHeader
+        siteName="School A"
+        primary={primary}
+        utility={[]}
+        currentPath="/about"
+        locale="en"
+      />,
+    )
+
+    expect(getByRole('link', { name: 'About' }).getAttribute('aria-current')).toBe('page')
+    expect(getByRole('link', { name: 'Calendar' }).getAttribute('aria-current')).toBeNull()
+  })
+
+  it('does not mark a parent as the current page — /about is not /about/staff', () => {
+    const { getByRole } = renderComponent(
+      <SiteHeader
+        siteName="School A"
+        primary={primary}
+        utility={[]}
+        currentPath="/about/staff"
+        locale="en"
+      />,
+    )
+    expect(getByRole('link', { name: 'About' }).getAttribute('aria-current')).toBeNull()
+  })
+
+  it('prefixes site paths with the locale, and leaves every other destination alone', () => {
+    const { getByRole } = renderComponent(
+      <SiteHeader
+        siteName="School A"
+        primary={primary}
+        utility={utility}
+        currentPath="/about"
+        locale="es"
+      />,
+    )
+
+    expect(getByRole('link', { name: 'School A' }).getAttribute('href')).toBe('/es')
+    expect(getByRole('link', { name: 'About' }).getAttribute('href')).toBe('/es/about')
+    // Still the current page: the comparison is on the page's path, not the prefixed href.
+    expect(getByRole('link', { name: 'About' }).getAttribute('aria-current')).toBe('page')
+    expect(getByRole('link', { name: /Staff email/ }).getAttribute('href')).toBe(
+      'https://outlook.office.com',
+    )
+  })
+
+  it('announces a new tab and couples rel to target, through Link', () => {
+    const { getByRole } = renderComponent(
+      <SiteHeader siteName="School A" primary={[]} utility={utility} currentPath="/" locale="en" />,
+    )
+
+    const staffEmail = getByRole('link', { name: /Staff email.*opens in a new window/i })
+    expect(staffEmail.getAttribute('target')).toBe('_blank')
+    expect(staffEmail.getAttribute('rel')).toBe('noopener noreferrer')
+  })
+})
+
+describe('SiteFooter', () => {
+  it('is the contentinfo landmark with a named navigation', () => {
+    const { getByRole } = renderComponent(
+      <SiteFooter siteName="School A" links={footer} currentPath="/" locale="en" />,
+    )
+
+    const contentinfo = getByRole('contentinfo')
+    const nav = getByRole('navigation', { name: 'Footer' })
+    expect(contentinfo.contains(nav)).toBe(true)
+    expect(contentinfo.textContent).toContain('School A')
+  })
+
+  it('renders no navigation landmark when it has no links', () => {
+    const { queryAllByRole, getByRole } = renderComponent(
+      <SiteFooter siteName="School A" links={[]} currentPath="/" locale="en" />,
+    )
+    expect(queryAllByRole('navigation')).toEqual([])
+    expect(getByRole('contentinfo')).toBeTruthy()
+  })
+
+  it('leaves tel: and mailto: destinations unprefixed in a non-English locale', () => {
+    const { getByRole } = renderComponent(
+      <SiteFooter siteName="School A" links={footer} currentPath="/" locale="ar" />,
+    )
+    expect(getByRole('link', { name: 'Contact' }).getAttribute('href')).toBe('/ar/contact')
+    expect(getByRole('link', { name: 'Call the office' }).getAttribute('href')).toBe(
+      'tel:+18435550100',
+    )
+  })
+})

@@ -75,6 +75,38 @@ export type PageLink = {
 }
 
 /**
+ * One entry in a site menu (`03` §5).
+ *
+ * `href` is a string the district typed, not a page reference, for the reason
+ * `CallToAction`'s is: a school menu points at the enrollment portal and the lunch-payment
+ * site as often as at its own pages. It has ALREADY been through `toSafeHref` — a renderer
+ * never sees a destination outside the four accepted shapes (`src/lib/href.ts`).
+ *
+ * NO `children`. The primary menu is flat and a section's own pages are reached from that
+ * section, through `ChildPageNav`. A dropdown is a disclosure widget that needs client script
+ * and a keyboard contract on every page of every site; adding one later is an additive field,
+ * and taking one away is not.
+ */
+export type MenuLink = {
+  id: string
+  label: string
+  href: string
+  newTab: boolean
+}
+
+/**
+ * A tenant's menus. Every tenant has one — a tenant with no `navigation` row has three empty
+ * menus rather than a null, so the header and footer have no missing-data branch.
+ */
+export type Navigation = {
+  /** The main menu, in the header. */
+  primary: MenuLink[]
+  /** Short task links above it — staff email, the parent portal. */
+  utility: MenuLink[]
+  footer: MenuLink[]
+}
+
+/**
  * A page as the rendering layer sees it.
  *
  * SCOPE: identity, hierarchy, type, visibility, body prose, and — for `composed` pages —

@@ -50,6 +50,9 @@ export type Fixtures = {
   draftPageA: number
   staffPageA: number
   publishedPageB: number
+  /** One `navigation` row per school — the per-tenant record a school-manager may not touch. */
+  navigationA: number
+  navigationB: number
   districtAdmin: TypedUser
   managerA: TypedUser
   managerB: TypedUser
@@ -62,8 +65,8 @@ export type Fixtures = {
  * including a school-manager assigned to NO tenant — the shape most likely to fail open.
  */
 export async function seed(payload: Payload): Promise<Fixtures> {
-  // Order matters: pages reference tenants, users reference tenants.
-  for (const collection of ['pages', 'users', 'tenants'] as const) {
+  // Order matters: pages, navigation and users all reference tenants.
+  for (const collection of ['pages', 'navigation', 'users', 'tenants'] as const) {
     await payload.delete({ collection, where: {}, overrideAccess: true })
   }
 
@@ -133,9 +136,33 @@ export async function seed(payload: Payload): Promise<Fixtures> {
       })
     ).id as number
 
+  /**
+   * Menus that differ per tenant, so a leak reads as the WRONG school's links rather than as
+   * a plausible menu. Each carries an external link, so the mapper's two kinds of destination
+   * are both in the fixture.
+   */
+  const mkNavigation = async (tenant: number, name: string): Promise<number> =>
+    (
+      await payload.create({
+        collection: 'navigation',
+        data: {
+          tenant,
+          primary: [
+            { label: `About ${name}`, href: '/about' },
+            { label: 'Calendar', href: '/calendar' },
+          ],
+          utility: [{ label: 'Staff email', href: 'https://outlook.office.com', newTab: true }],
+          footer: [{ label: `Contact ${name}`, href: '/contact' }],
+        },
+        overrideAccess: true,
+      })
+    ).id as number
+
   return {
     tenantA,
     tenantB,
+    navigationA: await mkNavigation(tenantA, 'School A'),
+    navigationB: await mkNavigation(tenantB, 'School B'),
     publishedPageA: await mkPage(tenantA, 'published-page-a', 'published'),
     draftPageA: await mkPage(tenantA, 'draft-page-a', 'draft'),
     staffPageA: await mkPage(tenantA, 'staff-page-a', 'published', 'staff'),

@@ -10,10 +10,11 @@ Phase 3 lands across several PRs. This document is written as each one merges.
 | Component foundation                       | **Landed** — §1–§7 below                                  |
 | Paste normalizer                           | Landed early (PR #6); not yet wired to an editor — see §8 |
 | `pages` collection (schema, access, gates) | **Landed** — §9–§12 below                                 |
-| Page templates and rendering               | Not started                                               |
+| Page templates and rendering               | **Landed** — §16                                          |
 | Block library                              | **Batch 1 complete** — §17–§20                            |
-| Constrained rich text (Lexical)            | Not started                                               |
-| Navigation global, SEO, sitemap            | Not started                                               |
+| Constrained rich text (Lexical)            | **Landed** — §13, §15                                     |
+| Navigation                                 | **Landed** — §21                                          |
+| Theme, SEO, sitemap                        | Not started                                               |
 
 ---
 
@@ -971,3 +972,129 @@ VPAT. The real URL shape is pinned in `tests/unit/embed-url.test.ts`.
 `frame-src`, no security headers. So "domain-allowlisted" is currently an application-layer
 claim only. That belongs to Phase 8 hardening; it is recorded here so it is not mistaken for
 done.
+
+---
+
+## 21. Navigation — the per-tenant menus, and the header and footer
+
+`03` §5 calls `navigation` a per-tenant global. It is built as a tenant-scoped collection with
+one row per tenant; the header and footer that render it are the first site chrome.
+
+### Added
+
+| File                                         | Holds                                                            |
+| -------------------------------------------- | ---------------------------------------------------------------- |
+| `src/lib/href.ts`                            | `toSafeHref`, `isSitePath` — the destination allowlist           |
+| `src/collections/Navigation.ts`              | Three arrays (`primary`, `utility`, `footer`) of label/href/tab  |
+| `src/content/menus.ts`                       | `toNavigation` — the pure mapper, `unknown` in, `Navigation` out |
+| `src/content/navigation.ts`                  | `getNavigation(ctx)` — the query                                 |
+| `src/components/MenuList/`                   | One named `<nav>` + list; shared by header and footer            |
+| `src/components/SiteHeader/`                 | Banner: site name, quick links, main menu                        |
+| `src/components/SiteFooter/`                 | Contentinfo: footer menu, site name                              |
+| `tests/unit/href.test.ts`                    | 36 tests: the four accepted shapes and what is refused           |
+| `tests/unit/menus.test.ts`                   | 15 tests: mapping, dropping, no Payload fields leaking           |
+| `tests/unit/components/site-chrome.test.tsx` | Landmarks, names, `aria-current`, locale prefixes                |
+
+### Changed
+
+| File                                         | Change                                                          |
+| -------------------------------------------- | --------------------------------------------------------------- |
+| `src/payload.config.ts`                      | Collection registered; `navigation: { isGlobal: true }`         |
+| `src/content/types.ts`                       | `MenuLink`, `Navigation`                                        |
+| `src/components/Link/Link.tsx`               | `current` prop -> `aria-current="page"`                         |
+| `.../[[...segments]]/page.tsx`               | Fetches menus; renders `SiteHeader` and `SiteFooter`            |
+| `src/app/(payload)/admin/importMap.js`       | Regenerated — `isGlobal` adds the plugin's `GlobalViewRedirect` |
+| `scripts/seed.ts`                            | Menus per tenant, created only when absent                      |
+| `tests/helpers/payload.ts`                   | `navigationA` / `navigationB` fixtures                          |
+| `tests/integration/tenant-isolation.test.ts` | 8 cases: district-only, one row per tenant, unsafe hrefs        |
+| `tests/integration/content-layer.test.ts`    | `getNavigation`: own tenant only, empty when absent             |
+| `tests/e2e/tenant-routing.spec.ts`           | Landmarks, current page, locale prefixes, a followed link       |
+| `src/payload-types.ts`                       | Regenerated                                                     |
+| `starterDocs/03-...md`                       | §5: how a per-tenant global is expressed                        |
+
+### The call chain
+
+```
+page.tsx
+  resolve()                      tenant + page, or 404 — no menu query on a 404
+  getNavigation(ctx)             src/content/navigation.ts
+    payload.find('navigation',   where tenant = ctx.tenant.id, limit 1, overrideAccess
+    toNavigation(docs[0])        src/content/menus.ts — undefined row -> three empty menus
+      toSafeHref(row.href)       src/lib/href.ts — item dropped when null
+  <SiteHeader primary utility currentPath=page.path locale>
+    <MenuList>                   null when links is empty
+      <Link current href=...>    localizedPath(href, locale) only when isSitePath(href)
+  <main>…</main>
+  <SiteFooter links=footer …>
+```
+
+### One row per tenant
+
+`navigation: { isGlobal: true }` in the multi-tenant plugin config does two things: the injected
+`tenant` field is created `unique`, and the admin opens the tenant's row directly rather than a
+list. A second `create` for the same tenant fails at the database — pinned by the isolation
+suite. `theme` and `settings` (`03` §5) register the same way.
+
+### Access
+
+All four operations are `districtOnly`. A school-manager is refused their own tenant's row as
+well as another's, so the isolation cases run against both. There is no anonymous grant:
+`getNavigation` runs with `overrideAccess: true`, and its `tenant` clause is the only scoping on
+that path — `content-layer.test.ts` asserts School B's labels never appear in School A's menus.
+
+No drafts or versions: a saved menu is live.
+
+### Destinations
+
+`toSafeHref` accepts four shapes — `/path` (not `//`), `http(s)://host…`, `mailto:a@b`,
+`tel:+digits` — after trimming, and refuses any value containing whitespace, a backslash or a
+control character. It runs twice: as the `href` field's `validate`, and again in `toNavigation`.
+The `CallToAction` and `CardGrid` `href` fields do not use it yet.
+
+### Header and footer are in the page, not the layout
+
+`layout.tsx` receives `hostname` and `locale` but not `segments`, so it cannot supply
+`currentPath`. `page.tsx` renders `SiteHeader` and `SiteFooter` as siblings of `<main>` inside a
+fragment; they land directly under `<body>`, which is what gives `<header>` and `<footer>` their
+banner and contentinfo roles. `SkipLink` stays in the layout and is still the first tab stop —
+`smoke.spec.ts`'s bypass-blocks test now has a real header to skip.
+
+`aria-current="page"` is set when `link.href === page.path` exactly. Both are unprefixed paths,
+so the comparison is locale-independent. A parent is not marked on a child page.
+
+### Landmark names
+
+| Landmark     | Name          | Source                       |
+| ------------ | ------------- | ---------------------------- |
+| `navigation` | `Main`        | `SiteHeader` `primaryLabel`  |
+| `navigation` | `Quick links` | `SiteHeader` `utilityLabel`  |
+| `navigation` | `Footer`      | `SiteFooter` `label`         |
+| `navigation` | `Language`    | `page.tsx`                   |
+| `navigation` | block heading | `ChildPageNav`, when present |
+
+An empty menu renders no `<nav>`. A tenant with no row renders a header holding only its name.
+
+### Menus are flat
+
+`MenuLink` has no `children`, and the arrays cap at 8 / 6 / 12 rows. The list is a wrapping flex
+row with no client script; at 320px it becomes more rows. A section's own pages are reached
+through `ChildPageNav` (§19).
+
+### Cache
+
+No new tag. The tenant tag already on `<main>` covers the menus. Nothing purges it yet — there is
+still no `afterChange` revalidation hook on any collection; when it lands, `navigation` needs
+`tenantTag(tenantId)` and nothing narrower.
+
+### No migration
+
+As §17: no migrations are committed yet, so the `navigation` tables need none today. When they
+start, this is a new table — pure expand.
+
+### Local gotchas
+
+- A new collection needs `pnpm run seed` (or a dev server) before `pnpm test:e2e`, so `dd2_dev`
+  gets the table — the production server Playwright boots does not push schema.
+- After adding `isGlobal`, run `pnpm exec payload generate:importmap`. Without it the admin logs
+  `PayloadComponent not found in importMap` for `GlobalViewRedirect` and the redirect silently
+  does nothing; no test fails.

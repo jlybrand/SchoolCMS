@@ -1,0 +1,13 @@
+/* Logical properties only (CLAUDE.md rule 5). */
+
+.footer {
+  background-color: var(--color-surface-raised);
+  border-block-start: 1px solid var(--color-border-strong);
+  padding-block: var(--space-lg);
+}
+
+/* `--color-text-muted` on `--color-surface-raised` is a validated pair (`07` §3). */
+.siteName {
+  color: var(--color-text-muted);
+  margin-block: var(--space-sm) 0;
+}
