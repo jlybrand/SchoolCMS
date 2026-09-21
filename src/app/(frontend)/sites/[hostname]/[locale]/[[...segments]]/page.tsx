@@ -15,7 +15,8 @@ import { getPageByPath } from '@/content/pages'
 import { getTenantByHostname } from '@/content/tenants'
 import type { ContentContext, Navigation, Page, Tenant } from '@/content/types'
 import { documentTag, tenantTag } from '@/lib/cache-tags'
-import { ALL_LOCALES, hreflangAlternates, localizedPath } from '@/lib/locales'
+import { ALL_LOCALES, localizedPath } from '@/lib/locales'
+import { buildPageMetadata, indexingAllowed } from '@/lib/seo'
 
 type Params = { hostname: string; locale: string; segments?: string[] }
 
@@ -68,21 +69,19 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const { tenant, page } = resolved
   const { locale } = await params
 
-  return {
-    /**
-     * The front page is titled with the site's name. Its `title` field is an internal label
-     * ("Home") that names the row for editors, not the site — putting it in the browser tab
-     * and the search result would describe 28 sites identically.
-     */
-    title: page.path === '/' ? tenant.name : `${page.title} — ${tenant.name}`,
-    alternates: {
-      canonical: localizedPath(page.path, locale),
-      // `08` §5 — alternates for every enabled locale plus x-default.
-      languages: Object.fromEntries(
-        hreflangAlternates(page.path).map(({ hrefLang, href }) => [hrefLang, href]),
-      ),
-    },
-  }
+  /**
+   * Assembled by a pure function (`src/lib/seo.ts`) — the title rule, the description
+   * fallback, absolute canonical and `hreflang` URLs (`08` §5), Open Graph, and `noindex`
+   * everywhere indexing has not been explicitly allowed. This file's job is to hand it the
+   * page; what the tags say is decided, and tested, there.
+   */
+  return buildPageMetadata({
+    tenant,
+    page,
+    locale,
+    locales: ALL_LOCALES,
+    indexable: indexingAllowed(process.env),
+  })
 }
 
 export default async function SitePage({ params }: { params: Promise<Params> }) {

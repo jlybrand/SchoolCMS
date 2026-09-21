@@ -267,6 +267,19 @@ export interface Page {
       )[]
     | null;
   /**
+   * How this page appears in search results and when its link is shared. Both are optional — leave them empty and the page title and its first paragraph are used.
+   */
+  meta?: {
+    /**
+     * Optional. About 50 to 60 characters shows in full. The school name is added to the end for you.
+     */
+    title?: string | null;
+    /**
+     * Optional. One or two sentences, up to about 160 characters, saying what someone will find on this page.
+     */
+    description?: string | null;
+  };
+  /**
    * Hold translations of this page until a person has checked them.
    */
   requiresTranslationReview?: boolean | null;
@@ -669,6 +682,12 @@ export interface PagesSelect<T extends boolean = true> {
         childPageNav?: T | ChildPageNavBlockSelect<T>;
         embed?: T | EmbedBlockSelect<T>;
         divider?: T | DividerBlockSelect<T>;
+      };
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
       };
   requiresTranslationReview?: T;
   updatedAt?: T;

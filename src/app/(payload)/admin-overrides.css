@@ -1,0 +1,27 @@
+/**
+ * Accessibility corrections to Payload's admin chrome (`07` §2, CLAUDE.md rule 6).
+ *
+ * NOT A THEME. This file exists for places where Payload's default styling fails WCAG AA
+ * and the fix is a value, and for nothing else — the admin is Payload's to design and
+ * restyling it is swap cost (`02` §11). Every rule here names the criterion it restores.
+ *
+ * Payload ships its styles inside `@layer payload-default`, so these unlayered rules win on
+ * layering alone: no `!important`, no specificity contest. Logical properties only, as
+ * everywhere (rule 5).
+ */
+
+/**
+ * Field help text — 1.4.3 Contrast (Minimum).
+ *
+ * Payload sets `.field-description` to `--theme-elevation-400`: #9a9a9a on white, 2.81:1
+ * against a 4.5:1 requirement. This is not a corner of the admin. The usability bar is a
+ * school manager who "reads no documentation" (`04` §2.1), so the sentence under each field
+ * IS the documentation, and it was the least legible text on the form.
+ *
+ * `--theme-elevation-800` rather than a hex: the elevation scale inverts in Payload's dark
+ * theme, so one token is dark-on-light and light-on-dark, and both clear 4.5:1. Found by
+ * tests/e2e/page-seo-fields.spec.ts, which now pins it.
+ */
+.field-description {
+  color: var(--theme-elevation-800);
+}

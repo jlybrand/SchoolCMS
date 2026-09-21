@@ -250,14 +250,15 @@ test.describe('locale routing', () => {
      */
     const { alternates } = await documentFor(request, '/about')
 
+    // Absolute, on the TENANT's origin: a crawler has no base URL to resolve against.
     expect(alternates).toEqual({
-      en: '/about',
-      es: '/es/about',
-      'zh-Hans': '/zh-Hans/about',
-      ko: '/ko/about',
-      pt: '/pt/about',
-      ar: '/ar/about',
-      'x-default': '/about',
+      en: 'http://a.localhost/about',
+      es: 'http://a.localhost/es/about',
+      'zh-Hans': 'http://a.localhost/zh-Hans/about',
+      ko: 'http://a.localhost/ko/about',
+      pt: 'http://a.localhost/pt/about',
+      ar: 'http://a.localhost/ar/about',
+      'x-default': 'http://a.localhost/about',
     })
   })
 
@@ -285,6 +286,102 @@ test.describe('locale routing', () => {
       ['critical', 'serious'].includes(v.impact ?? ''),
     )
     expect(blocking.map((v) => v.id)).toEqual([])
+  })
+})
+
+test.describe('search engines and link previews (`01` §3 item 13)', () => {
+  test.describe('on one tenant', () => {
+    test.use(site('a.localhost'))
+
+    test('@smoke a page describes itself without anyone having written SEO fields', async ({
+      request,
+    }) => {
+      const html = await (await request.get('/es/about')).text()
+      const meta = (name: string) =>
+        new RegExp(`<meta (?:name|property)="${name}" content="([^"]*)"`).exec(html)?.[1]
+
+      // The description falls back to the first paragraph of the body.
+      expect(meta('description')).toBe('A seeded top-level page, so path walking has a target.')
+      expect(meta('og:title')).toBe('About Our School — School A')
+      expect(meta('og:site_name')).toBe('School A')
+      expect(meta('og:url')).toBe('http://a.localhost/es/about')
+      expect(/<link rel="canonical" href="([^"]+)"/.exec(html)?.[1]).toBe(
+        'http://a.localhost/es/about',
+      )
+    })
+
+    test('@smoke robots.txt names this tenant’s sitemap and keeps crawlers out of the admin', async ({
+      request,
+    }) => {
+      const response = await request.get('/robots.txt')
+      expect(response.status()).toBe(200)
+      expect(response.headers()['content-type']).toContain('text/plain')
+
+      const body = await response.text()
+      expect(body).toContain('Disallow: /admin')
+      expect(body).toContain('Sitemap: http://a.localhost/sitemap.xml')
+    })
+
+    test('@smoke sitemap.xml lists every reachable page in every locale, and only those', async ({
+      request,
+    }) => {
+      const response = await request.get('/sitemap.xml')
+      expect(response.status()).toBe(200)
+      expect(response.headers()['content-type']).toContain('application/xml')
+
+      const xml = await response.text()
+      const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1])
+
+      // 3 seeded pages x 6 locales. The front page is `/`, never `/home`.
+      expect(locs).toHaveLength(18)
+      expect(locs).toContain('http://a.localhost/')
+      expect(locs).toContain('http://a.localhost/ar/about/staff')
+      expect(locs.some((loc) => loc?.includes('/home'))).toBe(false)
+      // Every URL is this tenant's.
+      expect(locs.every((loc) => loc?.startsWith('http://a.localhost/'))).toBe(true)
+    })
+
+    test('@smoke every sitemap URL is one the site actually serves', async ({ request }) => {
+      const xml = await (await request.get('/sitemap.xml')).text()
+      const paths = [...xml.matchAll(/<loc>http:\/\/a\.localhost([^<]*)<\/loc>/g)].map(
+        (match) => match[1] ?? '/',
+      )
+
+      for (const path of paths) {
+        expect((await request.get(path)).status(), path).toBe(200)
+      }
+    })
+
+    test("@smoke another tenant's sitemap cannot be read by naming the rewrite target", async ({
+      request,
+    }) => {
+      // Both the real targets and an extension-suffixed spelling the general matcher skips.
+      for (const path of ['sitemap', 'robots', 'sitemap.xml', 'robots.txt']) {
+        expect((await request.get(`/sites/b.localhost/${path}`)).status(), path).toBe(404)
+      }
+    })
+  })
+
+  test.describe('on a second tenant', () => {
+    test.use(site('b.localhost'))
+
+    test('@smoke the same URL gives that tenant’s answer', async ({ request }) => {
+      expect(await (await request.get('/robots.txt')).text()).toContain(
+        'Sitemap: http://b.localhost/sitemap.xml',
+      )
+      const xml = await (await request.get('/sitemap.xml')).text()
+      expect(xml).toContain('<loc>http://b.localhost/about</loc>')
+      expect(xml).not.toContain('a.localhost')
+    })
+  })
+
+  test.describe('on an unknown host', () => {
+    test.use(site('unknown.localhost'))
+
+    test('@smoke there is no site to describe', async ({ request }) => {
+      expect((await request.get('/robots.txt')).status()).toBe(404)
+      expect((await request.get('/sitemap.xml')).status()).toBe(404)
+    })
   })
 })
 

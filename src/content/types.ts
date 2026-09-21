@@ -118,6 +118,12 @@ export type Theme = {
   tokens: Readonly<Record<string, string>>
 }
 
+export type PageSeo = {
+  /** Replaces the page part of the document title. The site name is always appended. */
+  title: string | null
+  description: string | null
+}
+
 /**
  * A page as the rendering layer sees it.
  *
@@ -140,6 +146,13 @@ export type Page = {
   requiresTranslationReview: boolean
   /** Body prose. Empty is legitimate — see `RichText` below. */
   body: RichText
+  /**
+   * What an editor wrote for search engines and link previews, or null where they wrote
+   * nothing — which is the usual case, and not an error. The fallbacks (the page title, the
+   * first paragraph) are applied by `src/lib/seo.ts` at render, not stored, so a page whose
+   * title changes does not keep describing itself by the old one.
+   */
+  seo: PageSeo
   /**
    * The block array, for `composed` pages only (`03` §3). Empty on every fixed type, which
    * is not a special case: a fixed-type page has no layout to render and the template does

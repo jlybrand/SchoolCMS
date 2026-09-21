@@ -18,7 +18,8 @@ const dirname = path.dirname(fileURLToPath(import.meta.url))
 
 /**
  * Payload 3, pinned (ADR-4). The plugin surface is deliberately minimal — every plugin is a
- * swap cost (`02` §2). Phase 3 adds `plugin-seo`; Phase 6 adds cloud storage for R2.
+ * swap cost (`02` §2). Phase 6 adds cloud storage for R2. `plugin-seo` was evaluated in Phase 3
+ * and NOT adopted — see the `meta` group in src/collections/Pages.ts for why.
  * Nothing else is adopted without weighing its contribution to the switching cost.
  */
 export default buildConfig({

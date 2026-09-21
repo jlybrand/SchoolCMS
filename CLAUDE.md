@@ -96,9 +96,12 @@ the IDE and typed lint rules use, so run **both** (`typecheck` and `typecheck:co
 catch divergence. **Revisit trigger:** typescript-eslint ships TS 7 support, or a typecheck
 slow enough to hurt the dev loop. Neither is true today.
 
-**Plugins are deliberately minimal:** `plugin-multi-tenant`, `plugin-seo`,
+**Plugins are deliberately minimal:** `plugin-multi-tenant`,
 `plugin-cloud-storage` (R2). Nothing else without weighing swap cost (`02` §11).
-`plugin-form-builder` is a _deferred add-on_, not adopted in v1.
+`plugin-form-builder` is a _deferred add-on_, not adopted in v1. `plugin-seo` was evaluated
+and **not adopted** (2026-09-21): its admin fields fail the axe gate with hardcoded inline
+colours. The SEO fields are a plain `meta` group that keeps the plugin's stored shape — see
+`src/collections/Pages.ts` before proposing it again.
 
 **Never introduce:** MongoDB, drag-and-drop composition for school users, per-field manual
 localization as the primary mechanism, `localStorage` for application state, or a bespoke
@@ -211,6 +214,8 @@ src/
     (payload)/          Payload's OWN mount point (admin UI + REST/GraphQL).
                         Imports @payloadcms/next by construction; exempt from the
                         boundary rule. No DD2 rendering logic goes here.
+      sites/[hostname]/robots|sitemap   per-tenant /robots.txt and /sitemap.xml (proxy maps them)
+    (payload)/admin-overrides.css   WCAG contrast corrections to Payload's chrome — not a theme
   proxy.ts              edge tenant + locale routing (Next 16's middleware convention)
   access/               role/tenant predicates + Payload access functions
   admin/                admin-plane React (paste prompt; Phase 4's task plane + diff viewer).

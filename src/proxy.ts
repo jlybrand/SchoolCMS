@@ -23,6 +23,19 @@ import { normalizeHostname } from '@/lib/tenant'
  * to a tenant inside the server component, at build/revalidate time, via `src/content/*`.
  * An unknown host 404s there rather than falling back to a default tenant (`02` §4.1).
  */
+/**
+ * Public path -> the route under `/sites/[hostname]/` that answers it.
+ *
+ * The targets have NO EXTENSION, deliberately. Next special-cases a route named
+ * `sitemap.xml` or `robots.txt` as one of its own metadata routes — it prerendered ours at
+ * build with a placeholder hostname — and these are ordinary per-tenant Route Handlers that
+ * should be treated as such.
+ */
+const TENANT_FILES: ReadonlyMap<string, string> = new Map([
+  ['/robots.txt', 'robots'],
+  ['/sitemap.xml', 'sitemap'],
+])
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -30,6 +43,22 @@ export function proxy(request: NextRequest) {
   if (!hostname) {
     // No usable Host header. Nothing can be resolved; refuse rather than guess.
     return new NextResponse('Not found', { status: 404 })
+  }
+
+  /**
+   * The two per-tenant FILES (`01` §3 item 13). One URL on 28 hosts with 28 answers — a
+   * school's sitemap lists that school's pages — so they need the same Host-to-tenant rewrite
+   * a page gets. They sit beside `[locale]` rather than under it: there is one of each per
+   * site, not one per language, and the sitemap is what lists the languages.
+   *
+   * Exact matches on the unprefixed path only. `/es/sitemap.xml` is not a thing, so it falls
+   * through as an ordinary page path and 404s as one.
+   */
+  const tenantFile = TENANT_FILES.get(pathname)
+  if (tenantFile !== undefined) {
+    const url = request.nextUrl.clone()
+    url.pathname = `/sites/${encodeURIComponent(hostname)}/${tenantFile}`
+    return NextResponse.rewrite(url)
   }
 
   const { locale, rest } = localeFromPathname(pathname)
@@ -72,5 +101,19 @@ export const config = {
    */
   matcher: [
     '/((?!admin|api|_next|.*\\.(?:ico|png|jpg|jpeg|gif|svg|webp|avif|css|js|mjs|map|txt|xml|json|woff|woff2|ttf|otf)$).*)',
+    /**
+     * Named, because the pattern above skips `.txt` and `.xml` as static assets — and these
+     * two are per-tenant routes, not files.
+     */
+    '/robots.txt',
+    '/sitemap.xml',
+    /**
+     * ALL of `/sites/*`, extension or not. The first pattern lets `/sites/b.localhost/en`
+     * through to be refused, but anything under `/sites` that ENDS in a listed extension
+     * would skip the proxy as an "asset" and never meet the direct-access refusal — the same
+     * hole described above, one careless route name away. Closed for the whole prefix rather
+     * than left to whoever names the next route.
+     */
+    '/sites/:path*',
   ],
 }

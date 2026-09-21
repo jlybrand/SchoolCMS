@@ -13,6 +13,9 @@ import { importMap } from './admin/importMap.js'
 
 import '@payloadcms/next/css'
 
+// After Payload's own sheet. Contrast corrections only — see the file's header.
+import './admin-overrides.css'
+
 const serverFunction: ServerFunctionClient = async function (args) {
   'use server'
   return handleServerFunctions({ ...args, config, importMap })

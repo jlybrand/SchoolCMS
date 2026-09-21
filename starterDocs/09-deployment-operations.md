@@ -16,6 +16,12 @@ keeps the Payload dependency safe. Fully managed — no servers to administer.
 Config is environment-scoped; secrets live in each platform's secret store, never in the
 repo. Infrastructure and Cloudflare/DNS config are captured as code where supported.
 
+**Search indexing is production-only, and fails closed.** `SITE_INDEXING=allow` is set in
+production and nowhere else. Without that exact value every site serves `Disallow: /`, a
+`noindex` on every page, and no sitemap — so a new environment, or one whose config was
+forgotten, stays out of search results rather than publishing a second copy of 28 school
+websites with pilot data on it. Setting it is part of the production promote checklist.
+
 **Entra ID:** separate app registrations per environment. Non-production never authenticates
 against the production directory.
 

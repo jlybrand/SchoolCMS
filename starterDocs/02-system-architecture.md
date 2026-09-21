@@ -35,9 +35,14 @@ Four decisions define this system:
 | Testing | Vitest, Playwright, axe-core, Lighthouse CI, k6 | See `06`. |
 | CI/CD | GitHub Actions | Standard, free-tier friendly. See `09`. |
 
-**Plugins — deliberately minimal:** `@payloadcms/plugin-multi-tenant`, `@payloadcms/plugin-seo`,
+**Plugins — deliberately minimal:** `@payloadcms/plugin-multi-tenant`,
 `@payloadcms/plugin-cloud-storage` (R2). **Not used in v1:** `plugin-form-builder` — held as
-a deferred add-on (`01` §4.2), not rejected. No other plugin is adopted without weighing its
+a deferred add-on (`01` §4.2), not rejected. **Evaluated and not adopted:**
+`@payloadcms/plugin-seo` (2026-09-21). Its admin fields hardcode hint text at 2.81:1 and
+length indicators at 3.4–4.0:1 as inline styles, in 3.87.0 and still in 3.90.1, which fails
+the admin-plane axe gate (`07` §2) with nothing but `!important` to fix it. The SEO fields
+are two plain Payload fields in a group that keeps the plugin's name and stored shape
+(`meta.title`, `meta.description`), so adopting it later is a config change, not a migration. No other plugin is adopted without weighing its
 contribution to the swap cost (§11).
 
 **Deliberately avoided:** MongoDB, local password authentication, drag-and-drop page

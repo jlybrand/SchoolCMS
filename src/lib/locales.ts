@@ -70,17 +70,3 @@ export const localizedPath = (path: string, locale: Locale): string => {
   const normalized = path === '/' ? '' : path
   return `/${locale}${normalized}`
 }
-
-/**
- * `hreflang` alternates for a path, plus `x-default` (`08` §5).
- *
- * `x-default` points at the unprefixed English URL — the right target for a visitor whose
- * language we have no signal for.
- */
-export const hreflangAlternates = (
-  path: string,
-  enabled: readonly Locale[] = ALL_LOCALES,
-): { hrefLang: string; href: string }[] => [
-  ...enabled.map((locale) => ({ hrefLang: locale, href: localizedPath(path, locale) })),
-  { hrefLang: 'x-default', href: localizedPath(path, DEFAULT_LOCALE) },
-]

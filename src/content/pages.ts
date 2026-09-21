@@ -40,6 +40,8 @@ type PayloadPage = {
   body?: unknown
   /** Block rows. Deliberately `unknown` — see `toPageBlocks`. */
   layout?: unknown
+  /** The SEO group. `meta` here — see src/collections/Pages.ts — and `seo` in the domain. */
+  meta?: { title?: string | null; description?: string | null } | null
   _status?: 'draft' | 'published' | null
 }
 
@@ -47,6 +49,12 @@ const idOf = (ref: PayloadPage['parent']): string | null => {
   if (ref === null || ref === undefined) return null
   if (typeof ref === 'object') return String(ref.id)
   return String(ref)
+}
+
+/** Whitespace-only is nothing: an editor who cleared the field with a space meant "none". */
+const textOrNull = (value: string | null | undefined): string | null => {
+  const trimmed = value?.trim() ?? ''
+  return trimmed === '' ? null : trimmed
 }
 
 /**
@@ -80,6 +88,7 @@ const toDomain = (doc: PayloadPage, path: string, children: PageLink[]): Page =>
   requiresTranslationReview: doc.requiresTranslationReview === true,
   // The single point where Lexical becomes DD2 nodes. Nothing downstream sees editor state.
   body: toRichText(doc.body),
+  seo: { title: textOrNull(doc.meta?.title), description: textOrNull(doc.meta?.description) },
   // Likewise for blocks: nothing downstream sees a `blockType` discriminator (`03` §3).
   layout: toPageBlocks(doc.layout),
   /**
