@@ -16,6 +16,8 @@ Phase 3 lands across several PRs. This document is written as each one merges.
 | Navigation                                 | **Landed** — §21                                          |
 | Theme                                      | **Landed** — §22                                          |
 | SEO, sitemap, robots                       | **Landed** — §23                                          |
+| Settings                                   | **Landed** — §24                                          |
+| Definition-of-done pass                    | §25                                                       |
 
 ---
 
@@ -1501,3 +1503,70 @@ a `settings_id` column on `payload_locked_documents_rels` — pure expand.
 ### Local gotcha
 
 `pnpm run seed` before `pnpm test:e2e`, as for any new table.
+
+---
+
+## 25. Definition-of-done pass
+
+Run against `main` at `7caa6eb` (settings merged), then again after the changes below.
+
+### Gates
+
+| Gate                                                 | First run (`main`)    | After this section    |
+| ---------------------------------------------------- | --------------------- | --------------------- |
+| `pnpm typecheck`                                     | pass                  | pass                  |
+| `pnpm lint` (boundary rule, logical properties)      | pass                  | pass                  |
+| `pnpm test` (unit + integration, isolation suite)    | 816 passed, 0 skipped | 832 passed, 0 skipped |
+| `pnpm test:e2e:smoke` (public axe gate, admin specs) | 58 passed, 0 skipped  | 59 passed, 0 skipped  |
+| `pnpm test:a11y:components` (every story, LTR + RTL) | 3 passed              | 3 passed              |
+| `pnpm test:perf`                                     | pass                  | pass                  |
+
+The e2e runs set `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` to CI's values before seeding; without
+them 17 admin and paste specs skip.
+
+RTL checked by screenshot on `a.localhost/ar/about` at 1280px and 320px: header and footer mirror,
+phone and email stay LTR. At 320px the wrapped language row starts at inline-start while the quick
+links above it sit at inline-end.
+
+### Link destinations on blocks
+
+| Where                                      | Before           | Now                                                  |
+| ------------------------------------------ | ---------------- | ---------------------------------------------------- |
+| `toCallToAction` (`src/content/blocks.ts`) | trimmed string   | `toSafeHref`; null drops the block                   |
+| `toCardGrid` card `href`                   | trimmed string   | `toSafeHref`; null keeps the card, unlinked          |
+| `callToAction.href` field                  | `required` only  | `validateHref(value, { required: true })`            |
+| `cardGrid.cards.href` field                | no validation    | `validateHref(value, { required: false })`           |
+| `navigation` link `href` field             | inline validator | `validateHref(value, { required: true })`, same text |
+
+`validateHref` (`src/lib/href.ts`) owns emptiness itself: a custom `validate` replaces Payload's
+built-in one, `required` check included.
+
+### Language switcher
+
+| File                                       | Change                                                           |
+| ------------------------------------------ | ---------------------------------------------------------------- |
+| `src/components/LanguageSwitcher/*`        | New. `<nav aria-label="Language">`; null for fewer than two      |
+| `src/components/SiteHeader/SiteHeader.tsx` | Required `locales` prop; renders the switcher after quick links  |
+| `.../[[...segments]]/page.tsx`             | Switcher removed from `<main>`; passes `settings.enabledLocales` |
+
+DOM order in the banner: site name -> quick links -> languages -> main menu. The link for the
+locale being read carries `aria-current="page"`.
+
+`tests/e2e/smoke.spec.ts` "the first tab stop skips past the header" now asserts focus is in or
+after `<main>` after skip + Tab. On the seeded home page `<main>` holds no link, so the next stop is
+the footer.
+
+### Lighthouse
+
+`lighthouserc.json` uploads to `filesystem` at `.lighthouseci/reports` (gitignored), not
+`temporary-public-storage`. CI attaches that directory as the `lighthouse-report` artifact, kept 14
+days, on pass or fail.
+
+### Still open — need a decision
+
+| Item                                                     | Where             |
+| -------------------------------------------------------- | ----------------- |
+| `Link` takes `variant`, not `className`                  | §17               |
+| `secondaryColor` decorative-only; black-as-primary swap  | §22               |
+| Custom validator messages lost in the production admin   | §24               |
+| Language choice remembered in a cookie for link building | `08` §5 — Phase 7 |

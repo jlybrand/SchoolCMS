@@ -1,4 +1,5 @@
 import { toEmbedTarget } from '@/lib/embed-url'
+import { toSafeHref } from '@/lib/href'
 import { toRichText } from './rich-text'
 import type {
   AccordionBlock,
@@ -36,6 +37,10 @@ import type {
  * (WCAG 2.4.4). Rendering either would put a visible, broken affordance on a published page,
  * where it reads as working software. The same instinct as `rich-text.ts` unwrapping an
  * anchor that has no `href`.
+ *
+ * EVERY DESTINATION AN EDITOR TYPED GOES THROUGH `toSafeHref`, the allowlist the menus use. The
+ * admin validates the same rule, but a migration or a direct database write only has to get
+ * past one of the two — so this file does not trust that the validator ran.
  */
 
 type Row = Record<string, unknown>
@@ -70,7 +75,7 @@ const toRichTextBlock = (row: Row, index: number): RichTextPageBlock | null => {
 }
 
 const toCallToAction = (row: Row, index: number): CallToActionBlock | null => {
-  const href = str(row.href)
+  const href = toSafeHref(row.href)
   const linkLabel = str(row.linkLabel)
 
   // The link is the block. See the file header.
@@ -120,7 +125,8 @@ const toCardGrid = (row: Row, index: number): CardGridBlock | null => {
       const title = str(card.title)
       if (title === null) return null
 
-      return { title, text: str(card.text), href: str(card.href) }
+      // An unsafe destination costs the card its link, not the card — `href` is optional.
+      return { title, text: str(card.text), href: toSafeHref(card.href) }
     })
     .filter((card): card is Card => card !== null)
 

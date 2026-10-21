@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { isSitePath, toSafeHref } from '@/lib/href'
+import { isSitePath, toSafeHref, validateHref } from '@/lib/href'
 
 /**
  * Menu destinations (`03` §5, `navigation`).
@@ -70,5 +70,34 @@ describe('isSitePath', () => {
     expect(isSitePath('https://example.org/about')).toBe(false)
     expect(isSitePath('mailto:office@dd2.example')).toBe(false)
     expect(isSitePath('//evil.example')).toBe(false)
+  })
+})
+
+/**
+ * The admin half of the same rule, shared by every field that takes a destination — menus,
+ * calls to action and cards — so an editor sees the same sentence wherever they type one.
+ */
+describe('validateHref', () => {
+  it('accepts any of the four shapes', () => {
+    expect(validateHref('/about', { required: true })).toBe(true)
+    expect(validateHref('tel:+18435550100', { required: false })).toBe(true)
+  })
+
+  it('refuses an unsafe destination whether or not the field is required', () => {
+    expect(validateHref('javascript:alert(1)', { required: true })).toEqual(expect.any(String))
+    expect(validateHref('javascript:alert(1)', { required: false })).toEqual(expect.any(String))
+  })
+
+  /**
+   * A custom `validate` REPLACES Payload's built-in one, `required` check included — so the
+   * validator has to own emptiness itself, in both directions.
+   */
+  it.each([[''], ['   '], [null], [undefined]])('treats %j as missing', (value) => {
+    expect(validateHref(value, { required: true })).toEqual(expect.any(String))
+    expect(validateHref(value, { required: false })).toBe(true)
+  })
+
+  it('tells the editor what to type, not what went wrong', () => {
+    expect(validateHref('about', { required: true })).toMatch(/starts with \//)
   })
 })

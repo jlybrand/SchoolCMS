@@ -32,3 +32,14 @@
   line-height: 1.25;
   margin-block: 0;
 }
+
+/*
+ * Quick links, then languages, at inline-end. A column, so each keeps its own row and the
+ * languages stay findable in one place rather than wrapping into the quick links.
+ */
+.tools {
+  align-items: end;
+  display: flex;
+  flex-direction: column;
+  row-gap: var(--space-xs);
+}

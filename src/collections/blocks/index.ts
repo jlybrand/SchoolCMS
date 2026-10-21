@@ -1,6 +1,7 @@
 import type { Block } from 'payload'
 
 import { toEmbedTarget } from '@/lib/embed-url'
+import { validateHref } from '@/lib/href'
 
 /**
  * THE PAYLOAD SIDE of the block library (`03` §3).
@@ -70,6 +71,7 @@ export const callToActionBlock: Block = {
       required: true,
       label: 'Goes to',
       admin: { description: 'A path on this site, like /enroll, or a full web address.' },
+      validate: (value: unknown) => validateHref(value, { required: true }),
     },
     {
       name: 'linkLabel',
@@ -161,6 +163,7 @@ export const cardGridBlock: Block = {
             description:
               'Optional. A path like /athletics, or a full web address. The title becomes the link.',
           },
+          validate: (value: unknown) => validateHref(value, { required: false }),
         },
       ],
     },

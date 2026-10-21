@@ -1,5 +1,5 @@
 /**
- * Menu destinations (`03` §5).
+ * Link destinations an editor types: menus (`03` §5), calls to action and cards (`03` §3).
  *
  * AN ALLOWLIST OF SHAPES, not a blocklist of schemes. `javascript:` survives case changes,
  * leading whitespace and embedded tabs in enough browsers that a list of things to refuse is
@@ -45,4 +45,23 @@ export const toSafeHref = (value: unknown): string | null => {
   }
 
   return null
+}
+
+const HREF_SHAPES =
+  'Use a path on this site that starts with / (like /about), a full web address starting https://, an email link (mailto:) or a phone link (tel:).'
+
+/**
+ * The admin field validator for every destination field.
+ *
+ * A custom `validate` REPLACES Payload's built-in one, `required` check included, so emptiness
+ * is decided here rather than left to the field's `required` flag.
+ */
+export const validateHref = (
+  value: unknown,
+  { required }: { required: boolean },
+): true | string => {
+  const empty = typeof value !== 'string' || value.trim() === ''
+  if (empty) return required ? HREF_SHAPES : true
+
+  return toSafeHref(value) === null ? HREF_SHAPES : true
 }
