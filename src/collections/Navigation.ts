@@ -1,7 +1,7 @@
 import type { ArrayField, CollectionConfig, Field } from 'payload'
 
 import { districtOnly } from '@/access/tenant-scoped'
-import { toSafeHref } from '@/lib/href'
+import { validateHref } from '@/lib/href'
 
 /**
  * `navigation` — a tenant's primary, utility and footer menus (`03` §5).
@@ -23,7 +23,7 @@ import { toSafeHref } from '@/lib/href'
  * second concept with no workflow behind it.
  *
  * Per CLAUDE.md's TDD exception table the declarations are not test-first. The behaviour is
- * `toSafeHref` and the mapper in `src/content/menus.ts`, and both are.
+ * `validateHref` and the mapper in `src/content/menus.ts`, and both are.
  */
 
 const linkFields: Field[] = [
@@ -45,10 +45,7 @@ const linkFields: Field[] = [
     admin: {
       description: 'A path on this site, like /about, or a full web address starting https://',
     },
-    validate: (value: unknown) =>
-      toSafeHref(value) === null
-        ? 'Use a path on this site that starts with / (like /about), a full web address starting https://, an email link (mailto:) or a phone link (tel:).'
-        : true,
+    validate: (value: unknown) => validateHref(value, { required: true }),
   },
   {
     name: 'newTab',

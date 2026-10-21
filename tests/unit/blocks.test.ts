@@ -135,6 +135,21 @@ describe('toPageBlocks — callToAction', () => {
   })
 
   /**
+   * The same allowlist the menus use (`src/lib/href.ts`). The admin validates the field, but
+   * a migration or a direct database write only has to get past one of the two checks — so the
+   * mapper does not trust that the validator ran. A call to action whose destination is not
+   * one of the four accepted shapes has no safe link to be, and the link is the block.
+   */
+  it.each([['javascript:alert(1)'], ['//evil.example/enroll'], ['enroll'], ['data:text/html,x']])(
+    'drops a call to action whose destination is %j',
+    (href) => {
+      expect(toPageBlocks([{ blockType: 'callToAction', id: 'a', href, linkLabel: 'Go' }])).toEqual(
+        [],
+      )
+    },
+  )
+
+  /**
    * WCAG 2.4.4 — a link's accessible name is what tells the reader where it goes. An unnamed
    * one is announced as "link" and nothing else, so it is dropped rather than rendered with
    * the URL as its label.
@@ -265,6 +280,30 @@ describe('toPageBlocks — cardGrid', () => {
       },
     ])
     expect(block?.kind === 'cardGrid' && block.cards.map((c) => c.title)).toEqual(['Kept'])
+  })
+
+  /**
+   * Unlike a call to action, a card is content without its link — `href` is optional, and a
+   * card can be a labelled fact. So an unsafe destination costs the card its link, not the
+   * card: the words survive, per `rich-text.ts`, and the `javascript:` does not.
+   */
+  it('keeps a card whose destination is unsafe, without the link', () => {
+    const [block] = toPageBlocks([
+      {
+        blockType: 'cardGrid',
+        id: 'a',
+        cards: [
+          { title: 'Script', href: 'javascript:alert(1)' },
+          { title: 'Elsewhere', href: '//evil.example/x' },
+          { title: 'Portal', href: '  https://portal.example/  ' },
+        ],
+      },
+    ])
+    expect(block?.kind === 'cardGrid' && block.cards.map((c) => c.href)).toEqual([
+      null,
+      null,
+      'https://portal.example/',
+    ])
   })
 
   it('drops the block when no card survives', () => {

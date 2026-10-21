@@ -254,7 +254,8 @@ export type RichTextPageBlock = BlockBase & {
  *
  * `heading` and `text` are nullable but `href` and `linkLabel` are not: the link is the
  * block, and one without a destination or an accessible name is dropped at the mapper rather
- * than rendered (WCAG 2.4.4 — see `src/content/blocks.ts`).
+ * than rendered (WCAG 2.4.4 — see `src/content/blocks.ts`). Like a menu link's, `href` has
+ * ALREADY been through `toSafeHref`.
  *
  * `text` is a plain string rather than rich text, deliberately. A second link inside a call
  * to action competes with the button for the same decision, and the block's whole job is to
@@ -291,7 +292,8 @@ export type AccordionBlock = BlockBase & {
 }
 
 /**
- * One card. `href` is optional: a card can be a labelled fact rather than a link.
+ * One card. `href` is optional: a card can be a labelled fact rather than a link. When present
+ * it has ALREADY been through `toSafeHref`; an unsafe one arrives as null.
  *
  * `text` is plain rather than rich for the reason `CallToAction` gives — a card that links
  * should have one destination, and a second link inside the blurb competes with the title.
