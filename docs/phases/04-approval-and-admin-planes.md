@@ -29,6 +29,7 @@ Phase 4 lands across several PRs. This document is written as each one merges.
 | `tests/unit/access/review-state-hook.test.ts` | The adapter: fields written, ids, which error each refusal is |
 | `tests/integration/review-workflow.test.ts`   | The loop against real Payload, drafts beside a live page      |
 | `tests/e2e/review-state-fields.spec.ts`       | The field read-only, axe in both Payload themes               |
+| `tests/e2e/page-autosave.spec.ts`             | A changed field saves itself and stays off the live page      |
 
 ### Changed
 
@@ -99,4 +100,22 @@ apart from a resend, and both keep it queued.
   job (§ queue, when it lands).
 - No UI moves the state: the fields are read-only. The school's button and the district's
   actions are the next slices.
-- `versions.drafts.autosave` is still `false`; `04` §2.3 says in-progress work autosaves. Open.
+- A brand-new page does not autosave before its first save (§5).
+
+## 5. Autosave
+
+`versions.drafts`: `{ autosave: true, validate: true }`.
+
+| Situation                        | What happens                                                                      |
+| -------------------------------- | --------------------------------------------------------------------------------- |
+| Existing page, a field changes   | `PATCH /api/pages/:id?autosave=true&draft=true` after the debounce (800 ms)       |
+| New page, before its first save  | Nothing autosaves; the form shows "Save draft"                                    |
+| New page, after its first save   | As an existing page                                                               |
+| Any autosave                     | Goes through `publishGate` and `applyReviewState`; never publishes or moves state |
+| A draft missing a required field | Refused — `validate: true` applies required fields to drafts                      |
+
+Without `validate: true`, Payload's create view calls `payload.create` on open and redirects to the
+new id, leaving an untitled draft for every abandoned "new page".
+
+`tests/e2e/page-autosave.spec.ts` retypes if no autosave lands within 4 s: Payload's `Autosave`
+ignores the form state present when it mounts, so an edit made before mount is not saved.

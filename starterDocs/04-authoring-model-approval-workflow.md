@@ -172,7 +172,10 @@ Settled in implementation (`src/access/review-state.ts`):
   the reviewer saw.
 - `changes-requested` persists through the school's edits until they resend, so the note
   stays visible. The note clears on resend and on approve; versions keep the history.
-- Request changes is valid only on a `submitted` item.
+- Request changes is valid only on a `submitted` item, and requires a note (§4.4).
+- Autosave is on, with draft validation (Jason, 2026-10-21): a changed field saves itself as a
+  draft and never moves the review state. A brand-new page autosaves from its first save on —
+  without validation, Payload creates an empty draft the moment the create view opens.
 
 ### 4.2 The queue
 

@@ -214,6 +214,47 @@ describe('a change to a page that is already live', () => {
   })
 })
 
+describe('autosave (`04` §2.3)', () => {
+  /**
+   * Autosave is a draft write like any other — it goes through the publish gate and the
+   * review hook. It must never publish, and never move the review state.
+   */
+  it('an autosave on a queued page keeps it queued and the live page untouched', async () => {
+    const liveBefore = await live(f.publishedPageA)
+    const queued = await latest(f.publishedPageA)
+    expect(queued.reviewState).toBe('submitted')
+
+    await payload.update({
+      collection: 'pages',
+      id: f.publishedPageA,
+      data: { title: 'Typed, not sent' },
+      draft: true,
+      autosave: true,
+      user: f.managerA,
+      overrideAccess: false,
+    })
+
+    const after = await latest(f.publishedPageA)
+    expect(after.title).toBe('Typed, not sent')
+    expect(after.reviewState).toBe('submitted')
+    expect(after.submittedAt).toBe(queued.submittedAt)
+    expect((await live(f.publishedPageA)).title).toBe(liveBefore.title)
+  })
+
+  it('an autosave on a page with nothing pending marks it as being edited', async () => {
+    await payload.update({
+      collection: 'pages',
+      id: f.staffPageA,
+      data: { title: 'Staff, typed' },
+      draft: true,
+      autosave: true,
+      user: f.managerA,
+      overrideAccess: false,
+    })
+    expect((await latest(f.staffPageA)).reviewState).toBe('editing')
+  })
+})
+
 describe('what a school manager cannot forge', () => {
   it('a reviewer note or a submitter sent with a submission is overwritten', async () => {
     await payload.update({

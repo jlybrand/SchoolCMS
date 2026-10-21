@@ -63,12 +63,23 @@ export const Pages: CollectionConfig = {
    * Drafts and versions (`03` §7). The same mechanism carries pending change requests in
    * Phase 4 — there is deliberately no second draft concept to maintain.
    *
-   * Autosave is OFF. With it on, an editor's in-progress typing becomes a version every few
-   * seconds, which buries the approval diff (`04` §4.2) in noise and makes "one click from
-   * an inline diff" impossible to hit.
+   * AUTOSAVE IS ON (`04` §2.3; Jason, 2026-10-21): a changed field saves itself as a draft, so
+   * nothing a school manager types is lost to a closed tab. It never publishes — the publish
+   * gate sees an ordinary draft write — and it never moves the review state: an autosave on a
+   * queued page leaves it queued (`src/access/review-state.ts`).
+   *
+   * It does not bury the approval diff. Payload updates the latest autosave version in place
+   * rather than adding one per keystroke, and the queue diffs the live page against the
+   * version the reviewer sees (`04` §4.2), not version against version.
+   *
+   * `validate: true` IS WHAT MAKES AUTOSAVE SAFE HERE. Without it, Payload's create view makes
+   * a page the moment it opens — before anyone types — so every abandoned "new page" left an
+   * untitled, slugless draft behind (measured: ~26 per e2e run). With it, a new page saves on
+   * its first explicit save and autosaves from then on, and no draft can exist without a
+   * title. The school plane's own "new page" flow is where that first save happens.
    */
   versions: {
-    drafts: { autosave: false },
+    drafts: { autosave: true, validate: true },
     maxPerDoc: 50,
   },
 
