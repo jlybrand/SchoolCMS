@@ -161,6 +161,19 @@ Built on Payload drafts and versions — **no parallel change-request system** (
 - The publish transition is gated to `district-admin` at the access and hook layer
   (`03` §6.2) — enforced on every route, not just in the UI.
 
+Settled in implementation (`src/access/review-state.ts`):
+
+- "Clears" means `null` — nothing pending. There is no `approved` state; a published page
+  with no pending draft has no review state.
+- A school manager's further save on a submitted item **keeps it submitted**, with its
+  original `submittedAt`. Payload merges the stored document into every write, so a save
+  and a resend are indistinguishable. The race that leaves — approving content that changed
+  after the reviewer looked — is closed in the queue (§4.2): approve publishes the version
+  the reviewer saw.
+- `changes-requested` persists through the school's edits until they resend, so the note
+  stays visible. The note clears on resend and on approve; versions keep the history.
+- Request changes is valid only on a `submitted` item.
+
 ### 4.2 The queue
 
 A dedicated district view listing pending submissions across all tenants: tenant, content

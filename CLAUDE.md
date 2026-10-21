@@ -8,9 +8,10 @@ Guidance for Claude Code working in this repository.
 district domain and 27 school subdomains (**28 tenants**) from a single codebase and
 deployment. It replaces the rented Finalsite Composer CMS.
 
-**Status: Phases 0–2 complete; Phase 3 next.** Phase 0 (scaffold + guardrails), Phase 1
-(tenancy, roles, access control, the adversarial isolation suite) and Phase 2 (edge tenant
-routing, locale plumbing, the content-access layer, cache tags) have landed. Authentication
+**Status: Phases 0–3 complete; Phase 4 in progress.** Phase 0 (scaffold + guardrails), Phase 1
+(tenancy, roles, access control, the adversarial isolation suite), Phase 2 (edge tenant
+routing, locale plumbing, the content-access layer, cache tags) and Phase 3 (components,
+`pages`, the block library, navigation, theme, SEO, settings) have landed. Authentication
 is on an **interim local-auth posture** — see "Authentication" below. `starterDocs/` holds the 12-document
 design suite (v2.1, August 2026) and is the specification. Treat it as authoritative; when
 code and docs disagree, that is a bug in one of them — say which.
