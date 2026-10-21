@@ -4,7 +4,6 @@ import { notFound } from 'next/navigation'
 import { BlockList } from '@/blocks'
 import { Container } from '@/components/Container'
 import { Heading, PAGE_TITLE_LEVEL } from '@/components/Heading'
-import { Link } from '@/components/Link'
 import { RichText } from '@/components/RichText'
 import { SiteFooter } from '@/components/SiteFooter'
 import { SiteHeader } from '@/components/SiteHeader'
@@ -16,7 +15,6 @@ import { getSettings } from '@/content/settings'
 import { getTenantByHostname } from '@/content/tenants'
 import type { ContentContext, Navigation, Page, SiteSettings, Tenant } from '@/content/types'
 import { documentTag, tenantTag } from '@/lib/cache-tags'
-import { LOCALE_NAMES, localizedPath } from '@/lib/locales'
 import { buildPageMetadata, indexingAllowed } from '@/lib/seo'
 
 type Params = { hostname: string; locale: string; segments?: string[] }
@@ -151,6 +149,7 @@ export default async function SitePage({ params }: { params: Promise<Params> }) 
         utility={navigation.utility}
         currentPath={page.path}
         locale={ctx.locale}
+        locales={settings.enabledLocales}
       />
       {/*
         `id` comes from the `SkipLink` module rather than a literal, so the bypass-blocks
@@ -188,30 +187,6 @@ export default async function SitePage({ params }: { params: Promise<Params> }) 
             moves (`03` §2).
           */}
             <BlockList blocks={page.layout} childPages={page.children} />
-
-            {/* One language is not a choice: English-only sites get no switcher. */}
-            {settings.enabledLocales.length > 1 && (
-              <nav aria-label="Language">
-                {/*
-              `08` §6 — each language is listed in its OWN script and language, with `lang` on
-              each link. Never flag icons (a flag is a country, not a language) and never
-              "translate this page" as the only affordance. Labels stay untranslated here
-              deliberately; that is what a language switcher is for.
-
-              Built from the page's resolved path rather than the requested one, so the
-              switcher always points at this page in another language.
-            */}
-                <ul>
-                  {settings.enabledLocales.map((code) => (
-                    <li key={code}>
-                      <Link href={localizedPath(page.path, code)} hrefLang={code} lang={code}>
-                        {LOCALE_NAMES[code] ?? code}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-            )}
           </Stack>
         </Container>
       </main>

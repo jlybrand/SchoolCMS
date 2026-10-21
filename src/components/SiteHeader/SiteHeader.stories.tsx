@@ -33,6 +33,7 @@ const meta = {
     utility,
     currentPath: '/calendar',
     locale: 'en',
+    locales: ['en', 'es'],
   },
 } satisfies Meta<typeof SiteHeader>
 
@@ -44,7 +45,7 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {}
 
 /** A tenant created this morning — no `navigation` row yet. A name, and no empty landmarks. */
-export const NoMenus: Story = { args: { primary: [], utility: [] } }
+export const NoMenus: Story = { args: { primary: [], utility: [], locales: ['en'] } }
 
 /**
  * The ceiling: eight main links and six quick links, with long labels. Narrow the preview to
@@ -66,5 +67,6 @@ export const FullMenus: Story = {
       link('Report an absence', '/absence'),
       link('Employment', 'https://jobs.example.org', true),
     ],
+    locales: ['en', 'es', 'zh-Hans', 'ko', 'pt', 'ar'],
   },
 }

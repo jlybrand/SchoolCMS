@@ -1,4 +1,5 @@
 import { Container } from '@/components/Container'
+import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { Link } from '@/components/Link'
 import { MenuList } from '@/components/MenuList'
 import type { Locale, MenuLink } from '@/content/types'
@@ -13,7 +14,7 @@ import styles from './SiteHeader.module.css'
  * (`PAGE_TITLE_LEVEL`); a site name in an `h1` would put the same heading at the top of
  * every page's outline and push the one that differs to second place.
  *
- * DOM ORDER IS name -> quick links -> main menu, and it is also the visual order: nothing
+ * DOM ORDER IS name -> quick links -> languages -> main menu, and it is also the visual order: nothing
  * here is reordered with `order` or positioned out of flow, so a keyboard user tabs through
  * what a sighted user sees, in the sequence they see it (1.3.2, 2.4.3).
  *
@@ -29,6 +30,12 @@ export type SiteHeaderProps = {
   /** The unprefixed path of the page being rendered — see `MenuList`. */
   readonly currentPath: string
   readonly locale: Locale
+  /**
+   * The languages this site offers. REQUIRED rather than defaulted, because a forgotten prop
+   * would silently hide the switcher — and the failure this platform accepts is offering too
+   * many languages, never too few (`08` §10).
+   */
+  readonly locales: readonly Locale[]
   /** Landmark names. Props because they are visitor-facing text (`08` §4). */
   readonly primaryLabel?: string
   readonly utilityLabel?: string
@@ -40,6 +47,7 @@ export const SiteHeader = ({
   utility,
   currentPath,
   locale,
+  locales,
   primaryLabel = 'Main',
   utilityLabel = 'Quick links',
 }: SiteHeaderProps) => (
@@ -49,7 +57,15 @@ export const SiteHeader = ({
         <p className={styles.siteName}>
           <Link href={localizedPath('/', locale)}>{siteName}</Link>
         </p>
-        <MenuList label={utilityLabel} links={utility} currentPath={currentPath} locale={locale} />
+        <div className={styles.tools}>
+          <MenuList
+            label={utilityLabel}
+            links={utility}
+            currentPath={currentPath}
+            locale={locale}
+          />
+          <LanguageSwitcher locales={locales} locale={locale} currentPath={currentPath} />
+        </div>
       </div>
       <MenuList label={primaryLabel} links={primary} currentPath={currentPath} locale={locale} />
     </Container>

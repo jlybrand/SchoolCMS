@@ -77,7 +77,7 @@ test('@smoke @rtl @a11y html carries an explicit dir attribute', async ({ page }
   expect(['ltr', 'rtl']).toContain(dir)
 })
 
-test('@smoke @a11y the first tab stop skips past the header into main', async ({ page }) => {
+test('@smoke @a11y the first tab stop skips past the header', async ({ page }) => {
   /**
    * Bypass blocks — WCAG 2.4.1 (`07` §3). Asserted as behaviour rather than as markup:
    * a skip link that exists, is reachable, and points at an id that is not there still
@@ -92,10 +92,19 @@ test('@smoke @a11y the first tab stop skips past the header into main', async ({
   await page.keyboard.press('Enter')
   await page.keyboard.press('Tab')
 
-  const focusIsInsideMain = await page.evaluate(
-    () => document.querySelector('main#main-content')?.contains(document.activeElement) ?? false,
-  )
-  expect(focusIsInsideMain).toBe(true)
+  /**
+   * PAST THE HEADER, not necessarily INTO main: a page whose body holds no link has nothing
+   * in `main` to stop on, and the next stop is rightly the footer. What the skip link owes
+   * is that the banner's menus are behind the visitor — so focus is in `main` or after it.
+   */
+  const focusIsPastTheHeader = await page.evaluate(() => {
+    const main = document.querySelector('main#main-content')
+    const active = document.activeElement
+    if (!main || !active || active === document.body) return false
+    if (main.contains(active)) return true
+    return Boolean(main.compareDocumentPosition(active) & Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+  expect(focusIsPastTheHeader).toBe(true)
 })
 
 test('@smoke keyboard focus is visible on the first interactive element', async ({ page }) => {

@@ -35,6 +35,7 @@ describe('SiteHeader', () => {
         utility={utility}
         currentPath="/"
         locale="en"
+        locales={['en']}
       />,
     )
 
@@ -46,7 +47,14 @@ describe('SiteHeader', () => {
 
   it('the site name is NOT a heading — the page title is the only h1 (`07` §3)', () => {
     const { queryAllByRole } = renderComponent(
-      <SiteHeader siteName="School A" primary={primary} utility={[]} currentPath="/" locale="en" />,
+      <SiteHeader
+        siteName="School A"
+        primary={primary}
+        utility={[]}
+        currentPath="/"
+        locale="en"
+        locales={['en']}
+      />,
     )
     expect(queryAllByRole('heading')).toEqual([])
   })
@@ -59,6 +67,7 @@ describe('SiteHeader', () => {
         utility={utility}
         currentPath="/"
         locale="en"
+        locales={['en']}
       />,
     )
 
@@ -68,7 +77,14 @@ describe('SiteHeader', () => {
 
   it('renders no landmark for an empty menu — an empty <nav> is a dead end in the landmark list', () => {
     const { queryAllByRole, getByRole } = renderComponent(
-      <SiteHeader siteName="School A" primary={[]} utility={[]} currentPath="/" locale="en" />,
+      <SiteHeader
+        siteName="School A"
+        primary={[]}
+        utility={[]}
+        currentPath="/"
+        locale="en"
+        locales={['en']}
+      />,
     )
 
     expect(queryAllByRole('navigation')).toEqual([])
@@ -84,6 +100,7 @@ describe('SiteHeader', () => {
         utility={[]}
         currentPath="/about"
         locale="en"
+        locales={['en']}
       />,
     )
 
@@ -99,6 +116,7 @@ describe('SiteHeader', () => {
         utility={[]}
         currentPath="/about/staff"
         locale="en"
+        locales={['en']}
       />,
     )
     expect(getByRole('link', { name: 'About' }).getAttribute('aria-current')).toBeNull()
@@ -112,6 +130,7 @@ describe('SiteHeader', () => {
         utility={utility}
         currentPath="/about"
         locale="es"
+        locales={['en', 'es']}
       />,
     )
 
@@ -126,12 +145,71 @@ describe('SiteHeader', () => {
 
   it('announces a new tab and couples rel to target, through Link', () => {
     const { getByRole } = renderComponent(
-      <SiteHeader siteName="School A" primary={[]} utility={utility} currentPath="/" locale="en" />,
+      <SiteHeader
+        siteName="School A"
+        primary={[]}
+        utility={utility}
+        currentPath="/"
+        locale="en"
+        locales={['en']}
+      />,
     )
 
     const staffEmail = getByRole('link', { name: /Staff email.*opens in a new window/i })
     expect(staffEmail.getAttribute('target')).toBe('_blank')
     expect(staffEmail.getAttribute('rel')).toBe('noopener noreferrer')
+  })
+
+  describe('language switcher (`08` §6)', () => {
+    const header = (locales: string[], locale = 'en', currentPath = '/about') =>
+      renderComponent(
+        <SiteHeader
+          siteName="School A"
+          primary={primary}
+          utility={utility}
+          currentPath={currentPath}
+          locale={locale}
+          locales={locales}
+        />,
+      )
+
+    /**
+     * It is site chrome, not page content: a visitor who cannot read the page has to find it
+     * without reading the page, so it sits in the banner with the other ways around the site.
+     */
+    it('is a named navigation landmark inside the banner', () => {
+      const { getByRole } = header(['en', 'es'])
+      expect(getByRole('banner').contains(getByRole('navigation', { name: 'Language' }))).toBe(true)
+    })
+
+    it('lists each language in its own script, with lang and hreflang, pointing at this page', () => {
+      const { getByRole } = header(['en', 'es', 'ar'])
+      const nav = getByRole('navigation', { name: 'Language' })
+
+      const links = [...nav.querySelectorAll('a')].map((a) => ({
+        text: a.textContent,
+        href: a.getAttribute('href'),
+        lang: a.getAttribute('lang'),
+        hrefLang: a.getAttribute('hreflang'),
+      }))
+      expect(links).toEqual([
+        { text: 'English', href: '/about', lang: 'en', hrefLang: 'en' },
+        { text: 'Español', href: '/es/about', lang: 'es', hrefLang: 'es' },
+        { text: 'العربية', href: '/ar/about', lang: 'ar', hrefLang: 'ar' },
+      ])
+    })
+
+    it('marks the language being read as current, and only that one', () => {
+      const { getByRole } = header(['en', 'es'], 'es')
+      const nav = getByRole('navigation', { name: 'Language' })
+      expect(nav.querySelector('[aria-current]')?.textContent).toBe('Español')
+      expect(nav.querySelectorAll('[aria-current]')).toHaveLength(1)
+    })
+
+    it('renders nothing for a site with one language — one language is not a choice', () => {
+      const { queryByRole } = header(['en'])
+      expect(queryByRole('navigation', { name: 'Language' })).toBeNull()
+    })
   })
 })
 

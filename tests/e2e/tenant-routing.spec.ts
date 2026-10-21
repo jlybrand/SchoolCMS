@@ -275,6 +275,18 @@ test.describe('locale routing', () => {
     await expect(nav.getByRole('link', { name: 'العربية' })).toHaveAttribute('lang', 'ar')
   })
 
+  test('@smoke the language switcher is site chrome — in the banner, not the page content', async ({
+    page,
+  }) => {
+    await page.goto('/about')
+    await expect(
+      page.getByRole('banner').getByRole('navigation', { name: 'Language' }),
+    ).toHaveCount(1)
+    await expect(page.getByRole('main').getByRole('navigation', { name: 'Language' })).toHaveCount(
+      0,
+    )
+  })
+
   test('@smoke @a11y a localized page has zero critical or serious axe violations', async ({
     page,
   }) => {
