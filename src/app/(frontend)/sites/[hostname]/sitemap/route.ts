@@ -1,6 +1,7 @@
 import { listPagePaths } from '@/content/pages'
+import { getSettings } from '@/content/settings'
 import { getTenantByHostname } from '@/content/tenants'
-import { DEFAULT_LOCALE, ALL_LOCALES } from '@/lib/locales'
+import { DEFAULT_LOCALE } from '@/lib/locales'
 import { buildSitemapXml, indexingAllowed, siteOrigin } from '@/lib/seo'
 
 /**
@@ -32,12 +33,14 @@ export async function GET(
   if (!indexingAllowed(process.env)) return new Response('Not found', { status: 404 })
 
   const pages = await listPagePaths({ tenant, locale: DEFAULT_LOCALE })
+  // The same list the page route 404s against, so the sitemap never names a URL that is not one.
+  const { enabledLocales } = await getSettings({ tenant })
 
   return new Response(
     buildSitemapXml({
       origin: siteOrigin(tenant.hostname),
       paths: pages.map(({ path }) => path),
-      locales: ALL_LOCALES,
+      locales: enabledLocales,
     }),
     { headers: { 'content-type': 'application/xml; charset=utf-8' } },
   )

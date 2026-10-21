@@ -92,6 +92,8 @@ export type PageMetadataInput = {
   /** Every locale this page is served in (`08` §5). */
   readonly locales: readonly Locale[]
   readonly indexable: boolean
+  /** `settings.defaultDescription` (`03` §5) — the last resort, see `buildPageMetadata`. */
+  readonly defaultDescription?: string | null
 }
 
 /** Structurally a subset of Next's `Metadata`, so the route returns it as-is. */
@@ -137,7 +139,13 @@ export const buildPageMetadata = (input: PageMetadataInput): PageMetadata => {
 
   const origin = siteOrigin(tenant.hostname)
   const title = titleFor(input)
-  const description = clean(page.seo.description) ?? excerptOf(page.body)
+  /**
+   * The site's description comes LAST. It is the same sentence on every page that uses it,
+   * which is a duplicate-description signal, so a page's own first paragraph outranks it and
+   * it is left for the page with nothing of its own to say.
+   */
+  const description =
+    clean(page.seo.description) ?? excerptOf(page.body) ?? clean(input.defaultDescription)
   const url = absoluteUrl(origin, page.path, locale)
 
   return {

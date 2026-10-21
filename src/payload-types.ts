@@ -72,6 +72,7 @@ export interface Config {
     pages: Page;
     navigation: Navigation;
     theme: Theme;
+    settings: Setting;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -84,6 +85,7 @@ export interface Config {
     pages: PagesSelect<false> | PagesSelect<true>;
     navigation: NavigationSelect<false> | NavigationSelect<true>;
     theme: ThemeSelect<false> | ThemeSelect<true>;
+    settings: SettingsSelect<false> | SettingsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -526,6 +528,55 @@ export interface Theme {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "settings".
+ */
+export interface Setting {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  /**
+   * Shown in the header, the footer and the browser tab. Leave empty to use the name the site was set up with.
+   */
+  siteTitle?: string | null;
+  /**
+   * Shown at the bottom of every page. Leave any of these empty.
+   */
+  contact?: {
+    /**
+     * One line per line, the way it goes on an envelope.
+     */
+    address?: string | null;
+    phone?: string | null;
+    email?: string | null;
+  };
+  /**
+   * Shown at the bottom of every page.
+   */
+  socialLinks?:
+    | {
+        platform: 'facebook' | 'instagram' | 'x' | 'youtube' | 'linkedin';
+        url: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * One or two sentences about the school, for search results and link previews. Used only for a page that has no description and no text of its own.
+   */
+  defaultDescription?: string | null;
+  /**
+   * The languages this site is offered in, as well as English. Which languages the district has to offer is a language-access decision — check with the Title VI coordinator before turning one off.
+   */
+  enabledLocales?: {
+    es?: boolean | null;
+    zhHans?: boolean | null;
+    ko?: boolean | null;
+    pt?: boolean | null;
+    ar?: boolean | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -567,6 +618,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'theme';
         value: number | Theme;
+      } | null)
+    | ({
+        relationTo: 'settings';
+        value: number | Setting;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -817,6 +872,40 @@ export interface ThemeSelect<T extends boolean = true> {
   tenant?: T;
   primaryColor?: T;
   secondaryColor?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "settings_select".
+ */
+export interface SettingsSelect<T extends boolean = true> {
+  tenant?: T;
+  siteTitle?: T;
+  contact?:
+    | T
+    | {
+        address?: T;
+        phone?: T;
+        email?: T;
+      };
+  socialLinks?:
+    | T
+    | {
+        platform?: T;
+        url?: T;
+        id?: T;
+      };
+  defaultDescription?: T;
+  enabledLocales?:
+    | T
+    | {
+        es?: T;
+        zhHans?: T;
+        ko?: T;
+        pt?: T;
+        ar?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }

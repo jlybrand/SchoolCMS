@@ -56,6 +56,9 @@ export type Fixtures = {
   /** One `theme` row per school, with different colours — same rule as the menus. */
   themeA: number
   themeB: number
+  /** One `settings` row per school, with different details — same rule again. */
+  settingsA: number
+  settingsB: number
   districtAdmin: TypedUser
   managerA: TypedUser
   managerB: TypedUser
@@ -68,8 +71,15 @@ export type Fixtures = {
  * including a school-manager assigned to NO tenant — the shape most likely to fail open.
  */
 export async function seed(payload: Payload): Promise<Fixtures> {
-  // Order matters: pages, navigation, theme and users all reference tenants.
-  for (const collection of ['pages', 'navigation', 'theme', 'users', 'tenants'] as const) {
+  // Order matters: pages, navigation, theme, settings and users all reference tenants.
+  for (const collection of [
+    'pages',
+    'navigation',
+    'theme',
+    'settings',
+    'users',
+    'tenants',
+  ] as const) {
     await payload.delete({ collection, where: {}, overrideAccess: true })
   }
 
@@ -175,9 +185,39 @@ export async function seed(payload: Payload): Promise<Fixtures> {
       })
     ).id as number
 
+  /** Different per tenant, so a leak reads as the wrong school's phone number. */
+  const mkSettings = async (
+    tenant: number,
+    name: string,
+    phone: string,
+    on: ('es' | 'zhHans' | 'ko' | 'pt' | 'ar')[],
+  ): Promise<number> =>
+    (
+      await payload.create({
+        collection: 'settings',
+        data: {
+          tenant,
+          siteTitle: `${name} School`,
+          contact: { address: `1 ${name} Road\nSummerville, SC 29483`, phone },
+          socialLinks: [{ platform: 'facebook', url: `https://www.facebook.com/${name}` }],
+          defaultDescription: `About ${name}.`,
+          enabledLocales: Object.fromEntries(
+            (['es', 'zhHans', 'ko', 'pt', 'ar'] as const).map((field) => [
+              field,
+              on.includes(field),
+            ]),
+          ),
+        },
+        overrideAccess: true,
+      })
+    ).id as number
+
   return {
     tenantA,
     tenantB,
+    // A serves two languages beside English and B none, so both ends of the list are seeded.
+    settingsA: await mkSettings(tenantA, 'Alpha', '(843) 555-0101', ['es', 'ar']),
+    settingsB: await mkSettings(tenantB, 'Bravo', '(843) 555-0202', []),
     // A has both colours and B only a main one, so the mapper's two shapes are both seeded.
     themeA: await mkTheme(tenantA, '#7a1f2b', '#c9a227'),
     themeB: await mkTheme(tenantB, '#14532d'),

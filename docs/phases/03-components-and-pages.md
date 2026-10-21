@@ -1368,3 +1368,136 @@ This applies to every field description in the admin, not only these two.
 
 As §17. When migrations start, `meta_title` and `meta_description` are two nullable columns on
 `pages` and `_pages_v` — pure expand.
+
+---
+
+## 24. Settings — site name, contact block, social links, site description, languages
+
+`03` §5. The third and last per-tenant record; same `isGlobal` shape as §21 and §22.
+
+### Added
+
+| File                                | Holds                                                                |
+| ----------------------------------- | -------------------------------------------------------------------- |
+| `src/collections/Settings.ts`       | The collection; district-only on all four operations                 |
+| `src/lib/contact.ts`                | `toPhoneHref`, `toEmailHref`, `toSocialHref` — validator AND mapper  |
+| `src/content/site-settings.ts`      | `toSiteSettings` (pure), `SOCIAL_PLATFORMS`                          |
+| `src/content/settings.ts`           | `getSettings({ tenant })` — the query                                |
+| `tests/unit/contact.test.ts`        | The three destination builders                                       |
+| `tests/unit/site-settings.test.ts`  | The mapper, including every `enabledLocales` case                    |
+| `tests/e2e/settings-fields.spec.ts` | The admin form: defaults, a refused save, axe in both Payload themes |
+
+### Changed
+
+| File                                    | Change                                                                        |
+| --------------------------------------- | ----------------------------------------------------------------------------- |
+| `src/payload.config.ts`                 | `Settings` registered; `settings: { isGlobal: true }`                         |
+| `src/content/types.ts` / `index.ts`     | `SiteSettings`, `ContactBlock`, `ContactLink`, `SocialLink`, `SocialPlatform` |
+| `src/lib/locales.ts`                    | `LOCALE_NAMES` (moved from page.tsx), `localeFieldName`, `toEnabledLocales`   |
+| `src/lib/seo.ts`                        | `defaultDescription` input — the last description fallback                    |
+| `src/components/SiteFooter/*`           | `contact` and `social` props; `<address>`; a second `MenuList`                |
+| `.../[[...segments]]/page.tsx`          | `resolve` fetches settings; locale 404; site name; switcher; footer props     |
+| `.../sitemap/route.ts`                  | `locales: enabledLocales` instead of `ALL_LOCALES`                            |
+| `src/app/(payload)/admin-overrides.css` | `.array-field__add-row` contrast                                              |
+| `scripts/seed.ts`                       | School A: contact + social. School B: renamed, Spanish only. District: no row |
+| `tests/helpers/payload.ts`              | `settingsA`, `settingsB`; `settings` in the reset list                        |
+| `tests/integration/*`                   | `getSettings`; the settings isolation block                                   |
+| `tests/e2e/tenant-routing.spec.ts`      | The "per-tenant settings" block; School B's title                             |
+
+### The call chain
+
+```
+page.tsx resolve()
+  getTenantByHostname(hostname)
+  getSettings({ tenant })                 -> toSiteSettings(row | undefined)
+  enabledLocales.includes(params.locale)  -> else null -> notFound()
+  getPageByPath(ctx, path)
+  siteName = settings.siteTitle ?? tenant.name
+
+generateMetadata -> buildPageMetadata({ tenant: { name: siteName, … },
+                                        locales: settings.enabledLocales,
+                                        defaultDescription: settings.defaultDescription })
+SitePage         -> SiteHeader siteName / language switcher / SiteFooter contact, social
+sitemap route    -> getSettings -> buildSitemapXml({ locales: enabledLocales })
+```
+
+`ALL_LOCALES` has no remaining caller in `src/app/`. `src/proxy.ts` still uses it through
+`localeFromPathname`: the proxy runs at the edge with no database, so it rewrites every platform
+locale prefix and the page route gives the per-tenant answer.
+
+### `enabledLocales`
+
+Stored as a group of five checkboxes — `es`, `zhHans`, `ko`, `pt`, `ar` — each `defaultValue: true`.
+`localeFieldName('zh-Hans')` is `zhHans`; the BCP 47 tag is used everywhere else.
+
+`toEnabledLocales(value)` filters `ALL_LOCALES`, keeping `en` always and every other locale
+unless its stored answer is exactly `false`:
+
+| Stored                          | Served                          |
+| ------------------------------- | ------------------------------- |
+| no row / `null` / not an object | every platform locale           |
+| `{ ar: false }`                 | every platform locale except ar |
+| all five `false`                | `en`                            |
+| a key outside `ALL_LOCALES`     | ignored                         |
+
+With one locale enabled the language switcher is not rendered.
+
+### Description fallback order
+
+`page.seo.description` -> `excerptOf(page.body)` -> `settings.defaultDescription` -> omitted.
+
+### Contact destinations
+
+| Function       | Accepts                                                   | Returns                     |
+| -------------- | --------------------------------------------------------- | --------------------------- |
+| `toPhoneHref`  | digits, spaces, `().-`, optional leading `+`; 7–15 digits | `tel:` + digits (keeps `+`) |
+| `toEmailHref`  | one address; none of `, ; ? & < > "` or whitespace        | `mailto:` + address         |
+| `toSocialHref` | what `toSafeHref` accepts, and `https://` only            | the address                 |
+
+Each runs as the field validator and again in `toSiteSettings`; a value that fails in the mapper
+is dropped and its neighbours render. The footer wraps the phone and email lines in `dir="ltr"`.
+
+### Why checkboxes and radios, not selects
+
+The languages were first a `select` with `hasMany`. `settings-fields.spec.ts` failed on it:
+
+| Element                                   | Rule                 | Impact   |
+| ----------------------------------------- | -------------------- | -------- |
+| Sortable chip with a remove button inside | `nested-interactive` | serious  |
+| react-select's search `<input>`           | `label`              | critical |
+
+`isSortable: false` removes the first and not the second. `checkbox` and `radio` fields render
+native labelled inputs and pass. `pages.pageType` and `pages.visibility` are single selects with
+the same `<input>`; they are outside that spec's scope and are on the Phase 4 list.
+
+### Payload chrome found by the spec
+
+| Finding                                                    | Status                                            |
+| ---------------------------------------------------------- | ------------------------------------------------- |
+| `.array-field__add-row` label, `#9a9a9a` on white, 2.81:1  | Fixed in `admin-overrides.css` (also fixes Menus) |
+| Array header row-actions `<button>` has no accessible name | Excluded BY SELECTOR in the spec; Phase 4         |
+| Inputs are greyed while the form initialises               | The spec waits for `toBeEnabled()` before axe     |
+
+### Open: custom validator messages do not reach the admin form
+
+In the production build a refused save returns
+`{"errors":[{"message":"The following field is invalid: …"}]}` — no `name`, no `data`. Payload's
+`formatErrors` includes `data.errors[].message` only when `err instanceof ValidationError`, and
+`.next/server` holds that class in more than one chunk, so the check is false. The admin shows the
+toast naming the field and no sentence under it. Reproduced on the `theme` form, which this slice
+does not touch, so every custom `validate` message is affected. The API still refuses the write;
+what is lost is the explanation. Not fixed here. `settings-fields.spec.ts` asserts the toast and
+says where to tighten it.
+
+### Cache
+
+As §21: covered by the tenant tag, which nothing purges yet.
+
+### No migration
+
+As §17. When migrations start: `settings`, `settings_social_links`, one enum for the platform, and
+a `settings_id` column on `payload_locked_documents_rels` — pure expand.
+
+### Local gotcha
+
+`pnpm run seed` before `pnpm test:e2e`, as for any new table.

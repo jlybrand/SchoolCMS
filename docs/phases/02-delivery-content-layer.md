@@ -415,13 +415,13 @@ matcher's anchored extension list.
 
 **Forward:**
 
-| Seam                             | Consumer                                                                  |
-| -------------------------------- | ------------------------------------------------------------------------- |
-| `[[...segments]]` catch-all      | Phase 3 — resolves segments to a page instead of echoing the path         |
-| `data-cache-tag` on `<main>`     | Phase 3+ — publish hooks call `revalidateTag` with `tagsForDocument(...)` |
-| `tagsForDocument.syndicatedTo`   | Phase 5 — COPE syndication fan-out                                        |
-| `tagsForDocument.locales`        | Phase 7 — per-locale artifacts                                            |
-| `listActiveTenants`              | Phase 3 — `generateStaticParams` for all 28 sites                         |
-| `src/content/index.ts`           | Phase 3+ — `pages.ts`, `posts.ts`, `events.ts`, … alongside `tenants.ts`  |
-| `LANGUAGE_NAMES` + the `<nav>`   | Phase 7 — replaced by the real language switcher component                |
-| `TIER_1_LOCALES` / `ALL_LOCALES` | Phase 7 — Tier 2 locales come from `settings.enabledLocales` at runtime   |
+| Seam                             | Consumer                                                                                        |
+| -------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `[[...segments]]` catch-all      | Phase 3 — resolves segments to a page instead of echoing the path                               |
+| `data-cache-tag` on `<main>`     | Phase 3+ — publish hooks call `revalidateTag` with `tagsForDocument(...)`                       |
+| `tagsForDocument.syndicatedTo`   | Phase 5 — COPE syndication fan-out                                                              |
+| `tagsForDocument.locales`        | Phase 7 — per-locale artifacts                                                                  |
+| `listActiveTenants`              | Phase 3 — `generateStaticParams` for all 28 sites                                               |
+| `src/content/index.ts`           | Phase 3+ — `pages.ts`, `posts.ts`, `events.ts`, … alongside `tenants.ts`                        |
+| `LANGUAGE_NAMES` + the `<nav>`   | Phase 7 — replaced by the real language switcher component                                      |
+| `TIER_1_LOCALES` / `ALL_LOCALES` | Phase 7 — Tier 2 locales join `settings.enabledLocales` (Tier 1 already read from it, `03` §24) |

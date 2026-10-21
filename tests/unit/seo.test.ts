@@ -143,6 +143,24 @@ describe('buildPageMetadata', () => {
     expect(build({ body: [] }).description).toBeUndefined()
   })
 
+  it('falls back to the site description LAST — a page describes itself before its site does', () => {
+    const withDefault = (overrides: Record<string, unknown> = {}) =>
+      buildPageMetadata({
+        tenant,
+        page: page(overrides),
+        locale: 'en',
+        locales: ['en'],
+        indexable: true,
+        defaultDescription: ' A K–5 school in Summerville. ',
+      })
+
+    // The same sentence on every page of a site is a duplicate-description signal, so it is
+    // only for the page with nothing of its own to say (`03` §5).
+    expect(withDefault().description).toBe('We are a K–5 school of 480 students in Summerville.')
+    expect(withDefault({ body: [] }).description).toBe('A K–5 school in Summerville.')
+    expect(withDefault({ body: [] }).openGraph.description).toBe('A K–5 school in Summerville.')
+  })
+
   it('emits ABSOLUTE canonical and hreflang URLs — a crawler has no base to resolve against', () => {
     const meta = build({}, 'es')
 
