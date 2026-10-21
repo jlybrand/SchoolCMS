@@ -281,6 +281,10 @@ export interface Page {
      */
     description?: string | null;
   };
+  reviewState?: ('editing' | 'submitted' | 'changes-requested') | null;
+  reviewNote?: string | null;
+  submittedAt?: string | null;
+  submittedBy?: (number | null) | User;
   /**
    * Hold translations of this page until a person has checked them.
    */
@@ -744,6 +748,10 @@ export interface PagesSelect<T extends boolean = true> {
         title?: T;
         description?: T;
       };
+  reviewState?: T;
+  reviewNote?: T;
+  submittedAt?: T;
+  submittedBy?: T;
   requiresTranslationReview?: T;
   updatedAt?: T;
   createdAt?: T;
