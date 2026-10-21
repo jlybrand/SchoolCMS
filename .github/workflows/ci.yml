@@ -238,6 +238,17 @@ jobs:
         run: pnpm run seed
       - name: Core Web Vitals + a11y budget
         run: pnpm run test:perf
+      # The report stays inside the repo's access control. `lhci`'s default upload target is
+      # Google's temporary PUBLIC storage — an unlisted but world-readable URL — which was
+      # harmless for seeded content and would not be once real pages are audited.
+      - name: Keep the Lighthouse report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: .lighthouseci/reports/
+          retention-days: 14
+          if-no-files-found: ignore
 
   # Dependency scanning per `06` §2.7. Payload version bumps are always a deliberate,
   # separate PR — never bundled with feature work (`09` §2).
