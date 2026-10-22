@@ -1,0 +1,273 @@
+/**
+ * The approval queue. Payload's theme variables, not DD2 tokens — the tokens are not loaded in
+ * the admin and do not follow its dark theme (see `ReviewStatusField.module.css`).
+ * `tests/e2e/approval-queue.spec.ts` runs axe over the queue in both themes.
+ *
+ * Logical properties only (CLAUDE.md rule 5).
+ */
+
+.view {
+  max-inline-size: 60rem;
+  padding-block: 2rem 4rem;
+  color: var(--theme-text);
+  line-height: 1.5;
+}
+
+.title {
+  margin-block: 0 0.5rem;
+  font-size: 2rem;
+  line-height: 1.2;
+}
+
+.summary,
+.muted {
+  margin-block: 0 1.5rem;
+  color: var(--theme-elevation-800);
+}
+
+.items {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.item {
+  padding-block: 1.25rem;
+  padding-inline: 1.5rem;
+  border: 1px solid var(--theme-elevation-400);
+  border-radius: 4px;
+  background: var(--theme-elevation-50);
+}
+
+/** Words carry "overdue" (`.overdue`); the thicker start edge only repeats it (1.4.1). */
+.item[data-overdue='true'] {
+  border-inline-start: 6px solid var(--theme-warning-600);
+}
+
+.itemHeader {
+  margin-block-end: 1rem;
+}
+
+.itemTitle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: baseline;
+  margin: 0;
+  font-size: 1.375rem;
+}
+
+.badge {
+  padding-block: 0.125rem;
+  padding-inline: 0.5rem;
+  border: 1px solid var(--theme-elevation-800);
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.meta {
+  margin-block: 0.25rem 0;
+  color: var(--theme-elevation-800);
+}
+
+.overdue {
+  color: var(--theme-text);
+}
+
+.diff {
+  display: grid;
+  gap: 1rem;
+}
+
+.caption {
+  margin-block-end: 0.5rem;
+  font-weight: 600;
+  text-align: start;
+}
+
+.fields {
+  inline-size: 100%;
+  border-collapse: collapse;
+}
+
+.fields th,
+.fields td {
+  padding-block: 0.5rem;
+  padding-inline: 0.75rem 0;
+  border-block-end: 1px solid var(--theme-elevation-150);
+  text-align: start;
+  vertical-align: top;
+}
+
+.fields th:first-child {
+  padding-inline-start: 0;
+}
+
+.fields thead th {
+  color: var(--theme-elevation-800);
+  font-size: 0.875rem;
+}
+
+.changes {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.change {
+  padding-inline-start: 0.75rem;
+  border-inline-start: 4px solid var(--theme-elevation-400);
+}
+
+.change[data-change='added'] {
+  border-inline-start-color: var(--theme-success-500, var(--theme-elevation-800));
+}
+
+.change[data-change='removed'] {
+  border-inline-start-color: var(--theme-error-500);
+}
+
+.changeLabel {
+  font-weight: 600;
+}
+
+.headingLine {
+  font-weight: 600;
+}
+
+.listLines {
+  margin-block: 0.25rem 0;
+  padding-inline-start: 1.25rem;
+}
+
+.problem,
+.outcome {
+  margin-block: 1rem 0;
+  padding-block: 0.75rem;
+  padding-inline: 1rem;
+  border: 1px solid var(--theme-elevation-400);
+  border-radius: 4px;
+  background: var(--theme-elevation-0, transparent);
+  font-weight: 600;
+}
+
+.problem {
+  border-inline-start: 4px solid var(--theme-error-500);
+}
+
+.problem p {
+  margin: 0 0 0.5rem;
+}
+
+.actions {
+  margin-block-start: 1.25rem;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.primary,
+.secondary {
+  padding-block: 0.625rem;
+  padding-inline: 1.25rem;
+  border-radius: 4px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary {
+  border: 1px solid var(--theme-elevation-800);
+  background: var(--theme-elevation-800);
+  color: var(--theme-elevation-0);
+}
+
+.secondary {
+  border: 1px solid var(--theme-elevation-800);
+  background: transparent;
+  color: var(--theme-text);
+}
+
+.primary:disabled,
+.secondary:disabled {
+  cursor: progress;
+}
+
+.open {
+  color: var(--theme-text);
+}
+
+.primary:focus-visible,
+.secondary:focus-visible,
+.open:focus-visible,
+.note:focus-visible,
+.bannerLink:focus-visible,
+.problem:focus-visible,
+.outcome:focus-visible {
+  outline: 3px solid var(--theme-text);
+  outline-offset: 2px;
+}
+
+.noteBox {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.noteLabel {
+  font-weight: 600;
+}
+
+.note {
+  box-sizing: border-box;
+  inline-size: 100%;
+  padding-block: 0.5rem;
+  padding-inline: 0.75rem;
+  border: 1px solid var(--theme-elevation-800);
+  border-radius: 4px;
+  background: var(--theme-input-bg, transparent);
+  color: var(--theme-text);
+  font: inherit;
+}
+
+.noteError {
+  margin: 0;
+  padding-inline-start: 0.75rem;
+  border-inline-start: 4px solid var(--theme-error-500);
+  font-weight: 600;
+}
+
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  align-items: center;
+  margin-block-end: 2rem;
+  padding-block: 1rem;
+  padding-inline: 1.25rem;
+  border: 1px solid var(--theme-elevation-400);
+  border-radius: 4px;
+  background: var(--theme-elevation-50);
+  color: var(--theme-text);
+}
+
+.bannerText {
+  margin: 0;
+  font-weight: 600;
+}
+
+.bannerLink {
+  color: var(--theme-text);
+  font-weight: 600;
+}
+
+.navLink {
+  display: block;
+  padding-block: 0.25rem;
+  color: var(--theme-text);
+}
