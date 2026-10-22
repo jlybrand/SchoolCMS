@@ -1,4 +1,5 @@
 import type { Payload, TypedUser } from 'payload'
+import { sql } from '@payloadcms/db-postgres'
 
 import type { Role } from '@/access/types'
 
@@ -114,6 +115,23 @@ export async function seed(payload: Payload): Promise<Fixtures> {
       },
       overrideAccess: true,
     })) as unknown as TypedUser
+
+  /**
+   * A school-manager with NO school — the shape most likely to fail open. Payload refuses to
+   * create one (`src/access/user-school.ts`), so it is made with a school and the assignment
+   * deleted underneath Payload: exactly the state of an account saved before that rule, or
+   * written by anything that skips the hook. The access functions must still fail closed on
+   * it; that is what this fixture is for.
+   */
+  const mkSchoollessManager = async (): Promise<TypedUser> => {
+    const user = await mkUser('no-tenant@test.local', ['school-manager'], [tenantA])
+    await payload.db.drizzle.execute(sql`delete from users_tenants where _parent_id = ${user.id}`)
+    return (await payload.findByID({
+      collection: 'users',
+      id: user.id,
+      overrideAccess: true,
+    })) as unknown as TypedUser
+  }
 
   const districtAdmin = await mkUser('district-admin@test.local', ['district-admin'], [district])
 
@@ -231,7 +249,7 @@ export async function seed(payload: Payload): Promise<Fixtures> {
     managerA: await mkUser('manager-a@test.local', ['school-manager'], [tenantA]),
     managerB: await mkUser('manager-b@test.local', ['school-manager'], [tenantB]),
     systemSync: await mkUser('system-sync@test.local', ['system-sync'], [tenantA]),
-    noTenantManager: await mkUser('no-tenant@test.local', ['school-manager'], []),
+    noTenantManager: await mkSchoollessManager(),
   }
 }
 

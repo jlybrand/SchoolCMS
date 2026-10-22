@@ -1,0 +1,50 @@
+/**
+ * Payload's theme variables, not DD2 tokens: the tokens are not loaded in the admin, and this
+ * must follow Payload's dark theme. The elevation scale inverts with it, and
+ * `--theme-elevation-800` clears 4.5:1 in both (see `admin-overrides.css`).
+ * `tests/e2e/send-for-approval.spec.ts` runs axe over it in both themes.
+ *
+ * Logical properties only (CLAUDE.md rule 5): the admin plane is localized too.
+ */
+
+.status {
+  margin-block-end: 1.5rem;
+  padding-block: 0.75rem;
+  padding-inline: 1rem;
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: 4px;
+  background: var(--theme-elevation-50);
+  color: var(--theme-elevation-800);
+  line-height: 1.4;
+}
+
+/**
+ * The tone is carried by the heading's WORDS; the start-edge rule repeats it for sighted
+ * users and is never the only signal (1.4.1 Use of Color).
+ */
+.status[data-tone='action'] {
+  border-inline-start: 4px solid var(--theme-warning-600);
+}
+
+.status[data-tone='waiting'] {
+  border-inline-start: 4px solid var(--theme-elevation-800);
+}
+
+.heading {
+  margin: 0;
+  color: var(--theme-text);
+  font-weight: 600;
+}
+
+.detail {
+  margin: 0;
+}
+
+/** The reviewer's words, set apart from the interface's. */
+.note {
+  margin-block: 0.5rem;
+  padding-inline-start: 0.75rem;
+  border-inline-start: 3px solid var(--theme-elevation-400);
+  color: var(--theme-text);
+  white-space: pre-line;
+}

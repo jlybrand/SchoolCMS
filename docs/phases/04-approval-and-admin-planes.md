@@ -6,14 +6,15 @@ grants, notifications and audit.
 
 Phase 4 lands across several PRs. This document is written as each one merges.
 
-| Slice                                          | State               |
-| ---------------------------------------------- | ------------------- |
-| Review state on `pages`                        | **This PR** — §1–§4 |
-| School plane: task view, "Send for approval"   | —                   |
-| District queue: inline diff, one-click approve | —                   |
-| Auto-approval grants (zero issued)             | —                   |
-| Request changes UI, notifications, escalation  | —                   |
-| Audit trail                                    | —                   |
+| Slice                                          | State                |
+| ---------------------------------------------- | -------------------- |
+| Review state on `pages`                        | Merged (#26) — §1–§5 |
+| School plane: "Send for approval" on a page    | **This PR** — §6     |
+| School plane: task view, constrained new page  | —                    |
+| District queue: inline diff, one-click approve | —                    |
+| Auto-approval grants (zero issued)             | —                    |
+| Request changes UI, notifications, escalation  | —                    |
+| Audit trail                                    | —                    |
 
 ---
 
@@ -98,8 +99,7 @@ apart from a resend, and both keep it queued.
 
 - Approve publishes the latest draft. Publishing **the version the reviewer saw** is the queue's
   job (§ queue, when it lands).
-- No UI moves the state: the fields are read-only. The school's button and the district's
-  actions are the next slices.
+- The district's actions (approve, request changes) have no UI yet; the school's button is §6.
 - A brand-new page does not autosave before its first save (§5).
 
 ## 5. Autosave
@@ -119,3 +119,85 @@ new id, leaving an untitled draft for every abandoned "new page".
 
 `tests/e2e/page-autosave.spec.ts` retypes if no autosave lands within 4 s: Payload's `Autosave`
 ignores the form state present when it mounts, so an edit made before mount is not saved.
+
+## 6. Send for approval — the school manager's page form
+
+### Files
+
+| File                                                  | Holds                                                         |
+| ----------------------------------------------------- | ------------------------------------------------------------- |
+| `src/admin/SendForApproval/review-status.ts`          | `sendsForApproval(user)`, `describeReview(fields, timeZone)`  |
+| `src/admin/SendForApproval/SendForApprovalButton.tsx` | `PublishButton` slot                                          |
+| `src/admin/SendForApproval/SchoolSaveDraftButton.tsx` | `SaveDraftButton` slot                                        |
+| `src/admin/SendForApproval/ReviewStatusField.tsx`     | The `reviewStatus` ui field's component                       |
+| `src/admin/SendForApproval/send-for-approval.css`     | Hides Payload's `.status` when the school's button is present |
+| `tests/unit/admin/send-for-approval.test.ts`          | Who gets the button; the status wording                       |
+| `tests/e2e/send-for-approval.spec.ts`                 | The flow, both roles; axe in both themes                      |
+| `tests/e2e/support/school-session.ts`                 | Creates the School A manager per run; `schoolTest`            |
+
+Changed: `src/collections/Pages.ts` (two edit slots, `reviewStatus` ui field first),
+`tests/e2e/admin-session.setup.ts` (also signs in the school manager),
+`src/app/(payload)/admin/importMap.js` (regenerated), `package.json` (`@payloadcms/ui` 3.87.0,
+exact).
+
+### Who sees what
+
+`sendsForApproval(user)` = has `school-manager` and not `district-admin`.
+
+| Element in the page form          | `sendsForApproval` true                           | false                       |
+| --------------------------------- | ------------------------------------------------- | --------------------------- |
+| `PublishButton` slot              | "Send for approval" (`#action-send-for-approval`) | Payload's `PublishButton`   |
+| `SaveDraftButton` slot (new page) | nothing                                           | Payload's `SaveDraftButton` |
+| `reviewStatus` ui field           | shown, first in the form                          | condition false — absent    |
+| Payload `.status` in the header   | `display: none`                                   | shown                       |
+
+### The button
+
+```
+click
+  -> useForm().submit  (client validation ON)
+       POST   /api/pages?draft=true...        (new page)
+       PATCH  /api/pages/:id?draft=true...    (existing)
+       body: form data + { _status: 'draft', reviewState: 'submitted' }
+  -> the write path in §4; applyReviewState decides the outcome
+  -> Payload resets the form from the response -> reviewStatus re-renders
+```
+
+Never disabled: sending an unmodified page (already autosaved) is the normal case. A second press
+on a `submitted` page keeps it `submitted` (§3).
+
+### Status wording — `describeReview`
+
+| `reviewState`          | Heading                         | Also                                                       |
+| ---------------------- | ------------------------------- | ---------------------------------------------------------- |
+| null, `editing`, other | Your changes save automatically | When you are ready, send them for approval.                |
+| `submitted`            | Sent for approval on {Month D}  | Date in `America/New_York`; no date -> "Sent for approval" |
+| `changes-requested`    | The district asked for changes  | The trimmed note, if any; "send it for approval again"     |
+
+### Known gaps
+
+- Payload's "more options" (⋯) button in the header has no accessible name (axe `button-name`,
+  critical) for every role. The spec's axe check is scoped to `#action-send-for-approval` and
+  `#review-status`, so it does not cover that button.
+- The read-only `reviewState` / `reviewNote` sidebar fields still show for school managers,
+  beside the status field.
+- A school manager's new page is created by sending it; nothing autosaves before that (§5).
+
+## 7. A school manager must have a school
+
+`missingSchool(data, originalDoc)` in `src/access/user-school.ts`, run as a `beforeValidate` hook
+on `users` (after the password check). Throws `ValidationError` on path `tenants` with
+`NEEDS_SCHOOL`.
+
+| Write                                                  | Result                         |
+| ------------------------------------------------------ | ------------------------------ |
+| roles include `school-manager`, no non-empty `tenant`  | refused                        |
+| a field not sent is read from the stored document      | —                              |
+| `district-admin` / `system-sync` / no roles, no school | allowed                        |
+| any save on a manager STORED without a school          | refused until a school is sent |
+
+Tests: `tests/unit/access/user-school.test.ts`, `tests/integration/user-school.test.ts`.
+
+The isolation fixture `noTenantManager` (`tests/helpers/payload.ts`) is created with a school and
+its `users_tenants` row deleted in SQL, so the access functions are still proven to fail closed on
+a schoolless manager that predates the rule.

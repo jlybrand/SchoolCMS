@@ -7,6 +7,8 @@ import {
   pagesUpdateAccess,
 } from '@/access/pages'
 import { districtOnlyField } from '@/access/tenant-scoped'
+import type { AuthUser } from '@/access/types'
+import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 import {
   deriveSlugFromTitle,
   rootPageCannotBeParent,
@@ -50,6 +52,18 @@ export const Pages: CollectionConfig = {
      * pages from.
      */
     group: 'Content',
+    /**
+     * The school plane's one button (`04` §2.3). Both render Payload's own control for a
+     * district admin, so the district plane is unchanged; role-conditional inside the
+     * component because these slots are per-collection, not per-user. The school's status
+     * line is the `reviewStatus` field below.
+     */
+    components: {
+      edit: {
+        PublishButton: '/admin/SendForApproval/SendForApprovalButton#SendForApprovalButton',
+        SaveDraftButton: '/admin/SendForApproval/SchoolSaveDraftButton#SchoolSaveDraftButton',
+      },
+    },
   },
 
   access: {
@@ -101,6 +115,19 @@ export const Pages: CollectionConfig = {
   },
 
   fields: [
+    {
+      /**
+       * Where a school manager's change stands — sent, or sent back with the district's note
+       * (`04` §2.3). First, so the note sits above the fields it is about. Display only: a `ui`
+       * field stores nothing. A district admin has Payload's own status in the header instead.
+       */
+      name: 'reviewStatus',
+      type: 'ui',
+      admin: {
+        condition: (_data, _siblingData, { user }) => sendsForApproval(user as AuthUser | null),
+        components: { Field: '/admin/SendForApproval/ReviewStatusField#ReviewStatusField' },
+      },
+    },
     {
       name: 'title',
       type: 'text',

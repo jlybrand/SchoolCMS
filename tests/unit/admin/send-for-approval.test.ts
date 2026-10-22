@@ -1,0 +1,121 @@
+import { describe, expect, it } from 'vitest'
+
+import { describeReview, sendsForApproval } from '@/admin/SendForApproval/review-status'
+import type { AuthUser } from '@/access/types'
+
+/**
+ * The school plane's document controls (`04` §2.3).
+ *
+ * Two pure decisions sit under the "Send for approval" button: WHO gets it in place of
+ * Payload's draft/publish controls, and WHAT the status line says instead of "Draft" /
+ * "Published" — a distinction `04` §2.1 rules out showing to a school manager at all.
+ *
+ * The component around them is a custom admin view, which CLAUDE.md's TDD exception table
+ * locks with a Playwright flow and an axe assertion instead (`tests/e2e/send-for-approval.spec.ts`).
+ */
+
+const districtAdmin: AuthUser = { id: 'd1', roles: ['district-admin'] }
+const manager: AuthUser = { id: 'm1', roles: ['school-manager'], tenants: [{ tenant: 'A' }] }
+const both: AuthUser = { id: 'b1', roles: ['district-admin', 'school-manager'] }
+const sync: AuthUser = { id: 's1', roles: ['system-sync'] }
+
+describe('sendsForApproval — who gets the one button', () => {
+  it.each<[string, AuthUser | null | undefined, boolean]>([
+    ['a school manager', manager, true],
+    ['a district admin', districtAdmin, false],
+    // Roles are flat (`03` §6.1); holding district-admin means the user CAN publish, and
+    // hiding a working Publish behind "Send for approval" would queue their own change to them.
+    ['a user holding both roles', both, false],
+    // Not a person, and never in the admin — but if it were, it would get Payload's controls,
+    // which its access functions already refuse.
+    ['the sync account', sync, false],
+    ['a user with no roles', { id: 'x', roles: [] }, false],
+    ['a user with null roles', { id: 'x', roles: null }, false],
+    ['no user', null, false],
+    ['an undefined user', undefined, false],
+  ])('%s → %s', (_label, user, expected) => {
+    expect(sendsForApproval(user)).toBe(expected)
+  })
+})
+
+describe('describeReview — the status line in place of Draft / Published', () => {
+  const TZ = 'America/New_York'
+
+  it('nothing pending says changes save themselves and how to send them', () => {
+    const status = describeReview({ reviewState: null }, TZ)
+    expect(status.tone).toBe('idle')
+    expect(status.heading).toBe('Your changes save automatically')
+    expect(status.detail).toBe('When you are ready, send them for approval.')
+  })
+
+  it('"editing" reads the same as nothing pending — the difference is not the user\'s concern', () => {
+    expect(describeReview({ reviewState: 'editing' }, TZ)).toEqual(
+      describeReview({ reviewState: null }, TZ),
+    )
+  })
+
+  it('submitted names the day it was sent, in the district time zone', () => {
+    // 03:30 UTC on the 22nd is still the evening of the 21st in South Carolina.
+    const status = describeReview(
+      { reviewState: 'submitted', submittedAt: '2026-10-22T03:30:00.000Z' },
+      TZ,
+    )
+    expect(status.tone).toBe('waiting')
+    expect(status.heading).toBe('Sent for approval on October 21')
+    expect(status.detail).toBe('The district will review it before it goes live.')
+  })
+
+  it('submitted without a date still says it was sent', () => {
+    const status = describeReview({ reviewState: 'submitted', submittedAt: null }, TZ)
+    expect(status.heading).toBe('Sent for approval')
+  })
+
+  it('submitted with an unparseable date falls back rather than printing "Invalid Date"', () => {
+    const status = describeReview({ reviewState: 'submitted', submittedAt: 'not a date' }, TZ)
+    expect(status.heading).toBe('Sent for approval')
+  })
+
+  it("changes requested carries the reviewer's note, trimmed, and what to do next", () => {
+    const status = describeReview(
+      { reviewState: 'changes-requested', reviewNote: '  The bus times are last year’s.  ' },
+      TZ,
+    )
+    expect(status.tone).toBe('action')
+    expect(status.heading).toBe('The district asked for changes')
+    expect(status.note).toBe('The bus times are last year’s.')
+    expect(status.detail).toBe('Make the changes, then send it for approval again.')
+  })
+
+  it('changes requested with no note omits it rather than showing an empty quote', () => {
+    // The hook refuses an empty note (`review-state.ts`), but this renders stored data and
+    // must not trust that every row was written through it.
+    const status = describeReview({ reviewState: 'changes-requested', reviewNote: '   ' }, TZ)
+    expect(status.note).toBeUndefined()
+  })
+
+  it('only changes requested carries a note', () => {
+    const status = describeReview(
+      { reviewState: 'submitted', reviewNote: 'left over', submittedAt: null },
+      TZ,
+    )
+    expect(status.note).toBeUndefined()
+  })
+
+  it('an unknown stored value reads as nothing pending, as the state machine does', () => {
+    expect(describeReview({ reviewState: 'approved' }, TZ)).toEqual(
+      describeReview({ reviewState: null }, TZ),
+    )
+  })
+
+  it('never uses the words draft, publish or collection (`04` §2.1)', () => {
+    const states = [null, 'editing', 'submitted', 'changes-requested'] as const
+    for (const reviewState of states) {
+      const status = describeReview(
+        { reviewState, reviewNote: 'Fix it.', submittedAt: '2026-10-21T15:00:00.000Z' },
+        TZ,
+      )
+      const text = [status.heading, status.detail].join(' ').toLowerCase()
+      expect(text).not.toMatch(/draft|publish|collection/)
+    }
+  })
+})

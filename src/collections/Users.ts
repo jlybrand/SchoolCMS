@@ -8,6 +8,7 @@ import {
   selfOrDistrictAdmin,
 } from '@/access/tenant-scoped'
 import { ROLES } from '@/access/types'
+import { missingSchool } from '@/access/user-school'
 
 /**
  * `users` — Payload auth collection (`03` §2).
@@ -53,6 +54,16 @@ export const Users: CollectionConfig = {
         if (result !== true)
           throw new ValidationError({ errors: [{ path: 'password', message: result }] })
 
+        return data
+      },
+      /**
+       * A school manager must have a school (`src/access/user-school.ts`). A hook, not a
+       * `validate` on the plugin-injected `tenants` field, so the REST and Local API paths are
+       * held to it too, and so it can see `roles` beside `tenants`.
+       */
+      ({ data, originalDoc }) => {
+        const message = missingSchool(data, originalDoc)
+        if (message) throw new ValidationError({ errors: [{ path: 'tenants', message }] })
         return data
       },
     ],
