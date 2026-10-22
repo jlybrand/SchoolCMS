@@ -14,6 +14,7 @@ import {
 } from '@/collections/hooks/page-slug'
 import { blockLibrary } from '@/collections/blocks'
 import { composedPagesAreDistrictOnly, publishGate } from '@/collections/hooks/publish-gate'
+import { applyReviewState } from '@/collections/hooks/review-state'
 import { isReservedSlug, slugify } from '@/lib/slug'
 
 /**
@@ -62,12 +63,23 @@ export const Pages: CollectionConfig = {
    * Drafts and versions (`03` §7). The same mechanism carries pending change requests in
    * Phase 4 — there is deliberately no second draft concept to maintain.
    *
-   * Autosave is OFF. With it on, an editor's in-progress typing becomes a version every few
-   * seconds, which buries the approval diff (`04` §4.2) in noise and makes "one click from
-   * an inline diff" impossible to hit.
+   * AUTOSAVE IS ON (`04` §2.3; Jason, 2026-10-21): a changed field saves itself as a draft, so
+   * nothing a school manager types is lost to a closed tab. It never publishes — the publish
+   * gate sees an ordinary draft write — and it never moves the review state: an autosave on a
+   * queued page leaves it queued (`src/access/review-state.ts`).
+   *
+   * It does not bury the approval diff. Payload updates the latest autosave version in place
+   * rather than adding one per keystroke, and the queue diffs the live page against the
+   * version the reviewer sees (`04` §4.2), not version against version.
+   *
+   * `validate: true` IS WHAT MAKES AUTOSAVE SAFE HERE. Without it, Payload's create view makes
+   * a page the moment it opens — before anyone types — so every abandoned "new page" left an
+   * untitled, slugless draft behind (measured: ~26 per e2e run). With it, a new page saves on
+   * its first explicit save and autosaves from then on, and no draft can exist without a
+   * title. The school plane's own "new page" flow is where that first save happens.
    */
   versions: {
-    drafts: { autosave: false },
+    drafts: { autosave: true, validate: true },
     maxPerDoc: 50,
   },
 
@@ -81,8 +93,11 @@ export const Pages: CollectionConfig = {
     /**
      * The hook half of two release-blocking gates. The access functions above are the other
      * half; see src/collections/hooks/publish-gate.ts for why one layer is not enough.
+     *
+     * `applyReviewState` runs LAST: by then a school manager's publishing write has already
+     * been refused, so the only publish it ever sees is a district admin's approve.
      */
-    beforeChange: [publishGate, composedPagesAreDistrictOnly],
+    beforeChange: [publishGate, composedPagesAreDistrictOnly, applyReviewState],
   },
 
   fields: [
@@ -278,6 +293,43 @@ export const Pages: CollectionConfig = {
         },
       ],
     },
+    /**
+     * REVIEW STATE (`04` §4.1). All four are owned by `applyReviewState`, which overwrites
+     * whatever a request sends for them — see `src/access/review-state.ts` for the
+     * transitions. Read-only here: the actions that move them ("Send for approval", approve,
+     * request changes) are the Phase 4 admin controls, not fields an editor types into.
+     *
+     * A `radio`, not a `select`: Payload's select fails the admin axe gate (an unnamed
+     * combobox input). No `defaultValue` — null is "nothing pending", and a default would
+     * put every district-authored page in a state nobody moved it to.
+     */
+    {
+      name: 'reviewState',
+      type: 'radio',
+      index: true,
+      label: 'Approval',
+      options: [
+        { label: 'Being edited', value: 'editing' },
+        { label: 'Waiting for approval', value: 'submitted' },
+        { label: 'Changes requested', value: 'changes-requested' },
+      ],
+      admin: { readOnly: true, position: 'sidebar' },
+    },
+    {
+      name: 'reviewNote',
+      type: 'textarea',
+      label: 'What needs to change',
+      admin: {
+        readOnly: true,
+        position: 'sidebar',
+        condition: (data: { reviewState?: unknown } | undefined) =>
+          data?.reviewState === 'changes-requested',
+      },
+    },
+    /** When the pending change was first sent — the queue's age and escalation (`04` §5). */
+    { name: 'submittedAt', type: 'date', index: true, admin: { hidden: true } },
+    /** Who sent it — who is told the outcome (`04` §4.5). */
+    { name: 'submittedBy', type: 'relationship', relationTo: 'users', admin: { hidden: true } },
     {
       name: 'requiresTranslationReview',
       type: 'checkbox',
