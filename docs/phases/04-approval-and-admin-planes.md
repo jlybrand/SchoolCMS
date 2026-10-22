@@ -9,8 +9,8 @@ Phase 4 lands across several PRs. This document is written as each one merges.
 | Slice                                          | State                |
 | ---------------------------------------------- | -------------------- |
 | Review state on `pages`                        | Merged (#26) — §1–§5 |
-| School plane: "Send for approval" on a page    | **This PR** — §6     |
-| School plane: task view, constrained new page  | —                    |
+| School plane: "Send for approval" on a page    | Merged (#27) — §6–§7 |
+| School plane: task view, constrained new page  | **This PR** — §8     |
 | District queue: inline diff, one-click approve | —                    |
 | Auto-approval grants (zero issued)             | —                    |
 | Request changes UI, notifications, escalation  | —                    |
@@ -201,3 +201,62 @@ Tests: `tests/unit/access/user-school.test.ts`, `tests/integration/user-school.t
 The isolation fixture `noTenantManager` (`tests/helpers/payload.ts`) is created with a school and
 its `users_tenants` row deleted in SQL, so the access functions are still proven to fail closed on
 a schoolless manager that predates the rule.
+
+## 8. The school plane's home screen and tasks
+
+### Files
+
+| File                                       | Holds                                                                                         |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| `src/admin/SchoolPlane/school-plane.ts`    | `SCHOOL_TASKS`, `SCHOOL_PAGE_TYPES`, `checkNewPage`, `explainCreateError`, `submissionStatus` |
+| `src/admin/SchoolPlane/school-data.ts`     | `listSchoolPages`, `listMySubmissions`, `listMySchools` (server reads)                        |
+| `src/admin/SchoolPlane/SchoolHome.tsx`     | `views.dashboard`                                                                             |
+| `src/admin/SchoolPlane/UpdatePageView.tsx` | `views.updatePage` at `/admin/update-page`                                                    |
+| `src/admin/SchoolPlane/NewPageView.tsx`    | `views.newPage` at `/admin/new-page`; renders `NewPageForm`                                   |
+| `src/admin/SchoolPlane/NewPageForm.tsx`    | The client form                                                                               |
+| `tests/unit/admin/school-plane.test.ts`    | The pure decisions                                                                            |
+| `tests/e2e/school-plane.spec.ts`           | The flows, both roles; axe on each view in both themes                                        |
+| `tests/e2e/support/fixture-pages.ts`       | Throwaway pages + the axe helper, shared with `send-for-approval.spec.ts`                     |
+
+Registered in `src/payload.config.ts` under `admin.components.views`.
+
+### Routing by role
+
+| Route                | `sendsForApproval` true       | false                        |
+| -------------------- | ----------------------------- | ---------------------------- |
+| `/admin`             | `SchoolHome` (`#school-home`) | Payload's `DefaultDashboard` |
+| `/admin/update-page` | page list (`#update-page`)    | `redirect('/admin')`         |
+| `/admin/new-page`    | new-page form (`#new-page`)   | `redirect('/admin')`         |
+
+### Reads
+
+All `payload.find` on `pages` run as the user (`overrideAccess: false`, `draft: true`), so the
+access functions are the only tenant filter.
+
+| Function            | Query                                                                                            |
+| ------------------- | ------------------------------------------------------------------------------------------------ |
+| `listSchoolPages`   | every readable page, by title, limit 200                                                         |
+| `listMySubmissions` | `submittedBy = user` and `reviewState in (submitted, changes-requested)`, newest first, limit 20 |
+| `listMySchools`     | the user's tenant ids -> names (`overrideAccess: true`, ids from the user)                       |
+
+### Create
+
+```
+NewPageForm submit
+  -> checkNewPage({ title, pageType, school, schools })   errors -> shown beside fields, focus first
+  -> POST /api/pages?draft=true  { title, pageType, tenant, _status: 'draft' }
+       slug derived by deriveSlugFromTitle; reviewState -> editing (applyReviewState)
+  -> 2xx: router.push(/admin/collections/pages/:id)
+  -> else: explainCreateError(body) in a role="alert" paragraph, focused
+```
+
+A school with one assignment is never asked for; with several, a radio group asks.
+
+### Not here yet
+
+- Tasks for posts, events, documents and photos join `SCHOOL_TASKS` with their modules (Phases 5–6).
+- "Your recent submissions" lists only pending items; _Published_ needs the audit trail.
+- Payload's own navigation (Pages, Users) still shows to school managers.
+- The slug field stays editable on the page form for school managers.
+- `uniqueSlugWithinParent` reads the `pages` table, so a slug changed by a later DRAFT save is not
+  checked against siblings until it is published.

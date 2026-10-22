@@ -1,0 +1,85 @@
+import AxeBuilder from '@axe-core/playwright'
+import {
+  expect,
+  request as playwrightRequest,
+  type APIRequestContext,
+  type Page,
+} from '@playwright/test'
+
+import { ADMIN_STORAGE_STATE } from './admin-session'
+import { SCHOOL_HOSTNAME, tenantIdFor } from './school-session'
+
+/**
+ * Throwaway pages for the school-plane specs, made by the district admin through the REST API
+ * and deleted after. A seeded page would carry review state and titles from one run into the
+ * next, and every school has the same seeded titles.
+ */
+
+export type FixturePage = { id: number; slug: string; title: string; admin: APIRequestContext }
+
+const unique = () => `${Date.now()}-${Math.floor(Math.random() * 1e6)}`
+
+export const makePage = async (
+  baseURL: string | undefined,
+  {
+    title = 'Field trip forms',
+    hostname = SCHOOL_HOSTNAME,
+    /** `null` leaves it out, so the slug hook derives it from the title as a real create does. */
+    slug = `e2e-${unique()}` as string | null,
+  } = {},
+): Promise<FixturePage> => {
+  const admin = await playwrightRequest.newContext({
+    ...(baseURL ? { baseURL } : {}),
+    storageState: ADMIN_STORAGE_STATE,
+  })
+  const tenant = await tenantIdFor(admin, hostname)
+  const res = await admin.post('/api/pages?draft=true&depth=0', {
+    data: {
+      title,
+      ...(slug === null ? {} : { slug }),
+      tenant,
+      pageType: 'standard',
+      _status: 'draft',
+    },
+  })
+  expect(res.ok(), `create fixture page: ${res.status()} ${await res.text()}`).toBe(true)
+  const doc = (await res.json()).doc as { id: number; slug: string }
+  return { id: doc.id, slug: doc.slug, title, admin }
+}
+
+export const dropPage = async ({ id, admin }: FixturePage) => {
+  await admin.delete(`/api/pages/${id}`)
+  await admin.dispose()
+}
+
+/** A title no other page has, for specs that look a page up by its title. */
+export const uniqueTitle = (base: string) => `${base} ${unique()}`
+
+/** The edit form of a page, once its title field is usable. */
+export const openPage = async (page: Page, id: number | string) => {
+  await page.goto(`/admin/collections/pages/${id}`)
+  await expect(page.locator('#field-title')).toBeEditable({ timeout: 20_000 })
+}
+
+const BLOCKING_IMPACTS = ['critical', 'serious']
+
+/** Zero critical/serious axe violations inside `selector` (CLAUDE.md rule 6). */
+export const expectNoBlockingViolations = async (page: Page, selector: string) => {
+  const results = await new AxeBuilder({ page })
+    .include(selector)
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze()
+  const blocking = results.violations.filter((v) => BLOCKING_IMPACTS.includes(v.impact ?? ''))
+  expect(
+    blocking,
+    `Blocking a11y violations in ${selector}:\n${blocking
+      .map(
+        (v) =>
+          `  [${v.impact}] ${v.id}: ${v.help}\n` +
+          v.nodes
+            .map((n) => `      ${n.html.slice(0, 160)}\n      ${n.any[0]?.message ?? ''}`)
+            .join('\n'),
+      )
+      .join('\n')}`,
+  ).toEqual([])
+}
