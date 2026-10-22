@@ -16,7 +16,9 @@ import {
 } from '@/collections/hooks/page-slug'
 import { blockLibrary } from '@/collections/blocks'
 import { composedPagesAreDistrictOnly, publishGate } from '@/collections/hooks/publish-gate'
+import { approvePageEndpoint } from '@/collections/endpoints/approve-page'
 import { applyReviewState } from '@/collections/hooks/review-state'
+import { makeRevalidateOnPublish, tenantHostname } from '@/collections/hooks/revalidate-on-publish'
 import { isReservedSlug, slugify } from '@/lib/slug'
 
 /**
@@ -112,7 +114,24 @@ export const Pages: CollectionConfig = {
      * been refused, so the only publish it ever sees is a district admin's approve.
      */
     beforeChange: [publishGate, composedPagesAreDistrictOnly, applyReviewState],
+    /**
+     * A publish goes live in seconds, not at the next hourly ISR (`05` Phase 4 exit). Next's
+     * `revalidatePath` is imported lazily: this config also loads outside Next (the seed, the
+     * integration suite), where the hook logs and moves on.
+     */
+    afterChange: [
+      makeRevalidateOnPublish({
+        revalidate: async (path, type) => {
+          const { revalidatePath } = await import('next/cache')
+          revalidatePath(path, type)
+        },
+        hostnameFor: tenantHostname,
+      }),
+    ],
   },
+
+  /** The approval queue's one click — see the file for why it is not a plain PATCH. */
+  endpoints: [approvePageEndpoint],
 
   fields: [
     {
