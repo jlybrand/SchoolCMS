@@ -19,6 +19,9 @@ import { SchoolSaveDraftButton as SchoolSaveDraftButton_cc7b83310c556ae98b1d66c9
 import { GlobalViewRedirect as GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
 import { TenantSelector as TenantSelector_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
 import { TenantSelectionProvider as TenantSelectionProvider_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
+import { SchoolHome as SchoolHome_3f48be60e82e2641c0b863afd982fe58 } from '../../../admin/SchoolPlane/SchoolHome'
+import { UpdatePageView as UpdatePageView_0f1d98940f2489de43ebc550e3e4a561 } from '../../../admin/SchoolPlane/UpdatePageView'
+import { NewPageView as NewPageView_75d5b0676850069cc52fd8659e0483db } from '../../../admin/SchoolPlane/NewPageView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
 /** @type import('payload').ImportMap */
@@ -44,5 +47,8 @@ export const importMap = {
   "@payloadcms/plugin-multi-tenant/rsc#GlobalViewRedirect": GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62,
   "@payloadcms/plugin-multi-tenant/rsc#TenantSelector": TenantSelector_d6d5f193a167989e2ee7d14202901e62,
   "@payloadcms/plugin-multi-tenant/rsc#TenantSelectionProvider": TenantSelectionProvider_d6d5f193a167989e2ee7d14202901e62,
+  "/admin/SchoolPlane/SchoolHome#SchoolHome": SchoolHome_3f48be60e82e2641c0b863afd982fe58,
+  "/admin/SchoolPlane/UpdatePageView#UpdatePageView": UpdatePageView_0f1d98940f2489de43ebc550e3e4a561,
+  "/admin/SchoolPlane/NewPageView#NewPageView": NewPageView_75d5b0676850069cc52fd8659e0483db,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }

@@ -1,13 +1,14 @@
-import AxeBuilder from '@axe-core/playwright'
-import {
-  expect,
-  request as playwrightRequest,
-  type APIRequestContext,
-  type Page,
-} from '@playwright/test'
+import { expect } from '@playwright/test'
 
-import { ADMIN_STORAGE_STATE, adminCredentials, adminTest } from './support/admin-session'
-import { SCHOOL_HOSTNAME, schoolTest as test, tenantIdFor } from './support/school-session'
+import { adminCredentials, adminTest } from './support/admin-session'
+import {
+  dropPage,
+  expectNoBlockingViolations,
+  makePage,
+  openPage,
+  type FixturePage as Fixture,
+} from './support/fixture-pages'
+import { SCHOOL_HOSTNAME, schoolTest as test } from './support/school-session'
 
 /**
  * The school plane's one button (`04` §2.3).
@@ -23,58 +24,11 @@ import { SCHOOL_HOSTNAME, schoolTest as test, tenantIdFor } from './support/scho
  */
 
 const credentials = adminCredentials()
-const BLOCKING_IMPACTS = ['critical', 'serious']
 const SEND = { name: 'Send for approval' }
-
-type Fixture = { id: number; slug: string; admin: APIRequestContext }
-
-const makePage = async (baseURL: string | undefined): Promise<Fixture> => {
-  const admin = await playwrightRequest.newContext({
-    ...(baseURL ? { baseURL } : {}),
-    storageState: ADMIN_STORAGE_STATE,
-  })
-  const tenant = await tenantIdFor(admin, SCHOOL_HOSTNAME)
-  const slug = `e2e-send-${Date.now()}-${Math.floor(Math.random() * 1e6)}`
-  const res = await admin.post('/api/pages?draft=true&depth=0', {
-    data: { title: 'Field trip forms', slug, tenant, pageType: 'standard', _status: 'draft' },
-  })
-  expect(res.ok(), `create fixture page: ${res.status()} ${await res.text()}`).toBe(true)
-  return { id: (await res.json()).doc.id as number, slug, admin }
-}
-
-const dropPage = async ({ id, admin }: Fixture) => {
-  await admin.delete(`/api/pages/${id}`)
-  await admin.dispose()
-}
 
 const latestDraft = async ({ id, admin }: Fixture) => {
   const res = await admin.get(`/api/pages/${id}?draft=true&depth=0`)
   return (await res.json()) as { reviewState: string | null; _status: string; title: string }
-}
-
-const openPage = async (page: Page, id: number) => {
-  await page.goto(`/admin/collections/pages/${id}`)
-  await expect(page.locator('#field-title')).toBeEditable({ timeout: 20_000 })
-}
-
-const expectNoBlockingViolations = async (page: Page, selector: string) => {
-  const results = await new AxeBuilder({ page })
-    .include(selector)
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze()
-  const blocking = results.violations.filter((v) => BLOCKING_IMPACTS.includes(v.impact ?? ''))
-  expect(
-    blocking,
-    `Blocking a11y violations in ${selector}:\n${blocking
-      .map(
-        (v) =>
-          `  [${v.impact}] ${v.id}: ${v.help}\n` +
-          v.nodes
-            .map((n) => `      ${n.html.slice(0, 160)}\n      ${n.any[0]?.message ?? ''}`)
-            .join('\n'),
-      )
-      .join('\n')}`,
-  ).toEqual([])
 }
 
 test.describe('send for approval — school manager', () => {

@@ -27,6 +27,24 @@ export default buildConfig({
   admin: {
     user: Users.slug,
     importMap: { baseDir: path.resolve(dirname) },
+    /**
+     * The school plane (`04` §2.2): a task-shaped home screen and two task views. The home
+     * screen renders Payload's own dashboard for anyone who is not a school manager; the two
+     * views send anyone else back to it. See src/admin/SchoolPlane/.
+     */
+    components: {
+      views: {
+        dashboard: { Component: '/admin/SchoolPlane/SchoolHome#SchoolHome' },
+        updatePage: {
+          Component: '/admin/SchoolPlane/UpdatePageView#UpdatePageView',
+          path: '/update-page',
+        },
+        newPage: {
+          Component: '/admin/SchoolPlane/NewPageView#NewPageView',
+          path: '/new-page',
+        },
+      },
+    },
   },
 
   collections: [Tenants, Users, Pages, Navigation, Theme, Settings],
