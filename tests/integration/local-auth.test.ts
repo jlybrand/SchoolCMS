@@ -75,6 +75,8 @@ describe('password policy is enforced on the API, not just the form', () => {
           email: `weak-${Math.abs(hash(password))}@test.local`,
           password,
           roles: ['school-manager'],
+          // A school, so the only thing under test is the password (`user-school.ts`).
+          tenants: [{ tenant: f.tenantA }],
         },
         overrideAccess: true,
       }),
@@ -89,6 +91,7 @@ describe('password policy is enforced on the API, not just the form', () => {
         email: 'compliant@test.local',
         password: 'quiet-lantern-37',
         roles: ['school-manager'],
+        tenants: [{ tenant: f.tenantA }],
       },
       overrideAccess: true,
     })
