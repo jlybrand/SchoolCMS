@@ -7,7 +7,7 @@ import {
 } from '@playwright/test'
 
 import { ADMIN_STORAGE_STATE } from './admin-session'
-import { SCHOOL_HOSTNAME, tenantIdFor } from './school-session'
+import { SCHOOL_HOSTNAME, SCHOOL_STORAGE_STATE, tenantIdFor } from './school-session'
 
 /**
  * Throwaway pages for the school-plane specs, made by the district admin through the REST API
@@ -83,3 +83,10 @@ export const expectNoBlockingViolations = async (page: Page, selector: string) =
       .join('\n')}`,
   ).toEqual([])
 }
+
+/** An API context signed in as the School A manager — for writes the district cannot make. */
+export const schoolRequest = (baseURL: string | undefined) =>
+  playwrightRequest.newContext({
+    ...(baseURL ? { baseURL } : {}),
+    storageState: SCHOOL_STORAGE_STATE,
+  })

@@ -43,7 +43,14 @@ export default buildConfig({
           Component: '/admin/SchoolPlane/NewPageView#NewPageView',
           path: '/new-page',
         },
+        /** The district's approval queue (`04` §4.2). See src/admin/Approvals/. */
+        approvals: {
+          Component: '/admin/Approvals/ApprovalsView#ApprovalsView',
+          path: '/approvals',
+        },
       },
+      beforeDashboard: ['/admin/Approvals/WaitingBanner#WaitingBanner'],
+      afterNavLinks: ['/admin/Approvals/ApprovalsNavLink#ApprovalsNavLink'],
     },
   },
 

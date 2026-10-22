@@ -17,11 +17,14 @@ import { AssignTenantFieldTrigger as AssignTenantFieldTrigger_1d0591e3cf4f332c83
 import { SendForApprovalButton as SendForApprovalButton_04ce333b331daae73b75fc6274c29e3a } from '../../../admin/SendForApproval/SendForApprovalButton'
 import { SchoolSaveDraftButton as SchoolSaveDraftButton_cc7b83310c556ae98b1d66c9fab1fdc1 } from '../../../admin/SendForApproval/SchoolSaveDraftButton'
 import { GlobalViewRedirect as GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
+import { ApprovalsNavLink as ApprovalsNavLink_50736d5f53ca3024920ebd70347f12c2 } from '../../../admin/Approvals/ApprovalsNavLink'
+import { WaitingBanner as WaitingBanner_e51af2c63d800fe378f9f84cfaf25672 } from '../../../admin/Approvals/WaitingBanner'
 import { TenantSelector as TenantSelector_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
 import { TenantSelectionProvider as TenantSelectionProvider_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
 import { SchoolHome as SchoolHome_3f48be60e82e2641c0b863afd982fe58 } from '../../../admin/SchoolPlane/SchoolHome'
 import { UpdatePageView as UpdatePageView_0f1d98940f2489de43ebc550e3e4a561 } from '../../../admin/SchoolPlane/UpdatePageView'
 import { NewPageView as NewPageView_75d5b0676850069cc52fd8659e0483db } from '../../../admin/SchoolPlane/NewPageView'
+import { ApprovalsView as ApprovalsView_24670674c7de4661a804a1c4ad51ba6b } from '../../../admin/Approvals/ApprovalsView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
 /** @type import('payload').ImportMap */
@@ -45,10 +48,13 @@ export const importMap = {
   "/admin/SendForApproval/SendForApprovalButton#SendForApprovalButton": SendForApprovalButton_04ce333b331daae73b75fc6274c29e3a,
   "/admin/SendForApproval/SchoolSaveDraftButton#SchoolSaveDraftButton": SchoolSaveDraftButton_cc7b83310c556ae98b1d66c9fab1fdc1,
   "@payloadcms/plugin-multi-tenant/rsc#GlobalViewRedirect": GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62,
+  "/admin/Approvals/ApprovalsNavLink#ApprovalsNavLink": ApprovalsNavLink_50736d5f53ca3024920ebd70347f12c2,
+  "/admin/Approvals/WaitingBanner#WaitingBanner": WaitingBanner_e51af2c63d800fe378f9f84cfaf25672,
   "@payloadcms/plugin-multi-tenant/rsc#TenantSelector": TenantSelector_d6d5f193a167989e2ee7d14202901e62,
   "@payloadcms/plugin-multi-tenant/rsc#TenantSelectionProvider": TenantSelectionProvider_d6d5f193a167989e2ee7d14202901e62,
   "/admin/SchoolPlane/SchoolHome#SchoolHome": SchoolHome_3f48be60e82e2641c0b863afd982fe58,
   "/admin/SchoolPlane/UpdatePageView#UpdatePageView": UpdatePageView_0f1d98940f2489de43ebc550e3e4a561,
   "/admin/SchoolPlane/NewPageView#NewPageView": NewPageView_75d5b0676850069cc52fd8659e0483db,
+  "/admin/Approvals/ApprovalsView#ApprovalsView": ApprovalsView_24670674c7de4661a804a1c4ad51ba6b,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }
