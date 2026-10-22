@@ -13,3 +13,17 @@
 .doc-controls:has(#action-send-for-approval) .status {
   display: none;
 }
+
+/**
+ * "Revert to published" on a page WAITING for approval, for the district (`04` §4.4: "No
+ * submission is ever discarded by the reviewer"). Reverting would replace the school's
+ * submission with the live page and clear its review state; the queue's "Request changes" is
+ * the way to send it back.
+ *
+ * Keyed to the queue link, which `publishControlFor` gives a district admin only on a waiting
+ * page. `tests/e2e/approval-queue.spec.ts` asserts the button is gone, so a Payload bump that
+ * renames the id fails there.
+ */
+.doc-controls:has(#action-review-in-queue) #action-revert-to-published {
+  display: none;
+}

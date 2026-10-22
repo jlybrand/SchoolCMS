@@ -124,7 +124,14 @@ export const ApprovalItem = ({ item }: { item: QueueItem }) => {
   }
 
   return (
-    <article aria-labelledby={titleId} className={styles.item} data-overdue={item.wait.overdue}>
+    <article
+      aria-labelledby={titleId}
+      className={styles.item}
+      data-overdue={item.wait.overdue}
+      // The target of "Review in the approval queue" on the page form.
+      id={`approval-${String(item.id)}`}
+      tabIndex={-1}
+    >
       <header className={styles.itemHeader}>
         <h2 className={styles.itemTitle} id={titleId}>
           {item.title}

@@ -154,6 +154,53 @@ test.describe('approval queue — district admin', () => {
     }
   })
 
+  test('@smoke a waiting page offers the queue, not Publish, on its own form', async ({
+    page,
+    baseURL,
+  }) => {
+    const sent = await publishedThenSent(baseURL)
+    try {
+      await page.goto(`/admin/collections/pages/${sent.id}`)
+      const controls = page.locator('.doc-controls')
+      const toQueue = controls.getByRole('link', { name: 'Review in the approval queue' })
+      await expect(toQueue).toBeVisible({ timeout: 20_000 })
+      // Neither Publish nor "Revert to published": both would replace the school's submission.
+      await expect(controls.getByRole('button', { name: /publish/i })).toHaveCount(0)
+
+      for (const colorScheme of ['light', 'dark'] as const) {
+        await page.emulateMedia({ colorScheme })
+        await expectNoBlockingViolations(page, '#action-review-in-queue')
+      }
+
+      await toQueue.click()
+      await expect(page).toHaveURL(new RegExp(`/admin/approvals#approval-${sent.id}$`))
+      await expect(page.getByRole('article', { name: sent.newTitle })).toBeVisible({
+        timeout: 20_000,
+      })
+    } finally {
+      await drop(sent)
+    }
+  })
+
+  test("a page that is not waiting keeps Payload's Publish for the district", async ({
+    page,
+    baseURL,
+  }) => {
+    const fixture = await makePage(baseURL, { title: uniqueTitle('Not waiting') })
+    try {
+      await page.goto(`/admin/collections/pages/${fixture.id}`)
+      const controls = page.locator('.doc-controls')
+      await expect(controls.getByRole('button', { name: /publish/i }).first()).toBeVisible({
+        timeout: 20_000,
+      })
+      await expect(
+        controls.getByRole('link', { name: 'Review in the approval queue' }),
+      ).toHaveCount(0)
+    } finally {
+      await dropPage(fixture)
+    }
+  })
+
   test('@smoke the dashboard says how many are waiting and links to the queue', async ({
     page,
   }) => {
