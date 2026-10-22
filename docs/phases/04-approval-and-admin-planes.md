@@ -97,8 +97,8 @@ apart from a resend, and both keep it queued.
 
 ### Not here yet
 
-- Approve publishes the latest draft. Publishing **the version the reviewer saw** is the queue's
-  job (§ queue, when it lands).
+- Approve through the queue publishes **the version the reviewer saw** (§9). A plain publishing
+  write (Payload's own Publish button) still publishes the latest draft.
 - The district's actions (approve, request changes) have no UI yet; the school's button is §6.
 - A brand-new page does not autosave before its first save (§5).
 
@@ -260,3 +260,93 @@ A school with one assignment is never asked for; with several, a radio group ask
 - The slug field stays editable on the page form for school managers.
 - `uniqueSlugWithinParent` reads the `pages` table, so a slug changed by a later DRAFT save is not
   checked against siblings until it is published.
+
+## 9. The district approval queue
+
+### Files
+
+| File                                             | Holds                                                                     |
+| ------------------------------------------------ | ------------------------------------------------------------------------- |
+| `src/access/approval.ts`                         | `checkApproval`, `VersionToken` (pure)                                    |
+| `src/collections/endpoints/approve-page.ts`      | `approvePage`, `latestVersion`, `approvePageEndpoint`, `APPROVE_MESSAGES` |
+| `src/collections/hooks/revalidate-on-publish.ts` | `makeRevalidateOnPublish`, `tenantSitePath`, `tenantHostname`             |
+| `src/admin/Approvals/page-diff.ts`               | `diffPage` (pure)                                                         |
+| `src/admin/Approvals/queue-age.ts`               | `describeWait`, `businessDaysBetween`, `OVERDUE_BUSINESS_DAYS = 3`        |
+| `src/admin/Approvals/request-changes.ts`         | `checkNote` (pure)                                                        |
+| `src/admin/Approvals/queue-data.ts`              | `loadQueue`, `countWaiting`                                               |
+| `src/admin/Approvals/ApprovalsView.tsx`          | `views.approvals` at `/admin/approvals`                                   |
+| `src/admin/Approvals/ApprovalItem.tsx`           | One item: diff, approve, request changes                                  |
+| `src/admin/Approvals/PageDiffView.tsx`           | Renders a `PageDiff`                                                      |
+| `src/admin/Approvals/WaitingBanner.tsx`          | `beforeDashboard` — count + link, district only                           |
+| `src/admin/Approvals/ApprovalsNavLink.tsx`       | `afterNavLinks` — "Approvals", district only                              |
+
+Tests: `tests/unit/access/approval.test.ts`, `tests/unit/admin/{page-diff,queue-age,request-changes}.test.ts`,
+`tests/unit/access/revalidate-on-publish.test.ts`, `tests/integration/approve-page.test.ts`,
+`tests/e2e/approval-queue.spec.ts`.
+
+Changed: `src/collections/Pages.ts` (`afterChange`, `endpoints`), `src/payload.config.ts` (view,
+`beforeDashboard`, `afterNavLinks`), `src/admin/SchoolPlane/NewPageForm.tsx` (focus in an effect).
+
+### Load
+
+```
+ApprovalsView (district only; else redirect /admin)
+  -> loadQueue(req)
+       find pages  reviewState = submitted, draft: true, sort submittedAt, limit 50, as the user
+       per page:  latestVersion()            findVersions parent = id, sort -updatedAt, limit 1
+                  findByID draft: false      the main row; live iff _status = published
+                                             (disableErrors: a page deleted mid-load is skipped)
+       names:     tenants, users (submittedBy), parent pages — one find each
+  -> QueueItem { title, school, submitter, wait, diff = diffPage(live, version), token }
+```
+
+### Approve
+
+```
+ApprovalItem "Approve and publish"
+  -> POST /api/pages/:id/approve   body = token { versionId, updatedAt }
+  -> approvePage(req, id, token)
+       not district-admin            -> 403 forbidden   (before any read)
+       latestVersion() missing       -> 404 not-found
+       checkApproval:
+         reviewState != submitted    -> 409 not-waiting
+         token != latest (id AND updatedAt) -> 409 changed
+       payload.update(id, { ...version content, _status: 'published' }, as the reviewer)
+         -> pagesUpdateAccess, publishGate, applyReviewState (clears), revalidateOnPublish
+  -> 200 { ok: true }
+```
+
+`updatedAt` is in the token because autosave rewrites the latest version in place (same id).
+
+### Request changes
+
+`checkNote` in the browser, then `PATCH /api/pages/:id?draft=true { reviewState: 'changes-requested',
+reviewNote }` — the transition in §3.
+
+### Revalidation
+
+`afterChange` on `pages`: when `doc._status === 'published'`, `revalidatePath('/sites/{hostname}',
+'layout')` for the owning tenant. Draft saves do nothing. Errors are logged and never fail the
+write; "static generation store missing" (outside Next) logs at debug.
+
+### Diff
+
+| Field              | Label                         | Shown as                                    |
+| ------------------ | ----------------------------- | ------------------------------------------- |
+| `title`            | Title                         | text                                        |
+| `slug`             | Address                       | `/slug`                                     |
+| `pageType`         | Page type                     | option label                                |
+| `visibility`       | Who can see it                | Anyone / Staff only                         |
+| `parent`           | Placed under                  | parent title, or Top of the site            |
+| `meta.title`       | Title in search results       | text                                        |
+| `meta.description` | Description in search results | text                                        |
+| `body`             | —                             | block LCS: added / removed, unchanged count |
+
+A never-published page diffs as new: the first five always, `meta` when set, every body block added.
+
+### Not here yet
+
+- Emails (submitter on outcome; district digest and overdue alert) — the notifications slice.
+- "Waiting too long" is shown; nothing is sent when it happens.
+- Cloudflare purge on publish (`09` §4.2).
+- The queue lists `pages` only; posts and events join with their modules.
