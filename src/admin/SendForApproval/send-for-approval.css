@@ -1,0 +1,15 @@
+/**
+ * Hides Payload's document status ("Draft" / "Published" / "Changed — Revert to published")
+ * from a school manager (`04` §2.1). They see `ReviewStatusField` at the top of the form
+ * instead, and "Revert to published" is a publishing write their access refuses anyway.
+ *
+ * Keyed to the Send for approval button, which only a school manager is given
+ * (`SendForApprovalButton.tsx`), because the status sits in Payload's header and no slot can
+ * hide it for one role while leaving it for the other — see `ReviewStatusField.tsx`.
+ *
+ * Global, not a CSS module: both classes are Payload's. If a Payload bump renames them the
+ * status comes back, and `tests/e2e/send-for-approval.spec.ts` fails on the word "draft".
+ */
+.doc-controls:has(#action-send-for-approval) .status {
+  display: none;
+}
