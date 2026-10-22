@@ -2,7 +2,7 @@
 
 import { useConfig } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation'
-import { useId, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 
 import type { SchoolOption } from './school-data'
 import { checkNewPage, explainCreateError, SCHOOL_PAGE_TYPES } from './school-plane'
@@ -84,9 +84,13 @@ export const NewPageForm = ({ schools }: { schools: readonly SchoolOption[] }) =
       setFailure(explainCreateError(null))
     }
     setBusy(false)
-    // After the paint that shows it, so the message is what focus lands on.
-    requestAnimationFrame(() => failureRef.current?.focus())
   }
+
+  // After React renders the message, so it is what focus lands on. (A next-frame focus raced
+  // the commit under load.)
+  useEffect(() => {
+    if (failure) failureRef.current?.focus()
+  }, [failure])
 
   const invalid = (field: Field) =>
     errors[field] ? { 'aria-invalid': true, 'aria-describedby': errorId(field) } : {}
