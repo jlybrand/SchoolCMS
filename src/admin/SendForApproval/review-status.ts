@@ -17,6 +17,29 @@ import type { AuthUser } from '@/access/types'
 export const sendsForApproval = (user: AuthUser | null | undefined): boolean =>
   isSchoolManager(user) && !isDistrictAdmin(user)
 
+export type PublishControl = 'send' | 'queue' | 'publish'
+
+/**
+ * What fills Payload's Publish slot on a page form.
+ *
+ * - `send` — a school manager's one button (`04` §2.3).
+ * - `queue` — a district admin on a page WAITING for approval: a link to its place in the
+ *   approval queue instead of Publish. Payload's Publish sends the form as loaded; if the school
+ *   saved again since, it would overwrite that edit and clear the review state, so the school's
+ *   change would vanish from their editor without a word. The queue's approve refuses that case
+ *   (`src/access/approval.ts`). One approval path, one version check.
+ * - `publish` — Payload's own Publish, for everything else. It renders nothing for a user without
+ *   publish permission, so the sync account gets no control at all.
+ */
+export const publishControlFor = (
+  user: AuthUser | null | undefined,
+  reviewState: unknown,
+): PublishControl => {
+  if (sendsForApproval(user)) return 'send'
+  if (isDistrictAdmin(user) && reviewState === 'submitted') return 'queue'
+  return 'publish'
+}
+
 export type ReviewStatus = {
   /** `idle` nothing pending, `waiting` in the queue, `action` the school has something to do. */
   tone: 'idle' | 'waiting' | 'action'

@@ -7,14 +7,16 @@ import {
   useConfig,
   useDocumentInfo,
   useForm,
+  useFormFields,
   useLocale,
 } from '@payloadcms/ui'
+import Link from 'next/link'
 import { formatAdminURL } from 'payload/shared'
 import { useCallback } from 'react'
 
 import type { AuthUser } from '@/access/types'
 
-import { sendsForApproval } from './review-status'
+import { publishControlFor } from './review-status'
 import './send-for-approval.css'
 
 /** `04` §2.3 fixes this wording. Not "Save", not "Publish", not "Save draft". */
@@ -23,10 +25,10 @@ export const SEND_FOR_APPROVAL = 'Send for approval'
 /**
  * Fills Payload's `PublishButton` slot on `pages` (`04` §2.3).
  *
- * A district admin gets Payload's own Publish button, untouched. A school manager gets the one
- * button — and would otherwise get NOTHING: Payload's PublishButton renders null without
- * publish permission, and with autosave on there is no Save draft button either, so before
- * this the school form had no submit control at all.
+ * Which control goes here is `publishControlFor`: a school manager gets the one button — and
+ * would otherwise get NOTHING, since Payload's PublishButton renders null without publish
+ * permission and autosave hides Save draft. A district admin gets Payload's own Publish, except
+ * on a page waiting for approval, where they get a link to it in the approval queue.
  *
  * WHAT IT SENDS. A draft save with `reviewState: 'submitted'` — the same request Payload's
  * Save draft makes, plus the one field. `applyReviewState` decides what that write means
@@ -42,8 +44,29 @@ export const SEND_FOR_APPROVAL = 'Send for approval'
  */
 export const SendForApprovalButton = () => {
   const { user } = useAuth()
-  if (!sendsForApproval(user as AuthUser | null)) return <PublishButton />
-  return <SendButton />
+  const reviewState = useFormFields(([fields]) => fields.reviewState?.value)
+  const control = publishControlFor(user as AuthUser | null, reviewState)
+  if (control === 'send') return <SendButton />
+  if (control === 'queue') return <ReviewInQueue />
+  return <PublishButton />
+}
+
+/**
+ * In place of Publish on a page waiting for approval — see `publishControlFor`. A link, not a
+ * disabled button: it says where approving happens and takes the reviewer there, to this page's
+ * own entry.
+ */
+const ReviewInQueue = () => {
+  const { id } = useDocumentInfo()
+  return (
+    <Link
+      className="btn btn--style-primary btn--size-medium"
+      href={`/admin/approvals#approval-${String(id)}`}
+      id="action-review-in-queue"
+    >
+      Review in the approval queue
+    </Link>
+  )
 }
 
 const SendButton = () => {

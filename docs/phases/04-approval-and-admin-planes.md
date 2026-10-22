@@ -97,8 +97,8 @@ apart from a resend, and both keep it queued.
 
 ### Not here yet
 
-- Approve through the queue publishes **the version the reviewer saw** (§9). A plain publishing
-  write (Payload's own Publish button) still publishes the latest draft.
+- Approve through the queue publishes **the version the reviewer saw** (§9). On a waiting page the
+  page form offers no Publish (§10); a publishing write through the API is not version-checked.
 - The district's actions (approve, request changes) have no UI yet; the school's button is §6.
 - A brand-new page does not autosave before its first save (§5).
 
@@ -350,3 +350,24 @@ A never-published page diffs as new: the first five always, `meta` when set, eve
 - "Waiting too long" is shown; nothing is sent when it happens.
 - Cloudflare purge on publish (`09` §4.2).
 - The queue lists `pages` only; posts and events join with their modules.
+
+## 10. The Publish slot on a waiting page
+
+`publishControlFor(user, reviewState)` in `src/admin/SendForApproval/review-status.ts` decides what
+`SendForApprovalButton` renders in Payload's `PublishButton` slot.
+
+| User                           | `reviewState` | Renders                                                                 |
+| ------------------------------ | ------------- | ----------------------------------------------------------------------- |
+| school manager                 | any           | "Send for approval"                                                     |
+| district admin (or both roles) | `submitted`   | link "Review in the approval queue" -> `/admin/approvals#approval-{id}` |
+| district admin                 | anything else | Payload's `PublishButton`                                               |
+| anyone else                    | any           | Payload's `PublishButton` (renders nothing without permission)          |
+
+`reviewState` is read from the form, so the control follows the page as it is loaded.
+
+When the queue link is present, `send-for-approval.css` also hides Payload's "Revert to published"
+(`#action-revert-to-published`): reverting would replace the school's submission (`04` §4.4).
+
+Each queue item is an `<article id="approval-{id}" tabindex="-1">`, the link's target.
+
+UI only. A district admin's direct REST publish is not version-checked; the queue's endpoint is.

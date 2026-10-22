@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { describeReview, sendsForApproval } from '@/admin/SendForApproval/review-status'
+import {
+  describeReview,
+  publishControlFor,
+  sendsForApproval,
+} from '@/admin/SendForApproval/review-status'
 import type { AuthUser } from '@/access/types'
 
 /**
@@ -117,5 +121,27 @@ describe('describeReview — the status line in place of Draft / Published', () 
       const text = [status.heading, status.detail].join(' ').toLowerCase()
       expect(text).not.toMatch(/draft|publish|collection/)
     }
+  })
+})
+
+describe('publishControlFor — which control fills the Publish slot', () => {
+  it.each([
+    // The school's one button, whatever the state.
+    ['a school manager, nothing pending', manager, null, 'send'],
+    ['a school manager, already sent', manager, 'submitted', 'send'],
+    ['a school manager, sent back', manager, 'changes-requested', 'send'],
+    // A page waiting for approval is approved in the queue, with its version check — never by
+    // Payload's Publish, which would overwrite a later save by the school without a word.
+    ['a district admin, page waiting', districtAdmin, 'submitted', 'queue'],
+    ['a user holding both roles, page waiting', both, 'submitted', 'queue'],
+    // Anything else, the district publishes directly (`04` §1).
+    ['a district admin, nothing pending', districtAdmin, null, 'publish'],
+    ['a district admin, being edited', districtAdmin, 'editing', 'publish'],
+    ['a district admin, sent back', districtAdmin, 'changes-requested', 'publish'],
+    ['a district admin, unknown state', districtAdmin, 'approved', 'publish'],
+    ['the sync account, page waiting', sync, 'submitted', 'publish'],
+    ['no user', null, 'submitted', 'publish'],
+  ] as const)('%s → %s', (_label, user, reviewState, expected) => {
+    expect(publishControlFor(user, reviewState)).toBe(expected)
   })
 })
