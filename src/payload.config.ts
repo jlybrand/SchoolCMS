@@ -14,6 +14,7 @@ import { Settings } from './collections/Settings'
 import { Tenants } from './collections/Tenants'
 import { Theme } from './collections/Theme'
 import { Users } from './collections/Users'
+import { districtDigestTask } from './jobs/district-digest'
 import { constrainedEditor } from './lib/editor'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -134,6 +135,37 @@ export default buildConfig({
         }),
       }
     : {}),
+  /**
+   * Payload's jobs queue (`02` §2: "Payload admin + REST/GraphQL + jobs") — the district's
+   * daily digest and overdue alert (`src/jobs/district-digest.ts`).
+   *
+   * `autoRun` every five minutes queues each task's next scheduled run and runs what is due.
+   * It only starts in a process that calls `getPayload({ cron: true })`; `src/instrumentation.ts`
+   * does that at server start, so a restart overnight cannot silently skip a morning.
+   *
+   * ACCESS IS DISTRICT-ONLY. Payload's defaults are wide open: the run endpoint falls back to
+   * `() => true` (anyone, signed in or not) and the `payload-jobs` collection to "any signed-in
+   * user". The runner itself bypasses both, so closing them costs the scheduler nothing.
+   * Proven in tests/integration/tenant-isolation.test.ts.
+   */
+  jobs: {
+    tasks: [districtDigestTask],
+    autoRun: [{ cron: '*/5 * * * *', queue: 'default' }],
+    access: {
+      run: ({ req }) => isDistrictAdmin(req.user as AuthUser | null),
+      queue: ({ req }) => isDistrictAdmin(req.user as AuthUser | null),
+      cancel: ({ req }) => isDistrictAdmin(req.user as AuthUser | null),
+    },
+    jobsCollectionOverrides: ({ defaultJobsCollection }) => ({
+      ...defaultJobsCollection,
+      access: {
+        read: ({ req }) => isDistrictAdmin(req.user as AuthUser | null),
+        create: () => false,
+        update: () => false,
+        delete: () => false,
+      },
+    }),
+  },
   typescript: { outputFile: path.resolve(dirname, 'payload-types.ts') },
 
   // Generated migrations are reviewed and applied as a guarded, reversible step;

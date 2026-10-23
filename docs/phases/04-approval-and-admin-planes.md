@@ -10,10 +10,12 @@ Phase 4 lands across several PRs. This document is written as each one merges.
 | ---------------------------------------------- | -------------------- |
 | Review state on `pages`                        | Merged (#26) — §1–§5 |
 | School plane: "Send for approval" on a page    | Merged (#27) — §6–§7 |
-| School plane: task view, constrained new page  | **This PR** — §8     |
-| District queue: inline diff, one-click approve | —                    |
+| School plane: task view, constrained new page  | Merged (#28) — §8    |
+| District queue: inline diff, one-click approve | Merged (#29) — §9    |
+| The Publish slot on a waiting page             | Merged (#30) — §10   |
+| Submitter email on approve / request changes   | #31 — §11            |
+| District digest and overdue alert              | **This PR** — §12    |
 | Auto-approval grants (zero issued)             | —                    |
-| Request changes UI, notifications, escalation  | —                    |
 | Audit trail                                    | —                    |
 
 ---
@@ -271,7 +273,7 @@ A school with one assignment is never asked for; with several, a radio group ask
 | `src/collections/endpoints/approve-page.ts`      | `approvePage`, `latestVersion`, `approvePageEndpoint`, `APPROVE_MESSAGES` |
 | `src/collections/hooks/revalidate-on-publish.ts` | `makeRevalidateOnPublish`, `tenantSitePath`, `tenantHostname`             |
 | `src/admin/Approvals/page-diff.ts`               | `diffPage` (pure)                                                         |
-| `src/admin/Approvals/queue-age.ts`               | `describeWait`, `businessDaysBetween`, `OVERDUE_BUSINESS_DAYS = 3`        |
+| `src/lib/queue-age.ts`                           | `describeWait`, `businessDaysBetween`, `OVERDUE_BUSINESS_DAYS = 3`        |
 | `src/admin/Approvals/request-changes.ts`         | `checkNote` (pure)                                                        |
 | `src/admin/Approvals/queue-data.ts`              | `loadQueue`, `countWaiting`                                               |
 | `src/admin/Approvals/ApprovalsView.tsx`          | `views.approvals` at `/admin/approvals`                                   |
@@ -280,7 +282,7 @@ A school with one assignment is never asked for; with several, a radio group ask
 | `src/admin/Approvals/WaitingBanner.tsx`          | `beforeDashboard` — count + link, district only                           |
 | `src/admin/Approvals/ApprovalsNavLink.tsx`       | `afterNavLinks` — "Approvals", district only                              |
 
-Tests: `tests/unit/access/approval.test.ts`, `tests/unit/admin/{page-diff,queue-age,request-changes}.test.ts`,
+Tests: `tests/unit/access/approval.test.ts`, `tests/unit/admin/{page-diff,request-changes}.test.ts`, `tests/unit/lib/queue-age.test.ts`,
 `tests/unit/access/revalidate-on-publish.test.ts`, `tests/integration/approve-page.test.ts`,
 `tests/e2e/approval-queue.spec.ts`.
 
@@ -346,8 +348,7 @@ A never-published page diffs as new: the first five always, `meta` when set, eve
 
 ### Not here yet
 
-- Emails (submitter on outcome; district digest and overdue alert) — the notifications slice.
-- "Waiting too long" is shown; nothing is sent when it happens.
+- Emails: submitter on outcome in §11; district digest and overdue alert in §12.
 - Cloudflare purge on publish (`09` §4.2).
 - The queue lists `pages` only; posts and events join with their modules.
 
@@ -416,3 +417,69 @@ adapter and logs the message. From: `RESEND_FROM_ADDRESS`, default `onboarding@r
 delivers that only to the account owner). Failures are logged; the write still succeeds.
 
 The adapter also carries Payload's forgot-password email.
+
+## 12. The district digest and overdue alert
+
+### Files
+
+| File                                        | Holds                                                                                                        |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `src/lib/district-digest.ts`                | `isDigestTime`, `newlyOverdue`, `digestEmail`, `overdueAlertEmail`, `districtMail`, `DIGEST_HOUR = 7` (pure) |
+| `src/jobs/district-digest.ts`               | `districtDigestTask` (Payload task `districtDigest`), `runDistrictDigest`                                    |
+| `src/instrumentation.ts`                    | `register()`: `getPayload({ config, cron: true })` at server start, Node runtime only                        |
+| `tests/unit/lib/district-digest.test.ts`    | The pure parts                                                                                               |
+| `tests/integration/district-digest.test.ts` | Inside real Payload, `payload.sendEmail` spied; through `payload.jobs.queue` + `run`                         |
+
+Changed: `src/payload.config.ts` (`jobs`), `src/lib/queue-age.ts` (moved from
+`src/admin/Approvals/`; now exports `DISTRICT_TIME_ZONE`), `src/lib/review-emails.ts` (exports
+`emailDocument`, `escapeHtml`, `oneLine`, `SIGN_OFF`), `tests/integration/tenant-isolation.test.ts`
+(the jobs queue is district-only).
+
+### Schedule
+
+| Setting                  | Value                                                                              |
+| ------------------------ | ---------------------------------------------------------------------------------- |
+| Task schedule            | `0 * * * *` on queue `default` — hourly, server clock                              |
+| `jobs.autoRun`           | `*/5 * * * *` — queues each task's next scheduled run and runs what is due         |
+| Crons start              | first `getPayload({ cron: true })` — `src/instrumentation.ts`, or an admin request |
+| Time the task decides by | `job.waitUntil` (the hour it was scheduled for), else now                          |
+| `retries`                | 0                                                                                  |
+
+`districtMail({ pages, at, timeZone: DISTRICT_TIME_ZONE, queueUrl })`:
+
+| `at` (district time)              | Sends                          |
+| --------------------------------- | ------------------------------ |
+| not a weekday, or hour is not 7   | nothing                        |
+| 7am weekday, nothing waiting      | nothing                        |
+| 7am weekday, pages waiting        | digest                         |
+| 7am weekday, a page newly overdue | digest, then the overdue alert |
+
+Newly overdue: `describeWait(sentAt, at).overdue` and not `describeWait(sentAt, at - 24h).overdue`.
+
+### Reads
+
+As the platform (`overrideAccess: true`):
+
+- `pages`, `draft: true`, `reviewState = submitted`, sorted by `submittedAt`, unpaginated
+- `tenants` by id, for school names
+- `users` with `roles` in `[district-admin]` — the recipients
+
+### What it sends
+
+| Email  | Subject                                                    | Body                                             |
+| ------ | ---------------------------------------------------------- | ------------------------------------------------ |
+| digest | `{n} page(s) waiting for approval`, `({k} overdue)` if any | each page: title — school — wait label (overdue) |
+| alert  | `Overdue: {n} page(s) waiting more than 3 school days`     | each newly overdue page: title — school — wait   |
+
+Both link to `{NEXT_PUBLIC_SERVER_URL}/admin/approvals`. One message per admin per email; a
+failed send is logged and the loop continues.
+
+### Access
+
+| Surface                                       | Allowed        |
+| --------------------------------------------- | -------------- |
+| `jobs.access.run` / `queue` / `cancel`        | district admin |
+| `payload-jobs` read                           | district admin |
+| `payload-jobs` create / update / delete (API) | nobody         |
+
+The runner writes the table with access bypassed.

@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  businessDaysBetween,
-  describeWait,
-  OVERDUE_BUSINESS_DAYS,
-} from '@/admin/Approvals/queue-age'
+import { businessDaysBetween, describeWait, OVERDUE_BUSINESS_DAYS } from '@/lib/queue-age'
 
 /**
  * How long a submission has waited (`04` §4.2 "age"; §5 escalation).

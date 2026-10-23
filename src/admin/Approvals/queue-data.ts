@@ -5,7 +5,7 @@ import type { VersionToken } from '@/access/approval'
 import { latestVersion } from '@/collections/endpoints/approve-page'
 
 import { diffPage, type PageDiff } from './page-diff'
-import { describeWait, type Wait } from './queue-age'
+import { describeWait, DISTRICT_TIME_ZONE, type Wait } from '@/lib/queue-age'
 
 /**
  * Everything the queue renders for each waiting page, read once on the server.
@@ -20,7 +20,6 @@ import { describeWait, type Wait } from './queue-age'
  * no live version and diffs as new.
  */
 
-const DISTRICT_TIME_ZONE = 'America/New_York'
 const LIMIT = 50
 
 export type QueueItem = {
