@@ -170,7 +170,6 @@ export interface User {
    * Refreshed from Entra group membership at login (`02` §7). system-sync is a non-human actor for the PowerSchool sync — never assign it to a person (`11` §8).
    */
   roles: ('district-admin' | 'school-manager' | 'system-sync')[];
-  defaultTenant?: (number | null) | Tenant;
   /**
    * OFF BY DEFAULT. Granted per named person by a district-admin, deliberately, and revocable at any time. Changes are audited and surfaced on the district dashboard.
    */
@@ -691,7 +690,6 @@ export interface UsersSelect<T extends boolean = true> {
   name?: T;
   entraObjectId?: T;
   roles?: T;
-  defaultTenant?: T;
   autoApprove?: T;
   isBreakGlass?: T;
   lastLoginAt?: T;
