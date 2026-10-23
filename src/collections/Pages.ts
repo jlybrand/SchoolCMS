@@ -18,6 +18,13 @@ import { blockLibrary } from '@/collections/blocks'
 import { composedPagesAreDistrictOnly, publishGate } from '@/collections/hooks/publish-gate'
 import { approvePageEndpoint } from '@/collections/endpoints/approve-page'
 import { applyReviewState } from '@/collections/hooks/review-state'
+import {
+  makeNotifyReviewOutcome,
+  pagePath,
+  schoolOf,
+  sendWithPayload,
+  userEmail,
+} from '@/collections/hooks/notify-review-outcome'
 import { makeRevalidateOnPublish, tenantHostname } from '@/collections/hooks/revalidate-on-publish'
 import { isReservedSlug, slugify } from '@/lib/slug'
 
@@ -126,6 +133,14 @@ export const Pages: CollectionConfig = {
           revalidatePath(path, type)
         },
         hostnameFor: tenantHostname,
+      }),
+      /** The submitter's email on approve or request changes (`04` §4.5). */
+      makeNotifyReviewOutcome({
+        send: sendWithPayload,
+        serverUrl: process.env.NEXT_PUBLIC_SERVER_URL ?? '',
+        recipientFor: userEmail,
+        schoolFor: schoolOf,
+        pathFor: pagePath,
       }),
     ],
   },

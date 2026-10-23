@@ -2,6 +2,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { postgresAdapter } from '@payloadcms/db-postgres'
+import { resendAdapter } from '@payloadcms/email-resend'
 import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
 import { buildConfig } from 'payload'
 
@@ -111,6 +112,28 @@ export default buildConfig({
   ],
 
   secret: process.env.PAYLOAD_SECRET ?? '',
+
+  /**
+   * Transactional email through Resend (`02` §2, `09` §3): approval outcomes to the submitter
+   * (`src/collections/hooks/notify-review-outcome.ts`) and Payload's own forgot-password mail,
+   * which interim local auth makes load-bearing (CLAUDE.md, "Authentication").
+   *
+   * Payload's adapter, not a hand-written client (CLAUDE.md: nothing bespoke where Payload
+   * provides it). Only when a key is set: without one — CI, a fresh checkout — Payload logs each
+   * message instead of sending it, so nothing can email a real person by accident.
+   *
+   * Until a sending domain is verified in Resend, the from address must be Resend's own
+   * `onboarding@resend.dev`, which delivers ONLY to the Resend account owner's address.
+   */
+  ...(process.env.RESEND_API_KEY
+    ? {
+        email: resendAdapter({
+          apiKey: process.env.RESEND_API_KEY,
+          defaultFromAddress: process.env.RESEND_FROM_ADDRESS || 'onboarding@resend.dev',
+          defaultFromName: 'DD2 Websites',
+        }),
+      }
+    : {}),
   typescript: { outputFile: path.resolve(dirname, 'payload-types.ts') },
 
   // Generated migrations are reviewed and applied as a guarded, reversible step;

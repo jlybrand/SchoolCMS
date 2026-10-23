@@ -371,3 +371,48 @@ When the queue link is present, `send-for-approval.css` also hides Payload's "Re
 Each queue item is an `<article id="approval-{id}" tabindex="-1">`, the link's target.
 
 UI only. A district admin's direct REST publish is not version-checked; the queue's endpoint is.
+
+## 11. The submitter's email on approve or request changes
+
+### Files
+
+| File                                              | Holds                                                                              |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `src/lib/review-emails.ts`                        | `reviewOutcome`, `outcomeEmail`, `publicUrlFor` (pure)                             |
+| `src/collections/hooks/notify-review-outcome.ts`  | `makeNotifyReviewOutcome` + `userEmail`, `schoolOf`, `pagePath`, `sendWithPayload` |
+| `tests/unit/lib/review-emails.test.ts`            | The pure parts                                                                     |
+| `tests/unit/access/notify-review-outcome.test.ts` | The hook with injected collaborators                                               |
+| `tests/integration/review-emails.test.ts`         | Inside real Payload, `payload.sendEmail` spied                                     |
+
+Changed: `src/collections/Pages.ts` (second `afterChange`), `src/payload.config.ts` (`email`),
+`package.json` (`@payloadcms/email-resend` 3.87.0, exact), `.env.example`, `playwright.config.ts`
+and `tests/setup/env.ts` (force `RESEND_API_KEY` empty).
+
+### When it sends
+
+`reviewOutcome(previousDoc, doc)`:
+
+| `previousDoc.reviewState` | `doc`                                    | Outcome             |
+| ------------------------- | ---------------------------------------- | ------------------- |
+| `submitted`               | `_status: published`, `reviewState` null | `approved`          |
+| `submitted`               | `reviewState: changes-requested`         | `changes-requested` |
+| anything else             | anything                                 | none — no email     |
+
+Recipient: the user in `previousDoc.submittedBy` (an approval clears it on `doc`).
+
+### What it sends
+
+| Outcome             | Subject                      | Link                                                                     |
+| ------------------- | ---------------------------- | ------------------------------------------------------------------------ |
+| `approved`          | `Your page is live: {title}` | `publicUrlFor(NEXT_PUBLIC_SERVER_URL, school hostname, page path)`       |
+| `changes-requested` | `Changes needed: {title}`    | `{NEXT_PUBLIC_SERVER_URL}/admin/collections/pages/{id}`; the note quoted |
+
+Plain text and HTML; title and note HTML-escaped, line breaks stripped from the subject.
+
+### Delivery
+
+`payload.sendEmail` -> `resendAdapter` when `RESEND_API_KEY` is set; otherwise Payload has no
+adapter and logs the message. From: `RESEND_FROM_ADDRESS`, default `onboarding@resend.dev` (Resend
+delivers that only to the account owner). Failures are logged; the write still succeeds.
+
+The adapter also carries Payload's forgot-password email.
