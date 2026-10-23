@@ -11,6 +11,9 @@ importers:
       '@payloadcms/db-postgres':
         specifier: 3.87.0
         version: 3.87.0(payload@3.87.0(graphql@16.14.2)(supports-color@10.2.2)(typescript@6.0.3))(supports-color@10.2.2)
+      '@payloadcms/email-resend':
+        specifier: 3.87.0
+        version: 3.87.0(payload@3.87.0(graphql@16.14.2)(supports-color@10.2.2)(typescript@6.0.3))
       '@payloadcms/next':
         specifier: 3.87.0
         version: 3.87.0(@types/react@19.2.18)(graphql@16.14.2)(monaco-editor@0.56.0)(next@16.3.0(@babel/core@7.29.7(supports-color@10.2.2))(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-macros@3.1.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.77.4))(payload@3.87.0(graphql@16.14.2)(supports-color@10.2.2)(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(supports-color@10.2.2)(typescript@6.0.3)
@@ -1559,6 +1562,12 @@ packages:
 
   '@payloadcms/drizzle@3.87.0':
     resolution: {integrity: sha512-q0hbfPRYKlbdHDfFDLfQ1jgy+WFU2ED9LPTz0MftIYa34nY6xWCH9z71w44+EzdjWuO01xx9kJGMmo9aVpwIVQ==}
+    peerDependencies:
+      payload: 3.87.0
+
+  '@payloadcms/email-resend@3.87.0':
+    resolution: {integrity: sha512-4Y2NoOd4xSJe2hXF17I6g80qfX8NBOVNL3tddWi5NxeN1l79mcFEsQ21GgL2OHKGUG3Gx4W4YgwTaCgCiU/L5g==}
+    engines: {node: ^18.20.2 || >=20.9.0}
     peerDependencies:
       payload: 3.87.0
 
@@ -7270,6 +7279,10 @@ snapshots:
       - prisma
       - sql.js
       - sqlite3
+
+  '@payloadcms/email-resend@3.87.0(payload@3.87.0(graphql@16.14.2)(supports-color@10.2.2)(typescript@6.0.3))':
+    dependencies:
+      payload: 3.87.0(graphql@16.14.2)(supports-color@10.2.2)(typescript@6.0.3)
 
   '@payloadcms/graphql@3.87.0(graphql@16.14.2)(payload@3.87.0(graphql@16.14.2)(supports-color@10.2.2)(typescript@6.0.3))(typescript@6.0.3)':
     dependencies:

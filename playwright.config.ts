@@ -62,6 +62,13 @@ export default defineConfig({
      * unexercised. The closed state is three one-line branches on a pure predicate and is
      * covered in tests/unit/seo.test.ts; the open state is the one with moving parts.
      */
-    env: { SITE_INDEXING: 'allow' },
+    /**
+     * RESEND_API_KEY is forced EMPTY: approvals in the suite would otherwise email the test
+     * accounts' `example.invalid` addresses for real whenever a developer's `.env` holds a key,
+     * and bounces count against the sending domain. Empty means Payload logs the messages
+     * (`src/payload.config.ts`). Next does not override a variable already in the environment.
+     * A reused local server (`reuseExistingServer`) keeps whatever it was started with.
+     */
+    env: { SITE_INDEXING: 'allow', RESEND_API_KEY: '' },
   },
 })
