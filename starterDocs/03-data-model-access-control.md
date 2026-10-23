@@ -47,8 +47,10 @@ The spine. One document per site (district + 27 schools).
 Payload auth collection, backed by Entra ID (`02` §7).
 
 - `email`, `name`, `entraObjectId` (unique — the durable identity), `roles`
-  (`district-admin` | `school-manager`), `tenants` (relationship), `defaultTenant`,
-  `lastLoginAt`.
+  (`district-admin` | `school-manager`), `tenants` (relationship), `lastLoginAt`.
+  _No `defaultTenant` (removed 2026-10-23):_ nothing read it, and beside `tenants` it read as the
+  school assignment — a district admin set it, left `tenants` unchanged, and the manager kept
+  their old school. `tenants` is the only school assignment.
 - **`autoApprove`** — array of granted scopes (`events:schedule`, `posts:routine`), **empty
   by default**. Set only by a `district-admin`, per user, deliberately (`04` §4.3). Never
   defaulted by role, tenant, or collection. Changes to this field are audited.

@@ -120,12 +120,6 @@ export const Users: CollectionConfig = {
       },
     },
     {
-      name: 'defaultTenant',
-      type: 'relationship',
-      relationTo: 'tenants',
-      access: { update: districtOnlyField },
-    },
-    {
       /**
        * `04` §4.3 — auto-approval is a statement about a PERSON, not a content type.
        *

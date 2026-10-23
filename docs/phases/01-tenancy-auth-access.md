@@ -220,7 +220,6 @@ auth: { tokenExpiration: 60 * 60 * 8, maxLoginAttempts: 5, lockTime: 10 * 60 * 1
 | `name`          | `text`                      | —                           |                                                              |
 | `entraObjectId` | `text`, unique, indexed     | `denyAllField`              | `readOnly`. Unused under local auth; the Entra linking seam. |
 | `roles`         | `select`, hasMany, required | `districtOnlyField`         | Options from `ROLES`; default `[]`                           |
-| `defaultTenant` | `relationship` → `tenants`  | `districtOnlyField`         |                                                              |
 | `autoApprove`   | `select`, hasMany           | `districtOnlyField`         | Default `[]`. Options: `events:schedule`, `posts:routine`    |
 | `isBreakGlass`  | `checkbox`                  | `denyAllField`              | `readOnly`, default `false`                                  |
 | `lastLoginAt`   | `date`                      | `denyAllField`              | `readOnly`                                                   |
