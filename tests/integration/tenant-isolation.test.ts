@@ -1,4 +1,4 @@
-import type { Payload } from 'payload'
+import { createLocalReq, type Payload } from 'payload'
 import { beforeAll, describe, expect, it } from 'vitest'
 
 import { getTestPayload, isDenied, readsNothing, seed, type Fixtures } from '../helpers/payload'
@@ -1121,5 +1121,82 @@ describe('sibling slugs stay unique within a parent', () => {
       overrideAccess: true,
     })
     expect(page.slug).toBe('published-page-a')
+  })
+})
+
+/**
+ * The jobs queue (`src/jobs/`) is a second way into the platform's data: a job runs as the
+ * platform, and Payload's own defaults leave it wide open — the run endpoint's fallback is
+ * `() => true` (anyone, signed in or not) and the `payload-jobs` collection takes the default
+ * "any signed-in user". Nobody but the district may trigger, queue, cancel or read a job.
+ */
+describe('the jobs queue is district-only', () => {
+  const access = () => payload.config.jobs.access ?? {}
+
+  const queueOne = () =>
+    payload.jobs.queue({ task: 'districtDigest', input: {}, waitUntil: new Date('2099-01-01') })
+
+  it.each([
+    ['run', () => access().run],
+    ['queue', () => access().queue],
+    ['cancel', () => access().cancel],
+  ] as const)('only a district admin may %s jobs', async (_name, fn) => {
+    const check = fn()
+    expect(check).toBeTypeOf('function')
+    const as = async (user: unknown) =>
+      Boolean(
+        await check!({ req: await createLocalReq({ user: user as never }, payload) } as never),
+      )
+    expect(await as(f.districtAdmin)).toBe(true)
+    expect(await as(f.managerA)).toBe(false)
+    expect(await as(f.systemSync)).toBe(false)
+    expect(await as(undefined)).toBe(false)
+  })
+
+  it('a school-manager cannot read the jobs table', async () => {
+    await queueOne()
+    expect(
+      await readsNothing(() =>
+        payload.find({ collection: 'payload-jobs', user: f.managerA, overrideAccess: false }),
+      ),
+    ).toBe(true)
+  })
+
+  it('an anonymous request cannot read the jobs table', async () => {
+    await queueOne()
+    expect(
+      await readsNothing(() => payload.find({ collection: 'payload-jobs', overrideAccess: false })),
+    ).toBe(true)
+  })
+
+  it('a school-manager cannot write a job directly into the table', async () => {
+    const denied = await isDenied(() =>
+      payload.create({
+        collection: 'payload-jobs',
+        data: { taskSlug: 'districtDigest', input: {} } as never,
+        user: f.managerA,
+        overrideAccess: false,
+      }),
+    )
+    expect(denied).toBe(true)
+  })
+
+  it('a school-manager cannot delete queued jobs', async () => {
+    const job = await queueOne()
+    await isDenied(() =>
+      payload.delete({
+        collection: 'payload-jobs',
+        where: {},
+        user: f.managerA,
+        overrideAccess: false,
+      }),
+    )
+    const still = await payload.findByID({
+      collection: 'payload-jobs',
+      id: job.id,
+      overrideAccess: true,
+      disableErrors: true,
+    })
+    expect(still).not.toBeNull()
   })
 })

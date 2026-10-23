@@ -50,7 +50,7 @@ export const publicUrlFor = (serverUrl: string, hostname: string, path: string):
   return url.toString()
 }
 
-const escapeHtml = (value: string): string =>
+export const escapeHtml = (value: string): string =>
   value
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -59,7 +59,7 @@ const escapeHtml = (value: string): string =>
     .replace(/'/g, '&#39;')
 
 /** Line breaks would let a title inject headers into the message. */
-const oneLine = (value: string): string => value.replace(/[\r\n]+/g, ' ').trim()
+export const oneLine = (value: string): string => value.replace(/[\r\n]+/g, ' ').trim()
 
 export type OutcomeEmailInput = {
   outcome: ReviewOutcome
@@ -74,9 +74,10 @@ export type OutcomeEmailInput = {
 
 export type Email = { subject: string; text: string; html: string }
 
-const SIGN_OFF = 'The district web team'
+export const SIGN_OFF = 'The district web team'
 
-const document = (heading: string, body: string): string =>
+/** The HTML shell every platform email shares. */
+export const emailDocument = (heading: string, body: string): string =>
   [
     '<!doctype html>',
     '<html lang="en">',
@@ -105,7 +106,7 @@ export const outcomeEmail = (input: OutcomeEmailInput): Email => {
         '',
         SIGN_OFF,
       ].join('\n'),
-      html: document(
+      html: emailDocument(
         heading,
         `<p>The district approved your changes to “${escapeHtml(title)}” on ${escapeHtml(school)}’s website. They are live now.</p>` +
           `<p><a href="${escapeHtml(input.pageUrl)}">See “${escapeHtml(title)}” on the website</a></p>`,
@@ -130,7 +131,7 @@ export const outcomeEmail = (input: OutcomeEmailInput): Email => {
       '',
       SIGN_OFF,
     ].join('\n'),
-    html: document(
+    html: emailDocument(
       heading,
       `<p>The district looked at your changes to “${escapeHtml(title)}” on ${escapeHtml(school)}’s website and asked for a few changes before it goes live:</p>` +
         `<blockquote style="margin: 0 0 16px; padding-left: 12px; border-left: 4px solid #4d5563;">${escapeHtml(note).replace(/\n/g, '<br>')}</blockquote>` +

@@ -2,14 +2,10 @@
 
 import { useFormFields } from '@payloadcms/ui'
 
+import { DISTRICT_TIME_ZONE } from '@/lib/queue-age'
+
 import { describeReview } from './review-status'
 import styles from './ReviewStatusField.module.css'
-
-/**
- * DD2 is one district in one time zone. The date a school sent something is that day there,
- * whatever the browser or server is set to.
- */
-const DISTRICT_TIME_ZONE = 'America/New_York'
 
 /**
  * Where a school manager's change stands, at the top of the page form (`04` §2.3).

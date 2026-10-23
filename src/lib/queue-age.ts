@@ -3,11 +3,17 @@
  *
  * Overdue is counted in BUSINESS days — `04` §5 suggests 3 — so a Friday-afternoon submission is
  * not overdue on Monday. Calendar days are what the label says, because "sent 4 days ago" is
- * what a person means. Both in the district's time zone. The escalation email that fires on
- * `overdue` is the notifications slice; this is the queue's marker.
+ * what a person means. Both in the district's time zone. The queue marks `overdue`; the
+ * district's overdue alert (`src/lib/district-digest.ts`) emails it.
  */
 
 export const OVERDUE_BUSINESS_DAYS = 3
+
+/**
+ * DD2 is one district in one time zone. "Today", school days and the digest hour are counted
+ * there, whatever the browser or server is set to.
+ */
+export const DISTRICT_TIME_ZONE = 'America/New_York'
 
 /** The calendar date in `timeZone`, as a UTC-midnight timestamp so days subtract cleanly. */
 const localDay = (date: Date, timeZone: string): number => {
