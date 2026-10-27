@@ -73,6 +73,7 @@ export interface Config {
     navigation: Navigation;
     theme: Theme;
     settings: Setting;
+    'audit-events': AuditEvent;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
     'payload-locked-documents': PayloadLockedDocument;
@@ -87,6 +88,7 @@ export interface Config {
     navigation: NavigationSelect<false> | NavigationSelect<true>;
     theme: ThemeSelect<false> | ThemeSelect<true>;
     settings: SettingsSelect<false> | SettingsSelect<true>;
+    'audit-events': AuditEventsSelect<false> | AuditEventsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -595,6 +597,29 @@ export interface Setting {
   createdAt: string;
 }
 /**
+ * Every send, approval, request for changes, publish, restore and delete, and every change to a user or an auto-approval grant. Read-only.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audit-events".
+ */
+export interface AuditEvent {
+  id: number;
+  action: string;
+  contentType: string;
+  documentId: string;
+  documentTitle?: string | null;
+  tenant?: (number | null) | Tenant;
+  actor?: (number | null) | User;
+  /**
+   * The email address at the time, kept if the user is later deleted.
+   */
+  actorLabel: string;
+  summary?: string | null;
+  autoApproved?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -742,6 +767,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'settings';
         value: number | Setting;
+      } | null)
+    | ({
+        relationTo: 'audit-events';
+        value: number | AuditEvent;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -1030,6 +1059,23 @@ export interface SettingsSelect<T extends boolean = true> {
         pt?: T;
         ar?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audit-events_select".
+ */
+export interface AuditEventsSelect<T extends boolean = true> {
+  action?: T;
+  contentType?: T;
+  documentId?: T;
+  documentTitle?: T;
+  tenant?: T;
+  actor?: T;
+  actorLabel?: T;
+  summary?: T;
+  autoApproved?: T;
   updatedAt?: T;
   createdAt?: T;
 }

@@ -16,6 +16,7 @@ import {
   uniqueSlugWithinParent,
 } from '@/collections/hooks/page-slug'
 import { blockLibrary } from '@/collections/blocks'
+import { auditChange, auditDelete } from '@/collections/hooks/audit'
 import { restoreIsDistrictOnly } from '@/collections/hooks/page-history'
 import { composedPagesAreDistrictOnly, publishGate } from '@/collections/hooks/publish-gate'
 import { approvePageEndpoint } from '@/collections/endpoints/approve-page'
@@ -132,6 +133,8 @@ export const Pages: CollectionConfig = {
      * integration suite), where the hook logs and moves on.
      */
     afterChange: [
+      /** FIRST: the audit entry is in the change's transaction; a failed write fails the change. */
+      auditChange('pages'),
       makeRevalidateOnPublish({
         revalidate: async (path, type) => {
           const { revalidatePath } = await import('next/cache')
@@ -148,6 +151,7 @@ export const Pages: CollectionConfig = {
         pathFor: pagePath,
       }),
     ],
+    afterDelete: [auditDelete('pages')],
   },
 
   /** The approval queue's one click — see the file for why it is not a plain PATCH. */

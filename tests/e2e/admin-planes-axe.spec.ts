@@ -96,6 +96,11 @@ adminTest.describe('district plane — whole screens', () => {
   adminTest.skip(credentials === null, SKIP)
   adminTest.beforeAll(async ({ baseURL }) => {
     fixture = await makePage(baseURL, { title: 'Axe page' })
+    // A publish writes an activity entry, so the log has a row to audit.
+    const published = await fixture.admin.patch(`/api/pages/${fixture.id}?depth=0`, {
+      data: { _status: 'published' },
+    })
+    expect(published.ok(), 'publish the fixture').toBe(true)
   })
   adminTest.afterAll(async () => {
     await dropPage(fixture)
@@ -104,6 +109,16 @@ adminTest.describe('district plane — whole screens', () => {
   for (const colorScheme of ['light', 'dark'] as const) {
     adminTest.describe(colorScheme, () => {
       adminTest.use({ colorScheme })
+
+      adminTest(`@a11y activity log — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/collections/audit-events')
+        await auditScreen(page, ...LIST_REPAIRED)
+      })
+      adminTest(`@a11y an activity entry — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/collections/audit-events')
+        await page.locator('tbody tr a').first().click()
+        await auditScreen(page, '#field-actorLabel')
+      })
 
       adminTest(`@a11y approval queue — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/approvals')

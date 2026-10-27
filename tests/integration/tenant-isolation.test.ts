@@ -756,6 +756,41 @@ describe('page history is district-only (Jason, 2026-10-27)', () => {
     })
     expect(await latestTitle()).toBe('History v2 draft')
   })
+
+  it('a district admin can restore a version a SCHOOL saved, review state and all', async () => {
+    // The school's save stores `reviewState: 'editing'` in that version. Restoring it must not
+    // read as the district asking for "editing", which the review-state machine refuses.
+    await payload.update({
+      collection: 'pages',
+      id: pageId,
+      data: { title: 'History v4 by the school' },
+      draft: true,
+      user: f.managerA,
+      overrideAccess: false,
+    })
+    const schoolVersion = (await versionsOf(pageId)).find(
+      (v) => v.version.title === 'History v4 by the school',
+    )!
+    expect(schoolVersion.version.reviewState).toBe('editing')
+    // The district publishes, which clears the review state — so the restored version's
+    // `editing` now DIFFERS from the page's, which is what used to be refused.
+    await payload.update({
+      collection: 'pages',
+      id: pageId,
+      data: { title: 'History v5', _status: 'published' },
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+
+    await payload.restoreVersion({
+      collection: 'pages',
+      id: String(schoolVersion.id),
+      draft: true,
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+    expect(await latestTitle()).toBe('History v4 by the school')
+  })
 })
 
 describe('composed pages are district-only (`03` §2–3)', () => {

@@ -14,5 +14,6 @@ in `starterDocs/` and `CLAUDE.md`; it is deliberately not repeated here.
 | `02-delivery-content-layer.md`    | Phase 2 — delivery + content layer      | proxy routing, `src/content/`, cache tags, locales, public route                                                                                         |
 | `03-components-and-pages.md`      | Phase 3 — components + pages            | heading ownership, layout primitives, token contrast, the component axe gate, `pages`, constrained rich text, the admin e2e session                      |
 | `04-approval-and-admin-planes.md` | Phase 4 — approval + admin planes       | review state, school plane, approval queue + diff, auto-approval grants, page history, emails + digest, GraphQL gates, whole-screen admin axe, close-out |
+| `05-content-modules.md`           | Phase 5 — core content modules          | the audit trail                                                                                                                                          |
 
 A phase's document is written or updated as part of that phase's PR.

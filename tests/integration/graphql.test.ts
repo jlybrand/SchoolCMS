@@ -178,3 +178,24 @@ describe('the users collection over GraphQL', () => {
     expect(user.autoApprove ?? []).toEqual([])
   })
 })
+
+describe('the audit trail over GraphQL', () => {
+  it('a school manager cannot read it', async () => {
+    expect(refused(await gql(`{ AuditEvents { docs { id } } }`, MANAGER_A))).toBe(true)
+  })
+
+  it('nobody can write it — not even the district', async () => {
+    for (const who of [MANAGER_A, DISTRICT]) {
+      const result = await gql(
+        `mutation { createAuditEvent(data: { action: "approve", contentType: "pages", documentId: "1", actorLabel: "forged" }) { id } }`,
+        who,
+      )
+      expect(refused(result), JSON.stringify(result.errors)).toBe(true)
+    }
+  })
+
+  it('the district can read it', async () => {
+    const result = await gql(`{ AuditEvents { docs { action } } }`, DISTRICT)
+    expect(result.errors).toBeUndefined()
+  })
+})
