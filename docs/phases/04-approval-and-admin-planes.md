@@ -4,7 +4,8 @@ How a school's change reaches the public: the review state on `pages`, who may m
 (as later slices land) the school plane's one button, the district queue, auto-approval
 grants, notifications and audit.
 
-Phase 4 lands across several PRs. This document is written as each one merges.
+Phase 4 landed across PRs #26–#40 and is **complete** (2026-10-27). §19 is the close-out: the
+definition-of-done check and what carries forward.
 
 | Slice                                               | State                |
 | --------------------------------------------------- | -------------------- |
@@ -20,7 +21,6 @@ Phase 4 lands across several PRs. This document is written as each one merges.
 | GraphQL schema builds; its gates are tested         | Merged (#37) — §15   |
 | Choosing which district admins get mail             | Merged (#38) — §16   |
 | Exit check: the journey, keyboard, whole-screen axe | **This PR** — §17    |
-| Audit trail                                         | —                    |
 
 ---
 
@@ -747,3 +747,53 @@ An element that already has a non-empty `aria-label` or an `aria-labelledby` is 
 
 Each row above is a Payload bug to report upstream. When a Payload bump fixes one, delete its
 repair and its unit test; the whole-screen spec proves the screen still passes.
+
+---
+
+## 19. Close-out
+
+### Exit criterion (`05`)
+
+| Clause                                                    | Where it is proven                                                                          |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| A school manager creates a page and sends it for approval | `tests/e2e/phase-4-exit.spec.ts` (keyboard only)                                            |
+| … and cannot publish by any route                         | `tenant-isolation.test.ts` (Local API, bulk), `graphql.test.ts`, the journey's REST attempt |
+| The district approves from a diff in one click            | `phase-4-exit.spec.ts`, `approval-queue.spec.ts`                                            |
+| … and it goes live within seconds                         | `phase-4-exit.spec.ts` — 159 ms locally (`approve-to-live` annotation)                      |
+
+### Definition of done (`05`)
+
+| Item                                         | State                                                                                                                                                    |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Types; unit, integration, e2e                | Green at #40: vitest 1213, e2e 121 (one local-only failure, below)                                                                                       |
+| Zero critical/serious axe — public and admin | Component gate (LTR + RTL); whole-screen admin, both planes, both themes (§17–§18)                                                                       |
+| RTL for new layout                           | Admin CSS is logical-properties only (stylelint). The admin is English-only — no Payload `i18n` is configured — so there is no RTL admin render to check |
+| Isolation tests                              | Green; extended to page history (§14), auto-approval grants (§13), alert settings (§16)                                                                  |
+| New surfaces against `07`                    | Automated axe + keyboard-only journey. The screen-reader smoke test (`04` §6) is a manual release check — not yet run                                    |
+| Content-access boundary lint                 | Green                                                                                                                                                    |
+| ADRs and docs                                | ADR-16 (`02` §12) for §18; this document; `CLAUDE.md` status                                                                                             |
+| Add-on register (`01` §4.4)                  | Reviewed 2026-10-27: nothing requested, nothing a year unrequested — none marked dead                                                                    |
+| Behind preview until acceptance              | Nothing is deployed; applies from the pilot (Phase 9)                                                                                                    |
+
+### Carried forward
+
+| Item                                                                                          | Where it lands / who decides                                                                                                                                                  |
+| --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Audit trail** (`04` §8): submit, approve, request changes, auto-approve, publish, delete    | **First item of Phase 5** (`05`; Jason, 2026-10-27). Needed before any grant can act, for "Published" in the school's recent submissions (§8), and for grant governance (§13) |
+| Auto-approval acting on an approve: publish on the submitter's behalf                         | Phase 5, with the first scope (§13)                                                                                                                                           |
+| `04` §9.3 "every submission queues, for each content type"                                    | Pages proven; posts and events in Phase 5                                                                                                                                     |
+| `04` §9.1 unaided task completion by real DD2 staff; §9.4 approval time tracked               | Pilot and after cutover (Phases 9–10)                                                                                                                                         |
+| `04` §9.7 emergency alert in under 60 s                                                       | Phase 5, alerts module                                                                                                                                                        |
+| `requiresTranslationReview` pending set on the district dashboard (`04` §7)                   | Phase 7                                                                                                                                                                       |
+| School tasks for posts, events, documents, photos (§8)                                        | Phases 5–6, with their modules                                                                                                                                                |
+| Cloudflare purge on publish (§9)                                                              | With the hosting work (`09` §4.2)                                                                                                                                             |
+| Screen-reader smoke test of the school task forms and the queue (`04` §6)                     | Manual release check; Phase 8 AT audit                                                                                                                                        |
+| Upstream Payload issues for each `A11yPatch` repair (§18)                                     | Not filed — posting is Jason's call                                                                                                                                           |
+| Payload's own navigation (Pages, Users) shown to school managers; slug editable for them (§8) | Open                                                                                                                                                                          |
+| Custom validator messages lost in the production build                                        | Open bug (`docs/phases/03` §24)                                                                                                                                               |
+| A district admin's REST publish is not version-checked (§10)                                  | Open; UI routes through the queue                                                                                                                                             |
+| A slug changed in a later draft is not sibling-checked until publish (§8)                     | Open                                                                                                                                                                          |
+| `settings-fields.spec.ts` fails against a local database that already holds district settings | Local only; CI's database is empty                                                                                                                                            |
+
+Not carried: normalising a tenant hostname saved with a port (`shs.localhost:3000`) — dropped by
+Jason, 2026-10-27.

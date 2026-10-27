@@ -118,8 +118,15 @@ route; the district approves from a diff in one click and it goes live within se
 
 ## Phase 5 — Core content modules *(est. ~3 weeks)*
 
-Independent vertical slices, in order (each: schema → access → approval integration →
-block/feed → template → migration mapper stub → tests):
+**First, the audit trail** (`04` §8): every submit, approve, request-changes, auto-approve,
+publish and delete records actor, tenant, timestamp and content type, auto-approvals marked as
+such; grant changes recorded too (`04` §4.3). It is the first thing in this phase because the
+modules below plug into it, and because no auto-approval grant may act until every
+auto-approved change is recorded. *(Scheduled here at the Phase 4 close, 2026-10-27; `05`
+previously placed it nowhere.)*
+
+Then independent vertical slices, in order (each: schema → access → approval integration →
+audit → block/feed → template → migration mapper stub → tests):
 
 1. **News/announcements** (`posts`) + `FeedBlock` + COPE syndication.
 2. **Calendars & events** (`events`) + iCal feeds + recurrence + **`agendaBody` with paste
@@ -130,8 +137,8 @@ block/feed → template → migration mapper stub → tests):
 4. **Alerts** (`alerts` + `alertTemplates`) as a short-TTL edge fragment, with the
    template-driven emergency path (`04` §3.4).
 
-**Exit:** all four modules author, syndicate, render, revalidate, and route through
-approval; district syndication reaches a school tenant; **a PowerSchool sync populates the
+**Exit:** every approval-path action is in the audit trail; all four modules author,
+syndicate, render, revalidate, and route through approval; district syndication reaches a school tenant; **a PowerSchool sync populates the
 correct tenants' directories, student records are provably rejected, and a simulated
 PowerSchool outage leaves the directory serving last-known-good.**
 
