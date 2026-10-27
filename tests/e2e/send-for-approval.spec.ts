@@ -9,6 +9,7 @@ import {
   type FixturePage as Fixture,
 } from './support/fixture-pages'
 import { SCHOOL_HOSTNAME, schoolTest as test } from './support/school-session'
+import { siteUrl } from './support/site-url'
 
 /**
  * The school plane's one button (`04` §2.3).
@@ -76,7 +77,9 @@ test.describe('send for approval — school manager', () => {
     expect(stored._status).toBe('draft')
 
     // Never published, so the school's site does not have it.
-    const live = await page.request.get(`http://${SCHOOL_HOSTNAME}:3000/${fixture.slug}`)
+    const live = await page.request.get(
+      siteUrl(test.info().project.use.baseURL, SCHOOL_HOSTNAME, fixture.slug),
+    )
     expect(live.status()).toBe(404)
   })
 
