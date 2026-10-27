@@ -204,8 +204,8 @@ more scopes:
 
 | Scope | Permits without review |
 |---|---|
-| `events:schedule` | Creating or editing an event where only `title`, `start`, `end`, `location` changed |
-| `posts:routine` | Publishing a post with no upload and no page-structure change |
+| `events.schedule` | Creating or editing an event where only `title`, `start`, `end`, `location` changed |
+| `posts.routine` | Publishing a post with no upload and no page-structure change |
 | *(none — the default)* | Nothing. All submissions queue. |
 
 **Never auto-approvable, regardless of grant:**

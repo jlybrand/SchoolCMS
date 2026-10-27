@@ -15,8 +15,8 @@ describe('grantRows', () => {
   it('lists each holder once with the grants in words, by name', () => {
     expect(
       grantRows([
-        manager('7', ['posts:routine'], { name: 'Zoe Park' }),
-        manager('4', ['events:schedule', 'posts:routine'], { name: 'Ana Ruiz' }),
+        manager('7', ['posts.routine'], { name: 'Zoe Park' }),
+        manager('4', ['events.schedule', 'posts.routine'], { name: 'Ana Ruiz' }),
       ]),
     ).toEqual([
       {
@@ -31,8 +31,8 @@ describe('grantRows', () => {
   it('falls back to the email, then the id, when there is no name', () => {
     expect(
       grantRows([
-        manager('9', ['posts:routine'], { name: ' ', email: 'a@dd2.org' }),
-        manager('10', ['posts:routine']),
+        manager('9', ['posts.routine'], { name: ' ', email: 'a@dd2.org' }),
+        manager('10', ['posts.routine']),
       ]).map((r) => r.person),
     ).toEqual(['a@dd2.org', 'User 10'])
   })

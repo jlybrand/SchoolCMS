@@ -17,10 +17,8 @@ import { schoolTest as test } from './support/school-session'
  * their OWN school's page, the case tenant isolation does not cover. The Local API cases are in
  * `tests/integration/tenant-isolation.test.ts`; this is the HTTP surface.
  *
- * NOT GraphQL, yet: the schema fails to build (the `autoApprove` values contain `:`, which
- * Payload's enum naming does not sanitise), so `/api/graphql` answers nothing to anyone. The
- * restore refusal is the same `beforeOperation` hook on every route; add the GraphQL case here
- * when the schema builds.
+ * GraphQL's list and restore refusals are in `tests/integration/graphql.test.ts`, which drives
+ * Payload's GraphQL handler directly.
  */
 
 const credentials = adminCredentials()

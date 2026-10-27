@@ -185,7 +185,7 @@ export interface User {
   /**
    * OFF BY DEFAULT. Granted per named person by a district-admin, deliberately, and revocable at any time. Changes are audited and surfaced on the district dashboard.
    */
-  autoApprove?: ('events:schedule' | 'posts:routine')[] | null;
+  autoApprove?: ('events.schedule' | 'posts.routine')[] | null;
   /**
    * The single local admin for initial setup and Entra misconfiguration recovery (`02` §7). MFA-protected, audited, excluded from normal login paths. Rotate the credential after any use.
    */

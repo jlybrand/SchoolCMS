@@ -320,7 +320,7 @@ describe('privilege escalation — the user collection is all permissions', () =
       payload.update({
         collection: 'users',
         id: f.managerA.id,
-        data: { autoApprove: ['posts:routine'] },
+        data: { autoApprove: ['posts.routine'] },
         user: f.managerA,
         overrideAccess: false,
       }),

@@ -111,7 +111,7 @@ test.describe('auto-approval grants', () => {
     await posts.check()
     await page.getByRole('button', { name: 'Save' }).click()
     // The toast can show before the write is readable; the stored value is what counts.
-    await expect.poll(() => storedGrants(page.request, holderId)).toEqual(['posts:routine'])
+    await expect.poll(() => storedGrants(page.request, holderId)).toEqual(['posts.routine'])
 
     await page.goto('/admin')
     const panel = page.locator('#grants-panel')
@@ -154,7 +154,7 @@ test.describe('auto-approval grants', () => {
       }) => {
         // With a holder listed, so the link is audited too.
         await page.request.patch(`/api/users/${holderId}`, {
-          data: { autoApprove: ['events:schedule'] },
+          data: { autoApprove: ['events.schedule'] },
         })
         await page.goto('/admin')
         await expect(
