@@ -1,6 +1,7 @@
 import { expect } from '@playwright/test'
 
 import { adminCredentials, adminTest as test } from './support/admin-session'
+import { siteUrl } from './support/site-url'
 
 /**
  * A change to a page saves itself (`04` §2.3 — "Nothing is lost on submit. In-progress work
@@ -63,7 +64,7 @@ test.describe('page autosave', () => {
     await page.reload()
     await expect(page.locator('#field-title')).toHaveValue(draftTitle, { timeout: 20_000 })
 
-    const publicPage = await page.request.get('http://localhost:3000/')
+    const publicPage = await page.request.get(siteUrl(test.info().project.use.baseURL, 'localhost'))
     expect(await publicPage.text()).not.toContain(draftTitle)
   })
 })

@@ -6,20 +6,21 @@ grants, notifications and audit.
 
 Phase 4 lands across several PRs. This document is written as each one merges.
 
-| Slice                                          | State                |
-| ---------------------------------------------- | -------------------- |
-| Review state on `pages`                        | Merged (#26) — §1–§5 |
-| School plane: "Send for approval" on a page    | Merged (#27) — §6–§7 |
-| School plane: task view, constrained new page  | Merged (#28) — §8    |
-| District queue: inline diff, one-click approve | Merged (#29) — §9    |
-| The Publish slot on a waiting page             | Merged (#30) — §10   |
-| Submitter email on approve / request changes   | Merged (#31) — §11   |
-| District digest and overdue alert              | Merged (#33) — §12   |
-| Auto-approval grants (zero issued)             | Merged (#35) — §13   |
-| Page history is district-only                  | Merged (#36) — §14   |
-| GraphQL schema builds; its gates are tested    | Merged (#37) — §15   |
-| Choosing which district admins get mail        | **This PR** — §16    |
-| Audit trail                                    | —                    |
+| Slice                                               | State                |
+| --------------------------------------------------- | -------------------- |
+| Review state on `pages`                             | Merged (#26) — §1–§5 |
+| School plane: "Send for approval" on a page         | Merged (#27) — §6–§7 |
+| School plane: task view, constrained new page       | Merged (#28) — §8    |
+| District queue: inline diff, one-click approve      | Merged (#29) — §9    |
+| The Publish slot on a waiting page                  | Merged (#30) — §10   |
+| Submitter email on approve / request changes        | Merged (#31) — §11   |
+| District digest and overdue alert                   | Merged (#33) — §12   |
+| Auto-approval grants (zero issued)                  | Merged (#35) — §13   |
+| Page history is district-only                       | Merged (#36) — §14   |
+| GraphQL schema builds; its gates are tested         | Merged (#37) — §15   |
+| Choosing which district admins get mail             | Merged (#38) — §16   |
+| Exit check: the journey, keyboard, whole-screen axe | **This PR** — §17    |
+| Audit trail                                         | —                    |
 
 ---
 
@@ -649,3 +650,61 @@ rights.
 `null` or missing counts as opted in. Applies to the digest and the overdue alert (§12); later
 district alerts read the same field. Database: `users.receives_alerts boolean DEFAULT true`, so
 existing rows read `true` (a local database from before this needs that column added).
+
+---
+
+## 17. The Phase 4 exit check
+
+### Files
+
+| File                                 | Holds                                                                                      |
+| ------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `tests/e2e/phase-4-exit.spec.ts`     | The exit criterion as one journey, keyboard only on both planes; logs approve-to-live time |
+| `tests/e2e/admin-planes-axe.spec.ts` | Whole-screen axe, both themes — the screens that pass                                      |
+| `tests/e2e/support/site-url.ts`      | `siteUrl(baseURL, hostname, path)` — a tenant URL on the port under test                   |
+
+Changed: `approval-queue.spec.ts`, `send-for-approval.spec.ts` and `page-autosave.spec.ts` built
+public URLs on a hard-coded `:3000`; under `PORT=3100` they checked whatever else listened there.
+
+### The journey (`phase-4-exit.spec.ts`)
+
+Tab / Shift+Tab / Enter / Space / typing only; each control asserts `:focus-visible` with an
+outline or box-shadow when reached.
+
+1. School manager: `/admin` → "Add a page" → title, "General page", "Create the page".
+2. Page form → "Send for approval" → status "Sent for approval on …".
+3. School's session: `PATCH /api/pages/:id { _status: published }` → 403; stored draft, `submitted`.
+4. Public URL → 404.
+5. District admin: `/admin` → "Open the approval queue" → the page's article, title row in the diff.
+6. "Approve and publish" (one Enter) → status "Published", focused.
+7. Public URL → 200 with the title within 15 s. Measured locally: 159 ms (annotation
+   `approve-to-live`).
+
+### Whole-screen axe — state on 2026-10-27
+
+| Screen                           | Light | Dark |
+| -------------------------------- | ----- | ---- |
+| School: home                     | pass  | pass |
+| School: update a page            | pass  | pass |
+| School: add a page               | pass  | pass |
+| District: approval queue         | pass  | pass |
+| School + district: the page form | FAIL  | FAIL |
+| District: dashboard              | FAIL  | FAIL |
+| District: pages list, users list | FAIL  | FAIL |
+
+Every failure is Payload's markup, not a DD2 component:
+
+| Rule                    | Element                                                                                                   | Screens                |
+| ----------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------- |
+| `label`                 | react-select input (`pageType`, `visibility`, `parent`; the tenant filter `.dashboard-breadcrumb-select`) | page form, dashboard   |
+| `aria-hidden-focus`     | react-select `.dropdown-indicator` / `.clear-indicator` — `aria-hidden` but focusable                     | page form, dashboard   |
+| `aria-input-field-name` | Lexical `.ContentEditable__root` (`role="textbox"`, no name)                                              | page form              |
+| `button-name`           | Lexical toolbar `.toolbar-popup__button-bold` / `-italic` / `-link`                                       | page form              |
+| `button-name`           | doc controls "⋯" `.popup-button`                                                                          | page form              |
+| `color-contrast`        | Lexical `.LexicalEditorTheme__placeholder`                                                                | page form (light)      |
+| `label`                 | `publishAt` date picker input                                                                             | page form              |
+| `list`                  | `.doc-tabs__tabs` holds non-`li` children                                                                 | page form              |
+| `label`                 | list-view row select checkbox, `aria-label=""`                                                            | pages list, users list |
+| `button-name`           | list-view pagination `.clickable-arrow`                                                                   | pages list             |
+
+Until these are fixed, `04` §9.6 ("both admin planes pass the axe gate") is NOT met.

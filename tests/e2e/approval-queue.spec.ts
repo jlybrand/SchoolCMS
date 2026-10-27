@@ -10,6 +10,7 @@ import {
   type FixturePage,
 } from './support/fixture-pages'
 import { SCHOOL_HOSTNAME, schoolTest } from './support/school-session'
+import { siteUrl } from './support/site-url'
 
 /**
  * The district's approval queue (`04` §4.2) and the Phase 4 exit (`05`): "the district
@@ -51,7 +52,7 @@ const drop = async (sent: Sent) => {
   await dropPage(sent)
 }
 
-const publicUrl = (slug: string) => `http://${SCHOOL_HOSTNAME}:3000/${slug}`
+const publicUrl = (slug: string) => siteUrl(test.info().project.use.baseURL, SCHOOL_HOSTNAME, slug)
 
 test.describe('approval queue — district admin', () => {
   test.skip(credentials === null, SKIP)
