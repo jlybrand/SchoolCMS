@@ -3,9 +3,11 @@ import { describe, expect, it } from 'vitest'
 import {
   canComposePages,
   canPublish,
+  canUsePageHistory,
   pagesCreateAccess,
   pagesDeleteAccess,
   pagesReadAccess,
+  pagesReadVersionsAccess,
   pagesUpdateAccess,
   PUBLIC_PAGE_CONSTRAINT,
 } from '@/access/pages'
@@ -275,5 +277,40 @@ describe('pagesDeleteAccess', () => {
     ['anonymous', null],
   ])('denies %s', (_label, user) => {
     expect(pagesDeleteAccess(args(user))).toBe(false)
+  })
+})
+
+/**
+ * Page history — district-only (Jason, 2026-10-27). A school manager neither sees past
+ * versions nor restores one; `04` §2.1 rules out draft-vs-published as a visible concept for
+ * them, and a restore would bring back content the district has not re-read.
+ */
+describe('canUsePageHistory', () => {
+  it('grants district-admin', () => {
+    expect(canUsePageHistory(districtAdmin)).toBe(true)
+  })
+
+  it.each([
+    ['school-manager', managerA],
+    ['school-manager in two schools', managerAB],
+    ['system-sync', systemSync],
+    ['anonymous', null],
+  ])('denies %s', (_label, user) => {
+    expect(canUsePageHistory(user)).toBe(false)
+  })
+})
+
+describe('pagesReadVersionsAccess', () => {
+  it('grants district-admin', () => {
+    expect(pagesReadVersionsAccess(args(districtAdmin))).toBe(true)
+  })
+
+  it.each([
+    ['school-manager — even in their own school', managerA],
+    ['school-manager with no school', managerNoTenant],
+    ['system-sync', systemSync],
+    ['anonymous — no public constraint either', null],
+  ])('denies %s outright', (_label, user) => {
+    expect(pagesReadVersionsAccess(args(user))).toBe(false)
   })
 })

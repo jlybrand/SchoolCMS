@@ -581,6 +581,165 @@ describe('invariant 5 — a school-manager cannot PUBLISH by any route', () => {
   })
 })
 
+describe('page history is district-only (Jason, 2026-10-27)', () => {
+  /**
+   * A school manager neither lists past versions nor restores one. Restore is the route that
+   * matters: Payload checks it against UPDATE access, which a school manager holds for their
+   * own pages, so it is refused in `src/collections/hooks/page-history.ts` — on their OWN
+   * school's page, which is the case tenant isolation does not cover.
+   */
+  let pageId: number
+  let oldDraftId: string
+  let publishedId: string
+
+  const versionsOf = async (id: number) =>
+    (
+      await payload.findVersions({
+        collection: 'pages',
+        where: { parent: { equals: id } },
+        sort: 'createdAt',
+        pagination: false,
+        overrideAccess: true,
+      })
+    ).docs
+
+  const latestTitle = async () =>
+    (await payload.findByID({ collection: 'pages', id: pageId, draft: true, overrideAccess: true }))
+      .title
+
+  beforeAll(async () => {
+    const page = await payload.create({
+      collection: 'pages',
+      data: {
+        tenant: f.tenantA,
+        title: 'History v1',
+        slug: 'history-page',
+        pageType: 'standard',
+        visibility: 'public',
+        _status: 'published',
+      },
+      // The publish gate refuses a userless publish, so the district makes the page.
+      user: f.districtAdmin,
+      overrideAccess: true,
+    })
+    pageId = page.id
+    await payload.update({
+      collection: 'pages',
+      id: pageId,
+      data: { title: 'History v2 draft' },
+      draft: true,
+      overrideAccess: true,
+    })
+    await payload.update({
+      collection: 'pages',
+      id: pageId,
+      data: { title: 'History v3 current' },
+      draft: true,
+      overrideAccess: true,
+    })
+    const versions = await versionsOf(pageId)
+    publishedId = String(versions.find((v) => v.version._status === 'published')!.id)
+    oldDraftId = String(versions.find((v) => v.version.title === 'History v2 draft')!.id)
+  })
+
+  it('a school manager cannot list versions of their own page', async () => {
+    const denied = await isDenied(() =>
+      payload.findVersions({
+        collection: 'pages',
+        where: { parent: { equals: pageId } },
+        user: f.managerA,
+        overrideAccess: false,
+      }),
+    )
+    expect(denied).toBe(true)
+  })
+
+  it('a school manager cannot open one version or count them', async () => {
+    expect(
+      await isDenied(() =>
+        payload.findVersionByID({
+          collection: 'pages',
+          id: oldDraftId,
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      ),
+    ).toBe(true)
+    expect(
+      await isDenied(() =>
+        payload.countVersions({
+          collection: 'pages',
+          where: { parent: { equals: pageId } },
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      ),
+    ).toBe(true)
+  })
+
+  it.each([
+    ['an older draft', () => oldDraftId],
+    ['the published version', () => publishedId],
+  ])('a school manager cannot restore %s of their own page', async (_label, versionId) => {
+    for (const draft of [true, false]) {
+      const denied = await isDenied(() =>
+        payload.restoreVersion({
+          collection: 'pages',
+          id: versionId(),
+          draft,
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      )
+      expect(denied).toBe(true)
+    }
+    expect(await latestTitle()).toBe('History v3 current')
+  })
+
+  it('the sync account cannot restore either', async () => {
+    const denied = await isDenied(() =>
+      payload.restoreVersion({
+        collection: 'pages',
+        id: oldDraftId,
+        draft: true,
+        user: f.systemSync,
+        overrideAccess: false,
+      }),
+    )
+    expect(denied).toBe(true)
+  })
+
+  it('a school manager still opens and edits their own draft', async () => {
+    const draft = await payload.findByID({
+      collection: 'pages',
+      id: pageId,
+      draft: true,
+      user: f.managerA,
+      overrideAccess: false,
+    })
+    expect(draft.title).toBe('History v3 current')
+  })
+
+  it('a district admin lists versions and restores one', async () => {
+    const { docs } = await payload.findVersions({
+      collection: 'pages',
+      where: { parent: { equals: pageId } },
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+    expect(docs.length).toBeGreaterThanOrEqual(3)
+
+    await payload.restoreVersion({
+      collection: 'pages',
+      id: oldDraftId,
+      draft: true,
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+    expect(await latestTitle()).toBe('History v2 draft')
+  })
+})
+
 describe('composed pages are district-only (`03` §2–3)', () => {
   it('a school-manager cannot create a composed page', async () => {
     const denied = await isDenied(() =>
