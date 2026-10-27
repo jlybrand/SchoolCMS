@@ -51,7 +51,10 @@ export default buildConfig({
           path: '/approvals',
         },
       },
-      beforeDashboard: ['/admin/Approvals/WaitingBanner#WaitingBanner'],
+      beforeDashboard: [
+        '/admin/Approvals/WaitingBanner#WaitingBanner',
+        '/admin/Grants/GrantsPanel#GrantsPanel',
+      ],
       afterNavLinks: ['/admin/Approvals/ApprovalsNavLink#ApprovalsNavLink'],
     },
   },

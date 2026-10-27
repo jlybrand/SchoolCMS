@@ -21,4 +21,6 @@ export type AuthUser = {
   roles?: Role[] | null
   /** Shape supplied by @payloadcms/plugin-multi-tenant's users array field. */
   tenants?: { tenant?: TenantRef | null }[] | null
+  /** Auto-approval scopes (`04` §4.3). `unknown` items: read only through `grantsOf`. */
+  autoApprove?: unknown[] | null
 }
