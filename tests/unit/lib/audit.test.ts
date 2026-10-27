@@ -245,6 +245,40 @@ describe('users', () => {
     expect(JSON.stringify(entries)).not.toMatch(/"p"|"h"|"s"|"t"|hash|salt|token|password/i)
   })
 
+  it('a successful sign-in is a login, by the person signing in', () => {
+    expect(
+      auditEntries({
+        collection: 'users',
+        operation: 'login',
+        previous: null,
+        doc: person(),
+        user: person(),
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        action: 'login',
+        contentType: 'users',
+        documentId: '9',
+        documentTitle: 'Ana Ruiz',
+        tenant: null,
+        actor: '9',
+        actorLabel: 'x@dd2.org',
+        summary: '',
+      }),
+    ])
+  })
+
+  it('a login entry names the user even when the request carries no user yet', () => {
+    const [entry] = auditEntries({
+      collection: 'users',
+      operation: 'login',
+      previous: null,
+      doc: person(),
+      user: null,
+    })
+    expect(entry).toMatchObject({ action: 'login', actor: '9', actorLabel: 'x@dd2.org' })
+  })
+
   it('deleting a user is a user-delete', () => {
     expect(auditEntries(users({ operation: 'delete' })).map((e) => e.action)).toEqual([
       'user-delete',

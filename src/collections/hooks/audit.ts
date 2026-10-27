@@ -1,4 +1,9 @@
-import type { CollectionAfterChangeHook, CollectionAfterDeleteHook, PayloadRequest } from 'payload'
+import type {
+  CollectionAfterChangeHook,
+  CollectionAfterDeleteHook,
+  CollectionAfterLoginHook,
+  PayloadRequest,
+} from 'payload'
 
 import { auditEntries, type AuditInput } from '@/lib/audit'
 
@@ -63,3 +68,18 @@ export const auditDelete =
     })
     return doc
   }
+
+/**
+ * Every successful sign-in (Jason, 2026-10-27). Payload runs `afterLogin` only on success; a
+ * failed attempt is not recorded here.
+ */
+export const auditLogin: CollectionAfterLoginHook = async ({ user, req }) => {
+  await write(req, {
+    collection: 'users',
+    operation: 'login',
+    previous: null,
+    doc: user as Record<string, unknown>,
+    user: user as AuditInput['user'],
+  })
+  return user
+}

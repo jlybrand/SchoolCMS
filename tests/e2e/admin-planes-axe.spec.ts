@@ -28,6 +28,18 @@ const auditScreen = async (page: Page, ...ready: string[]) => {
   for (const selector of ready) {
     await expect(page.locator(selector).first()).toBeAttached({ timeout: 20_000 })
   }
+  /**
+   * SETTLED, not just ready. Payload re-renders a list after hydration (rows briefly disabled
+   * while it refetches), and the patch repairs the new nodes on the next animation frame — an
+   * audit in between sees the unrepaired rows. So: no list checkbox left with Payload's empty
+   * name, then two frames for the patch's last pass.
+   */
+  await expect(page.locator('tbody input[type="checkbox"][aria-label=""]')).toHaveCount(0, {
+    timeout: 10_000,
+  })
+  await page.evaluate(
+    () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))),
+  )
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .analyze()

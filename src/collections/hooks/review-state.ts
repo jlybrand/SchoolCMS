@@ -67,13 +67,19 @@ export const applyReviewState: CollectionBeforeChangeHook = ({
    * `src/collections/hooks/page-history.ts`.)
    */
   const restoring = req.context?.isRestoringVersion === true
+  /**
+   * A restore carries the restored version's `_status`; it publishes only when it is not
+   * restored as a draft (`restoreAsDraft`, set by `restoreIsDistrictOnly`).
+   */
+  const publishing =
+    data?._status === 'published' && !(restoring && req.context?.restoreAsDraft === true)
 
   const result = resolveReview({
     user: userOf(req),
     current: operation === 'create' ? null : storedFields(originalDoc),
     requested: restoring ? undefined : (data?.reviewState as ReviewState | null | undefined),
     note: restoring ? undefined : (data?.reviewNote as string | null | undefined),
-    publishing: data?._status === 'published',
+    publishing,
     now: new Date().toISOString(),
   })
 

@@ -18,18 +18,19 @@ and the PowerSchool sync, alerts — follow, each writing to it.
 
 ### Files
 
-| File                                    | Holds                                                                                                |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `src/lib/audit.ts`                      | `auditEntries(input)` → `AuditEntry[]` (pure); `AuditAction`                                         |
-| `src/collections/hooks/audit.ts`        | `auditChange(collection)` (afterChange), `auditDelete(collection)` (afterDelete), `AUDIT_COLLECTION` |
-| `src/collections/AuditEvents.ts`        | `audit-events` — admin label "Activity log", GraphQL `AuditEvent` / `AuditEvents`                    |
-| `tests/unit/lib/audit.test.ts`          | Which writes produce which entries                                                                   |
-| `tests/integration/audit-trail.test.ts` | Real routes; append-only; district-only read; rollback when the entry cannot be written              |
+| File                                    | Holds                                                                                                                           |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/audit.ts`                      | `auditEntries(input)` → `AuditEntry[]` (pure); `AuditAction`                                                                    |
+| `src/collections/hooks/audit.ts`        | `auditChange(collection)` (afterChange), `auditDelete(collection)` (afterDelete), `auditLogin` (afterLogin), `AUDIT_COLLECTION` |
+| `src/collections/AuditEvents.ts`        | `audit-events` — admin label "Activity log", GraphQL `AuditEvent` / `AuditEvents`                                               |
+| `tests/unit/lib/audit.test.ts`          | Which writes produce which entries                                                                                              |
+| `tests/integration/audit-trail.test.ts` | Real routes; append-only; district-only read; rollback when the entry cannot be written                                         |
 
 Changed:
 
 - `src/collections/Pages.ts` — `auditChange('pages')` FIRST in `afterChange`; `afterDelete: [auditDelete('pages')]`
-- `src/collections/Users.ts` — `afterChange: [auditChange('users')]`, `afterDelete: [auditDelete('users')]`
+- `src/collections/Users.ts` — `afterChange: [auditChange('users')]`, `afterDelete: [auditDelete('users')]`, `afterLogin: [auditLogin]`
+- `src/collections/hooks/page-history.ts` — only a published version can be restored; sets `req.context.restoreAsDraft`
 - `src/payload.config.ts` — `AuditEvents` in `collections`
 - `src/collections/hooks/review-state.ts` — a restore requests no review transition (below)
 - `tests/integration/tenant-isolation.test.ts`, `tests/integration/graphql.test.ts`,
@@ -57,7 +58,8 @@ Changed:
 | delete                                          | `user-delete`                                                                                  |
 | roles / schools / alert setting / email changed | `user-change` — `Roles: a → b; Schools changed; Alert emails: on → off; Email address changed` |
 | `autoApprove` changed                           | `grant-change` — `Auto-approval: {labels} → {labels}`                                          |
-| login, password, anything else                  | none                                                                                           |
+| successful sign-in (`afterLogin`)               | `login` — actor is the person signing in                                                       |
+| failed sign-in, password change, anything else  | none                                                                                           |
 
 Every entry: `contentType` (the slug), `documentId`, `documentTitle` (title / name, else email,
 else `Page {id}` / `User {id}`), `tenant` (pages: the page's school; users: null), `actor`
@@ -79,6 +81,21 @@ change's transaction. A throw from it fails the change, which Payload rolls back
 
 `admin.hidden` for anyone but a district admin. Not a multi-tenant plugin collection: `tenant`
 is set by the hook, and user/grant rows have none.
+
+### Restoring: only a published version (Jason, 2026-10-27)
+
+`restoreIsDistrictOnly` (`beforeOperation`, `restoreVersion`) also reads the version
+(`findVersionByID`, access overridden) and refuses unless `version._status === 'published'`:
+`APIError('Only a version that was published can be restored.', 403)`. Applies to district
+admins; school managers are refused before it. `overrideAccess` passes.
+
+It also sets `req.context.restoreAsDraft = args.draft === true`. Payload sets a restore's status
+from `draft` only after the hooks run, so `applyReviewState` would otherwise read the restored
+version's own `published` as a publish and clear the review state on a draft restore.
+
+**Payload 3.87's Local API `restoreVersion` drops `draft`**, so every Local API restore
+publishes. A restore as a draft is REST (`POST /api/pages/versions/:id?draft=true`) or the
+admin's option; `tests/e2e/page-history.spec.ts` covers it.
 
 ### The restore fix
 

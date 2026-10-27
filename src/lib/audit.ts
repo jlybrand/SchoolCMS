@@ -8,7 +8,8 @@ import { relationshipIdOf, tenantIdOf } from '@/access/predicates'
  * WHAT IS RECORDED: every approval-path action on content — submit, request changes, approve,
  * publish, restore, delete, and (from Phase 5) auto-approve — and every change to who may do
  * what: a user created, deleted, or changed in role, school or alert setting, and an
- * auto-approval grant changed. Ordinary edits are not: Payload's versions already hold them.
+ * auto-approval grant changed. And every successful sign-in (Jason, 2026-10-27). Ordinary
+ * edits are not: Payload's versions already hold them.
  *
  * NEVER A SECRET. User entries read only the fields named in `USER_FIELDS`; a password, hash,
  * salt or token cannot reach a summary because nothing here reads one.
@@ -26,6 +27,7 @@ export type AuditAction =
   | 'publish'
   | 'restore'
   | 'delete'
+  | 'login'
   | 'user-create'
   | 'user-change'
   | 'user-delete'
@@ -49,7 +51,7 @@ type Doc = Record<string, unknown> | null | undefined
 
 export type AuditInput = {
   collection: string
-  operation: 'create' | 'update' | 'delete'
+  operation: 'create' | 'update' | 'delete' | 'login'
   previous: Doc
   doc: Doc
   user: { id: string | number; email?: unknown } | null | undefined
@@ -139,6 +141,12 @@ const forUser = (input: AuditInput): AuditEntry[] => {
   }
 
   if (input.operation === 'delete') return [entry(input, doc, 'user-delete', fields)]
+  // The person signing in is the actor — Payload's `afterLogin` may not have set `req.user` yet.
+  if (input.operation === 'login') {
+    return [
+      entry({ ...input, user: input.user ?? (doc as AuditInput['user']) }, doc, 'login', fields),
+    ]
+  }
   if (input.operation === 'create' || !input.previous) {
     return [entry(input, doc, 'user-create', { ...fields, summary: `Roles: ${roles(doc.roles)}` })]
   }

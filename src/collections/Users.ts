@@ -2,7 +2,7 @@ import { ValidationError, type CollectionConfig } from 'payload'
 
 import { validatePassword } from '@/auth/password-policy'
 import { GRANT_SCOPES } from '@/access/auto-approval'
-import { auditChange, auditDelete } from '@/collections/hooks/audit'
+import { auditChange, auditDelete, auditLogin } from '@/collections/hooks/audit'
 import {
   denyAllField,
   districtOnly,
@@ -70,11 +70,12 @@ export const Users: CollectionConfig = {
       },
     ],
     /**
-     * User and grant changes (`09` §6, `04` §4.3). Only permission-bearing fields produce an
-     * entry, so a login or a password change records nothing (`src/lib/audit.ts`).
+     * User and grant changes (`09` §6, `04` §4.3), and every sign-in. Only permission-bearing
+     * fields produce a change entry, so a password change records nothing (`src/lib/audit.ts`).
      */
     afterChange: [auditChange('users')],
     afterDelete: [auditDelete('users')],
+    afterLogin: [auditLogin],
   },
   admin: {
     useAsTitle: 'email',

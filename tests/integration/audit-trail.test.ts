@@ -149,9 +149,11 @@ describe('district actions', () => {
       sort: 'createdAt',
       overrideAccess: true,
     })
+    // Only a version that was published can be restored.
+    const published = docs.find((d) => d.version._status === 'published')!
     await payload.restoreVersion({
       collection: 'pages',
-      id: docs[0]!.id,
+      id: published.id,
       draft: true,
       user: f.districtAdmin,
       overrideAccess: false,
@@ -170,7 +172,7 @@ describe('district actions', () => {
 })
 
 describe('user and grant changes', () => {
-  it('create, a grant, a role change and a delete are recorded; a login is not', async () => {
+  it('create, a login, a grant, a role change and a delete are each recorded', async () => {
     const user = await payload.create({
       collection: 'users',
       data: {
@@ -211,15 +213,40 @@ describe('user and grant changes', () => {
     const entries = await entriesFor('users', user.id)
     expect(entries.map((e) => e.action)).toEqual([
       'user-create',
+      'login',
       'grant-change',
       'user-change',
       'grant-change',
       'user-delete',
     ])
-    expect(entries[1]!.summary).toBe('Auto-approval: none → Posts: routine posts')
-    expect(entries[2]!.summary).toBe('Roles: school-manager → district-admin')
-    expect(entries.every((e) => e.actor === f.districtAdmin.id)).toBe(true)
+    // The person signing in is the actor of their own login. They have since been DELETED, so
+    // the link to them is gone (ON DELETE SET NULL) — and the recorded address still says who.
+    expect(entries[1]).toMatchObject({ actor: null, actorLabel: 'audited@test.local' })
+    expect(entries[2]!.summary).toBe('Auto-approval: none → Posts: routine posts')
+    expect(entries[3]!.summary).toBe('Roles: school-manager → district-admin')
+    expect(
+      entries.filter((e) => e.action !== 'login').every((e) => e.actor === f.districtAdmin.id),
+    ).toBe(true)
     expect(JSON.stringify(entries)).not.toContain(SEED_PASSWORD)
+  })
+})
+
+describe('sign-ins', () => {
+  it('a failed sign-in records nothing; a successful one records exactly one login', async () => {
+    const before = (await entriesFor('users', f.managerB.id)).filter((e) => e.action === 'login')
+    await isDenied(() =>
+      payload.login({
+        collection: 'users',
+        data: { email: 'manager-b@test.local', password: 'wrong-password-entirely' },
+      }),
+    )
+    await payload.login({
+      collection: 'users',
+      data: { email: 'manager-b@test.local', password: SEED_PASSWORD },
+    })
+    const after = (await entriesFor('users', f.managerB.id)).filter((e) => e.action === 'login')
+    expect(after.length - before.length).toBe(1)
+    expect(after.at(-1)).toMatchObject({ actor: f.managerB.id, actorLabel: 'manager-b@test.local' })
   })
 })
 
