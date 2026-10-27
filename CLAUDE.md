@@ -8,10 +8,13 @@ Guidance for Claude Code working in this repository.
 district domain and 27 school subdomains (**28 tenants**) from a single codebase and
 deployment. It replaces the rented Finalsite Composer CMS.
 
-**Status: Phases 0–3 complete; Phase 4 in progress.** Phase 0 (scaffold + guardrails), Phase 1
+**Status: Phases 0–4 complete; Phase 5 next.** Phase 0 (scaffold + guardrails), Phase 1
 (tenancy, roles, access control, the adversarial isolation suite), Phase 2 (edge tenant
-routing, locale plumbing, the content-access layer, cache tags) and Phase 3 (components,
-`pages`, the block library, navigation, theme, SEO, settings) have landed. Authentication
+routing, locale plumbing, the content-access layer, cache tags), Phase 3 (components,
+`pages`, the block library, navigation, theme, SEO, settings) and Phase 4 (review state, the
+school and district planes, the approval queue, auto-approval grants with none issued,
+notifications, whole-screen axe on both planes) have landed. Phase 4's close-out, with what
+it carries forward, is `docs/phases/04-approval-and-admin-planes.md` §19. Authentication
 is on an **interim local-auth posture** — see "Authentication" below. `starterDocs/` holds the 12-document
 design suite (v2.1, August 2026) and is the specification. Treat it as authoritative; when
 code and docs disagree, that is a bug in one of them — say which.
@@ -219,8 +222,10 @@ src/
     (payload)/admin-overrides.css   WCAG contrast corrections to Payload's chrome — not a theme
   proxy.ts              edge tenant + locale routing (Next 16's middleware convention)
   access/               role/tenant predicates + Payload access functions
-  admin/                admin-plane React (paste prompt; Phase 4's task plane + diff viewer).
-                        Separate from components/ — this side MAY import the Payload SDK.
+  admin/                admin-plane React: paste prompt, school plane (SchoolPlane/,
+                        SendForApproval/), approval queue + diff (Approvals/), grants
+                        (Grants/), A11yPatch/ — repairs Payload's own markup until upstream
+                        fixes it. Separate from components/ — this side MAY import the SDK.
   auth/                 entra-mapping.ts (unwired), password-policy.ts (interim)
   content/              THE BOUNDARY. Payload lives behind this.
     types.ts            hand-written DD2 domain types — never generated

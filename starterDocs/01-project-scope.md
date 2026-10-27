@@ -156,6 +156,10 @@ and lifecycle management.
 **This register is reviewed at each phase gate** (`05`). An add-on that nobody has asked for
 in a year should be considered dead, not pending.
 
+| Gate review | Requested since last review | Marked dead |
+|---|---|---|
+| Phase 4 close (2026-10-27) | None | None — the oldest is under a year from this design (Aug 2026) |
+
 ## 5. Explicitly out of scope
 
 - **Messages / mass communications** — email blasts, SMS, voice, robocalls, emergency mass
