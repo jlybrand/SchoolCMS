@@ -4,6 +4,7 @@ import {
   pagesCreateAccess,
   pagesDeleteAccess,
   pagesReadAccess,
+  pagesReadVersionsAccess,
   pagesUpdateAccess,
 } from '@/access/pages'
 import { districtOnlyField } from '@/access/tenant-scoped'
@@ -15,6 +16,7 @@ import {
   uniqueSlugWithinParent,
 } from '@/collections/hooks/page-slug'
 import { blockLibrary } from '@/collections/blocks'
+import { restoreIsDistrictOnly } from '@/collections/hooks/page-history'
 import { composedPagesAreDistrictOnly, publishGate } from '@/collections/hooks/publish-gate'
 import { approvePageEndpoint } from '@/collections/endpoints/approve-page'
 import { applyReviewState } from '@/collections/hooks/review-state'
@@ -80,6 +82,7 @@ export const Pages: CollectionConfig = {
     create: pagesCreateAccess,
     update: pagesUpdateAccess,
     delete: pagesDeleteAccess,
+    readVersions: pagesReadVersionsAccess,
   },
 
   /**
@@ -107,6 +110,8 @@ export const Pages: CollectionConfig = {
   },
 
   hooks: {
+    /** Restoring a past version is the district's — see the hook for why access is not enough. */
+    beforeOperation: [restoreIsDistrictOnly],
     /**
      * Order matters: derive the slug, then check the DERIVED value for collisions. The
      * parent guard is independent of both and runs last, so a page with two problems reports

@@ -48,6 +48,15 @@ const dataOf = (args: { data?: unknown }): IncomingData => (args?.data as Incomi
 export const canPublish = (user: AuthUser | null | undefined): boolean => isDistrictAdmin(user)
 
 /**
+ * Who may see a page's past versions and restore one — district-admin only (Jason,
+ * 2026-10-27). A school manager sees where their change stands, never a version history
+ * (`04` §2.1 rules out draft-vs-published as a visible concept), and a restore would bring
+ * back content the district has not re-read.
+ */
+export const canUsePageHistory = (user: AuthUser | null | undefined): boolean =>
+  isDistrictAdmin(user)
+
+/**
  * Who may author `composed` pages and their block array (`03` §2–3).
  *
  * Deliberately a single predicate. `01` §4.1 lists school-level composition as a possible
@@ -179,3 +188,14 @@ export const pagesUpdateAccess: Access = ({ req, data }) => {
  * decision in the same family as publishing one, and belongs with the same role.
  */
 export const pagesDeleteAccess: Access = ({ req }) => isDistrictAdmin(userOf(req))
+
+/**
+ * READ VERSIONS — district-admin only, a boolean on purpose: nobody else gets a constraint to
+ * narrow, so there is no partial grant to get wrong. Without this, Payload's default is any
+ * signed-in user, narrowed only by the tenant plugin.
+ *
+ * This is the version HISTORY (`findVersions`, `findVersionByID`, the admin's Versions tab).
+ * A school manager's own draft is unaffected: `draft: true` reads go through `read` access.
+ * Restoring is refused by `src/collections/hooks/page-history.ts`.
+ */
+export const pagesReadVersionsAccess: Access = ({ req }) => canUsePageHistory(userOf(req))

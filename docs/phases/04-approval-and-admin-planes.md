@@ -15,7 +15,8 @@ Phase 4 lands across several PRs. This document is written as each one merges.
 | The Publish slot on a waiting page             | Merged (#30) — §10   |
 | Submitter email on approve / request changes   | Merged (#31) — §11   |
 | District digest and overdue alert              | Merged (#33) — §12   |
-| Auto-approval grants (zero issued)             | **This PR** — §13    |
+| Auto-approval grants (zero issued)             | Merged (#35) — §13   |
+| Page history is district-only                  | **This PR** — §14    |
 | Audit trail                                    | —                    |
 
 ---
@@ -542,3 +543,40 @@ A unit test fails if a `richText`, `upload` or `blocks` field is added to `Pages
   published as the submitter, audited, flagged as auto-approved.
 - Grant changes are not audited, and there is no 30-day post-hoc review list: both need the
   audit trail.
+
+---
+
+## 14. Page history is district-only
+
+Jason, 2026-10-27: a school manager sees no version history and restores nothing.
+
+### Files
+
+| File                                         | Holds                                                                                       |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `src/access/pages.ts`                        | `canUsePageHistory` (district admin), `pagesReadVersionsAccess` (boolean)                   |
+| `src/collections/hooks/page-history.ts`      | `restoreIsDistrictOnly` — `beforeOperation`, refuses `restoreVersion`                       |
+| `tests/unit/access/pages.test.ts`            | `canUsePageHistory`, `pagesReadVersionsAccess`                                              |
+| `tests/unit/access/page-history.test.ts`     | `restoreIsDistrictOnly` by role, operation and `overrideAccess`                             |
+| `tests/integration/tenant-isolation.test.ts` | "page history is district-only" — Local API, a school's OWN page                            |
+| `tests/e2e/page-history.spec.ts`             | No Versions tab for a school; REST list → 403, REST restore refused; district keeps the tab |
+
+Changed: `src/collections/Pages.ts` (`access.readVersions`, `hooks.beforeOperation`).
+
+### Who may
+
+| Operation                                                           | District admin | School manager | Sync | Anonymous |
+| ------------------------------------------------------------------- | -------------- | -------------- | ---- | --------- |
+| `findVersions`, `findVersionByID`, `countVersions` (`readVersions`) | yes            | no             | no   | no        |
+| `restoreVersion` (hook; Payload itself checks `update`)             | yes            | no             | no   | no        |
+| `findByID` / `find` with `draft: true` (`read`)                     | unchanged      | unchanged      | —    | —         |
+
+`overrideAccess: true` (the Local API default) skips the hook. Before this, Payload's
+`readVersions` default was any signed-in user (narrowed to their schools by the tenant plugin),
+and `restoreVersion` checked only `update` — so a school manager could restore any past version
+of their own page, the published one included, as a draft.
+
+### Not here yet
+
+- GraphQL is not exercised: the schema does not build (`users.autoApprove` values contain `:`,
+  which Payload's `formatName` keeps), so `/api/graphql` errors for every caller.
