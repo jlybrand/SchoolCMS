@@ -41,3 +41,15 @@
 .array-field__add-row.btn:not(:disabled) {
   --btn-color: var(--theme-elevation-800);
 }
+
+/**
+ * The rich-text editor's empty-state hint ("Start typing, or press '/' for commands...") —
+ * 1.4.3 Contrast (Minimum).
+ *
+ * Payload's Lexical theme draws it in a light grey that fails 4.5:1 on white. It is the only
+ * instruction on an empty page body, so it gets the same token as the help text above. Found
+ * by tests/e2e/admin-planes-axe.spec.ts, which now pins it.
+ */
+.LexicalEditorTheme__placeholder {
+  color: var(--theme-elevation-800);
+}
