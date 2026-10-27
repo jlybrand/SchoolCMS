@@ -707,4 +707,43 @@ Every failure is Payload's markup, not a DD2 component:
 | `label`                 | list-view row select checkbox, `aria-label=""`                                                            | pages list, users list |
 | `button-name`           | list-view pagination `.clickable-arrow`                                                                   | pages list             |
 
-Until these are fixed, `04` §9.6 ("both admin planes pass the axe gate") is NOT met.
+Fixed in §18; every screen above now passes.
+
+---
+
+## 18. Repairing Payload's admin markup
+
+Jason, 2026-10-27: swap the fields we own, repair the rest in place, report it upstream.
+
+### Files
+
+| File                                    | Holds                                                                                 |
+| --------------------------------------- | ------------------------------------------------------------------------------------- |
+| `src/admin/A11yPatch/repairs.ts`        | `repairAdminA11y(root)` — attribute-only repairs, idempotent, never overwrites a name |
+| `src/admin/A11yPatch/A11yPatch.tsx`     | `admin.components.providers` — runs it on mount and per frame on child-list mutations |
+| `src/app/(payload)/admin-overrides.css` | `.LexicalEditorTheme__placeholder` → `--theme-elevation-800`                          |
+| `tests/unit/admin/a11y-patch.test.ts`   | Each repair against fixtures cut from Payload 3.87's markup (jsdom)                   |
+| `tests/e2e/admin-planes-axe.spec.ts`    | All screens in §17, both themes; repaired screens wait for a repaired attribute first |
+
+Changed: `src/collections/Pages.ts` — `pageType` and `visibility` are `radio` (same Postgres enums,
+same generated types; GraphQL input is now `String`, not an enum).
+
+### `repairAdminA11y`
+
+| Element                                                                    | Repair                                                                                     |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `.doc-controls .popup-button` with no text                                 | `aria-label="More actions"`                                                                |
+| `button.toolbar-popup__button[data-button-key]`                            | `aria-label` from the key (`inlineCode` → "Inline code")                                   |
+| `.clickable-arrow--left` / `--right`                                       | "Previous page" / "Next page"                                                              |
+| react-select combobox, date-picker input, Lexical `.ContentEditable__root` | `aria-label` = the enclosing `.field-type`'s `label.field-label` text, `.required` removed |
+| `.dashboard-breadcrumb-select` combobox                                    | "Choose a view"                                                                            |
+| `tr .select-row input[type=checkbox]`                                      | "Select {row's first link text}", else "Select row"                                        |
+| `.rs__indicators [aria-hidden="true"]`                                     | `tabindex="-1"`                                                                            |
+| `ul.doc-tabs__tabs` with non-`li` children                                 | `role="none"`                                                                              |
+
+An element that already has a non-empty `aria-label` or an `aria-labelledby` is left alone.
+
+### Removing a repair
+
+Each row above is a Payload bug to report upstream. When a Payload bump fixes one, delete its
+repair and its unit test; the whole-screen spec proves the screen still passes.

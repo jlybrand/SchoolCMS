@@ -210,7 +210,8 @@ export const Pages: CollectionConfig = {
     },
     {
       name: 'pageType',
-      type: 'select',
+      // A radio, not a select: Payload's select input fails axe (`docs/phases/04` §17).
+      type: 'radio',
       required: true,
       defaultValue: 'standard',
       index: true,
@@ -249,7 +250,8 @@ export const Pages: CollectionConfig = {
     },
     {
       name: 'visibility',
-      type: 'select',
+      // A radio, not a select — same reason as `pageType`.
+      type: 'radio',
       required: true,
       defaultValue: 'public',
       index: true,

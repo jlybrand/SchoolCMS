@@ -89,7 +89,7 @@ describe('publish gate over GraphQL (CLAUDE.md rule 3)', () => {
 
   it('a school manager cannot create a page already published', async () => {
     const result = await gql(
-      `mutation { createPage(data: { tenant: ${f.tenantA}, title: "Via GraphQL", slug: "via-graphql", pageType: standard, visibility: public, _status: published }) { id } }`,
+      `mutation { createPage(data: { tenant: ${f.tenantA}, title: "Via GraphQL", slug: "via-graphql", pageType: "standard", visibility: "public", _status: published }) { id } }`,
       MANAGER_A,
     )
     expect(refused(result)).toBe(true)

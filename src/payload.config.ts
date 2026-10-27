@@ -56,6 +56,8 @@ export default buildConfig({
         '/admin/Grants/GrantsPanel#GrantsPanel',
       ],
       afterNavLinks: ['/admin/Approvals/ApprovalsNavLink#ApprovalsNavLink'],
+      /** Repairs Payload's own markup where it fails axe — a stopgap; see the component. */
+      providers: ['/admin/A11yPatch/A11yPatch#A11yPatch'],
     },
   },
 

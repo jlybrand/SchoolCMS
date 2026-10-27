@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, type Page } from '@playwright/test'
 
 import { adminCredentials, adminTest } from './support/admin-session'
+import { dropPage, makePage, type FixturePage } from './support/fixture-pages'
 import { schoolTest } from './support/school-session'
 
 /**
@@ -11,11 +12,10 @@ import { schoolTest } from './support/school-session'
  * screen a role works in, Payload's own chrome included, because that is what the person using
  * it meets.
  *
- * ONLY THE SCREENS THAT PASS ARE HERE. The page form (both planes), the district dashboard and
- * the pages and users lists FAIL on Payload's own markup — react-select inputs, the Lexical
- * toolbar, the "⋯" button, list checkboxes and pagination, the date picker. Each is listed with
- * its element in `docs/phases/04` §17. They join this file as they are fixed; that list, not a
- * skip here, is where the gap is recorded.
+ * Several screens pass only because `src/admin/A11yPatch/` repairs Payload's own markup
+ * (`docs/phases/04` §17–§18). Those screens wait for a REPAIRED attribute before auditing — the
+ * patch runs after Payload renders — and that wait is also what fails, loudly, if a Payload bump
+ * renames what a repair looks for.
  */
 
 const credentials = adminCredentials()
@@ -23,8 +23,11 @@ const SKIP =
   'No SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD — set them in .env and re-run `pnpm run seed`.'
 const BLOCKING_IMPACTS = ['critical', 'serious']
 
-const auditScreen = async (page: Page, ready: string) => {
-  await expect(page.locator(ready).first()).toBeVisible({ timeout: 20_000 })
+/** Every selector must match before the audit — the screen is rendered AND repaired. */
+const auditScreen = async (page: Page, ...ready: string[]) => {
+  for (const selector of ready) {
+    await expect(page.locator(selector).first()).toBeAttached({ timeout: 20_000 })
+  }
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .analyze()
@@ -43,8 +46,27 @@ const auditScreen = async (page: Page, ready: string) => {
   ).toEqual([])
 }
 
+/** The page form, once rendered and repaired: the "⋯" button and the editor are named. */
+const PAGE_FORM_REPAIRED = [
+  '#field-title',
+  '.doc-controls .popup-button[aria-label="More actions"]',
+  '.ContentEditable__root[aria-label]',
+  'button.toolbar-popup__button-bold[aria-label="Bold"]',
+]
+
+/** A list view, once repaired: the first row's checkbox is named. */
+const LIST_REPAIRED = ['tbody .select-row input[aria-label^="Select "]']
+
+let fixture: FixturePage
+
 schoolTest.describe('school plane — whole screens', () => {
   schoolTest.skip(credentials === null, SKIP)
+  schoolTest.beforeAll(async ({ baseURL }) => {
+    fixture = await makePage(baseURL, { title: 'Axe page' })
+  })
+  schoolTest.afterAll(async () => {
+    await dropPage(fixture)
+  })
 
   for (const colorScheme of ['light', 'dark'] as const) {
     schoolTest.describe(colorScheme, () => {
@@ -62,12 +84,22 @@ schoolTest.describe('school plane — whole screens', () => {
         await page.goto('/admin/new-page')
         await auditScreen(page, '#new-page')
       })
+      schoolTest(`@a11y the page form — ${colorScheme}`, async ({ page }) => {
+        await page.goto(`/admin/collections/pages/${fixture.id}`)
+        await auditScreen(page, '#action-send-for-approval', ...PAGE_FORM_REPAIRED)
+      })
     })
   }
 })
 
 adminTest.describe('district plane — whole screens', () => {
   adminTest.skip(credentials === null, SKIP)
+  adminTest.beforeAll(async ({ baseURL }) => {
+    fixture = await makePage(baseURL, { title: 'Axe page' })
+  })
+  adminTest.afterAll(async () => {
+    await dropPage(fixture)
+  })
 
   for (const colorScheme of ['light', 'dark'] as const) {
     adminTest.describe(colorScheme, () => {
@@ -76,6 +108,27 @@ adminTest.describe('district plane — whole screens', () => {
       adminTest(`@a11y approval queue — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/approvals')
         await auditScreen(page, 'h1')
+      })
+      adminTest(`@a11y dashboard — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin')
+        await auditScreen(
+          page,
+          '#waiting-banner',
+          '#grants-panel',
+          '.dashboard-breadcrumb-select input[aria-label="Choose a view"]',
+        )
+      })
+      adminTest(`@a11y pages list — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/collections/pages')
+        await auditScreen(page, ...LIST_REPAIRED, '.clickable-arrow--right[aria-label="Next page"]')
+      })
+      adminTest(`@a11y users list — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/collections/users')
+        await auditScreen(page, ...LIST_REPAIRED)
+      })
+      adminTest(`@a11y the page form — ${colorScheme}`, async ({ page }) => {
+        await page.goto(`/admin/collections/pages/${fixture.id}`)
+        await auditScreen(page, ...PAGE_FORM_REPAIRED, '#field-parent input[aria-label="Parent"]')
       })
     })
   }
