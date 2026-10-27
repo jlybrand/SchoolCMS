@@ -133,6 +133,54 @@ describe('the approval loop leaves a complete record', () => {
   })
 })
 
+describe('a request identity that is not a stored user', () => {
+  it('is recorded as the system — the seed acts as `{ id: 0 }`, which no row matches', async () => {
+    // `scripts/seed.ts` puts a synthetic district admin on the request so the publish gate lets
+    // it seed published pages. Recording that id as the actor broke the foreign key, and — the
+    // trail failing closed — the whole seed with it.
+    const req = await createLocalReq(
+      { user: { id: 0, roles: ['district-admin'] } as unknown as TypedUser },
+      payload,
+    )
+    seq += 1
+    const page = await payload.create({
+      collection: 'pages',
+      data: {
+        tenant: f.tenantA,
+        title: `Seeded ${seq}`,
+        slug: `seeded-${Date.now()}-${seq}`,
+        pageType: 'standard',
+        visibility: 'public',
+        _status: 'published',
+      },
+      overrideAccess: true,
+      req,
+    })
+    expect(await entriesFor('pages', page.id)).toEqual([
+      expect.objectContaining({ action: 'publish', actor: null, actorLabel: 'System' }),
+    ])
+  })
+})
+
+describe('a district admin deleting their own account', () => {
+  it('is recorded with their address, the link to them gone', async () => {
+    const admin = await payload.create({
+      collection: 'users',
+      data: {
+        email: 'leaving-admin@test.local',
+        password: SEED_PASSWORD,
+        roles: ['district-admin'],
+      },
+      overrideAccess: true,
+    })
+    await payload.delete({ collection: 'users', id: admin.id, user: admin, overrideAccess: false })
+    const [deleted] = (await entriesFor('users', admin.id)).filter(
+      (e) => e.action === 'user-delete',
+    )
+    expect(deleted).toMatchObject({ actor: null, actorLabel: 'leaving-admin@test.local' })
+  })
+})
+
 describe('district actions', () => {
   it('a direct publish, a restore and a delete are each recorded', async () => {
     const page = await newPage()

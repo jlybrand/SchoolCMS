@@ -69,7 +69,12 @@ else `Page {id}` / `User {id}`), `tenant` (pages: the page's school; users: null
 ### Writing
 
 `payload.create({ collection: 'audit-events', data, req, overrideAccess: true })` inside the
-change's transaction. A throw from it fails the change, which Payload rolls back
+change's transaction.
+
+Before writing, each `actor` is checked against `users` (`findByID`, access overridden). If no
+row matches — the seed's synthetic `{ id: 0 }` request identity, or a user deleting their own
+account — `actor` is null and `actorLabel` keeps the identity's email, or `System` when it has
+none. A throw from it fails the change, which Payload rolls back
 (`audit-trail.test.ts` "never an invisible change").
 
 ### Access

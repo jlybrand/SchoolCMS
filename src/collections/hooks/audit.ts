@@ -25,8 +25,40 @@ import { auditEntries, type AuditInput } from '@/lib/audit'
 
 export const AUDIT_COLLECTION = 'audit-events'
 
+/**
+ * Whether `id` is a stored user. A request can carry an identity that is not one: the seed puts
+ * a synthetic district admin (`{ id: 0 }`) on its request so the publish gate lets it seed
+ * published pages, and a user deleting their own account is gone by the time the entry is
+ * written. Recording either id would break the foreign key and — the trail failing closed —
+ * the write with it.
+ */
+const isStoredUser = async (req: PayloadRequest, id: string): Promise<boolean> => {
+  const found = await req.payload.findByID({
+    collection: 'users',
+    id,
+    depth: 0,
+    overrideAccess: true,
+    disableErrors: true,
+    req,
+  })
+  return Boolean(found)
+}
+
 const write = async (req: PayloadRequest, input: AuditInput) => {
-  for (const entry of auditEntries(input)) {
+  const entries = auditEntries(input)
+  if (entries.length === 0) return
+  const stored = new Map<string, boolean>()
+  for (const entry of entries) {
+    if (entry.actor !== null) {
+      if (!stored.has(entry.actor)) stored.set(entry.actor, await isStoredUser(req, entry.actor))
+      if (!stored.get(entry.actor)) {
+        // No row to link to. Someone deleting their own account still has an address to keep;
+        // the seed's synthetic identity has none.
+        const email = input.user?.email
+        entry.actor = null
+        if (typeof email !== 'string' || email.trim() === '') entry.actorLabel = 'System'
+      }
+    }
     await req.payload.create({
       collection: AUDIT_COLLECTION,
       data: {
