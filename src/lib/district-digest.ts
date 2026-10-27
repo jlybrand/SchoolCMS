@@ -3,8 +3,9 @@
  *
  * - A **daily digest** of what is waiting — instead of an email per submission, which `04` §4.5
  *   says becomes noise and gets filtered. Weekday mornings only, and only when something waits.
- * - An **overdue alert** when a page passes the threshold (`OVERDUE_BUSINESS_DAYS`), sent to
- *   every district admin so a second approver sees it (`04` §5).
+ * - An **overdue alert** when a page passes the threshold (`OVERDUE_BUSINESS_DAYS`), sent
+ *   to the district admins opted in to alerts (`alertRecipients`), so a second approver sees it
+ *   (`04` §5) unless the district has chosen otherwise.
  *
  * Overdue is counted in whole school days (`src/lib/queue-age.ts`), so a page can only become
  * overdue at midnight; the first moment anyone can act on it is the next morning's run, which is
@@ -131,4 +132,29 @@ export const districtMail = ({
     digestEmail({ ...input, pages }),
     overdueAlertEmail({ ...input, pages: newlyOverdue(pages, at, timeZone) }),
   ].filter((email): email is Email => email !== null)
+}
+
+export type AlertCandidate = { email?: unknown; receivesAlerts?: unknown }
+
+/**
+ * Which district admins get the district's mail (Jason, 2026-10-23). A per-person setting,
+ * `users.receivesAlerts` — never a role or a permission: every admin keeps equal rights.
+ *
+ * Opted in unless the setting is explicitly `false`, so an admin with nothing stored keeps
+ * today's behaviour. If NOBODY is opted in, everyone is mailed (`fallback: true`): an approval
+ * queue nobody hears about goes stale, which is the failure this platform exists to prevent.
+ */
+export const alertRecipients = (
+  admins: readonly AlertCandidate[],
+): { to: string[]; fallback: boolean } => {
+  const usable = admins
+    .map((a) => ({
+      email: typeof a.email === 'string' ? a.email.trim() : '',
+      on: a.receivesAlerts !== false,
+    }))
+    .filter((a) => a.email !== '')
+  const unique = (list: { email: string }[]) => [...new Set(list.map((a) => a.email))]
+  const chosen = unique(usable.filter((a) => a.on))
+  if (chosen.length > 0 || usable.length === 0) return { to: chosen, fallback: false }
+  return { to: unique(usable), fallback: true }
 }

@@ -187,6 +187,10 @@ export interface User {
    */
   autoApprove?: ('events.schedule' | 'posts.routine')[] | null;
   /**
+   * Every district admin keeps the same rights either way. If nobody has this on, every district admin is emailed, so the approval queue is never silent.
+   */
+  receivesAlerts?: boolean | null;
+  /**
    * The single local admin for initial setup and Entra misconfiguration recovery (`02` §7). MFA-protected, audited, excluded from normal login paths. Rotate the credential after any use.
    */
   isBreakGlass?: boolean | null;
@@ -804,6 +808,7 @@ export interface UsersSelect<T extends boolean = true> {
   entraObjectId?: T;
   roles?: T;
   autoApprove?: T;
+  receivesAlerts?: T;
   isBreakGlass?: T;
   lastLoginAt?: T;
   tenants?:

@@ -334,6 +334,24 @@ describe('privilege escalation — the user collection is all permissions', () =
     expect(still.autoApprove ?? []).toEqual([])
   })
 
+  it("a school-manager cannot change anyone's district-alert setting", async () => {
+    // Mail, not permission — but turning a district admin's alerts off is still the district's
+    // call, and a school that silenced the queue's alerts could let a submission sit unseen.
+    for (const id of [f.managerA.id, f.districtAdmin.id]) {
+      await isDenied(() =>
+        payload.update({
+          collection: 'users',
+          id,
+          data: { receivesAlerts: false },
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      )
+      const still = await payload.findByID({ collection: 'users', id, overrideAccess: true })
+      expect(still.receivesAlerts).toBe(true)
+    }
+  })
+
   it('auto-approve is EMPTY for every seeded user — no role or tenant defaults it', async () => {
     const { docs } = await payload.find({
       collection: 'users',

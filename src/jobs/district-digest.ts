@@ -1,7 +1,7 @@
 import type { PayloadRequest, TaskConfig } from 'payload'
 
 import { relationshipIdOf } from '@/access/predicates'
-import { districtMail, type WaitingPage } from '@/lib/district-digest'
+import { alertRecipients, districtMail, type WaitingPage } from '@/lib/district-digest'
 import { DISTRICT_TIME_ZONE } from '@/lib/queue-age'
 
 /**
@@ -20,7 +20,8 @@ import { DISTRICT_TIME_ZONE } from '@/lib/queue-age'
  * A failed send is logged and the next admin is still mailed.
  *
  * Reads as the platform (`overrideAccess`): there is no user in a scheduled job, and it mails
- * only district admins, who can see every school's queue anyway.
+ * only district admins, who can see every school's queue anyway — the ones opted in to
+ * `users.receivesAlerts`, or all of them if nobody is.
  */
 
 export const DISTRICT_DIGEST_TASK = 'districtDigest'
@@ -61,7 +62,8 @@ const waitingPages = async (req: PayloadRequest): Promise<WaitingPage[]> => {
   }))
 }
 
-const districtAdminEmails = async (req: PayloadRequest): Promise<string[]> => {
+/** The district admins who get this mail — `alertRecipients` decides, from `receivesAlerts`. */
+const recipients = async (req: PayloadRequest): Promise<string[]> => {
   const { docs } = await req.payload.find({
     collection: 'users',
     where: { roles: { in: ['district-admin'] } },
@@ -70,7 +72,13 @@ const districtAdminEmails = async (req: PayloadRequest): Promise<string[]> => {
     overrideAccess: true,
     req,
   })
-  return docs.map((u) => u.email).filter((email) => typeof email === 'string' && email !== '')
+  const { to, fallback } = alertRecipients(docs)
+  if (fallback) {
+    req.payload.logger.warn(
+      'districtDigest: nobody is opted in to district alerts, so every district admin is mailed.',
+    )
+  }
+  return to
 }
 
 export const runDistrictDigest = async (req: PayloadRequest, at: Date): Promise<void> => {
@@ -85,7 +93,7 @@ export const runDistrictDigest = async (req: PayloadRequest, at: Date): Promise<
 
   // One message per admin: one bad address must not stop the rest (Resend rejects the whole
   // message), and admins are not shown each other's addresses.
-  for (const to of await districtAdminEmails(req)) {
+  for (const to of await recipients(req)) {
     for (const email of mail) {
       try {
         await req.payload.sendEmail({ to, ...email })
