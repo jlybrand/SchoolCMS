@@ -16,7 +16,8 @@ Phase 4 lands across several PRs. This document is written as each one merges.
 | Submitter email on approve / request changes   | Merged (#31) — §11   |
 | District digest and overdue alert              | Merged (#33) — §12   |
 | Auto-approval grants (zero issued)             | Merged (#35) — §13   |
-| Page history is district-only                  | **This PR** — §14    |
+| Page history is district-only                  | Merged (#36) — §14   |
+| GraphQL schema builds; its gates are tested    | **This PR** — §15    |
 | Audit trail                                    | —                    |
 
 ---
@@ -538,8 +539,8 @@ A unit test fails if a `richText`, `upload` or `blocks` field is added to `Pages
 ### Not here yet
 
 - **Nothing calls `decideAutoApproval` on a write.** No collection has a scope, so every send
-  queues through the review-state hook unchanged. Posts (`posts:routine`) and events
-  (`events:schedule`) add their rules and the call in Phase 5, with the publish-on-behalf path:
+  queues through the review-state hook unchanged. Posts (`posts.routine`) and events
+  (`events.schedule`) add their rules and the call in Phase 5, with the publish-on-behalf path:
   published as the submitter, audited, flagged as auto-approved.
 - Grant changes are not audited, and there is no 30-day post-hoc review list: both need the
   audit trail.
@@ -576,7 +577,43 @@ Changed: `src/collections/Pages.ts` (`access.readVersions`, `hooks.beforeOperati
 and `restoreVersion` checked only `update` — so a school manager could restore any past version
 of their own page, the published one included, as a draft.
 
-### Not here yet
+GraphQL (`versionsPages`, `restoreVersionPage`) is refused the same way —
+`tests/integration/graphql.test.ts`.
 
-- GraphQL is not exercised: the schema does not build (`users.autoApprove` values contain `:`,
-  which Payload's `formatName` keeps), so `/api/graphql` errors for every caller.
+---
+
+## 15. GraphQL
+
+`/api/graphql` did not build its schema before this: `users.autoApprove` values were
+`events:schedule` / `posts:routine`, and Payload 3.87's `formatName`
+(`@payloadcms/graphql/dist/utilities/formatName.js`) rewrites `. - / + , ( ) ' [ ]` and spaces but
+not `:`. Every request failed with `Names must only contain [_a-zA-Z0-9]`.
+
+| Scope (stored)    | GraphQL enum value |
+| ----------------- | ------------------ |
+| `events.schedule` | `events_schedule`  |
+| `posts.routine`   | `posts_routine`    |
+
+Postgres enum `enum_users_auto_approve` carries the stored values. No migrations exist yet (push
+mode outside production); a local database from before this change needs
+`ALTER TYPE enum_users_auto_approve RENAME VALUE 'events:schedule' TO 'events.schedule'` (and
+the same for `posts:routine`), which keeps existing grant rows.
+
+### `tests/integration/graphql.test.ts`
+
+Calls `GRAPHQL_POST(config)` from `@payloadcms/next/routes` with real `Request`s and a JWT from
+`payload.login`, against `dd2_test`. A refusal must carry Payload's Forbidden message, so a
+malformed query cannot pass as one.
+
+| Case                                                        | Expected                   |
+| ----------------------------------------------------------- | -------------------------- |
+| `{ __typename }`                                            | `Query`                    |
+| school manager: `updatePage` own draft `_status: published` | Forbidden; still draft     |
+| school manager: `createPage` with `_status: published`      | Forbidden; nothing created |
+| school manager: `updatePage` own draft, `draft: true`       | saved                      |
+| school manager: `Pages` where tenant = other school         | `docs: []`                 |
+| school manager: `updatePage` other school's page            | Forbidden; unchanged       |
+| anonymous: `Pages(draft: true)`                             | published only             |
+| school manager: `versionsPages`, `restoreVersionPage`       | Forbidden                  |
+| district admin: `versionsPages`                             | answered                   |
+| school manager: `updateUser` self `autoApprove`             | Forbidden; still `[]`      |

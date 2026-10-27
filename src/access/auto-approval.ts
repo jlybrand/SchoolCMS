@@ -18,12 +18,12 @@ import type { AuthUser } from './types'
  * flagged as auto-approved — lands with the first collection that has a scope.
  */
 
-export type GrantScope = 'events:schedule' | 'posts:routine'
+export type GrantScope = 'events.schedule' | 'posts.routine'
 
 /** The grantable scopes, with the label the users form shows. `users.autoApprove` reads this. */
 export const GRANT_SCOPES: readonly { value: GrantScope; label: string }[] = [
-  { value: 'events:schedule', label: 'Events: schedule-only changes' },
-  { value: 'posts:routine', label: 'Posts: routine posts' },
+  { value: 'events.schedule', label: 'Events: schedule-only changes' },
+  { value: 'posts.routine', label: 'Posts: routine posts' },
 ] as const
 
 /** What a submission changes, as the collection's hook describes it. */

@@ -19,7 +19,7 @@ import { Pages } from '@/collections/Pages'
  * implied by role, school or content type, and a submission that mixes a permitted change with
  * anything else queues in full.
  *
- * The scopes the spec defines (`events:schedule`, `posts:routine`) belong to collections that
+ * The scopes the spec defines (`events.schedule`, `posts.routine`) belong to collections that
  * arrive in Phase 5, so the framework is proven here against a synthetic rule table. The real
  * table is checked separately: today it gives `pages` no scope at all.
  */
@@ -32,8 +32,8 @@ const manager = (autoApprove: unknown = []): AuthUser =>
     autoApprove,
   }) as AuthUser
 
-const districtAdmin = { id: 'd1', roles: ['district-admin'], autoApprove: ['posts:routine'] }
-const sync = { id: 's1', roles: ['system-sync'], autoApprove: ['posts:routine'] }
+const districtAdmin = { id: 'd1', roles: ['district-admin'], autoApprove: ['posts.routine'] }
+const sync = { id: 's1', roles: ['system-sync'], autoApprove: ['posts.routine'] }
 
 /** A stand-in for Phase 5's collections — field names are the spec's, not a schema. */
 const rules: AutoApprovalRules = {
@@ -42,7 +42,7 @@ const rules: AutoApprovalRules = {
     createAllowed: true,
     scopes: [
       {
-        scope: 'events:schedule',
+        scope: 'events.schedule',
         permits: ({ changedFields }) =>
           changedFields.every((f) => ['title', 'start', 'end', 'location'].includes(f)),
       },
@@ -51,7 +51,7 @@ const rules: AutoApprovalRules = {
   posts: {
     neverFields: ['body', 'image', 'meta', 'syndicateTo'],
     createAllowed: true,
-    scopes: [{ scope: 'posts:routine', permits: () => true }],
+    scopes: [{ scope: 'posts.routine', permits: () => true }],
   },
 }
 
@@ -68,9 +68,9 @@ const decide = (user: AuthUser | null, c: Change = change()) =>
 
 describe('decideAutoApproval — the grant boundary', () => {
   it('a manager holding the matching grant, making only that change, is auto-approved', () => {
-    expect(decide(manager(['events:schedule']))).toEqual({
+    expect(decide(manager(['events.schedule']))).toEqual({
       approve: true,
-      scope: 'events:schedule',
+      scope: 'events.schedule',
     })
   })
 
@@ -86,7 +86,7 @@ describe('decideAutoApproval — the grant boundary', () => {
   it.each([
     ['a missing field', undefined],
     ['null', null],
-    ['a string, not a list', 'events:schedule'],
+    ['a string, not a list', 'events.schedule'],
     ['an unknown scope', ['events:everything']],
     ['a near miss', ['Events:Schedule']],
     ['a wildcard', ['*']],
@@ -106,14 +106,14 @@ describe('decideAutoApproval — the grant boundary', () => {
   })
 
   it('a grant for one collection does nothing for another', () => {
-    expect(decide(manager(['posts:routine']))).toEqual({
+    expect(decide(manager(['posts.routine']))).toEqual({
       approve: false,
       reason: 'no-grant',
     })
   })
 
   it('a collection with no rules at all queues', () => {
-    expect(decide(manager(['events:schedule']), change({ collection: 'documents' }))).toEqual({
+    expect(decide(manager(['events.schedule']), change({ collection: 'documents' }))).toEqual({
       approve: false,
       reason: 'no-grant',
     })
@@ -121,25 +121,25 @@ describe('decideAutoApproval — the grant boundary', () => {
 
   it('a MIXED submission queues in full — no partial approval', () => {
     expect(
-      decide(manager(['events:schedule']), change({ changedFields: ['start', 'description'] })),
+      decide(manager(['events.schedule']), change({ changedFields: ['start', 'description'] })),
     ).toEqual({ approve: false, reason: 'outside-every-scope' })
   })
 
   it('a never-auto-approvable field queues even when a scope would permit everything', () => {
     expect(
-      decide(manager(['posts:routine']), change({ collection: 'posts', changedFields: ['body'] })),
+      decide(manager(['posts.routine']), change({ collection: 'posts', changedFields: ['body'] })),
     ).toEqual({ approve: false, reason: 'never-field' })
   })
 
   it('one never field among permitted ones still queues the whole submission', () => {
     expect(
-      decide(manager(['events:schedule']), change({ changedFields: ['start', 'agendaBody'] })),
+      decide(manager(['events.schedule']), change({ changedFields: ['start', 'agendaBody'] })),
     ).toEqual({ approve: false, reason: 'never-field' })
   })
 
   it('anything on a page flagged for translation review queues', () => {
     expect(
-      decide(manager(['events:schedule']), change({ requiresTranslationReview: true })),
+      decide(manager(['events.schedule']), change({ requiresTranslationReview: true })),
     ).toEqual({ approve: false, reason: 'translation-review' })
   })
 
@@ -147,7 +147,7 @@ describe('decideAutoApproval — the grant boundary', () => {
     const noCreate: AutoApprovalRules = { events: { ...rules.events!, createAllowed: false } }
     expect(
       decideAutoApproval({
-        user: manager(['events:schedule']),
+        user: manager(['events.schedule']),
         change: change({ isCreate: true }),
         rules: noCreate,
       }),
@@ -155,7 +155,7 @@ describe('decideAutoApproval — the grant boundary', () => {
   })
 
   it('a send with nothing changed queues — there is nothing for a grant to cover', () => {
-    expect(decide(manager(['events:schedule']), change({ changedFields: [] }))).toEqual({
+    expect(decide(manager(['events.schedule']), change({ changedFields: [] }))).toEqual({
       approve: false,
       reason: 'nothing-changed',
     })
@@ -167,7 +167,7 @@ describe('decideAutoApproval — the grant boundary', () => {
         ...rules.events!,
         scopes: [
           {
-            scope: 'events:schedule',
+            scope: 'events.schedule',
             permits: () => {
               throw new Error('boom')
             },
@@ -176,19 +176,19 @@ describe('decideAutoApproval — the grant boundary', () => {
       },
     }
     expect(
-      decideAutoApproval({ user: manager(['events:schedule']), change: change(), rules: throwing }),
+      decideAutoApproval({ user: manager(['events.schedule']), change: change(), rules: throwing }),
     ).toEqual({ approve: false, reason: 'outside-every-scope' })
   })
 })
 
 describe('grantsOf / applicableScopes', () => {
   it('keeps only known scopes, once each', () => {
-    expect(grantsOf(manager(['posts:routine', 'nope', 'posts:routine']))).toEqual(['posts:routine'])
+    expect(grantsOf(manager(['posts.routine', 'nope', 'posts.routine']))).toEqual(['posts.routine'])
   })
 
   it('a school manager’s scopes narrow to the ones the collection defines', () => {
-    const user = manager(['events:schedule', 'posts:routine'])
-    expect(applicableScopes(user, 'events', rules)).toEqual(['events:schedule'])
+    const user = manager(['events.schedule', 'posts.routine'])
+    expect(applicableScopes(user, 'events', rules)).toEqual(['events.schedule'])
     expect(applicableScopes(user, 'pages', rules)).toEqual([])
   })
 
@@ -233,6 +233,6 @@ describe('the real rule table', () => {
   )
 
   it('the grant options are exactly the scopes the spec defines', () => {
-    expect(GRANT_SCOPES.map((s) => s.value)).toEqual(['events:schedule', 'posts:routine'])
+    expect(GRANT_SCOPES.map((s) => s.value)).toEqual(['events.schedule', 'posts.routine'])
   })
 })
