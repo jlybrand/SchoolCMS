@@ -1,0 +1,61 @@
+/**
+ * Auto-approval grants: the users-form checkboxes and the dashboard panel. Payload's theme
+ * variables, not DD2 tokens — the tokens are not loaded in the admin and do not follow its dark
+ * theme (see `ReviewStatusField.module.css`). `tests/e2e/auto-approval-grants.spec.ts` runs axe
+ * over both in both themes.
+ *
+ * Logical properties only (CLAUDE.md rule 5).
+ */
+
+.fieldset {
+  margin-block: 0 1.5rem;
+  margin-inline: 0;
+  padding: 0;
+  border: 0;
+  color: var(--theme-text);
+}
+
+.legend {
+  margin-block-end: 0.25rem;
+  padding: 0;
+  font-weight: 600;
+}
+
+.description,
+.muted {
+  margin-block: 0 0.75rem;
+  color: var(--theme-elevation-800);
+}
+
+.option {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-block-end: 0.5rem;
+}
+
+.panel {
+  margin-block-end: 1.5rem;
+  padding-block: 1rem;
+  padding-inline: 1.25rem;
+  border: 1px solid var(--theme-elevation-400);
+  border-radius: 4px;
+  background: var(--theme-elevation-50);
+  color: var(--theme-text);
+  line-height: 1.5;
+}
+
+.heading {
+  margin-block: 0 0.5rem;
+  font-size: 1.25rem;
+}
+
+.list {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+}
+
+.list a {
+  color: var(--theme-text);
+  text-decoration: underline;
+}

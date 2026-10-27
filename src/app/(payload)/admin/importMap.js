@@ -1,4 +1,5 @@
 import { WatchTenantCollection as WatchTenantCollection_1d0591e3cf4f332c83a86da13a0de59a } from '@payloadcms/plugin-multi-tenant/client'
+import { GrantScopesField as GrantScopesField_f72aa3c0d135b885b20d14c3fe6f775a } from '../../../admin/Grants/GrantScopesField'
 import { TenantField as TenantField_1d0591e3cf4f332c83a86da13a0de59a } from '@payloadcms/plugin-multi-tenant/client'
 import { ReviewStatusField as ReviewStatusField_078936fce220cbf8e528e3d7e8fc0dfa } from '../../../admin/SendForApproval/ReviewStatusField'
 import { RscEntryLexicalCell as RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
@@ -19,6 +20,7 @@ import { SchoolSaveDraftButton as SchoolSaveDraftButton_cc7b83310c556ae98b1d66c9
 import { GlobalViewRedirect as GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
 import { ApprovalsNavLink as ApprovalsNavLink_50736d5f53ca3024920ebd70347f12c2 } from '../../../admin/Approvals/ApprovalsNavLink'
 import { WaitingBanner as WaitingBanner_e51af2c63d800fe378f9f84cfaf25672 } from '../../../admin/Approvals/WaitingBanner'
+import { GrantsPanel as GrantsPanel_186d64a3916edf6aa31629c5b61e084c } from '../../../admin/Grants/GrantsPanel'
 import { TenantSelector as TenantSelector_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
 import { TenantSelectionProvider as TenantSelectionProvider_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
 import { SchoolHome as SchoolHome_3f48be60e82e2641c0b863afd982fe58 } from '../../../admin/SchoolPlane/SchoolHome'
@@ -30,6 +32,7 @@ import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } f
 /** @type import('payload').ImportMap */
 export const importMap = {
   "@payloadcms/plugin-multi-tenant/client#WatchTenantCollection": WatchTenantCollection_1d0591e3cf4f332c83a86da13a0de59a,
+  "/admin/Grants/GrantScopesField#GrantScopesField": GrantScopesField_f72aa3c0d135b885b20d14c3fe6f775a,
   "@payloadcms/plugin-multi-tenant/client#TenantField": TenantField_1d0591e3cf4f332c83a86da13a0de59a,
   "/admin/SendForApproval/ReviewStatusField#ReviewStatusField": ReviewStatusField_078936fce220cbf8e528e3d7e8fc0dfa,
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalCell": RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e,
@@ -50,6 +53,7 @@ export const importMap = {
   "@payloadcms/plugin-multi-tenant/rsc#GlobalViewRedirect": GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62,
   "/admin/Approvals/ApprovalsNavLink#ApprovalsNavLink": ApprovalsNavLink_50736d5f53ca3024920ebd70347f12c2,
   "/admin/Approvals/WaitingBanner#WaitingBanner": WaitingBanner_e51af2c63d800fe378f9f84cfaf25672,
+  "/admin/Grants/GrantsPanel#GrantsPanel": GrantsPanel_186d64a3916edf6aa31629c5b61e084c,
   "@payloadcms/plugin-multi-tenant/rsc#TenantSelector": TenantSelector_d6d5f193a167989e2ee7d14202901e62,
   "@payloadcms/plugin-multi-tenant/rsc#TenantSelectionProvider": TenantSelectionProvider_d6d5f193a167989e2ee7d14202901e62,
   "/admin/SchoolPlane/SchoolHome#SchoolHome": SchoolHome_3f48be60e82e2641c0b863afd982fe58,

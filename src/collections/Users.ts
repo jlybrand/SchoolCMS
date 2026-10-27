@@ -1,6 +1,7 @@
 import { ValidationError, type CollectionConfig } from 'payload'
 
 import { validatePassword } from '@/auth/password-policy'
+import { GRANT_SCOPES } from '@/access/auto-approval'
 import {
   denyAllField,
   districtOnly,
@@ -127,21 +128,22 @@ export const Users: CollectionConfig = {
        * launch posture is zero grants issued at all; issue one only where a specific
        * editor's volume is demonstrably causing queue drag, never pre-emptively.
        *
-       * The enforcement that makes a grant safe — that a mixed submission queues in full,
-       * and that uploads, rich text, new pages, visibility, SEO, navigation and syndication
-       * are never auto-approvable regardless of grant — lands with the approval workflow in
-       * Phase 4. This field is the attachment point, deliberately inert until then.
+       * What a grant permits — and that a mixed submission queues in full, and that uploads,
+       * rich text, new pages, visibility, SEO, navigation and syndication never auto-approve —
+       * is decided in `src/access/auto-approval.ts`. Both scopes are for posts and events
+       * (Phase 5); until those land, holding one changes nothing.
+       *
+       * Rendered as checkboxes: Payload's select input fails the axe gate. The stored shape is
+       * still the select's, an array of scopes.
        */
       name: 'autoApprove',
       type: 'select',
       hasMany: true,
       defaultValue: [],
-      options: [
-        { label: 'Events: schedule-only changes', value: 'events:schedule' },
-        { label: 'Posts: routine posts', value: 'posts:routine' },
-      ],
+      options: GRANT_SCOPES.map(({ label, value }) => ({ label, value })),
       access: { update: districtOnlyField },
       admin: {
+        components: { Field: '/admin/Grants/GrantScopesField#GrantScopesField' },
         description:
           'OFF BY DEFAULT. Granted per named person by a district-admin, deliberately, and revocable at any time. Changes are audited and surfaced on the district dashboard.',
       },

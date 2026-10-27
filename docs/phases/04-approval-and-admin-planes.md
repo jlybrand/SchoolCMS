@@ -13,9 +13,9 @@ Phase 4 lands across several PRs. This document is written as each one merges.
 | School plane: task view, constrained new page  | Merged (#28) — §8    |
 | District queue: inline diff, one-click approve | Merged (#29) — §9    |
 | The Publish slot on a waiting page             | Merged (#30) — §10   |
-| Submitter email on approve / request changes   | #31 — §11            |
-| District digest and overdue alert              | **This PR** — §12    |
-| Auto-approval grants (zero issued)             | —                    |
+| Submitter email on approve / request changes   | Merged (#31) — §11   |
+| District digest and overdue alert              | Merged (#33) — §12   |
+| Auto-approval grants (zero issued)             | **This PR** — §13    |
 | Audit trail                                    | —                    |
 
 ---
@@ -483,3 +483,62 @@ failed send is logged and the loop continues.
 | `payload-jobs` create / update / delete (API) | nobody         |
 
 The runner writes the table with access bypassed.
+
+---
+
+## 13. Auto-approval grants
+
+### Files
+
+| File                                      | Holds                                                                                                                         |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `src/access/auto-approval.ts`             | `GRANT_SCOPES`, `AUTO_APPROVAL_RULES`, `grantsOf`, `applicableScopes`, `decideAutoApproval` (pure)                            |
+| `src/admin/Grants/GrantScopesField.tsx`   | `users.autoApprove` rendered as a fieldset of native checkboxes                                                               |
+| `src/admin/Grants/GrantsPanel.tsx`        | Dashboard panel (`beforeDashboard`, after the waiting banner), district admins only                                           |
+| `src/admin/Grants/grant-data.ts`          | `findGrantHolders` — `users` where `autoApprove` in the known scopes, read as the viewer                                      |
+| `src/admin/Grants/grants.ts`              | `grantRows` — one row per holder: name, else email, else `User {id}`; scopes as labels; sorted (pure)                         |
+| `tests/unit/access/auto-approval.test.ts` | The boundary, against a synthetic rule table; the real table's `pages` entry                                                  |
+| `tests/unit/admin/grants.test.ts`         | `grantRows`                                                                                                                   |
+| `tests/integration/auto-approval.test.ts` | A manager holding every grant still queues a page; only the district issues a grant; `findGrantHolders`                       |
+| `tests/e2e/auto-approval-grants.spec.ts`  | Grant → dashboard → revoke through the admin; axe on the field and the panel, both themes. Serial: the tests share one holder |
+
+Changed: `src/collections/Users.ts` (`autoApprove` options from `GRANT_SCOPES`, custom Field
+component), `src/access/types.ts` (`AuthUser.autoApprove`), `src/payload.config.ts`
+(`beforeDashboard`). The stored shape is unchanged — `select hasMany`, table `users_auto_approve` —
+so there is no migration.
+
+### `decideAutoApproval({ user, change, rules? })`
+
+`change = { collection, isCreate, changedFields, requiresTranslationReview }`. Checked in order;
+the first match queues:
+
+| Check                                                          | Reason                 |
+| -------------------------------------------------------------- | ---------------------- |
+| user is not a school manager                                   | `not-a-school-manager` |
+| no known scope held that the collection defines                | `no-grant`             |
+| `requiresTranslationReview`                                    | `translation-review`   |
+| `isCreate` and the collection's `createAllowed` is false       | `new-document`         |
+| any changed field is in the collection's `neverFields`         | `never-field`          |
+| no changed fields                                              | `nothing-changed`      |
+| no held scope's `permits(change)` is true for the WHOLE change | `outside-every-scope`  |
+
+Otherwise `{ approve: true, scope }`. A `permits` that throws counts as false. `grantsOf` keeps
+only strings in `GRANT_SCOPES`, once each; anything else in the field grants nothing.
+
+### The rule table
+
+| Collection | `neverFields`                                                | `createAllowed` | Scopes |
+| ---------- | ------------------------------------------------------------ | --------------- | ------ |
+| `pages`    | `body`, `layout`, `pageType`, `parent`, `visibility`, `meta` | false           | none   |
+
+A unit test fails if a `richText`, `upload` or `blocks` field is added to `Pages` without joining
+`neverFields`.
+
+### Not here yet
+
+- **Nothing calls `decideAutoApproval` on a write.** No collection has a scope, so every send
+  queues through the review-state hook unchanged. Posts (`posts:routine`) and events
+  (`events:schedule`) add their rules and the call in Phase 5, with the publish-on-behalf path:
+  published as the submitter, audited, flagged as auto-approved.
+- Grant changes are not audited, and there is no 30-day post-hoc review list: both need the
+  audit trail.
