@@ -59,12 +59,27 @@ export const applyReviewState: CollectionBeforeChangeHook = ({
   operation,
   req,
 }) => {
+  /**
+   * A RESTORE brings back an old version's content, review fields included. Those fields are
+   * history, not a request: read as one, a district admin restoring a version a school saved
+   * would be "asking for editing", which the machine refuses. So a restore asks for nothing,
+   * and the page keeps the review state it has now. (Only the district can restore at all —
+   * `src/collections/hooks/page-history.ts`.)
+   */
+  const restoring = req.context?.isRestoringVersion === true
+  /**
+   * A restore carries the restored version's `_status`; it publishes only when it is not
+   * restored as a draft (`restoreAsDraft`, set by `restoreIsDistrictOnly`).
+   */
+  const publishing =
+    data?._status === 'published' && !(restoring && req.context?.restoreAsDraft === true)
+
   const result = resolveReview({
     user: userOf(req),
     current: operation === 'create' ? null : storedFields(originalDoc),
-    requested: data?.reviewState as ReviewState | null | undefined,
-    note: data?.reviewNote as string | null | undefined,
-    publishing: data?._status === 'published',
+    requested: restoring ? undefined : (data?.reviewState as ReviewState | null | undefined),
+    note: restoring ? undefined : (data?.reviewNote as string | null | undefined),
+    publishing,
     now: new Date().toISOString(),
   })
 

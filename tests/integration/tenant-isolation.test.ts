@@ -738,7 +738,7 @@ describe('page history is district-only (Jason, 2026-10-27)', () => {
     expect(draft.title).toBe('History v3 current')
   })
 
-  it('a district admin lists versions and restores one', async () => {
+  it('a district admin lists versions, and restores only one that was published', async () => {
     const { docs } = await payload.findVersions({
       collection: 'pages',
       where: { parent: { equals: pageId } },
@@ -747,14 +747,57 @@ describe('page history is district-only (Jason, 2026-10-27)', () => {
     })
     expect(docs.length).toBeGreaterThanOrEqual(3)
 
+    // Jason, 2026-10-27: a draft that never went live cannot be brought back — by anyone.
+    await expect(
+      payload.restoreVersion({
+        collection: 'pages',
+        id: oldDraftId,
+        draft: true,
+        user: f.districtAdmin,
+        overrideAccess: false,
+      }),
+    ).rejects.toThrow('Only a version that was published can be restored.')
+    expect(await latestTitle()).toBe('History v3 current')
+
     await payload.restoreVersion({
       collection: 'pages',
-      id: oldDraftId,
+      id: publishedId,
       draft: true,
       user: f.districtAdmin,
       overrideAccess: false,
     })
-    expect(await latestTitle()).toBe('History v2 draft')
+    expect(await latestTitle()).toBe('History v1')
+  })
+
+  it('through the Local API a restore PUBLISHES — Payload drops its `draft` option', async () => {
+    // Payload 3.87's local `restoreVersion` never forwards `draft` to the operation, so a
+    // Local API restore always lands live and clears any pending review. A restore AS A DRAFT
+    // (REST `?draft=true`, the admin's own option) is `tests/e2e/page-history.spec.ts`.
+    await payload.update({
+      collection: 'pages',
+      id: pageId,
+      data: { title: 'History v4 by the school' },
+      draft: true,
+      user: f.managerA,
+      overrideAccess: false,
+    })
+
+    await payload.restoreVersion({
+      collection: 'pages',
+      id: publishedId,
+      draft: true,
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+    const live = await payload.findByID({
+      collection: 'pages',
+      id: pageId,
+      draft: false,
+      overrideAccess: true,
+    })
+    expect(live.title).toBe('History v1')
+    expect(live._status).toBe('published')
+    expect(live.reviewState ?? null).toBeNull()
   })
 })
 

@@ -8,6 +8,7 @@ import { buildConfig } from 'payload'
 
 import { isDistrictAdmin } from './access/predicates'
 import type { AuthUser } from './access/types'
+import { AuditEvents } from './collections/AuditEvents'
 import { Navigation } from './collections/Navigation'
 import { Pages } from './collections/Pages'
 import { Settings } from './collections/Settings'
@@ -61,7 +62,7 @@ export default buildConfig({
     },
   },
 
-  collections: [Tenants, Users, Pages, Navigation, Theme, Settings],
+  collections: [Tenants, Users, Pages, Navigation, Theme, Settings, AuditEvents],
 
   // Postgres, never Mongo — portability is a hard requirement (`00`, ADR-10).
   db: postgresAdapter({

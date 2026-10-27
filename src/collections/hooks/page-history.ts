@@ -1,4 +1,9 @@
-import { Forbidden, type CollectionBeforeOperationHook } from 'payload'
+import {
+  APIError,
+  Forbidden,
+  type CollectionBeforeOperationHook,
+  type PayloadRequest,
+} from 'payload'
 
 import { canUsePageHistory } from '@/access/pages'
 import type { AuthUser } from '@/access/types'
@@ -14,15 +19,45 @@ import type { AuthUser } from '@/access/types'
  * A restore that would PUBLISH is also refused by the publish gate; this covers the draft one.
  * The other half is `pagesReadVersionsAccess`: a school manager cannot list versions either.
  *
+ * ONLY A VERSION THAT WAS PUBLISHED can be restored (Jason, 2026-10-27) — for the district too.
+ * A draft that never went live was never approved, so restoring it would bring back words no
+ * reviewer passed. The refusal is an `APIError` with its reason, so the admin's toast says why
+ * rather than just "not allowed".
+ *
  * `overrideAccess` is trusted server code — the Local API defaults to it — and passes.
  */
+
+export const ONLY_PUBLISHED_RESTORES = 'Only a version that was published can be restored.'
+
+const wasPublished = async (req: PayloadRequest, id: unknown): Promise<boolean> => {
+  try {
+    const version = await req.payload.findVersionByID({
+      collection: 'pages',
+      id: String(id),
+      depth: 0,
+      overrideAccess: true,
+      req,
+    })
+    return (version?.version as { _status?: unknown } | undefined)?._status === 'published'
+  } catch {
+    return false
+  }
+}
 export const restoreIsDistrictOnly: CollectionBeforeOperationHook = async ({
   args,
   operation,
   overrideAccess,
 }) => {
-  if (operation !== 'restoreVersion' || overrideAccess) return args
+  if (operation !== 'restoreVersion') return args
+  /**
+   * Whether this restore lands as a draft. Payload sets the status from it only AFTER the hooks
+   * run, so without this `applyReviewState` sees the restored version's own `published` and
+   * takes a draft restore for a publish (`src/collections/hooks/review-state.ts`).
+   */
+  if (args.req?.context) args.req.context.restoreAsDraft = args.draft === true
+  if (overrideAccess) return args
   const user = (args?.req?.user as AuthUser | null | undefined) ?? null
   if (!canUsePageHistory(user)) throw new Forbidden()
+  if (!(await wasPublished(args.req, args.id))) throw new APIError(ONLY_PUBLISHED_RESTORES, 403)
   return args
 }

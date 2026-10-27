@@ -95,4 +95,53 @@ adminTest.describe('page history — district admin', () => {
     await openPage(page, fixture.id)
     await expect(page.getByRole('link', { name: 'Versions' })).toBeVisible()
   })
+
+  /**
+   * Only a version that was PUBLISHED can be restored (Jason, 2026-10-27). Over REST, because
+   * Payload's Local API drops `draft` and so cannot restore as a draft at all.
+   */
+  adminTest(
+    '@smoke restores a published version as a draft, keeping the review state; refuses a draft-only version',
+    async ({ baseURL }) => {
+      const { admin } = fixture
+      const live = await admin.patch(`/api/pages/${fixture.id}?depth=0`, {
+        data: { title: 'History live', _status: 'published' },
+      })
+      expect(live.ok(), 'publish').toBe(true)
+
+      const school = await schoolRequest(baseURL)
+      try {
+        const edited = await school.patch(`/api/pages/${fixture.id}?draft=true&depth=0`, {
+          data: { title: 'History school edit' },
+        })
+        expect(edited.ok(), 'the school saves an unsent edit').toBe(true)
+      } finally {
+        await school.dispose()
+      }
+
+      const versions = (
+        (await (
+          await admin.get(
+            `/api/pages/versions?where[parent][equals]=${fixture.id}&sort=createdAt&depth=0&limit=20`,
+          )
+        ).json()) as { docs: { id: number; version: { _status: string; title: string } }[] }
+      ).docs
+      const draftOnly = versions.find((v) => v.version.title === 'History first')!
+      const published = versions.find((v) => v.version._status === 'published')!
+
+      const refused = await admin.post(`/api/pages/versions/${draftOnly.id}?draft=true`)
+      expect(refused.status()).toBe(403)
+      expect(await refused.text()).toContain('Only a version that was published can be restored.')
+      expect(await latestTitle(fixture)).toBe('History school edit')
+
+      const restored = await admin.post(`/api/pages/versions/${published.id}?draft=true`)
+      expect(restored.ok(), `restore as draft: ${restored.status()}`).toBe(true)
+      const after = (await (
+        await admin.get(`/api/pages/${fixture.id}?draft=true&depth=0`)
+      ).json()) as { title: string; reviewState: string | null }
+      expect(after.title).toBe('History live')
+      // Restored as a draft, not a publish: the school's pending state is untouched.
+      expect(after.reviewState).toBe('editing')
+    },
+  )
 })
