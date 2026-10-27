@@ -130,3 +130,58 @@ describe('the district digest', () => {
     expect(send.mock.calls.map(([m]) => m.to)).toContain('district-admin@test.local')
   })
 })
+
+describe('who gets the district’s mail (`users.receivesAlerts`)', () => {
+  const setAlerts = async (email: string, receivesAlerts: boolean) => {
+    const { docs } = await payload.find({
+      collection: 'users',
+      where: { email: { equals: email } },
+      overrideAccess: true,
+    })
+    await payload.update({
+      collection: 'users',
+      id: docs[0]!.id,
+      data: { receivesAlerts },
+      overrideAccess: true,
+    })
+  }
+
+  afterEach(async () => {
+    await setAlerts('district-admin@test.local', true)
+    await setAlerts(secondAdmin, true)
+  })
+
+  it('every district admin is opted in by default', async () => {
+    const { docs } = await payload.find({
+      collection: 'users',
+      where: { roles: { in: ['district-admin'] } },
+      overrideAccess: true,
+    })
+    expect(docs.map((u) => u.receivesAlerts)).toEqual(docs.map(() => true))
+  })
+
+  it('an admin who opted out is not mailed; the other still is', async () => {
+    await sendPage('Fun run')
+    await setAlerts(secondAdmin, false)
+    const send = spySend()
+
+    await runDistrictDigest(await req(), DIGEST_HOUR)
+
+    expect(send.mock.calls.map(([m]) => m.to)).toEqual(['district-admin@test.local'])
+  })
+
+  it('if every admin opted out, every admin is mailed and it is logged', async () => {
+    await sendPage('Science fair')
+    await setAlerts('district-admin@test.local', false)
+    await setAlerts(secondAdmin, false)
+    const send = spySend()
+    const warn = vi.spyOn(payload.logger, 'warn')
+
+    await runDistrictDigest(await req(), DIGEST_HOUR)
+
+    expect(send.mock.calls.map(([m]) => m.to).sort()).toEqual(
+      ['district-admin@test.local', secondAdmin].sort(),
+    )
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/nobody is opted in/i))
+  })
+})

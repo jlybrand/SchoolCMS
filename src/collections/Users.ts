@@ -149,6 +149,27 @@ export const Users: CollectionConfig = {
       },
     },
     {
+      /**
+       * Which district admins get the district's mail — the daily digest, the overdue alert,
+       * and alerts added later (Jason, 2026-10-23). About mail only: every district admin keeps
+       * the same rights. Read by `alertRecipients` (`src/lib/district-digest.ts`), which mails
+       * everyone if nobody is opted in.
+       *
+       * ON BY DEFAULT, so turning it off is the deliberate act. Shown only on a district admin;
+       * a school manager never receives district mail.
+       */
+      name: 'receivesAlerts',
+      type: 'checkbox',
+      label: 'Email this person the approval digest and district alerts',
+      defaultValue: true,
+      access: { update: districtOnlyField },
+      admin: {
+        condition: (data) => Array.isArray(data?.roles) && data.roles.includes('district-admin'),
+        description:
+          'Every district admin keeps the same rights either way. If nobody has this on, every district admin is emailed, so the approval queue is never silent.',
+      },
+    },
+    {
       name: 'isBreakGlass',
       type: 'checkbox',
       defaultValue: false,

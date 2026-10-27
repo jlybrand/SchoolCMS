@@ -17,7 +17,8 @@ Phase 4 lands across several PRs. This document is written as each one merges.
 | District digest and overdue alert              | Merged (#33) — §12   |
 | Auto-approval grants (zero issued)             | Merged (#35) — §13   |
 | Page history is district-only                  | Merged (#36) — §14   |
-| GraphQL schema builds; its gates are tested    | **This PR** — §15    |
+| GraphQL schema builds; its gates are tested    | Merged (#37) — §15   |
+| Choosing which district admins get mail        | **This PR** — §16    |
 | Audit trail                                    | —                    |
 
 ---
@@ -617,3 +618,34 @@ malformed query cannot pass as one.
 | school manager: `versionsPages`, `restoreVersionPage`       | Forbidden                  |
 | district admin: `versionsPages`                             | answered                   |
 | school manager: `updateUser` self `autoApprove`             | Forbidden; still `[]`      |
+
+---
+
+## 16. Which district admins get the district's mail
+
+Jason, 2026-10-23: the district chooses which admins are emailed; every admin keeps the same
+rights.
+
+### Files
+
+| File                                         | Holds                                                                                       |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `src/collections/Users.ts`                   | `receivesAlerts` — checkbox, default `true`, update district-only, shown on district admins |
+| `src/lib/district-digest.ts`                 | `alertRecipients(admins)` → `{ to, fallback }` (pure)                                       |
+| `src/jobs/district-digest.ts`                | `recipients(req)` — district admins through `alertRecipients`; logs a warning on fallback   |
+| `tests/unit/lib/district-digest.test.ts`     | `alertRecipients`                                                                           |
+| `tests/integration/district-digest.test.ts`  | Default on; opted-out admin not mailed; everyone opted out → everyone mailed + warning      |
+| `tests/integration/tenant-isolation.test.ts` | A school manager cannot change anyone's `receivesAlerts`                                    |
+| `tests/e2e/alert-recipients.spec.ts`         | On a district admin's form, checked; absent on a school manager's; axe, both themes         |
+
+### `alertRecipients`
+
+| Admins                               | `to`                      | `fallback` |
+| ------------------------------------ | ------------------------- | ---------- |
+| some with `receivesAlerts !== false` | those, trimmed, once each | false      |
+| all with `receivesAlerts === false`  | every admin with an email | true       |
+| none with a usable email             | `[]`                      | false      |
+
+`null` or missing counts as opted in. Applies to the digest and the overdue alert (§12); later
+district alerts read the same field. Database: `users.receives_alerts boolean DEFAULT true`, so
+existing rows read `true` (a local database from before this needs that column added).

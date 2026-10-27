@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  alertRecipients,
   DIGEST_HOUR,
   digestEmail,
   districtMail,
@@ -217,5 +218,48 @@ describe('districtMail — what one hourly run sends', () => {
         queueUrl: QUEUE,
       }),
     ).toEqual([])
+  })
+})
+
+/**
+ * Who gets the district's mail (Jason, 2026-10-23): district admins choose which of them are
+ * mailed. Rights stay equal — this is about mail, never permission. The queue must never go
+ * silent, so if nobody is opted in, every admin is mailed.
+ */
+describe('alertRecipients', () => {
+  const admin = (email: unknown, receivesAlerts?: unknown) => ({ email, receivesAlerts })
+
+  it('mails the admins who are opted in, and not the ones who opted out', () => {
+    expect(
+      alertRecipients([
+        admin('a@dd2.org', true),
+        admin('b@dd2.org', false),
+        admin('c@dd2.org', true),
+      ]),
+    ).toEqual({ to: ['a@dd2.org', 'c@dd2.org'], fallback: false })
+  })
+
+  it('an admin with no setting stored is opted in — today’s behaviour is the default', () => {
+    expect(alertRecipients([admin('a@dd2.org'), admin('b@dd2.org', null)])).toEqual({
+      to: ['a@dd2.org', 'b@dd2.org'],
+      fallback: false,
+    })
+  })
+
+  it('if every admin opted out, every admin is mailed and the fallback is reported', () => {
+    expect(alertRecipients([admin('a@dd2.org', false), admin('b@dd2.org', false)])).toEqual({
+      to: ['a@dd2.org', 'b@dd2.org'],
+      fallback: true,
+    })
+  })
+
+  it('skips admins with no usable address, and lists each address once', () => {
+    expect(
+      alertRecipients([admin(''), admin(null), admin(' a@dd2.org '), admin('a@dd2.org')]),
+    ).toEqual({ to: ['a@dd2.org'], fallback: false })
+  })
+
+  it('no admins at all: nobody to mail', () => {
+    expect(alertRecipients([])).toEqual({ to: [], fallback: false })
   })
 })
