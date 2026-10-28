@@ -4,13 +4,13 @@ How the content modules work mechanically, and the audit trail they write to. Ph
 with the audit trail (`05`, scheduled at the Phase 4 close); the modules — posts, events, people
 and the PowerSchool sync, alerts — follow, each writing to it.
 
-| Slice                        | State                                                                                                  |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Audit trail                  | Merged (#42) — §1                                                                                      |
-| News/announcements (`posts`) | §2 collection (#43); §3 approval (#44); **this PR** — §4 folders, boards, tags; feed and template next |
-| Calendars and events         | —                                                                                                      |
-| Directories + PowerSchool    | —                                                                                                      |
-| Alerts                       | —                                                                                                      |
+| Slice                        | State                                                                         |
+| ---------------------------- | ----------------------------------------------------------------------------- |
+| Audit trail                  | Merged (#42) — §1                                                             |
+| News/announcements (`posts`) | §2 (#43); §3 (#44); §4 (#45); **this PR** — §5 public pages; `FeedBlock` next |
+| Calendars and events         | —                                                                             |
+| Directories + PowerSchool    | —                                                                             |
+| Alerts                       | —                                                                             |
 
 ---
 
@@ -376,3 +376,65 @@ The school is the chosen board's.
 (the lock); `tenant-isolation.test.ts` "announcement folders, boards and tags"; `graphql.test.ts`;
 `announcements.spec.ts` (two boards); `admin-planes-axe.spec.ts` (boards, folders, tags lists; a
 board; the post form with board and tag chips).
+
+---
+
+## 5. Announcements on the public site (Jason, 2026-10-28)
+
+`/news/{slug}` on the announcement's HOME site; `/news` lists a site's own announcements and
+those shared with it. A shared one links to its home site — one address per announcement.
+
+### Files
+
+| File                                                                | Holds                                                                                                                                          |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/app/(frontend)/sites/[hostname]/[locale]/site.tsx`             | `resolveSite(params)` → `Site \| null`; `SiteFrame` (header, `<main data-cache-tag>`, footer; reads navigation)                                |
+| `src/app/(frontend)/sites/[hostname]/[locale]/news/page.tsx`        | `/news` — `listPosts(ctx, { limit: 50 })` → `toNewsItems` → `NewsList` (h2 headlines); tags `tenant:{id} collection:posts`                     |
+| `src/app/(frontend)/sites/[hostname]/[locale]/news/[slug]/page.tsx` | `/news/{slug}` — `getPostBySlug`; h1, `PublishedDate`, `RichText`, "All news"; tags `tenant:{id} posts:{id}`                                   |
+| `src/lib/post-url.ts`                                               | `NEWS_PATH`, `postPath(slug)`, `postHref(post, { siteTenantId, locale, serverUrl })`, `formatPostDate(iso, locale)`, `toNewsItems`, `NewsItem` |
+| `src/components/NewsList/`                                          | list of `NewsItem`; headline per item at `level`; `empty` sentence                                                                             |
+| `src/components/PublishedDate/`                                     | `<p><time dateTime>label</time></p>`                                                                                                           |
+| `tests/e2e/news-pages.spec.ts`                                      | list → article; 404s; district post on a school's list within seconds; axe both themes                                                         |
+
+Changed:
+
+| File                                             | Change                                                                               |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| `[[...segments]]/page.tsx`                       | uses `resolveSite` + `SiteFrame`                                                     |
+| `sitemap/route.ts`                               | adds `NEWS_PATH` and `listPostPaths`                                                 |
+| `src/content/posts.ts`                           | `getPostBySlug(ctx, slug)`, `listPostPaths(ctx)`; `listPosts` fills `homeHostname`   |
+| `src/content/types.ts`, `post-mapper.ts`         | `Post.homeHostname` (mapper: null)                                                   |
+| `src/lib/slug.ts`, `src/collections/Pages.ts`    | `isReservedTopLevelSlug` — `news` refused for a page with no parent                  |
+| `src/collections/hooks/revalidate-on-publish.ts` | `targetsFor` dep; `syndicationTargets(doc, previous, all)`; `allTenantIds`           |
+| `src/collections/Posts.ts`                       | revalidate on publish with `syndicationTargets`; notify `pathFor` = `postPath(slug)` |
+| `src/lib/review-emails.ts`                       | announcement approval links to it when `pageUrl` is given                            |
+| `src/admin/Approvals/page-diff.ts`               | Address shows `/news/{slug}`                                                         |
+
+### Links
+
+| Shown on                   | Post's home | `postHref`                                                                            |
+| -------------------------- | ----------- | ------------------------------------------------------------------------------------- |
+| its home site              | this site   | `localizedPath('/news/{slug}', locale)`                                               |
+| another site               | elsewhere   | `publicUrlFor(NEXT_PUBLIC_SERVER_URL, homeHostname, '/news/{slug}')` (default locale) |
+| another site, home unknown | —           | null (headline unlinked)                                                              |
+
+### Reads
+
+| Function                   | Where                                                         |
+| -------------------------- | ------------------------------------------------------------- |
+| `getPostBySlug(ctx, slug)` | `tenant = ctx.tenant`, published, public, `slug`              |
+| `listPostPaths(ctx)`       | `tenant = ctx.tenant`, published, public → `/news/{slug}`     |
+| `listPosts(ctx, filter)`   | `feedConstraint` (§4) + one `tenants` read for home hostnames |
+
+### Revalidation
+
+On a publish, `revalidatePath('/sites/{hostname}', 'layout')` for each of
+`syndicationTargets(doc, previousDoc, allTenantIds)`: owner; every tenant for `district-wide`;
+`syndicatedTo` for `selected`; the same for `previousDoc` (a site it was taken off). A draft
+write revalidates nothing.
+
+### Not here yet
+
+- `FeedBlock` and the resolve pass for editor-configured blocks (`03` §3.2).
+- Pagination or an archive past 50 on `/news`.
+- `posts.routine`.

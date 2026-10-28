@@ -1,4 +1,5 @@
 import { toRichText } from '@/content/rich-text'
+import { postPath } from '@/lib/post-url'
 import type { RichTextBlock, RichTextInline } from '@/content/types'
 
 /**
@@ -196,11 +197,7 @@ const diffBlocks = (before: KeyedBlock[], after: KeyedBlock[]): BodyDiff | null 
   return changes.length === 0 ? null : { changes, unchanged }
 }
 
-/**
- * An announcement's typed fields (`03` §2 `posts`). Its address is shown as the slug alone:
- * where announcements live on a site arrives with the post template (Phase 5 part C), and
- * printing a guessed path would show the reviewer an address that does not exist.
- */
+/** An announcement's typed fields (`03` §2 `posts`). It lives at `/news/{slug}` on its site. */
 /** A related row as the queue hands it over: `{ id, title }`, or a bare id. */
 const named = (value: unknown): { id: string; name: string } | null => {
   if (value === null || value === undefined || value === '') return null
@@ -221,7 +218,13 @@ const tagsOf = (doc: Doc) =>
 
 const POST_FIELDS: FieldSpec[] = [
   { field: 'title', label: 'Headline', key: (d) => textOf(d.title), always: true },
-  { field: 'slug', label: 'Address', key: (d) => textOf(d.slug), always: true },
+  {
+    field: 'slug',
+    label: 'Address',
+    key: (d) => textOf(d.slug),
+    show: (d) => (textOf(d.slug) ? postPath(textOf(d.slug)!) : null),
+    always: true,
+  },
   {
     field: 'board',
     label: 'Board',

@@ -228,7 +228,7 @@ describe('diffPost', () => {
     expect(diff.isNew).toBe(true)
     expect(diff.fields.map((f) => [f.label, f.after])).toEqual([
       ['Headline', 'Picture day'],
-      ['Address', 'picture-day'],
+      ['Address', '/news/picture-day'],
       ['Board', null],
       ['Summary', 'Smile.'],
       ['Who can see it', 'Anyone'],

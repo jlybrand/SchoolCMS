@@ -157,11 +157,7 @@ describe('outcomeEmail — what the school manager reads', () => {
   })
 })
 
-/**
- * An announcement's outcome. Until the post template lands (Phase 5 part C) an announcement has
- * no address of its own, so the approval says so plainly and links nowhere rather than to a
- * page that does not show it.
- */
+/** An announcement's outcome — named as one; linked to `/news/{slug}` on its site when known. */
 describe('outcomeEmail — an announcement', () => {
   const post = {
     noun: 'announcement' as const,
@@ -171,13 +167,21 @@ describe('outcomeEmail — an announcement', () => {
     editUrl: 'https://admin.dd2.org/admin/collections/posts/9',
   }
 
-  it('approved: names it as an announcement and carries no website link', () => {
+  it('approved with no address: names it as an announcement and links nowhere', () => {
     const email = outcomeEmail({ outcome: 'approved', ...post })
     expect(email.subject).toBe('Your announcement is approved: Picture day')
     expect(email.text).toContain('approved your announcement “Picture day”')
     expect(email.text).toContain('Oakbrook Elementary')
     expect(email.html).not.toContain('href=')
     expect(email.text).not.toMatch(/https?:/)
+  })
+
+  it('approved with its address: says it is live and links there', () => {
+    const url = 'https://oakbrook.dd2.org/news/picture-day'
+    const email = outcomeEmail({ outcome: 'approved', ...post, pageUrl: url })
+    expect(email.text).toContain('It is live now')
+    expect(email.text).toContain(url)
+    expect(email.html).toContain(`href="${url}"`)
   })
 
   it('changes requested: names it as an announcement and links to its form', () => {

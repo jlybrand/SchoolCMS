@@ -29,7 +29,7 @@ import {
   userEmail,
 } from '@/collections/hooks/notify-review-outcome'
 import { makeRevalidateOnPublish, tenantHostname } from '@/collections/hooks/revalidate-on-publish'
-import { isReservedSlug, slugify } from '@/lib/slug'
+import { isReservedSlug, isReservedTopLevelSlug, slugify } from '@/lib/slug'
 
 /**
  * `pages` — the first content collection (`03` §2).
@@ -187,7 +187,7 @@ export const Pages: CollectionConfig = {
         description:
           "The page's address, filled in from the title. Changing it changes the URL and breaks existing links.",
       },
-      validate: (value: unknown) => {
+      validate: (value: unknown, { siblingData }: { siblingData?: { parent?: unknown } }) => {
         if (typeof value !== 'string' || value.trim() === '') {
           return 'Give this page a title so it can have an address.'
         }
@@ -196,6 +196,11 @@ export const Pages: CollectionConfig = {
         }
         if (isReservedSlug(value)) {
           return `"${value}" is reserved by the platform. Please choose a different address.`
+        }
+        // `/news` is the site's announcement list (Jason, 2026-10-28) — at the top level only.
+        const topLevel = siblingData?.parent === undefined || siblingData.parent === null
+        if (topLevel && isReservedTopLevelSlug(value)) {
+          return `"${value}" is where this site's announcements are listed. Please choose a different address, or place this page under another one.`
         }
         return true
       },

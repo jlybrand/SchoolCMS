@@ -85,6 +85,20 @@ export const nextFreeSlug = (base: string, taken: readonly string[]): string => 
   }
 }
 
+/**
+ * Slugs reserved at the TOP of a site only. `/news` is the site's announcement list and
+ * `/news/{slug}` an announcement (Jason, 2026-10-28); `/about/news` is an ordinary page.
+ */
+const RESERVED_TOP_LEVEL_SLUGS: readonly string[] = ['news'] as const
+
+/** True when a top-level page could not take this slug. */
+export const isReservedTopLevelSlug = (slug: string | null | undefined): boolean => {
+  if (slug === null || slug === undefined) return false
+  return (
+    isReservedSlug(slug) || RESERVED_TOP_LEVEL_SLUGS.includes(String(slug).trim().toLowerCase())
+  )
+}
+
 /** True when a slug would collide with a platform route. Compared case-insensitively. */
 export const isReservedSlug = (slug: string | null | undefined): boolean => {
   if (slug === null || slug === undefined) return false

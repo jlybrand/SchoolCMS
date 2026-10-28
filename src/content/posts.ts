@@ -2,6 +2,8 @@ import { getPayload } from 'payload'
 
 import config from '@payload-config'
 
+import { postPath } from '@/lib/post-url'
+
 import { toPost } from './post-mapper'
 import { feedConstraint, type FeedFilter } from './syndication'
 import type { ContentContext, Post } from './types'
@@ -33,6 +35,71 @@ import type { ContentContext, Post } from './types'
 /** A feed shows a handful; a news index pages. Nothing asks for more than this at once. */
 const MAX_POSTS = 100
 
+type PayloadClient = Awaited<ReturnType<typeof getPayload>>
+
+/** The home site's hostname for each post, in one read. */
+const withHomes = async (payload: PayloadClient, posts: Post[]): Promise<Post[]> => {
+  const ids = [...new Set(posts.map((post) => post.tenantId))]
+  if (ids.length === 0) return posts
+  const { docs } = await payload.find({
+    collection: 'tenants',
+    where: { id: { in: ids } },
+    pagination: false,
+    depth: 0,
+    overrideAccess: true,
+    select: { hostname: true },
+  })
+  const hosts = new Map(docs.map((t) => [String(t.id), t.hostname]))
+  return posts.map((post) => ({ ...post, homeHostname: hosts.get(post.tenantId) ?? null }))
+}
+
+/** A site's own posts, published and public. Shared posts are listed elsewhere, never paged. */
+const ownPublic = (ctx: ContentContext) => ({
+  and: [
+    { tenant: { equals: ctx.tenant.id } },
+    { _status: { equals: 'published' } },
+    { visibility: { equals: 'public' } },
+  ],
+})
+
+/**
+ * The announcement at `/news/{slug}` on this site, or null.
+ *
+ * ITS HOME SITE ONLY (Jason, 2026-10-28). A post shared here is listed here and links home, so
+ * there is one address per announcement — one cached page, one search result, and no clash
+ * with this site's own post of the same slug. A draft, a staff-only post and a missing one are
+ * all null, and 404 alike (`03` §6.4).
+ */
+export const getPostBySlug = async (ctx: ContentContext, slug: string): Promise<Post | null> => {
+  const payload = await getPayload({ config })
+  const { docs } = await payload.find({
+    collection: 'posts',
+    where: { and: [...ownPublic(ctx).and, { slug: { equals: slug } }] },
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const post = toPost(docs[0])
+  if (!post) return null
+  return { ...post, homeHostname: ctx.tenant.hostname }
+}
+
+/** Every page path of this site's own published, public posts — for its sitemap. */
+export const listPostPaths = async (ctx: ContentContext): Promise<string[]> => {
+  const payload = await getPayload({ config })
+  const { docs } = await payload.find({
+    collection: 'posts',
+    where: ownPublic(ctx),
+    pagination: false,
+    depth: 0,
+    overrideAccess: true,
+    select: { slug: true },
+  })
+  return docs
+    .map((doc) => (typeof doc.slug === 'string' && doc.slug !== '' ? postPath(doc.slug) : null))
+    .filter((path): path is string => path !== null)
+}
+
 export const listPosts = async (
   ctx: ContentContext,
   { limit = 10, ...filter }: { limit?: number } & FeedFilter = {},
@@ -49,5 +116,8 @@ export const listPosts = async (
     overrideAccess: true,
   })
 
-  return docs.map(toPost).filter((post): post is Post => post !== null)
+  return withHomes(
+    payload,
+    docs.map(toPost).filter((post): post is Post => post !== null),
+  )
 }

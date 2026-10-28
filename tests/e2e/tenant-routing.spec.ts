@@ -411,8 +411,15 @@ test.describe('search engines and link previews (`01` §3 item 13)', () => {
       const xml = await response.text()
       const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1])
 
-      // 3 seeded pages x 6 locales. The front page is `/`, never `/home`.
-      expect(locs).toHaveLength(18)
+      /**
+       * 3 seeded pages x 6 locales, plus the announcement list x 6. Announcements themselves are
+       * left out of the count: specs running alongside publish and delete them on this site.
+       * The front page is `/`, never `/home`.
+       */
+      const notPosts = locs.filter((loc) => !/\/news\/[^/]+$/.test(loc ?? ''))
+      expect(notPosts).toHaveLength(24)
+      expect(locs).toContain('http://a.localhost/news')
+      expect(locs).toContain('http://a.localhost/es/news')
       expect(locs).toContain('http://a.localhost/')
       expect(locs).toContain('http://a.localhost/ar/about/staff')
       expect(locs.some((loc) => loc?.includes('/home'))).toBe(false)
@@ -426,7 +433,8 @@ test.describe('search engines and link previews (`01` §3 item 13)', () => {
         (match) => match[1] ?? '/',
       )
 
-      for (const path of paths) {
+      // Announcement pages are skipped for the reason above: one may be deleted mid-check.
+      for (const path of paths.filter((p) => !/\/news\/[^/]+$/.test(p))) {
         expect((await request.get(path)).status(), path).toBe(200)
       }
     })

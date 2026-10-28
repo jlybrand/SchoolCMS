@@ -68,9 +68,8 @@ export type OutcomeEmailInput = {
   title: string
   school: string
   /**
-   * The live page — used when approved. Null for something with no public address of its own
-   * yet (an announcement, until the post template lands): the email says it is approved and
-   * links nowhere, rather than to a page that does not show it.
+   * The live page — used when approved. Null when there is no address to give: the email says
+   * it is approved and links nowhere, rather than guessing one.
    */
   pageUrl: string | null
   /** The page form — used when changes are requested. */
@@ -104,12 +103,21 @@ export const outcomeEmail = (input: OutcomeEmailInput): Email => {
   if (input.outcome === 'approved' && input.noun === 'announcement') {
     const heading = 'Your announcement is approved'
     const sentence = `The district approved your announcement “${title}” for ${school}’s website.`
+    const url = input.pageUrl
     return {
       subject: `${heading}: ${title}`,
-      text: [sentence, '', SIGN_OFF].join('\n'),
+      text: [
+        url ? `${sentence} It is live now:` : sentence,
+        ...(url ? ['', url] : []),
+        '',
+        SIGN_OFF,
+      ].join('\n'),
       html: emailDocument(
         heading,
-        `<p>The district approved your announcement “${escapeHtml(title)}” for ${escapeHtml(school)}’s website.</p>`,
+        `<p>The district approved your announcement “${escapeHtml(title)}” for ${escapeHtml(school)}’s website.${url ? ' It is live now.' : ''}</p>` +
+          (url
+            ? `<p><a href="${escapeHtml(url)}">See “${escapeHtml(title)}” on the website</a></p>`
+            : ''),
       ),
     }
   }
