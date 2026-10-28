@@ -196,9 +196,27 @@ const diffBlocks = (before: KeyedBlock[], after: KeyedBlock[]): BodyDiff | null 
   return changes.length === 0 ? null : { changes, unchanged }
 }
 
-export const diffPage = (live: Doc | null, proposed: Doc): PageDiff => {
+/**
+ * An announcement's typed fields (`03` §2 `posts`). Its address is shown as the slug alone:
+ * where announcements live on a site arrives with the post template (Phase 5 part C), and
+ * printing a guessed path would show the reviewer an address that does not exist.
+ */
+const POST_FIELDS: FieldSpec[] = [
+  { field: 'title', label: 'Headline', key: (d) => textOf(d.title), always: true },
+  { field: 'slug', label: 'Address', key: (d) => textOf(d.slug), always: true },
+  { field: 'excerpt', label: 'Summary', key: (d) => textOf(d.excerpt) },
+  {
+    field: 'visibility',
+    label: 'Who can see it',
+    key: (d) => textOf(d.visibility),
+    show: (d) => VISIBILITY[String(d.visibility)] ?? textOf(d.visibility),
+    always: true,
+  },
+]
+
+const diffFields = (specs: FieldSpec[], live: Doc | null, proposed: Doc): PageDiff => {
   const fields: FieldChange[] = []
-  for (const spec of FIELDS) {
+  for (const spec of specs) {
     const show = spec.show ?? spec.key
     if (live === null) {
       const after = show(proposed)
@@ -222,3 +240,10 @@ export const diffPage = (live: Doc | null, proposed: Doc): PageDiff => {
     body: diffBlocks(live === null ? [] : blocksOf(live.body), blocksOf(proposed.body)),
   }
 }
+
+export const diffPage = (live: Doc | null, proposed: Doc): PageDiff =>
+  diffFields(FIELDS, live, proposed)
+
+/** The same diff over an announcement's fields; the district-only ones are absent, as on pages. */
+export const diffPost = (live: Doc | null, proposed: Doc): PageDiff =>
+  diffFields(POST_FIELDS, live, proposed)

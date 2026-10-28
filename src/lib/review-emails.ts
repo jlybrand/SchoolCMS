@@ -63,10 +63,16 @@ export const oneLine = (value: string): string => value.replace(/[\r\n]+/g, ' ')
 
 export type OutcomeEmailInput = {
   outcome: ReviewOutcome
+  /** What the school sent. Pages by default. */
+  noun?: 'page' | 'announcement'
   title: string
   school: string
-  /** The live page — used when approved. */
-  pageUrl: string
+  /**
+   * The live page — used when approved. Null for something with no public address of its own
+   * yet (an announcement, until the post template lands): the email says it is approved and
+   * links nowhere, rather than to a page that does not show it.
+   */
+  pageUrl: string | null
   /** The page form — used when changes are requested. */
   editUrl: string
   note?: string | null
@@ -95,31 +101,47 @@ export const outcomeEmail = (input: OutcomeEmailInput): Email => {
   const title = oneLine(input.title)
   const school = oneLine(input.school)
 
+  if (input.outcome === 'approved' && input.noun === 'announcement') {
+    const heading = 'Your announcement is approved'
+    const sentence = `The district approved your announcement “${title}” for ${school}’s website.`
+    return {
+      subject: `${heading}: ${title}`,
+      text: [sentence, '', SIGN_OFF].join('\n'),
+      html: emailDocument(
+        heading,
+        `<p>The district approved your announcement “${escapeHtml(title)}” for ${escapeHtml(school)}’s website.</p>`,
+      ),
+    }
+  }
+
   if (input.outcome === 'approved') {
     const heading = 'Your page is live'
+    const pageUrl = input.pageUrl ?? ''
     return {
       subject: `${heading}: ${title}`,
       text: [
         `The district approved your changes to “${title}” on ${school}’s website. They are live now:`,
         '',
-        input.pageUrl,
+        pageUrl,
         '',
         SIGN_OFF,
       ].join('\n'),
       html: emailDocument(
         heading,
         `<p>The district approved your changes to “${escapeHtml(title)}” on ${escapeHtml(school)}’s website. They are live now.</p>` +
-          `<p><a href="${escapeHtml(input.pageUrl)}">See “${escapeHtml(title)}” on the website</a></p>`,
+          `<p><a href="${escapeHtml(pageUrl)}">See “${escapeHtml(title)}” on the website</a></p>`,
       ),
     }
   }
 
   const note = (input.note ?? '').trim()
   const heading = 'Changes needed'
+  const what = (t: string) =>
+    input.noun === 'announcement' ? `your announcement “${t}”` : `your changes to “${t}”`
   return {
     subject: `${heading}: ${title}`,
     text: [
-      `The district looked at your changes to “${title}” on ${school}’s website and asked for a few changes before it goes live:`,
+      `The district looked at ${what(title)} on ${school}’s website and asked for a few changes before it goes live:`,
       '',
       ...note.split('\n').map((line) => `  ${line}`),
       '',
@@ -133,7 +155,7 @@ export const outcomeEmail = (input: OutcomeEmailInput): Email => {
     ].join('\n'),
     html: emailDocument(
       heading,
-      `<p>The district looked at your changes to “${escapeHtml(title)}” on ${escapeHtml(school)}’s website and asked for a few changes before it goes live:</p>` +
+      `<p>The district looked at ${what(escapeHtml(title))} on ${escapeHtml(school)}’s website and asked for a few changes before it goes live:</p>` +
         `<blockquote style="margin: 0 0 16px; padding-left: 12px; border-left: 4px solid #4d5563;">${escapeHtml(note).replace(/\n/g, '<br>')}</blockquote>` +
         `<p>Make the changes, then press “Send for approval” again. Nothing you wrote has been lost.</p>` +
         `<p><a href="${escapeHtml(input.editUrl)}">Open “${escapeHtml(title)}” to make the changes</a></p>`,

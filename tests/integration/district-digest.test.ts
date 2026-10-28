@@ -88,6 +88,34 @@ describe('the district digest', () => {
     expect(message.text).toContain('/admin/approvals')
   })
 
+  it('an announcement waiting is in the same digest, named as one', async () => {
+    await payload.create({
+      collection: 'posts',
+      data: {
+        tenant: f.tenantA,
+        title: 'Book fair',
+        slug: `digest-post-${Date.now()}`,
+        visibility: 'public',
+        body: {
+          root: {
+            type: 'root',
+            children: [{ type: 'paragraph', children: [{ type: 'text', text: 'Friday.' }] }],
+          },
+        } as never,
+        reviewState: 'submitted',
+      },
+      draft: true,
+      user: f.managerA,
+      overrideAccess: false,
+    })
+    const send = spySend()
+
+    await runDistrictDigest(await req(), DIGEST_HOUR)
+
+    const [message] = send.mock.calls[0]!
+    expect(message.text).toContain('Book fair (announcement) — School A')
+  })
+
   it('school managers are never mailed the district digest', async () => {
     await sendPage('Lunch menu')
     const send = spySend()

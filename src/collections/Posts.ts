@@ -10,10 +10,22 @@ import {
 import { districtOnlyField } from '@/access/tenant-scoped'
 import type { AuthUser } from '@/access/types'
 import { sendsForApproval } from '@/admin/SendForApproval/review-status'
+import { makeApproveEndpoint } from '@/collections/endpoints/approve'
 import { auditChange, auditDelete } from '@/collections/hooks/audit'
+import {
+  makeNotifyReviewOutcome,
+  noPath,
+  schoolOf,
+  sendWithPayload,
+  userEmail,
+} from '@/collections/hooks/notify-review-outcome'
 import { restoreIsDistrictOnly } from '@/collections/hooks/page-history'
 import { deriveSlugFromTitle } from '@/collections/hooks/page-slug'
-import { stampPublishedDateHook, uniquePostSlug } from '@/collections/hooks/post-hooks'
+import {
+  postNeedsWordsHook,
+  stampPublishedDateHook,
+  uniquePostSlug,
+} from '@/collections/hooks/post-hooks'
 import { publishGate } from '@/collections/hooks/publish-gate'
 import { applyReviewState } from '@/collections/hooks/review-state'
 import { SYNDICATION_SCOPES } from '@/content/syndication'
@@ -79,12 +91,30 @@ export const Posts: CollectionConfig = {
     beforeOperation: [restoreIsDistrictOnly],
     /** Derive the slug from the title, then make it this school's own. */
     beforeValidate: [deriveSlugFromTitle, uniquePostSlug],
-    /** The publish gate first, the review state last — the order pages use, for its reason. */
-    beforeChange: [publishGate, stampPublishedDateHook, applyReviewState],
-    /** FIRST, as on pages: the entry is in the change's transaction. */
-    afterChange: [auditChange('posts')],
+    /**
+     * The publish gate first, the review state last — the order pages use, for its reason.
+     * `postNeedsWordsHook` reads the REQUESTED review state, so it runs before
+     * `applyReviewState` replaces it with the resolved one.
+     */
+    beforeChange: [publishGate, postNeedsWordsHook, stampPublishedDateHook, applyReviewState],
+    afterChange: [
+      /** FIRST, as on pages: the entry is in the change's transaction. */
+      auditChange('posts'),
+      /** The submitter's email on approve or request changes (`04` §4.5). */
+      makeNotifyReviewOutcome({
+        collection: 'posts',
+        send: sendWithPayload,
+        serverUrl: process.env.NEXT_PUBLIC_SERVER_URL ?? '',
+        recipientFor: userEmail,
+        schoolFor: schoolOf,
+        pathFor: noPath,
+      }),
+    ],
     afterDelete: [auditDelete('posts')],
   },
+
+  /** The queue's one click, as on pages. */
+  endpoints: [makeApproveEndpoint('posts')],
 
   fields: [
     {
@@ -132,10 +162,13 @@ export const Posts: CollectionConfig = {
       },
     },
     {
-      /** The global constrained editor (`07` §4.4), as on pages — no per-field override. */
+      /**
+       * The global constrained editor (`07` §4.4), as on pages — no per-field override.
+       * Not `required`: words are required when the post is sent or published
+       * (`postNeedsWords`), so it can be created from its headline first.
+       */
       name: 'body',
       type: 'richText',
-      required: true,
       admin: { description: 'The announcement itself.' },
     },
     {
@@ -167,6 +200,9 @@ export const Posts: CollectionConfig = {
       admin: {
         description: 'Filled in when the announcement is first published.',
         position: 'sidebar',
+        // Hidden from the school, who cannot set it: a read-only date talking about publishing
+        // is exactly the draft-versus-published concept `04` §2.1 keeps off their screen.
+        condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
       },
     },
     {

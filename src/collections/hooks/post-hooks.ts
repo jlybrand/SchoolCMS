@@ -5,6 +5,8 @@ import {
 } from 'payload'
 
 import { relationshipIdOf } from '@/access/predicates'
+import { NEEDS_WORDS } from '@/admin/SendForApproval/review-status'
+import { toRichText } from '@/content/rich-text'
 import { nextFreeSlug } from '@/lib/slug'
 
 /**
@@ -90,3 +92,41 @@ export const stampPublishedDate = ({
 
 export const stampPublishedDateHook: CollectionBeforeChangeHook = ({ data, originalDoc }) =>
   stampPublishedDate({ data, originalDoc })
+
+/**
+ * An announcement needs words before it is sent or published.
+ *
+ * Not `required` on the field: "Post an announcement" creates the post from its headline alone,
+ * so autosave covers it from the first keystroke (`04` §2.3), as "Add a page" does — and a
+ * required body would refuse that create. So the words are required at the two moments that
+ * matter: when the school sends it, and when anyone publishes it.
+ *
+ * A save on a post already waiting is let through; it was checked when it was sent, and a
+ * school clearing the words of a waiting post leaves the district a diff that shows exactly that.
+ */
+export const postNeedsWords = ({
+  data,
+  originalDoc,
+}: {
+  data: Record<string, unknown>
+  originalDoc?: Record<string, unknown> | undefined
+}): Record<string, unknown> => {
+  const sending = data.reviewState === 'submitted' && originalDoc?.reviewState !== 'submitted'
+  const publishing = data._status === 'published'
+  if (!sending && !publishing) return data
+
+  const body = 'body' in data ? data.body : originalDoc?.body
+  if (toRichText(body).length > 0) return data
+
+  throw new ValidationError({
+    errors: [
+      {
+        path: 'body',
+        message: NEEDS_WORDS,
+      },
+    ],
+  })
+}
+
+export const postNeedsWordsHook: CollectionBeforeChangeHook = ({ data, originalDoc }) =>
+  postNeedsWords({ data, originalDoc })

@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import {
   describeReview,
+  NEEDS_WORDS,
   publishControlFor,
+  sendRefusal,
   sendsForApproval,
 } from '@/admin/SendForApproval/review-status'
 import type { AuthUser } from '@/access/types'
@@ -143,5 +145,35 @@ describe('publishControlFor — which control fills the Publish slot', () => {
     ['no user', null, 'submitted', 'publish'],
   ] as const)('%s → %s', (_label, user, reviewState, expected) => {
     expect(publishControlFor(user, reviewState)).toBe(expected)
+  })
+})
+
+/**
+ * What stops the button before anything is sent. Only one case today: an announcement with no
+ * words (`postNeedsWords` refuses it on the server too). Stopped HERE as well because a refused
+ * submit made before the editor has loaded leaves Payload's rich-text editor read-only until a
+ * reload — found by `tests/e2e/announcements.spec.ts` — and because the production build loses
+ * the server's sentence for a bare "The following field is invalid: body".
+ */
+describe('sendRefusal', () => {
+  const words = {
+    root: {
+      type: 'root',
+      children: [{ type: 'paragraph', children: [{ type: 'text', text: 'Hi' }] }],
+    },
+  }
+
+  it('stops an announcement with no words, in words', () => {
+    expect(sendRefusal('posts', undefined)).toBe(NEEDS_WORDS)
+    expect(sendRefusal('posts', { root: { type: 'root', children: [] } })).toBe(NEEDS_WORDS)
+    expect(NEEDS_WORDS).toMatch(/write the announcement/i)
+  })
+
+  it('lets an announcement with words through', () => {
+    expect(sendRefusal('posts', words)).toBeNull()
+  })
+
+  it('never stops a page — an empty page body is legitimate', () => {
+    expect(sendRefusal('pages', undefined)).toBeNull()
   })
 })

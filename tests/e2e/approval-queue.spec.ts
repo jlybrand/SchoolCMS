@@ -18,7 +18,7 @@ import { siteUrl } from './support/site-url'
  *
  * The lock-in CLAUDE.md's exception table requires for custom admin React. The rules beneath
  * — the version token, the diff, the note check, the wait — are unit-tested; approve against
- * real Payload is `tests/integration/approve-page.test.ts`. This drives the screen.
+ * real Payload is `tests/integration/approve.test.ts`. This drives the screen.
  *
  * Each test makes its own page, PUBLISHES it, then has the school change and send it, so the
  * queue shows a real before/after and the public site has an old version to replace.
@@ -174,7 +174,7 @@ test.describe('approval queue — district admin', () => {
       }
 
       await toQueue.click()
-      await expect(page).toHaveURL(new RegExp(`/admin/approvals#approval-${sent.id}$`))
+      await expect(page).toHaveURL(new RegExp(`/admin/approvals#approval-pages-${sent.id}$`))
       await expect(page.getByRole('article', { name: sent.newTitle })).toBeVisible({
         timeout: 20_000,
       })

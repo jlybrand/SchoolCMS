@@ -17,14 +17,24 @@ import type { AuthUser } from '@/access/types'
 
 export type SchoolPageRow = {
   id: number | string
+  collection: 'pages' | 'posts'
   title: string
   reviewState: string | null
   updatedAt: string
 }
 
-const toRow = (doc: Record<string, unknown>): SchoolPageRow => ({
+const toRow = (
+  doc: Record<string, unknown>,
+  collection: 'pages' | 'posts' = 'pages',
+): SchoolPageRow => ({
   id: doc.id as number | string,
-  title: typeof doc.title === 'string' && doc.title !== '' ? doc.title : 'Untitled page',
+  collection,
+  title:
+    typeof doc.title === 'string' && doc.title !== ''
+      ? doc.title
+      : collection === 'posts'
+        ? 'Untitled announcement'
+        : 'Untitled page',
   reviewState: typeof doc.reviewState === 'string' ? doc.reviewState : null,
   updatedAt: typeof doc.updatedAt === 'string' ? doc.updatedAt : '',
 })
@@ -46,33 +56,38 @@ export const listSchoolPages = async (req: PayloadRequest): Promise<SchoolPageRo
 }
 
 /**
- * The user's own pending submissions — sent, or sent back — most recently changed first.
+ * The user's own pending submissions — pages and announcements, sent or sent back — most
+ * recently changed first.
  *
  * "Your recent submissions" in `04` §2.2 also lists *Published*. An approve clears the
- * submitter along with the rest of the review state (`review-state.ts`), so which published
- * pages were this user's is only recoverable from the audit trail, which is a later Phase 4
- * slice. Until then this lists what is still waiting.
+ * submitter along with the rest of the review state (`review-state.ts`); the audit trail now
+ * holds who sent what, and reading it here is still to come. Until then this lists what is
+ * still waiting.
  */
 export const listMySubmissions = async (req: PayloadRequest): Promise<SchoolPageRow[]> => {
   if (!req.user) return []
-  const result = await req.payload.find({
-    collection: 'pages',
-    req,
-    user: req.user,
-    overrideAccess: false,
-    draft: true,
-    depth: 0,
-    limit: 20,
-    sort: '-updatedAt',
-    where: {
-      and: [
-        { submittedBy: { equals: req.user.id } },
-        { reviewState: { in: ['submitted', 'changes-requested'] } },
-      ],
-    },
-    select: { title: true, reviewState: true, updatedAt: true },
-  })
-  return result.docs.map((doc) => toRow(doc as unknown as Record<string, unknown>))
+  const mine = async (collection: 'pages' | 'posts') => {
+    const result = await req.payload.find({
+      collection,
+      req,
+      user: req.user,
+      overrideAccess: false,
+      draft: true,
+      depth: 0,
+      limit: 20,
+      sort: '-updatedAt',
+      where: {
+        and: [
+          { submittedBy: { equals: req.user!.id } },
+          { reviewState: { in: ['submitted', 'changes-requested'] } },
+        ],
+      },
+      select: { title: true, reviewState: true, updatedAt: true },
+    })
+    return result.docs.map((doc) => toRow(doc as unknown as Record<string, unknown>, collection))
+  }
+  const rows = [...(await mine('pages')), ...(await mine('posts'))]
+  return rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 20)
 }
 
 export type SchoolOption = { id: number | string; name: string }

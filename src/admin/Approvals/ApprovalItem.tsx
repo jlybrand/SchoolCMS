@@ -5,13 +5,14 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useId, useRef, useState } from 'react'
 
+import { approvalAnchor } from './anchor'
 import { PageDiffView } from './PageDiffView'
 import type { QueueItem } from './queue-data'
 import { checkNote } from './request-changes'
 import styles from './Approvals.module.css'
 
 /**
- * One waiting page: who sent it, how long it has waited, the diff, and the two decisions.
+ * One waiting page or announcement: who sent it, how long it has waited, the diff, and the two decisions.
  *
  * APPROVE IS ONE CLICK FROM THE DIFF (`04` §4.2) — no confirmation step, no opening the page.
  * It sends the token of the version on screen; if the school changed the page since, the
@@ -72,7 +73,7 @@ export const ApprovalItem = ({ item }: { item: QueueItem }) => {
     setPhase('busy')
     setProblem(null)
     try {
-      const res = await fetch(`${api}/pages/${String(item.id)}/approve`, {
+      const res = await fetch(`${api}/${item.collection}/${String(item.id)}/approve`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -84,14 +85,16 @@ export const ApprovalItem = ({ item }: { item: QueueItem }) => {
       } | null
       if (res.ok)
         return finish(
-          `Published. “${item.title}” will be on ${item.school}’s site within a few seconds.`,
+          item.noun === 'announcement'
+            ? `Published. “${item.title}” is approved for ${item.school}.`
+            : `Published. “${item.title}” will be on ${item.school}’s site within a few seconds.`,
         )
       fail(
-        body?.error ?? 'The page could not be approved. Please try again.',
+        body?.error ?? `The ${item.noun} could not be approved. Please try again.`,
         body?.reason === 'changed',
       )
     } catch {
-      fail('The page could not be approved. Check your connection and try again.', false)
+      fail(`The ${item.noun} could not be approved. Check your connection and try again.`, false)
     }
   }
 
@@ -110,16 +113,16 @@ export const ApprovalItem = ({ item }: { item: QueueItem }) => {
     setNoteError(null)
     setPhase('busy')
     try {
-      const res = await fetch(`${api}/pages/${String(item.id)}?draft=true&depth=0`, {
+      const res = await fetch(`${api}/${item.collection}/${String(item.id)}?draft=true&depth=0`, {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reviewState: 'changes-requested', reviewNote: check.note }),
       })
       if (res.ok) return finish(`Sent back to ${item.school} with your note.`)
-      fail('The page could not be sent back. Reload and try again.', true)
+      fail(`The ${item.noun} could not be sent back. Reload and try again.`, true)
     } catch {
-      fail('The page could not be sent back. Check your connection and try again.', false)
+      fail(`The ${item.noun} could not be sent back. Check your connection and try again.`, false)
     }
   }
 
@@ -129,13 +132,19 @@ export const ApprovalItem = ({ item }: { item: QueueItem }) => {
       className={styles.item}
       data-overdue={item.wait.overdue}
       // The target of "Review in the approval queue" on the page form.
-      id={`approval-${String(item.id)}`}
+      id={approvalAnchor(item.collection, item.id)}
       tabIndex={-1}
     >
       <header className={styles.itemHeader}>
         <h2 className={styles.itemTitle} id={titleId}>
           {item.title}
-          {item.diff.isNew ? <span className={styles.badge}>New page</span> : null}
+          {item.diff.isNew ? (
+            <span className={styles.badge}>
+              {item.noun === 'announcement' ? 'New announcement' : 'New page'}
+            </span>
+          ) : item.noun === 'announcement' ? (
+            <span className={styles.badge}>Announcement</span>
+          ) : null}
         </h2>
         <p className={styles.meta}>
           {item.school} · {item.submitter} · {item.wait.label}
@@ -222,8 +231,11 @@ export const ApprovalItem = ({ item }: { item: QueueItem }) => {
               >
                 Request changes
               </button>
-              <Link className={styles.open} href={`/admin/collections/pages/${String(item.id)}`}>
-                Open the page
+              <Link
+                className={styles.open}
+                href={`/admin/collections/${item.collection}/${String(item.id)}`}
+              >
+                Open the {item.noun}
               </Link>
             </div>
           )}

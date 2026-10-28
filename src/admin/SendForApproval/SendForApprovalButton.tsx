@@ -3,6 +3,7 @@
 import {
   FormSubmit,
   PublishButton,
+  toast,
   useAuth,
   useConfig,
   useDocumentInfo,
@@ -15,15 +16,17 @@ import { formatAdminURL } from 'payload/shared'
 import { useCallback } from 'react'
 
 import type { AuthUser } from '@/access/types'
+import { approvalAnchor } from '@/admin/Approvals/anchor'
 
-import { publishControlFor } from './review-status'
+import { publishControlFor, sendRefusal } from './review-status'
+
 import './send-for-approval.css'
 
 /** `04` §2.3 fixes this wording. Not "Save", not "Publish", not "Save draft". */
 export const SEND_FOR_APPROVAL = 'Send for approval'
 
 /**
- * Fills Payload's `PublishButton` slot on `pages` (`04` §2.3).
+ * Fills Payload's `PublishButton` slot on `pages` and `posts` (`04` §2.3).
  *
  * Which control goes here is `publishControlFor`: a school manager gets the one button — and
  * would otherwise get NOTHING, since Payload's PublishButton renders null without publish
@@ -57,11 +60,11 @@ export const SendForApprovalButton = () => {
  * own entry.
  */
 const ReviewInQueue = () => {
-  const { id } = useDocumentInfo()
+  const { id, collectionSlug } = useDocumentInfo()
   return (
     <Link
       className="btn btn--style-primary btn--size-medium"
-      href={`/admin/approvals#approval-${String(id)}`}
+      href={`/admin/approvals#${approvalAnchor(collectionSlug ?? 'pages', id ?? '')}`}
       id="action-review-in-queue"
     >
       Review in the approval queue
@@ -79,8 +82,16 @@ const SendButton = () => {
   const { code: locale } = useLocale()
   const { submit } = useForm()
 
+  const body = useFormFields(([fields]) => fields.body?.value)
+
   const send = useCallback(async () => {
     if (!collectionSlug || uploadStatus === 'uploading') return
+    // Stopped before anything is sent — see `sendRefusal` for why not leave it to the server.
+    const refusal = sendRefusal(collectionSlug, body)
+    if (refusal) {
+      toast.error(refusal)
+      return
+    }
     const search = `?locale=${locale}&depth=0&fallback-locale=null&draft=true`
     await submit({
       action: formatAdminURL({
@@ -90,7 +101,7 @@ const SendButton = () => {
       method: id ? 'PATCH' : 'POST',
       overrides: { _status: 'draft', reviewState: 'submitted' },
     })
-  }, [api, collectionSlug, id, locale, submit, uploadStatus])
+  }, [api, body, collectionSlug, id, locale, submit, uploadStatus])
 
   return (
     <FormSubmit

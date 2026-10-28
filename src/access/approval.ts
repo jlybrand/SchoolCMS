@@ -7,7 +7,7 @@ import type { AuthUser } from './types'
  * A school's save on a queued page keeps it queued, so the content can change after the
  * district opened the queue. The queue sends back a token for what it rendered; approve
  * succeeds only while that is still the latest version, and then publishes exactly that
- * content (`src/collections/endpoints/approve-page.ts`).
+ * content (`src/collections/endpoints/approve.ts`).
  *
  * The token is the version id AND its `updatedAt`. Payload's autosave rewrites the latest
  * autosave version in place — same id, new content — so the id alone would pass a changed page.

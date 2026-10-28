@@ -26,18 +26,26 @@ import { DISTRICT_TIME_ZONE } from '@/lib/queue-age'
 
 export const DISTRICT_DIGEST_TASK = 'districtDigest'
 
-/** Every page waiting for approval, oldest first, with its school's name. */
+/**
+ * Every page and announcement waiting for approval, oldest first, with its school's name.
+ * Two reads, merged — the queue is one queue whatever was sent.
+ */
 const waitingPages = async (req: PayloadRequest): Promise<WaitingPage[]> => {
-  const { docs } = await req.payload.find({
-    collection: 'pages',
-    where: { reviewState: { equals: 'submitted' } },
-    draft: true,
-    sort: 'submittedAt',
-    pagination: false,
-    depth: 0,
-    overrideAccess: true,
-    req,
-  })
+  const waiting = async (collection: 'pages' | 'posts') =>
+    (
+      await req.payload.find({
+        collection,
+        where: { reviewState: { equals: 'submitted' } },
+        draft: true,
+        pagination: false,
+        depth: 0,
+        overrideAccess: true,
+        req,
+      })
+    ).docs.map((d) => ({ ...d, kind: collection === 'posts' ? 'announcement' : 'page' }) as const)
+  const docs = [...(await waiting('pages')), ...(await waiting('posts'))].sort((a, b) =>
+    String(a.submittedAt ?? '').localeCompare(String(b.submittedAt ?? '')),
+  )
   const tenantIds = [
     ...new Set(
       docs.map((d) => relationshipIdOf(d.tenant as never)).filter((id): id is string => !!id),
@@ -59,6 +67,7 @@ const waitingPages = async (req: PayloadRequest): Promise<WaitingPage[]> => {
     title: typeof d.title === 'string' ? d.title : '',
     school: names.get(relationshipIdOf(d.tenant as never) ?? '') ?? 'Unknown school',
     sentAt: d.submittedAt,
+    kind: d.kind,
   }))
 }
 

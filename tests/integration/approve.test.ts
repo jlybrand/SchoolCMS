@@ -1,7 +1,7 @@
 import { createLocalReq, type Payload, type TypedUser } from 'payload'
 import { beforeAll, describe, expect, it } from 'vitest'
 
-import { approvePage, latestVersionToken } from '@/collections/endpoints/approve-page'
+import { approveDocument, latestVersionToken } from '@/collections/endpoints/approve'
 
 import { getTestPayload, seed, type Fixtures } from '../helpers/payload'
 
@@ -50,13 +50,13 @@ const submittedPage = async (title = 'Bus routes') => {
   return page.id
 }
 
-describe('approvePage', () => {
+describe('approveDocument — pages', () => {
   it('publishes the version the district saw, and clears the review state', async () => {
     const id = await submittedPage()
-    const seen = await latestVersionToken(payload, id)
+    const seen = await latestVersionToken(payload, 'pages', id)
     expect(seen).not.toBeNull()
 
-    const result = await approvePage(await asUser(f.districtAdmin), id, seen)
+    const result = await approveDocument(await asUser(f.districtAdmin), 'pages', id, seen)
     expect(result).toEqual({ ok: true })
 
     const published = await live(id)
@@ -68,7 +68,7 @@ describe('approvePage', () => {
 
   it('refuses when the school autosaved after the district looked, and publishes nothing', async () => {
     const id = await submittedPage('Lunch menu')
-    const seen = await latestVersionToken(payload, id)
+    const seen = await latestVersionToken(payload, 'pages', id)
 
     // The school keeps typing. Autosave rewrites the latest version IN PLACE.
     await payload.update({
@@ -81,7 +81,7 @@ describe('approvePage', () => {
       overrideAccess: false,
     })
 
-    const result = await approvePage(await asUser(f.districtAdmin), id, seen)
+    const result = await approveDocument(await asUser(f.districtAdmin), 'pages', id, seen)
     expect(result).toEqual({ ok: false, reason: 'changed' })
     expect((await live(id))._status).not.toBe('published')
     expect((await latest(id)).reviewState).toBe('submitted')
@@ -89,8 +89,8 @@ describe('approvePage', () => {
 
   it('refuses a school manager, whatever token they hold', async () => {
     const id = await submittedPage()
-    const seen = await latestVersionToken(payload, id)
-    expect(await approvePage(await asUser(f.managerA), id, seen)).toEqual({
+    const seen = await latestVersionToken(payload, 'pages', id)
+    expect(await approveDocument(await asUser(f.managerA), 'pages', id, seen)).toEqual({
       ok: false,
       reason: 'forbidden',
     })
@@ -107,8 +107,8 @@ describe('approvePage', () => {
       user: f.districtAdmin,
       overrideAccess: false,
     })
-    const seen = await latestVersionToken(payload, id)
-    expect(await approvePage(await asUser(f.districtAdmin), id, seen)).toEqual({
+    const seen = await latestVersionToken(payload, 'pages', id)
+    expect(await approveDocument(await asUser(f.districtAdmin), 'pages', id, seen)).toEqual({
       ok: false,
       reason: 'not-waiting',
     })
@@ -116,7 +116,7 @@ describe('approvePage', () => {
 
   it('refuses a token from an earlier version once a newer one exists', async () => {
     const id = await submittedPage('Library hours')
-    const stale = await latestVersionToken(payload, id)
+    const stale = await latestVersionToken(payload, 'pages', id)
     await payload.update({
       collection: 'pages',
       id,
@@ -125,7 +125,7 @@ describe('approvePage', () => {
       user: f.managerA,
       overrideAccess: false,
     })
-    expect(await approvePage(await asUser(f.districtAdmin), id, stale)).toEqual({
+    expect(await approveDocument(await asUser(f.districtAdmin), 'pages', id, stale)).toEqual({
       ok: false,
       reason: 'changed',
     })
@@ -133,10 +133,86 @@ describe('approvePage', () => {
 
   it('an unknown page is not found', async () => {
     expect(
-      await approvePage(await asUser(f.districtAdmin), 999_999, {
+      await approveDocument(await asUser(f.districtAdmin), 'pages', 999_999, {
         versionId: '1',
         updatedAt: new Date().toISOString(),
       }),
     ).toEqual({ ok: false, reason: 'not-found' })
+  })
+})
+
+/** Announcements go through the same one click, against their own versions. */
+describe('approveDocument — posts', () => {
+  const body = (text: string) =>
+    ({
+      root: { type: 'root', children: [{ type: 'paragraph', children: [{ type: 'text', text }] }] },
+    }) as never
+
+  const submittedPost = async (title = 'Picture day') => {
+    seq += 1
+    const post = await payload.create({
+      collection: 'posts',
+      data: {
+        tenant: f.tenantA,
+        title: `${title} ${seq}`,
+        slug: `approve-post-${Date.now()}-${seq}`,
+        visibility: 'public',
+        body: body('Thursday.'),
+        reviewState: 'submitted',
+      },
+      draft: true,
+      user: f.managerA,
+      overrideAccess: false,
+    })
+    return post.id
+  }
+
+  const livePost = (id: number) =>
+    payload.findByID({ collection: 'posts', id, draft: false, depth: 0, overrideAccess: true })
+
+  it('publishes the announcement the district saw, and dates it', async () => {
+    const id = await submittedPost()
+    const seen = await latestVersionToken(payload, 'posts', id)
+    expect(await approveDocument(await asUser(f.districtAdmin), 'posts', id, seen)).toEqual({
+      ok: true,
+    })
+    const published = await livePost(id)
+    expect(published._status).toBe('published')
+    expect(published.reviewState ?? null).toBeNull()
+    expect(published.publishedDate).toBeTruthy()
+  })
+
+  it('refuses when the school changed it after the district looked', async () => {
+    const id = await submittedPost('Book fair')
+    const seen = await latestVersionToken(payload, 'posts', id)
+    await payload.update({
+      collection: 'posts',
+      id,
+      data: { title: 'Book fair — CHANGED' },
+      draft: true,
+      autosave: true,
+      user: f.managerA,
+      overrideAccess: false,
+    })
+    const result = await approveDocument(await asUser(f.districtAdmin), 'posts', id, seen)
+    expect(result).toEqual({ ok: false, reason: 'changed' })
+    expect((await livePost(id))._status).toBe('draft')
+  })
+
+  it('a token read from a PAGE cannot approve a post', async () => {
+    const pageId = await submittedPage('Same id elsewhere')
+    const postId = await submittedPost('Target')
+    const pageToken = await latestVersionToken(payload, 'pages', pageId)
+    const result = await approveDocument(await asUser(f.districtAdmin), 'posts', postId, pageToken)
+    expect(result).toEqual({ ok: false, reason: 'changed' })
+  })
+
+  it('refuses a school manager', async () => {
+    const id = await submittedPost('Not theirs to approve')
+    const seen = await latestVersionToken(payload, 'posts', id)
+    expect(await approveDocument(await asUser(f.managerA), 'posts', id, seen)).toEqual({
+      ok: false,
+      reason: 'forbidden',
+    })
   })
 })

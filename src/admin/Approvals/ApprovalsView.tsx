@@ -10,7 +10,8 @@ import { loadQueue } from './queue-data'
 import styles from './Approvals.module.css'
 
 /**
- * The approval queue (`04` §4.2) at `/admin/approvals` — every school's waiting pages, oldest
+ * The approval queue (`04` §4.2) at `/admin/approvals` — every school's waiting pages and
+ * announcements, oldest
  * first, each with its diff and a one-click approve.
  *
  * District only. A school manager is sent to their own home screen; the approve endpoint
@@ -29,11 +30,11 @@ export const ApprovalsView = async ({ initPageResult }: AdminViewServerProps) =>
         <p className={styles.summary} role="status">
           {items.length === 0
             ? 'Nothing is waiting. Every school’s changes have been dealt with.'
-            : `${items.length} ${items.length === 1 ? 'page is' : 'pages are'} waiting, oldest first.`}
+            : `${items.length} ${items.length === 1 ? 'submission is' : 'submissions are'} waiting, oldest first.`}
         </p>
         <div className={styles.items}>
           {items.map((item) => (
-            <ApprovalItem item={item} key={String(item.id)} />
+            <ApprovalItem item={item} key={`${item.collection}-${String(item.id)}`} />
           ))}
         </div>
       </div>

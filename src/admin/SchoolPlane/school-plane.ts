@@ -9,14 +9,18 @@
 export type SchoolTask = { label: string; description: string; href: string }
 
 /**
- * The tasks on the landing view.
+ * The tasks on the landing view, in `04` §2.2's order.
  *
- * Only the ones that work today. `04` §2.2 also lists "Add a meeting date", "Post an
- * announcement", "Upload a document" and "Add a photo"; each joins this list with its module
- * (events and posts in Phase 5, documents and media in Phase 6). A task that leads nowhere
- * would teach the user that the list lies.
+ * Only the ones that work today. `04` §2.2 also lists "Add a meeting date", "Upload a document"
+ * and "Add a photo"; each joins this list with its module (events in Phase 5, documents and
+ * media in Phase 6). A task that leads nowhere would teach the user that the list lies.
  */
 export const SCHOOL_TASKS: readonly SchoolTask[] = [
+  {
+    label: 'Post an announcement',
+    description: 'Share news with families on your school’s website.',
+    href: '/admin/new-post',
+  },
   {
     label: 'Update a page',
     description: 'Change the words on a page of your school’s website.',
@@ -90,37 +94,71 @@ export type NewPageCheck =
 const NO_SCHOOL = 'Your account is not linked to a school yet. Ask the district web team to add it.'
 const CHOOSE_SCHOOL = 'Choose which school this page is for.'
 
+const checkTitle = (value: unknown, missing: string): { title: string; error?: string } => {
+  const title = typeof value === 'string' ? value.trim() : ''
+  if (title === '') return { title, error: missing }
+  if (title.length > MAX_TITLE)
+    return { title, error: `Please make the title shorter — ${MAX_TITLE} characters at most.` }
+  return { title }
+}
+
 /**
- * What a new page needs before it is created. Every problem is reported at once, so the form
- * never makes someone fix one thing only to be told about the next.
- *
  * The school is never asked when there is one (`04` §2.2: "Tenant is already resolved from the
  * user's assignment — never asked"). With several, asking is the only honest option. Server-side
  * access still decides; this is the form's half.
  */
+const checkSchool = (
+  input: { schools: readonly SchoolId[]; school?: unknown },
+  choose: string,
+): { school?: SchoolId; error?: string } => {
+  if (input.schools.length === 0) return { error: NO_SCHOOL }
+  if (input.schools.length === 1 && (input.school === undefined || input.school === '')) {
+    return { school: input.schools[0]! }
+  }
+  const school = input.schools.find((id) => String(id) === String(input.school))
+  return school === undefined ? { error: choose } : { school }
+}
+
+/**
+ * What a new page needs before it is created. Every problem is reported at once, so the form
+ * never makes someone fix one thing only to be told about the next.
+ */
 export const checkNewPage = (input: NewPageInput): NewPageCheck => {
   const errors: Partial<Record<'title' | 'pageType' | 'school', string>> = {}
 
-  const title = typeof input.title === 'string' ? input.title.trim() : ''
-  if (title === '') errors.title = 'Give the page a title.'
-  else if (title.length > MAX_TITLE)
-    errors.title = `Please make the title shorter — ${MAX_TITLE} characters at most.`
+  const title = checkTitle(input.title, 'Give the page a title.')
+  if (title.error) errors.title = title.error
 
   if (!SCHOOL_PAGE_TYPES.some((t) => t.value === input.pageType)) {
     errors.pageType = 'Choose what kind of page this is.'
   }
 
-  let school: SchoolId | undefined
-  if (input.schools.length === 0) errors.school = NO_SCHOOL
-  else if (input.schools.length === 1 && (input.school === undefined || input.school === '')) {
-    school = input.schools[0]
-  } else {
-    school = input.schools.find((id) => String(id) === String(input.school))
-    if (school === undefined) errors.school = CHOOSE_SCHOOL
-  }
+  const school = checkSchool(input, CHOOSE_SCHOOL)
+  if (school.error) errors.school = school.error
 
-  if (Object.keys(errors).length > 0 || school === undefined) return { ok: false, errors }
-  return { ok: true, title, school }
+  if (Object.keys(errors).length > 0 || school.school === undefined) return { ok: false, errors }
+  return { ok: true, title: title.title, school: school.school }
+}
+
+export type NewPostInput = Omit<NewPageInput, 'pageType'>
+
+export type NewPostCheck =
+  | { ok: true; title: string; school: SchoolId }
+  | { ok: false; errors: Partial<Record<'title' | 'school', string>> }
+
+/**
+ * What a new announcement needs before it is created: a headline, and the school. Its words are
+ * written on the next screen, where autosave covers them (`postNeedsWords` requires them when
+ * it is sent).
+ */
+export const checkNewPost = (input: NewPostInput): NewPostCheck => {
+  const errors: Partial<Record<'title' | 'school', string>> = {}
+  const title = checkTitle(input.title, 'Give the announcement a headline.')
+  if (title.error) errors.title = title.error
+  const school = checkSchool(input, 'Choose which school this announcement is for.')
+  if (school.error) errors.school = school.error
+  if (Object.keys(errors).length > 0 || school.school === undefined) return { ok: false, errors }
+  return { ok: true, title: title.title, school: school.school }
 }
 
 const TITLE_TAKEN = 'There is already a page with this title. Try a different title.'
@@ -152,6 +190,29 @@ export const explainCreateError = (body: unknown): string => {
   }
   return GENERIC
 }
+
+const POST_NOT_ALLOWED =
+  'Your account cannot post announcements for this school. Ask the district web team for help.'
+const POST_GENERIC = 'The announcement could not be created. Please try again in a moment.'
+
+/**
+ * A refused announcement create, explained. Unlike a page, a repeated headline is never the
+ * problem — the address is numbered (`uniquePostSlug`).
+ */
+export const explainPostCreateError = (body: unknown): string => {
+  const errors = (body as { errors?: unknown } | null)?.errors
+  if (!Array.isArray(errors)) return POST_GENERIC
+  for (const error of errors as { message?: unknown }[]) {
+    if (typeof error?.message === 'string' && /not allowed/i.test(error.message)) {
+      return POST_NOT_ALLOWED
+    }
+  }
+  return POST_GENERIC
+}
+
+/** Where a submission opens: its own form. */
+export const schoolEditPath = (collection: 'pages' | 'posts', id: number | string): string =>
+  `/admin/collections/${collection}/${String(id)}`
 
 /** The plain status beside a submission on the landing view, or null when nothing is pending. */
 export const submissionStatus = (reviewState: unknown): string | null => {

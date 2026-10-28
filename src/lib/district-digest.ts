@@ -21,7 +21,13 @@ import { emailDocument, escapeHtml, oneLine, type Email } from '@/lib/review-ema
 
 export const DIGEST_HOUR = 7
 
-export type WaitingPage = { title: string; school: string; sentAt: unknown }
+/** One submission waiting: a page, or an announcement (named as one in the line). */
+export type WaitingPage = {
+  title: string
+  school: string
+  sentAt: unknown
+  kind?: 'page' | 'announcement'
+}
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -60,13 +66,16 @@ export const newlyOverdue = <T extends WaitingPage>(
 
 type MailInput = { pages: WaitingPage[]; now: Date; timeZone: string; queueUrl: string }
 
-const pagesCount = (n: number) => `${n} ${n === 1 ? 'page' : 'pages'}`
+/** "Submissions": pages and announcements wait in one queue (`04` §4.2). */
+const pagesCount = (n: number) => `${n} ${n === 1 ? 'submission' : 'submissions'}`
 
 type Line = { text: string; html: string }
 
 const line = (p: WaitingPage, now: Date, timeZone: string, markOverdue: boolean): Line => {
   const wait = describeWait(p.sentAt, now, timeZone)
-  const title = oneLine(p.title) || 'Untitled page'
+  const untitled = p.kind === 'announcement' ? 'Untitled announcement' : 'Untitled page'
+  const named = oneLine(p.title) || untitled
+  const title = p.kind === 'announcement' ? `${named} (announcement)` : named
   const school = oneLine(p.school)
   const marker = markOverdue && wait.overdue ? ' (overdue)' : ''
   return {
@@ -101,7 +110,7 @@ export const digestEmail = ({ pages, now, timeZone, queueUrl }: MailInput): Emai
   return compose(
     overdue > 0 ? `${heading} (${overdue} overdue)` : heading,
     heading,
-    'These pages are waiting in the approval queue this morning, oldest first:',
+    'These are waiting in the approval queue this morning, oldest first:',
     pages.map((p) => line(p, now, timeZone, true)),
     queueUrl,
   )
@@ -113,7 +122,7 @@ export const overdueAlertEmail = ({ pages, now, timeZone, queueUrl }: MailInput)
   return compose(
     heading,
     heading,
-    `${pages.length === 1 ? 'This page has' : 'These pages have'} now waited more than ${OVERDUE_BUSINESS_DAYS} school days for approval. While it waits, the school’s website stays out of date.`,
+    `${pages.length === 1 ? 'This has' : 'These have'} now waited more than ${OVERDUE_BUSINESS_DAYS} school days for approval. While it waits, the school’s website stays out of date.`,
     pages.map((p) => line(p, now, timeZone, false)),
     queueUrl,
   )

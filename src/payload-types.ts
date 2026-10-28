@@ -483,7 +483,7 @@ export interface Post {
   /**
    * The announcement itself.
    */
-  body: {
+  body?: {
     root: {
       type: string;
       children: {
@@ -497,7 +497,7 @@ export interface Post {
       version: number;
     };
     [k: string]: unknown;
-  };
+  } | null;
   /**
    * Staff-only announcements never appear on the public site or in the public API (`03` §6.4).
    */

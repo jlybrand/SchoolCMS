@@ -32,8 +32,8 @@ export default buildConfig({
     user: Users.slug,
     importMap: { baseDir: path.resolve(dirname) },
     /**
-     * The school plane (`04` §2.2): a task-shaped home screen and two task views. The home
-     * screen renders Payload's own dashboard for anyone who is not a school manager; the two
+     * The school plane (`04` §2.2): a task-shaped home screen and three task views. The home
+     * screen renders Payload's own dashboard for anyone who is not a school manager; the
      * views send anyone else back to it. See src/admin/SchoolPlane/.
      */
     components: {
@@ -46,6 +46,10 @@ export default buildConfig({
         newPage: {
           Component: '/admin/SchoolPlane/NewPageView#NewPageView',
           path: '/new-page',
+        },
+        newPost: {
+          Component: '/admin/SchoolPlane/NewPostView#NewPostView',
+          path: '/new-post',
         },
         /** The district's approval queue (`04` §4.2). See src/admin/Approvals/. */
         approvals: {
