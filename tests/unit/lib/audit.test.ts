@@ -160,6 +160,54 @@ describe('pages', () => {
   })
 })
 
+/**
+ * Posts move through review exactly as pages do (`04` §4.1), so they record the same actions.
+ * Asserted per action rather than by "same as pages", so a posts-only regression names itself.
+ */
+describe('posts', () => {
+  const posts = (overrides: Partial<AuditInput>): AuditInput => ({
+    ...pages(overrides),
+    collection: 'posts',
+  })
+
+  it('a school sending a post records a submit, as a post, for their school', () => {
+    const [entry] = auditEntries(posts({ doc: page({ reviewState: 'submitted' }) }))
+    expect(entry).toMatchObject({
+      action: 'submit',
+      contentType: 'posts',
+      documentId: '41',
+      documentTitle: 'Bus routes',
+      tenant: '7',
+      actor: '5',
+    })
+  })
+
+  it.each([
+    ['approve', { reviewState: 'submitted' }, { _status: 'published' }],
+    ['publish', {}, { _status: 'published' }],
+    ['request-changes', { reviewState: 'submitted' }, { reviewState: 'changes-requested' }],
+  ])('records %s', (action, before, after) => {
+    const entries = auditEntries(
+      posts({ user: district, previous: page(before), doc: page({ ...before, ...after }) }),
+    )
+    expect(entries.map((e) => e.action)).toEqual([action])
+  })
+
+  it('records a restore and a delete', () => {
+    expect(auditEntries(posts({ restoring: true })).map((e) => e.action)).toEqual(['restore'])
+    expect(auditEntries(posts({ operation: 'delete' })).map((e) => e.action)).toEqual(['delete'])
+  })
+
+  it('an ordinary edit records nothing', () => {
+    expect(auditEntries(posts({ doc: page({ reviewState: 'editing', title: 'New' }) }))).toEqual([])
+  })
+
+  it('an untitled post is named as a post', () => {
+    const [entry] = auditEntries(posts({ doc: page({ title: '', reviewState: 'submitted' }) }))
+    expect(entry!.documentTitle).toBe('Post 41')
+  })
+})
+
 const person = (overrides: Record<string, unknown> = {}) => ({
   id: 9,
   email: 'x@dd2.org',

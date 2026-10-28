@@ -1,7 +1,18 @@
 import { createLocalReq, type Payload } from 'payload'
 import { beforeAll, describe, expect, it } from 'vitest'
 
-import { getTestPayload, isDenied, readsNothing, seed, type Fixtures } from '../helpers/payload'
+import { listPosts } from '@/content/posts'
+import type { ContentContext } from '@/content/types'
+
+import {
+  getTestPayload,
+  isDenied,
+  readsNothing,
+  seed,
+  seedPosts,
+  type Fixtures,
+  type PostFixtures,
+} from '../helpers/payload'
 
 /**
  * ADVERSARIAL TENANT-ISOLATION SUITE (`03` §6.4, `06` §2.2).
@@ -27,8 +38,8 @@ import { getTestPayload, isDenied, readsNothing, seed, type Fixtures } from '../
  * asserted here for the first time, against the real stack rather than against the access
  * functions in isolation (those have their own suite in tests/unit/access/pages.test.ts).
  *
- * Invariant 3 (syndicated published content is the only permitted cross-tenant read)
- * attaches to `posts` and `events` and lands with them in Phase 5.
+ * Invariant 3 (syndicated published content is the only permitted cross-tenant read) lands
+ * with `posts` in Phase 5 — the `posts` describe blocks at the end of this file.
  */
 
 let payload: Payload
@@ -1420,3 +1431,470 @@ describe('the jobs queue is district-only', () => {
     expect(still).not.toBeNull()
   })
 })
+
+/**
+ * ============================================================================
+ * POSTS (`03` §2) — every invariant again, on the first Phase 5 collection, and
+ * invariant 3 for the first time.
+ * ============================================================================
+ */
+describe('posts', () => {
+  let p: PostFixtures
+
+  beforeAll(async () => {
+    p = await seedPosts(payload, f)
+  })
+
+  /** A public site, as the renderer sees it — the content layer, not the API. */
+  const site = (tenantId: number, slug: string): ContentContext => ({
+    tenant: {
+      id: String(tenantId),
+      slug,
+      name: slug,
+      hostname: `${slug}.localhost`,
+      type: 'school',
+    },
+    locale: 'en',
+  })
+  const idsOn = async (tenantId: number) =>
+    (await listPosts(site(tenantId, `t${tenantId}`), { limit: 100 })).map((post) => Number(post.id))
+
+  describe('invariant 1 — a user cannot read another school’s posts', () => {
+    it("school-manager B cannot read tenant A's draft post", async () => {
+      expect(
+        await isDenied(() =>
+          payload.findByID({
+            collection: 'posts',
+            id: p.draftPostA,
+            user: f.managerB,
+            overrideAccess: false,
+          }),
+        ),
+      ).toBe(true)
+    })
+
+    it("school-manager A lists only their own school's posts, at every status", async () => {
+      const { docs } = await payload.find({
+        collection: 'posts',
+        user: f.managerA,
+        draft: true,
+        limit: 100,
+        depth: 0,
+        overrideAccess: false,
+      })
+      expect(docs.map((d) => Number(d.id)).sort()).toEqual(
+        [p.publishedPostA, p.draftPostA, p.staffPostA].sort(),
+      )
+    })
+
+    it('a school manager cannot read the district’s syndicated DRAFT through the API', async () => {
+      expect(
+        await isDenied(() =>
+          payload.findByID({
+            collection: 'posts',
+            id: p.districtWideDraft,
+            user: f.managerB,
+            draft: true,
+            overrideAccess: false,
+          }),
+        ),
+      ).toBe(true)
+    })
+
+    it.each([
+      ['system-sync', () => f.systemSync],
+      ['a school-manager with no school', () => f.noTenantManager],
+    ])('%s reads no posts at all', async (_label, user) => {
+      expect(
+        await readsNothing(() =>
+          payload.find({ collection: 'posts', user: user(), draft: true, overrideAccess: false }),
+        ),
+      ).toBe(true)
+    })
+
+    it('a school manager cannot read post history — not even their own school’s', async () => {
+      expect(
+        await isDenied(() =>
+          payload.findVersions({
+            collection: 'posts',
+            where: { parent: { equals: p.publishedPostA } },
+            user: f.managerA,
+            overrideAccess: false,
+          }),
+        ),
+      ).toBe(true)
+    })
+  })
+
+  describe('invariant 2 — a user cannot write another school’s posts', () => {
+    it('school-manager A cannot update, or bulk-update, a post of B', async () => {
+      await isDenied(() =>
+        payload.update({
+          collection: 'posts',
+          id: p.publishedPostB,
+          data: { title: 'HIJACKED' },
+          draft: true,
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      )
+      await isDenied(() =>
+        payload.update({
+          collection: 'posts',
+          where: {},
+          data: { title: 'BULK HIJACK' },
+          draft: true,
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      )
+      const b = await payload.findByID({
+        collection: 'posts',
+        id: p.publishedPostB,
+        draft: true,
+        overrideAccess: true,
+      })
+      expect(b.title).toBe('published post b')
+    })
+
+    it('school-manager A cannot create a post for B', async () => {
+      expect(
+        await isDenied(() =>
+          payload.create({
+            collection: 'posts',
+            data: {
+              tenant: f.tenantB,
+              title: 'Rogue',
+              slug: 'rogue',
+              visibility: 'public',
+              body: emptyBody(),
+              _status: 'draft',
+            },
+            user: f.managerA,
+            overrideAccess: false,
+          }),
+        ),
+      ).toBe(true)
+    })
+
+    it('a school manager cannot delete a post — not even their own school’s', async () => {
+      expect(
+        await isDenied(() =>
+          payload.delete({
+            collection: 'posts',
+            id: p.draftPostA,
+            user: f.managerA,
+            overrideAccess: false,
+          }),
+        ),
+      ).toBe(true)
+    })
+  })
+
+  describe('invariant 3 — syndicated PUBLISHED posts are the only cross-tenant read', () => {
+    it('School B’s site shows its own posts and those shared with it', async () => {
+      const ids = await idsOn(f.tenantB)
+      expect(ids).toEqual(
+        expect.arrayContaining([p.publishedPostB, p.districtWidePost, p.selectedForBPost]),
+      )
+    })
+
+    it('School B’s site never shows School A’s posts, which nobody shared', async () => {
+      const ids = await idsOn(f.tenantB)
+      for (const id of [p.publishedPostA, p.draftPostA, p.staffPostA]) expect(ids).not.toContain(id)
+    })
+
+    it('a post shared with SELECTED schools reaches only those', async () => {
+      expect(await idsOn(f.tenantA)).not.toContain(p.selectedForBPost)
+    })
+
+    it('a district-wide DRAFT reaches no site — syndication is not a publish', async () => {
+      for (const tenant of [f.tenantA, f.tenantB, f.districtTenant]) {
+        expect(await idsOn(tenant)).not.toContain(p.districtWideDraft)
+      }
+    })
+
+    it('a district-wide STAFF post reaches no public site', async () => {
+      for (const tenant of [f.tenantA, f.tenantB, f.districtTenant]) {
+        expect(await idsOn(tenant)).not.toContain(p.districtWideStaffPost)
+      }
+    })
+
+    it('a published post with a newer DRAFT shows the published words, everywhere it is shared', async () => {
+      await payload.update({
+        collection: 'posts',
+        id: p.districtWidePost,
+        data: { title: 'UNAPPROVED REWRITE' },
+        draft: true,
+        overrideAccess: true,
+      })
+      const titles = (await listPosts(site(f.tenantA, 'a'), { limit: 100 })).map((x) => x.title)
+      expect(titles).toContain('district wide post')
+      expect(titles).not.toContain('UNAPPROVED REWRITE')
+    })
+
+    it('a post taken back to this-tenant stops reaching the schools it was shared with', async () => {
+      const post = await payload.create({
+        collection: 'posts',
+        data: {
+          tenant: f.districtTenant,
+          title: 'Briefly shared',
+          slug: 'briefly-shared',
+          visibility: 'public',
+          body: emptyBody(),
+          syndication: { scope: 'selected', syndicatedTo: [f.tenantA] },
+          _status: 'published',
+        },
+        user: f.districtAdmin,
+        overrideAccess: true,
+      })
+      expect(await idsOn(f.tenantA)).toContain(post.id)
+
+      // The list stays in the row; only `selected` reads it.
+      await payload.update({
+        collection: 'posts',
+        id: post.id,
+        data: { syndication: { scope: 'this-tenant' }, _status: 'published' },
+        user: f.districtAdmin,
+        overrideAccess: true,
+      })
+      expect(await idsOn(f.tenantA)).not.toContain(post.id)
+    })
+  })
+
+  describe('invariant 4 — the public API surface', () => {
+    it('an anonymous read returns published, public posts ONLY', async () => {
+      const { docs } = await payload.find({
+        collection: 'posts',
+        limit: 100,
+        overrideAccess: false,
+      })
+      const ids = docs.map((d) => Number(d.id))
+      expect(ids).toContain(p.publishedPostA)
+      for (const id of [p.draftPostA, p.staffPostA, p.districtWideDraft, p.districtWideStaffPost]) {
+        expect(ids).not.toContain(id)
+      }
+    })
+
+    it('a hand-crafted where clause cannot surface a draft', async () => {
+      const { docs } = await payload.find({
+        collection: 'posts',
+        where: { _status: { equals: 'draft' } },
+        draft: true,
+        limit: 100,
+        overrideAccess: false,
+      })
+      expect(docs).toHaveLength(0)
+    })
+
+    it('an anonymous request cannot read post history', async () => {
+      expect(
+        await readsNothing(() =>
+          payload.findVersions({ collection: 'posts', overrideAccess: false }),
+        ),
+      ).toBe(true)
+    })
+  })
+
+  describe('invariant 5 — a school-manager cannot PUBLISH a post by any route', () => {
+    it('cannot create a post already marked published, and nothing lands', async () => {
+      expect(
+        await isDenied(() =>
+          payload.create({
+            collection: 'posts',
+            data: {
+              tenant: f.tenantA,
+              title: 'Sneaky post',
+              slug: 'sneaky-post',
+              visibility: 'public',
+              body: emptyBody(),
+              _status: 'published',
+            },
+            user: f.managerA,
+            overrideAccess: false,
+          }),
+        ),
+      ).toBe(true)
+      const { docs } = await payload.find({
+        collection: 'posts',
+        where: { title: { equals: 'Sneaky post' } },
+        draft: true,
+        overrideAccess: true,
+      })
+      expect(docs).toHaveLength(0)
+    })
+
+    it('cannot update their own draft to published, singly or in bulk', async () => {
+      await isDenied(() =>
+        payload.update({
+          collection: 'posts',
+          id: p.draftPostA,
+          data: { _status: 'published' },
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      )
+      await isDenied(() =>
+        payload.update({
+          collection: 'posts',
+          where: { id: { equals: p.draftPostA } },
+          data: { _status: 'published' },
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      )
+      const still = await payload.findByID({
+        collection: 'posts',
+        id: p.draftPostA,
+        draft: true,
+        overrideAccess: true,
+      })
+      expect(still._status).toBe('draft')
+    })
+
+    it('the HOOK layer refuses too — with access skipped, a school manager still cannot publish', async () => {
+      /**
+       * The access function refuses every case above before any hook runs, so without this
+       * nothing proves the hooks are wired to posts. `overrideAccess` with the manager on the
+       * request is the route where only they stand: `publishGate`, and behind it
+       * `applyReviewState`, which also refuses a school manager's publish.
+       */
+      expect(
+        await isDenied(() =>
+          payload.update({
+            collection: 'posts',
+            id: p.draftPostA,
+            data: { _status: 'published' },
+            user: f.managerA,
+            overrideAccess: true,
+          }),
+        ),
+      ).toBe(true)
+    })
+
+    it('CAN save a draft and send it for approval — the gate blocks publishing, not working', async () => {
+      const sent = await payload.update({
+        collection: 'posts',
+        id: p.draftPostA,
+        data: { title: 'draft post a, edited', reviewState: 'submitted' },
+        draft: true,
+        user: f.managerA,
+        overrideAccess: false,
+      })
+      expect(sent.reviewState).toBe('submitted')
+      expect(sent._status).toBe('draft')
+    })
+
+    it('the district approves it — and the trail records the submit and the approve', async () => {
+      const approved = await payload.update({
+        collection: 'posts',
+        id: p.draftPostA,
+        data: { _status: 'published' },
+        user: f.districtAdmin,
+        overrideAccess: false,
+      })
+      expect(approved._status).toBe('published')
+      expect(approved.reviewState).toBeNull()
+
+      const { docs } = await payload.find({
+        collection: 'audit-events',
+        where: {
+          and: [
+            { contentType: { equals: 'posts' } },
+            { documentId: { equals: String(p.draftPostA) } },
+          ],
+        },
+        sort: 'createdAt',
+        overrideAccess: true,
+      })
+      expect(docs.map((e) => e.action)).toEqual(['submit', 'approve'])
+    })
+  })
+
+  describe('what only the district sets', () => {
+    it('a school manager’s syndication is dropped — a school post reaches only its school', async () => {
+      const post = await payload.create({
+        collection: 'posts',
+        data: {
+          tenant: f.tenantA,
+          title: 'Everywhere please',
+          body: emptyBody(),
+          syndication: { scope: 'district-wide' },
+          _status: 'draft',
+        },
+        draft: true,
+        user: f.managerA,
+        overrideAccess: false,
+      })
+      await payload.update({
+        collection: 'posts',
+        id: post.id,
+        data: { syndication: { scope: 'selected', syndicatedTo: [f.tenantB] } },
+        draft: true,
+        user: f.managerA,
+        overrideAccess: false,
+      })
+      // Then the district publishes it, as an approve would.
+      await payload.update({
+        collection: 'posts',
+        id: post.id,
+        data: { _status: 'published' },
+        user: f.districtAdmin,
+        overrideAccess: false,
+      })
+      expect(await idsOn(f.tenantB)).not.toContain(post.id)
+      expect(await idsOn(f.tenantA)).toContain(post.id)
+    })
+
+    it('a school manager cannot date a post — the date is stamped when it publishes', async () => {
+      const post = await payload.create({
+        collection: 'posts',
+        data: {
+          tenant: f.tenantA,
+          title: 'Pinned to the top',
+          body: emptyBody(),
+          publishedDate: '2099-01-01T00:00:00.000Z',
+          _status: 'draft',
+        },
+        draft: true,
+        user: f.managerA,
+        overrideAccess: false,
+      })
+      expect(post.publishedDate ?? null).toBeNull()
+
+      const published = await payload.update({
+        collection: 'posts',
+        id: post.id,
+        data: { _status: 'published' },
+        user: f.districtAdmin,
+        overrideAccess: false,
+      })
+      expect(new Date(published.publishedDate!).getFullYear()).toBeLessThan(2099)
+    })
+  })
+
+  describe('addresses', () => {
+    it('a second post with the same headline at one school is numbered; another school’s is not', async () => {
+      const make = async (tenant: number) =>
+        (
+          await payload.create({
+            collection: 'posts',
+            data: { tenant, title: 'Picture Day', body: emptyBody(), _status: 'draft' },
+            draft: true,
+            overrideAccess: true,
+          })
+        ).slug
+      expect(await make(f.tenantA)).toBe('picture-day')
+      expect(await make(f.tenantA)).toBe('picture-day-2')
+      expect(await make(f.tenantB)).toBe('picture-day')
+    })
+  })
+})
+
+const emptyBody = () =>
+  ({
+    root: {
+      type: 'root',
+      children: [{ type: 'paragraph', children: [{ type: 'text', text: 'Body.' }] }],
+    },
+  }) as never

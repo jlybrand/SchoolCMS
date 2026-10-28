@@ -44,6 +44,8 @@ export async function getTestPayload(): Promise<Payload> {
  * precisely so this detail cannot leak into a security decision.
  */
 export type Fixtures = {
+  /** The district's own tenant — where syndicated posts live (`02` §6). */
+  districtTenant: number
   tenantA: number
   tenantB: number
   /** Page fixtures for the content-collection invariants (`03` §6.4 invariants 3–5). */
@@ -74,6 +76,7 @@ export type Fixtures = {
 export async function seed(payload: Payload): Promise<Fixtures> {
   // Order matters: pages, navigation, theme, settings and users all reference tenants.
   for (const collection of [
+    'posts',
     'pages',
     'navigation',
     'theme',
@@ -231,6 +234,7 @@ export async function seed(payload: Payload): Promise<Fixtures> {
     ).id as number
 
   return {
+    districtTenant: district,
     tenantA,
     tenantB,
     // A serves two languages beside English and B none, so both ends of the list are seeded.
@@ -250,6 +254,86 @@ export async function seed(payload: Payload): Promise<Fixtures> {
     managerB: await mkUser('manager-b@test.local', ['school-manager'], [tenantB]),
     systemSync: await mkUser('system-sync@test.local', ['system-sync'], [tenantA]),
     noTenantManager: await mkSchoollessManager(),
+  }
+}
+
+export type PostFixtures = {
+  publishedPostA: number
+  draftPostA: number
+  staffPostA: number
+  publishedPostB: number
+  /** The district's, shared with every school. */
+  districtWidePost: number
+  /** The district's, shared with every school — but never published. Must reach no one. */
+  districtWideDraft: number
+  /** The district's, shared with every school — but staff only. Must reach no public site. */
+  districtWideStaffPost: number
+  /** The district's, shared with School B only. */
+  selectedForBPost: number
+}
+
+/**
+ * Posts across every axis invariant 3 turns on (`03` §6.4): owner, status, visibility and
+ * syndication scope. Separate from `seed` so the suites that count audit entries or pages are
+ * unchanged by them; `seed` deletes them, so a fresh `seed` + `seedPosts` is a clean slate.
+ *
+ * Created as the district admin, for the reason `seed` gives for pages: the publish gate runs
+ * even with access overridden.
+ */
+export async function seedPosts(payload: Payload, f: Fixtures): Promise<PostFixtures> {
+  const mk = async (
+    tenant: number,
+    slug: string,
+    status: 'draft' | 'published',
+    {
+      visibility = 'public',
+      syndication,
+    }: {
+      visibility?: 'public' | 'staff'
+      syndication?: { scope: 'this-tenant' | 'district-wide' | 'selected'; syndicatedTo?: number[] }
+    } = {},
+  ): Promise<number> =>
+    (
+      await payload.create({
+        collection: 'posts',
+        data: {
+          tenant,
+          title: slug.replace(/-/g, ' '),
+          slug,
+          body: {
+            root: {
+              type: 'root',
+              children: [{ type: 'paragraph', children: [{ type: 'text', text: slug }] }],
+            },
+          } as never,
+          visibility,
+          ...(syndication ? { syndication } : {}),
+          _status: status,
+        },
+        user: f.districtAdmin,
+        overrideAccess: true,
+      })
+    ).id as number
+
+  const district = f.districtTenant
+  return {
+    publishedPostA: await mk(f.tenantA, 'published-post-a', 'published'),
+    draftPostA: await mk(f.tenantA, 'draft-post-a', 'draft'),
+    staffPostA: await mk(f.tenantA, 'staff-post-a', 'published', { visibility: 'staff' }),
+    publishedPostB: await mk(f.tenantB, 'published-post-b', 'published'),
+    districtWidePost: await mk(district, 'district-wide-post', 'published', {
+      syndication: { scope: 'district-wide' },
+    }),
+    districtWideDraft: await mk(district, 'district-wide-draft', 'draft', {
+      syndication: { scope: 'district-wide' },
+    }),
+    districtWideStaffPost: await mk(district, 'district-wide-staff', 'published', {
+      visibility: 'staff',
+      syndication: { scope: 'district-wide' },
+    }),
+    selectedForBPost: await mk(district, 'selected-for-b', 'published', {
+      syndication: { scope: 'selected', syndicatedTo: [f.tenantB] },
+    }),
   }
 }
 

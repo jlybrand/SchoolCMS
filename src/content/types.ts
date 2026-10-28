@@ -431,3 +431,25 @@ export type RichTextBlock = RichTextParagraph | RichTextHeading | RichTextList
 
 /** A whole rich-text document. Empty is a legitimate value, not an error. */
 export type RichText = RichTextBlock[]
+
+/**
+ * A news post or announcement as the rendering layer sees it (`03` §2 `posts`).
+ *
+ * Only published, public posts become one — the content layer filters, so a renderer cannot
+ * show a draft by forgetting to check (`03` §6.4).
+ */
+export type Post = {
+  id: string
+  /**
+   * The tenant that OWNS the post. Differs from the site rendering it when the post is
+   * syndicated there (`02` §6) — the one cross-tenant read (`03` §6.4 invariant 3).
+   */
+  tenantId: string
+  title: string
+  slug: string
+  /** The editor's summary, or null. A list falls back to the body's first paragraph. */
+  excerpt: string | null
+  body: RichText
+  /** ISO timestamp of first publication, or null for a row that predates the stamp. */
+  publishedDate: string | null
+}

@@ -82,7 +82,10 @@ const entry = (
   autoApproved: action === 'auto-approve',
 })
 
-const pageAction = (input: AuditInput): AuditAction | null => {
+/** Content that moves through review (`04` §4.1), and what an untitled one is called. */
+const REVIEWED: Readonly<Record<string, string>> = { pages: 'Page', posts: 'Post' }
+
+const reviewAction = (input: AuditInput): AuditAction | null => {
   const before = input.previous ?? {}
   const after = input.doc ?? {}
   if (input.operation === 'delete') return 'delete'
@@ -97,14 +100,14 @@ const pageAction = (input: AuditInput): AuditAction | null => {
   return null
 }
 
-const forPage = (input: AuditInput): AuditEntry[] => {
+const forReviewed = (input: AuditInput, noun: string): AuditEntry[] => {
   const doc = input.doc
   if (!doc) return []
-  const action = pageAction(input)
+  const action = reviewAction(input)
   if (!action) return []
   return [
     entry(input, doc, action, {
-      documentTitle: text(doc.title) || `Page ${String(doc.id)}`,
+      documentTitle: text(doc.title) || `${noun} ${String(doc.id)}`,
       tenant: tenantIdOf(doc.tenant as never),
       summary: action === 'request-changes' ? text(doc.reviewNote) : '',
     }),
@@ -179,7 +182,8 @@ const forUser = (input: AuditInput): AuditEntry[] => {
 
 /** The entries a write produces; empty for anything the trail does not record. */
 export const auditEntries = (input: AuditInput): AuditEntry[] => {
-  if (input.collection === 'pages') return forPage(input)
+  const noun = REVIEWED[input.collection]
+  if (noun) return forReviewed(input, noun)
   if (input.collection === 'users') return forUser(input)
   return []
 }

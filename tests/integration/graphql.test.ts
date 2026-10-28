@@ -1,7 +1,14 @@
 import type { Payload } from 'payload'
 import { beforeAll, describe, expect, it } from 'vitest'
 
-import { getTestPayload, SEED_PASSWORD, seed, type Fixtures } from '../helpers/payload'
+import {
+  getTestPayload,
+  SEED_PASSWORD,
+  seed,
+  seedPosts,
+  type Fixtures,
+  type PostFixtures,
+} from '../helpers/payload'
 
 /**
  * The GraphQL route, through Payload's own handler (`src/app/(payload)/api/graphql/route.ts`).
@@ -19,6 +26,7 @@ import { getTestPayload, SEED_PASSWORD, seed, type Fixtures } from '../helpers/p
 
 let payload: Payload
 let f: Fixtures
+let p: PostFixtures
 let post: (request: Request) => Promise<Response>
 const tokens: Record<string, string> = {}
 
@@ -62,6 +70,7 @@ const DISTRICT = 'district-admin@test.local'
 beforeAll(async () => {
   payload = await getTestPayload()
   f = await seed(payload)
+  p = await seedPosts(payload, f)
   const config = (await import('@payload-config')).default
   const { GRAPHQL_POST } = await import('@payloadcms/next/routes')
   post = GRAPHQL_POST(config) as (request: Request) => Promise<Response>
@@ -197,5 +206,62 @@ describe('the audit trail over GraphQL', () => {
   it('the district can read it', async () => {
     const result = await gql(`{ AuditEvents { docs { action } } }`, DISTRICT)
     expect(result.errors).toBeUndefined()
+  })
+})
+
+/** Posts open the same route, so every gate pages have is asserted again (`03` §6.4). */
+describe('posts over GraphQL', () => {
+  const postDraft = (id: number) =>
+    payload.findByID({ collection: 'posts', id, draft: true, overrideAccess: true })
+
+  it('a school manager cannot publish their own draft post', async () => {
+    const result = await gql(
+      `mutation { updatePost(id: ${p.draftPostA}, data: { _status: published }) { id } }`,
+      MANAGER_A,
+    )
+    expect(refused(result)).toBe(true)
+    expect((await postDraft(p.draftPostA))._status).toBe('draft')
+  })
+
+  it("a school manager reads none of another school's posts, nor the district's draft", async () => {
+    const result = await gql(`{ Posts(draft: true, limit: 100) { docs { id } } }`, MANAGER_A)
+    expect(result.errors).toBeUndefined()
+    const ids = (result.data?.Posts as { docs: { id: number }[] }).docs.map((d) => d.id)
+    expect(ids).toContain(p.draftPostA)
+    for (const id of [p.publishedPostB, p.districtWideDraft]) expect(ids).not.toContain(id)
+  })
+
+  it("a school manager cannot edit another school's post", async () => {
+    const result = await gql(
+      `mutation { updatePost(id: ${p.publishedPostB}, draft: true, data: { title: "Hijacked" }) { id } }`,
+      MANAGER_A,
+    )
+    expect(refused(result)).toBe(true)
+    expect((await postDraft(p.publishedPostB)).title).toBe('published post b')
+  })
+
+  it('an anonymous caller sees published, public posts only — and no syndication settings', async () => {
+    const result = await gql(
+      `{ Posts(draft: true, limit: 100) { docs { id _status visibility } } }`,
+    )
+    expect(result.errors).toBeUndefined()
+    const docs = (
+      result.data?.Posts as { docs: { id: number; _status: string; visibility: string }[] }
+    ).docs
+    expect(docs.length).toBeGreaterThan(0)
+    expect(docs.every((d) => d._status === 'published' && d.visibility === 'public')).toBe(true)
+    expect(docs.map((d) => d.id)).not.toContain(p.districtWideDraft)
+  })
+
+  it('a school manager cannot list or restore post versions', async () => {
+    expect(refused(await gql(`{ versionsPosts { docs { id } } }`, MANAGER_A))).toBe(true)
+    const { docs } = await payload.findVersions({
+      collection: 'posts',
+      where: { parent: { equals: p.publishedPostA } },
+      overrideAccess: true,
+    })
+    expect(
+      refused(await gql(`mutation { restoreVersionPost(id: ${docs[0]!.id}) { id } }`, MANAGER_A)),
+    ).toBe(true)
   })
 })
