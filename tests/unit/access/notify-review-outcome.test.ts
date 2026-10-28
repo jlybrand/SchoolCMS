@@ -10,15 +10,16 @@ import { makeNotifyReviewOutcome } from '@/collections/hooks/notify-review-outco
  * runs it inside real Payload.
  */
 
-const setup = () => {
+const setup = (collection: 'pages' | 'posts' = 'pages') => {
   const send = vi.fn().mockResolvedValue(undefined)
   const logError = vi.fn()
   const hook = makeNotifyReviewOutcome({
+    collection,
     send,
     serverUrl: 'http://localhost:3000',
     recipientFor: async (userId) => (String(userId) === '7' ? 'manager@school.example' : null),
     schoolFor: async () => ({ name: 'School A', hostname: 'a.localhost' }),
-    pathFor: async () => '/bus-routes',
+    pathFor: async () => (collection === 'pages' ? '/bus-routes' : null),
   })
   const req = { payload: { logger: { error: logError } } }
   const run = (previousDoc: Record<string, unknown> | undefined, doc: Record<string, unknown>) =>
@@ -88,5 +89,30 @@ describe('notifyReviewOutcome', () => {
     const before = { ...waiting, submittedBy: { id: 7, email: 'ignored@x' } }
     await run(before, { ...before, reviewState: 'changes-requested', reviewNote: 'x' })
     expect(send.mock.calls[0]![0].to).toBe('manager@school.example')
+  })
+})
+
+describe('an announcement', () => {
+  it('links the email to the announcement’s own form, and to no website address', async () => {
+    const { send, run } = setup('posts')
+    await run(
+      { ...waiting, reviewState: 'submitted' },
+      {
+        ...waiting,
+        reviewState: 'changes-requested',
+        reviewNote: 'Add the time.',
+      },
+    )
+    const [message] = send.mock.calls[0]!
+    expect(message.text).toContain('http://localhost:3000/admin/collections/posts/12')
+    expect(message.text).toContain('your announcement')
+  })
+
+  it('an approval says so without a link', async () => {
+    const { send, run } = setup('posts')
+    await run(waiting, { ...waiting, reviewState: null, _status: 'published', submittedBy: null })
+    const [message] = send.mock.calls[0]!
+    expect(message.subject).toBe('Your announcement is approved: Bus routes')
+    expect(message.text).not.toMatch(/https?:/)
   })
 })

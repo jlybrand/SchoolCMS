@@ -156,3 +156,33 @@ describe('outcomeEmail — what the school manager reads', () => {
     }
   })
 })
+
+/**
+ * An announcement's outcome. Until the post template lands (Phase 5 part C) an announcement has
+ * no address of its own, so the approval says so plainly and links nowhere rather than to a
+ * page that does not show it.
+ */
+describe('outcomeEmail — an announcement', () => {
+  const post = {
+    noun: 'announcement' as const,
+    title: 'Picture day',
+    school: 'Oakbrook Elementary',
+    pageUrl: null,
+    editUrl: 'https://admin.dd2.org/admin/collections/posts/9',
+  }
+
+  it('approved: names it as an announcement and carries no website link', () => {
+    const email = outcomeEmail({ outcome: 'approved', ...post })
+    expect(email.subject).toBe('Your announcement is approved: Picture day')
+    expect(email.text).toContain('approved your announcement “Picture day”')
+    expect(email.text).toContain('Oakbrook Elementary')
+    expect(email.html).not.toContain('href=')
+    expect(email.text).not.toMatch(/https?:/)
+  })
+
+  it('changes requested: names it as an announcement and links to its form', () => {
+    const email = outcomeEmail({ outcome: 'changes-requested', note: 'Add the time.', ...post })
+    expect(email.text).toContain('your announcement “Picture day”')
+    expect(email.html).toContain(`href="${post.editUrl}"`)
+  })
+})

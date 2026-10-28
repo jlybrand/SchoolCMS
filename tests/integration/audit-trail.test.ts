@@ -1,7 +1,7 @@
 import { createLocalReq, type Payload, type TypedUser } from 'payload'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
-import { approvePage, latestVersionToken } from '@/collections/endpoints/approve-page'
+import { approveDocument, latestVersionToken } from '@/collections/endpoints/approve'
 
 import { getTestPayload, isDenied, seed, SEED_PASSWORD, type Fixtures } from '../helpers/payload'
 
@@ -87,8 +87,10 @@ describe('the approval loop leaves a complete record', () => {
       user: f.managerA,
       overrideAccess: false,
     })
-    const seen = await latestVersionToken(payload, page.id)
-    expect(await approvePage(await asUser(f.districtAdmin), page.id, seen)).toEqual({ ok: true })
+    const seen = await latestVersionToken(payload, 'pages', page.id)
+    expect(await approveDocument(await asUser(f.districtAdmin), 'pages', page.id, seen)).toEqual({
+      ok: true,
+    })
 
     const entries = await entriesFor('pages', page.id)
     expect(entries.map((e) => e.action)).toEqual(['submit', 'request-changes', 'submit', 'approve'])

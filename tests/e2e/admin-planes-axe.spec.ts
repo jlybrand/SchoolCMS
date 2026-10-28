@@ -103,6 +103,10 @@ schoolTest.describe('school plane — whole screens', () => {
         await page.goto('/admin/new-page')
         await auditScreen(page, '#new-page')
       })
+      schoolTest(`@a11y post an announcement — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/new-post')
+        await auditScreen(page, '#new-post')
+      })
       schoolTest(`@a11y the page form — ${colorScheme}`, async ({ page }) => {
         await page.goto(`/admin/collections/pages/${fixture.id}`)
         await auditScreen(page, '#action-send-for-approval', ...PAGE_FORM_REPAIRED)

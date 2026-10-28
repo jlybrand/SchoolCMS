@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import {
   checkNewPage,
+  checkNewPost,
   explainCreateError,
+  explainPostCreateError,
+  schoolEditPath,
   SCHOOL_PAGE_TYPES,
   SCHOOL_TASKS,
   submissionStatus,
@@ -19,7 +22,11 @@ import {
 
 describe('SCHOOL_TASKS — verbs, not collections (`04` §2.2)', () => {
   it('offers only tasks that work today, in the spec wording', () => {
-    expect(SCHOOL_TASKS.map((t) => t.label)).toEqual(['Update a page', 'Add a page'])
+    expect(SCHOOL_TASKS.map((t) => t.label)).toEqual([
+      'Post an announcement',
+      'Update a page',
+      'Add a page',
+    ])
   })
 
   it('links every task into the admin, never to a collection list', () => {
@@ -197,5 +204,57 @@ describe('submissionStatus — the plain status in "Your recent submissions"', (
     ['approved', null],
   ] as const)('%s → %s', (state, expected) => {
     expect(submissionStatus(state)).toBe(expected)
+  })
+})
+
+describe('checkNewPost — what a new announcement needs before it is created', () => {
+  it('needs only a headline and the school — there is no kind to choose', () => {
+    expect(checkNewPost({ title: ' Picture day ', schools: [7] })).toEqual({
+      ok: true,
+      title: 'Picture day',
+      school: 7,
+    })
+  })
+
+  it('refuses an empty or over-long headline, in its own words', () => {
+    const empty = checkNewPost({ title: '  ', schools: [7] })
+    expect(empty).toEqual({ ok: false, errors: { title: 'Give the announcement a headline.' } })
+    const long = checkNewPost({ title: 'x'.repeat(121), schools: [7] })
+    expect(long.ok ? null : long.errors.title).toMatch(/shorter/)
+  })
+
+  it('asks for a school only when there are several, and refuses one not theirs', () => {
+    expect(checkNewPost({ title: 'T', schools: [7, 8], school: '8' })).toMatchObject({
+      ok: true,
+      school: 8,
+    })
+    expect(checkNewPost({ title: 'T', schools: [7, 8] }).ok).toBe(false)
+    expect(checkNewPost({ title: 'T', schools: [7], school: 9 }).ok).toBe(false)
+  })
+
+  it('with no schools at all, says so', () => {
+    const check = checkNewPost({ title: 'T', schools: [] })
+    expect(check.ok ? null : check.errors.school).toMatch(/not linked to a school/)
+  })
+})
+
+describe('explainPostCreateError', () => {
+  it('a refusal by access says they cannot post here', () => {
+    expect(
+      explainPostCreateError({
+        errors: [{ message: 'You are not allowed to perform this action.' }],
+      }),
+    ).toMatch(/cannot post announcements/)
+  })
+
+  it('anything else gets a generic sentence about announcements', () => {
+    expect(explainPostCreateError(null)).toMatch(/announcement could not be created/)
+  })
+})
+
+describe('schoolEditPath — where a submission opens', () => {
+  it('opens a page or an announcement in its own form', () => {
+    expect(schoolEditPath('pages', 4)).toBe('/admin/collections/pages/4')
+    expect(schoolEditPath('posts', 9)).toBe('/admin/collections/posts/9')
   })
 })

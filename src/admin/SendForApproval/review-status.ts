@@ -1,5 +1,6 @@
 import { isDistrictAdmin, isSchoolManager } from '@/access/predicates'
 import type { AuthUser } from '@/access/types'
+import { toRichText } from '@/content/rich-text'
 
 /**
  * The two decisions under the school plane's "Send for approval" control (`04` §2.3), kept
@@ -99,3 +100,18 @@ export const describeReview = (input: ReviewStatusInput, timeZone: string): Revi
     detail: 'When you are ready, send them for approval.',
   }
 }
+
+/** The one sentence for an announcement sent with no words — the button's and the server's. */
+export const NEEDS_WORDS =
+  'Write the announcement before sending it. The words go in the box under the headline.'
+
+/**
+ * What stops "Send for approval" before anything is sent, or null.
+ *
+ * An announcement with no words — refused on the server too (`postNeedsWords`). Stopped here as
+ * well because a refused submit made before the editor has loaded leaves Payload's rich-text
+ * editor read-only until a reload, and because the production build replaces the server's
+ * sentence with "The following field is invalid: body".
+ */
+export const sendRefusal = (collection: string | undefined, body: unknown): string | null =>
+  collection === 'posts' && toRichText(body).length === 0 ? NEEDS_WORDS : null

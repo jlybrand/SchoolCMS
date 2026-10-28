@@ -19,7 +19,7 @@ import { blockLibrary } from '@/collections/blocks'
 import { auditChange, auditDelete } from '@/collections/hooks/audit'
 import { restoreIsDistrictOnly } from '@/collections/hooks/page-history'
 import { composedPagesAreDistrictOnly, publishGate } from '@/collections/hooks/publish-gate'
-import { approvePageEndpoint } from '@/collections/endpoints/approve-page'
+import { makeApproveEndpoint } from '@/collections/endpoints/approve'
 import { applyReviewState } from '@/collections/hooks/review-state'
 import {
   makeNotifyReviewOutcome,
@@ -144,6 +144,7 @@ export const Pages: CollectionConfig = {
       }),
       /** The submitter's email on approve or request changes (`04` §4.5). */
       makeNotifyReviewOutcome({
+        collection: 'pages',
         send: sendWithPayload,
         serverUrl: process.env.NEXT_PUBLIC_SERVER_URL ?? '',
         recipientFor: userEmail,
@@ -155,7 +156,7 @@ export const Pages: CollectionConfig = {
   },
 
   /** The approval queue's one click — see the file for why it is not a plain PATCH. */
-  endpoints: [approvePageEndpoint],
+  endpoints: [makeApproveEndpoint('pages')],
 
   fields: [
     {

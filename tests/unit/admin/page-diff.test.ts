@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { diffPage } from '@/admin/Approvals/page-diff'
+import { diffPage, diffPost } from '@/admin/Approvals/page-diff'
 
 /**
  * The inline diff the district approves from (`04` §4.2): "field-by-field for typed content
@@ -192,5 +192,53 @@ describe('diffPage — a page that has never been published', () => {
     ])
     expect(diff.body?.changes.every((c) => c.change === 'added')).toBe(true)
     expect(diff.body?.unchanged).toBe(0)
+  })
+})
+
+/**
+ * An announcement's diff — the same shape, its own fields. The district-only ones (where it is
+ * shared, its date) are absent for the reason pages leave out `layout`: a school cannot write
+ * them, so they are never what a school is asking to publish.
+ */
+describe('diffPost', () => {
+  const post = {
+    title: 'Picture day',
+    slug: 'picture-day',
+    excerpt: 'Smile.',
+    visibility: 'public',
+    syndication: { scope: 'this-tenant' },
+    publishedDate: '2026-10-01T00:00:00.000Z',
+    body: body(para(text('Thursday.'))),
+  }
+
+  it('lists nothing when nothing changed', () => {
+    expect(diffPost(post, post)).toEqual({ isNew: false, fields: [], body: null })
+  })
+
+  it('lists a changed headline and summary in words', () => {
+    const diff = diffPost(post, { ...post, title: 'Picture day moved', excerpt: '' })
+    expect(diff.fields).toEqual([
+      { field: 'title', label: 'Headline', before: 'Picture day', after: 'Picture day moved' },
+      { field: 'excerpt', label: 'Summary', before: 'Smile.', after: null },
+    ])
+  })
+
+  it('a new announcement lists headline, address and who can see it, then its words', () => {
+    const diff = diffPost(null, post)
+    expect(diff.isNew).toBe(true)
+    expect(diff.fields.map((f) => [f.label, f.after])).toEqual([
+      ['Headline', 'Picture day'],
+      ['Address', 'picture-day'],
+      ['Summary', 'Smile.'],
+      ['Who can see it', 'Anyone'],
+    ])
+    expect(diff.body?.changes).toEqual([
+      { change: 'added', kind: 'paragraph', lines: ['Thursday.'] },
+    ])
+  })
+
+  it('ignores the district-only fields', () => {
+    const shared = { ...post, syndication: { scope: 'district-wide' }, publishedDate: null }
+    expect(diffPost(post, shared).fields).toEqual([])
   })
 })

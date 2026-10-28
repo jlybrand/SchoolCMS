@@ -99,7 +99,7 @@ describe('digestEmail', () => {
       timeZone: TZ,
       queueUrl: QUEUE,
     })
-    expect(email?.subject).toBe('2 pages waiting for approval (1 overdue)')
+    expect(email?.subject).toBe('2 submissions waiting for approval (1 overdue)')
     expect(email?.text).toContain('Picture day — Adams Elementary — Sent 6 days ago (overdue)')
     expect(email?.text).toContain('Lunch menu — Lincoln Middle — Sent yesterday')
     expect(email?.text).not.toContain('Lunch menu — Lincoln Middle — Sent yesterday (overdue)')
@@ -114,7 +114,7 @@ describe('digestEmail', () => {
       timeZone: TZ,
       queueUrl: QUEUE,
     })
-    expect(email?.subject).toBe('1 page waiting for approval')
+    expect(email?.subject).toBe('1 submission waiting for approval')
   })
 
   it('escapes what schools typed, and keeps the subject to one line', () => {
@@ -130,7 +130,17 @@ describe('digestEmail', () => {
     expect(email?.text).not.toMatch(/\nBcc:/)
   })
 
-  it('says "page", never "draft", "collection" or "tenant"', () => {
+  it('names an announcement as one, beside its title', () => {
+    const email = digestEmail({
+      pages: [{ ...page('Picture day', '2026-10-26T14:00:00Z'), kind: 'announcement' }],
+      now,
+      timeZone: TZ,
+      queueUrl: QUEUE,
+    })
+    expect(email?.text).toContain('Picture day (announcement) — Adams Elementary — Sent yesterday')
+  })
+
+  it('says "submission", never "draft", "collection" or "tenant"', () => {
     const email = digestEmail({
       pages: [page('Lunch menu', '2026-10-26T14:00:00Z')],
       now,
@@ -155,7 +165,7 @@ describe('overdueAlertEmail', () => {
       timeZone: TZ,
       queueUrl: QUEUE,
     })
-    expect(email?.subject).toBe('Overdue: 1 page waiting more than 3 school days')
+    expect(email?.subject).toBe('Overdue: 1 submission waiting more than 3 school days')
     expect(email?.text).toContain('Picture day — Adams Elementary — Sent 6 days ago')
     expect(email?.text).toContain(QUEUE)
   })
@@ -167,7 +177,7 @@ describe('overdueAlertEmail', () => {
       timeZone: TZ,
       queueUrl: QUEUE,
     })
-    expect(email?.subject).toBe('Overdue: 2 pages waiting more than 3 school days')
+    expect(email?.subject).toBe('Overdue: 2 submissions waiting more than 3 school days')
   })
 })
 
@@ -194,8 +204,8 @@ describe('districtMail — what one hourly run sends', () => {
       queueUrl: QUEUE,
     })
     expect(mail.map((m) => m.subject)).toEqual([
-      '2 pages waiting for approval (1 overdue)',
-      'Overdue: 1 page waiting more than 3 school days',
+      '2 submissions waiting for approval (1 overdue)',
+      'Overdue: 1 submission waiting more than 3 school days',
     ])
   })
 
@@ -206,7 +216,7 @@ describe('districtMail — what one hourly run sends', () => {
       timeZone: TZ,
       queueUrl: QUEUE,
     })
-    expect(mail.map((m) => m.subject)).toEqual(['1 page waiting for approval (1 overdue)'])
+    expect(mail.map((m) => m.subject)).toEqual(['1 submission waiting for approval (1 overdue)'])
   })
 
   it('an empty queue at the digest hour: nothing', () => {

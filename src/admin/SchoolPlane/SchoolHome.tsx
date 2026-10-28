@@ -6,7 +6,7 @@ import type { AuthUser } from '@/access/types'
 import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 
 import { listMySubmissions } from './school-data'
-import { SCHOOL_TASKS, submissionStatus } from './school-plane'
+import { SCHOOL_TASKS, schoolEditPath, submissionStatus } from './school-plane'
 import styles from './SchoolPlane.module.css'
 
 /**
@@ -45,10 +45,10 @@ export const SchoolHome = async (props: DashboardViewServerProps) => {
           <p className={styles.empty}>Nothing is waiting for the district right now.</p>
         ) : (
           <ul className={styles.rows}>
-            {submissions.map((page) => (
-              <li className={styles.row} key={page.id}>
-                <Link href={`/admin/collections/pages/${page.id}`}>{page.title}</Link>
-                <span className={styles.state}>{submissionStatus(page.reviewState)}</span>
+            {submissions.map((row) => (
+              <li className={styles.row} key={`${row.collection}-${row.id}`}>
+                <Link href={schoolEditPath(row.collection, row.id)}>{row.title}</Link>
+                <span className={styles.state}>{submissionStatus(row.reviewState)}</span>
               </li>
             ))}
           </ul>

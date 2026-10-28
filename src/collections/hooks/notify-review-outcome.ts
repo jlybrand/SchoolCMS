@@ -5,7 +5,7 @@ import { outcomeEmail, publicUrlFor, reviewOutcome } from '@/lib/review-emails'
 import { buildPagePath } from '@/lib/slug'
 
 /**
- * Emails the person who sent a page when the district approves it or sends it back
+ * Emails the person who sent a page or announcement when the district approves it or sends it back
  * (`04` §4.5). Without it a school manager only learns the outcome by logging in again — and
  * they log in a few times a year (`04` §2.1).
  *
@@ -23,6 +23,8 @@ import { buildPagePath } from '@/lib/slug'
 type Message = { to: string; subject: string; text: string; html: string }
 
 export type NotifyDeps = {
+  /** The collection the hook is registered on — the edit link and the email's wording. */
+  collection: 'pages' | 'posts'
   send: (message: Message, req: PayloadRequest) => Promise<unknown>
   serverUrl: string
   recipientFor: (userId: string, req: PayloadRequest) => Promise<string | null>
@@ -30,7 +32,8 @@ export type NotifyDeps = {
     tenantId: string,
     req: PayloadRequest,
   ) => Promise<{ name: string; hostname: string } | null>
-  pathFor: (doc: Record<string, unknown>, req: PayloadRequest) => Promise<string>
+  /** The public path, or null for something with no address of its own yet. */
+  pathFor: (doc: Record<string, unknown>, req: PayloadRequest) => Promise<string | null>
 }
 
 export const makeNotifyReviewOutcome =
@@ -44,7 +47,7 @@ export const makeNotifyReviewOutcome =
       const to = submitter === null ? null : await deps.recipientFor(submitter, req)
       if (!to) {
         req.payload.logger.error(
-          `notifyReviewOutcome: no email address for the sender of page ${String(doc.id)}; nobody told`,
+          `notifyReviewOutcome: no email address for the sender of ${deps.collection} ${String(doc.id)}; nobody told`,
         )
         return doc
       }
@@ -52,18 +55,25 @@ export const makeNotifyReviewOutcome =
       const tenant = relationshipIdOf((doc.tenant ?? null) as never)
       const school = tenant === null ? null : await deps.schoolFor(tenant, req)
       const path = await deps.pathFor(doc, req)
+      const noun = deps.collection === 'posts' ? 'announcement' : 'page'
       const email = outcomeEmail({
         outcome,
-        title: typeof doc.title === 'string' ? doc.title : 'Your page',
+        noun,
+        title: typeof doc.title === 'string' ? doc.title : `Your ${noun}`,
         school: school?.name ?? 'your school',
-        pageUrl: school ? publicUrlFor(deps.serverUrl, school.hostname, path) : deps.serverUrl,
-        editUrl: `${deps.serverUrl.replace(/\/$/, '')}/admin/collections/pages/${String(doc.id)}`,
+        pageUrl:
+          path === null
+            ? null
+            : school
+              ? publicUrlFor(deps.serverUrl, school.hostname, path)
+              : deps.serverUrl,
+        editUrl: `${deps.serverUrl.replace(/\/$/, '')}/admin/collections/${deps.collection}/${String(doc.id)}`,
         note: typeof doc.reviewNote === 'string' ? doc.reviewNote : null,
       })
       await deps.send({ to, ...email }, req)
     } catch (err) {
       req.payload.logger.error(
-        `notifyReviewOutcome: could not email about page ${String(doc.id)}: ${(err as Error).message}`,
+        `notifyReviewOutcome: could not email about ${deps.collection} ${String(doc.id)}: ${(err as Error).message}`,
       )
     }
     return doc
@@ -119,3 +129,6 @@ export const pagePath: NotifyDeps['pathFor'] = async (doc, req) => {
 }
 
 export const sendWithPayload: NotifyDeps['send'] = (message, req) => req.payload.sendEmail(message)
+
+/** Announcements have no public address until the post template lands (Phase 5 part C). */
+export const noPath: NotifyDeps['pathFor'] = async () => null

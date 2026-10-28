@@ -4,13 +4,13 @@ How the content modules work mechanically, and the audit trail they write to. Ph
 with the audit trail (`05`, scheduled at the Phase 4 close); the modules — posts, events, people
 and the PowerSchool sync, alerts — follow, each writing to it.
 
-| Slice                        | State                                                                                              |
-| ---------------------------- | -------------------------------------------------------------------------------------------------- |
-| Audit trail                  | Merged (#42) — §1                                                                                  |
-| News/announcements (`posts`) | **This PR** — §2: collection, access, syndication read; queue, school task, feed and template next |
-| Calendars and events         | —                                                                                                  |
-| Directories + PowerSchool    | —                                                                                                  |
-| Alerts                       | —                                                                                                  |
+| Slice                        | State                                                                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Audit trail                  | Merged (#42) — §1                                                                                            |
+| News/announcements (`posts`) | §2 collection (#43); **this PR** — §3 approval, school task, emails; feed, template and `posts.routine` next |
+| Calendars and events         | —                                                                                                            |
+| Directories + PowerSchool    | —                                                                                                            |
+| Alerts                       | —                                                                                                            |
 
 ---
 
@@ -223,10 +223,90 @@ dropped). A post switched back to `this-tenant` keeps its `syndicatedTo` list in
 
 ### Not here yet
 
-- The approval queue, its diff and one-click approve; the school task "Post an announcement";
-  "Your recent submissions"; the outcome emails — all read `pages` only.
 - `FeedBlock`, the post template and its route, revalidation with the syndication fan-out
   (`tagsForDocument`'s `syndicatedTo`).
 - `posts.routine` auto-approval.
 - `category` and `heroImage` (see `03` §2).
 - A migration mapper stub.
+
+---
+
+## 3. Posts through approval — the school task, the queue, the emails
+
+### Files
+
+| File                                    | Holds                                                                                                                                                                                                             |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/collections/endpoints/approve.ts`  | (was `approve-page.ts`) `ReviewedCollection`, `latestVersion(payload, collection, id)`, `latestVersionToken`, `approveDocument(req, collection, id, seen)`, `makeApproveEndpoint(collection)`, `APPROVE_MESSAGES` |
+| `src/admin/Approvals/anchor.ts`         | `approvalAnchor(collection, id)` → `approval-{collection}-{id}`                                                                                                                                                   |
+| `src/admin/SchoolPlane/NewPostView.tsx` | `/admin/new-post` — school managers only, else redirect to `/admin`                                                                                                                                               |
+| `src/admin/SchoolPlane/NewPostForm.tsx` | headline (+ school when several) → `POST /api/posts?draft=true` → the post form                                                                                                                                   |
+| `tests/e2e/announcements.spec.ts`       | the task to the queue; new-post axe; an announcement approved from the queue                                                                                                                                      |
+
+Changed:
+
+| File                                                                             | Change                                                                                                                                                                                                                                                        |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/collections/Pages.ts`                                                       | `endpoints: [makeApproveEndpoint('pages')]`; notify gets `collection: 'pages'`                                                                                                                                                                                |
+| `src/collections/Posts.ts`                                                       | `endpoints: [makeApproveEndpoint('posts')]`; `makeNotifyReviewOutcome({ collection: 'posts', pathFor: noPath })` after audit; `body` not required; `postNeedsWordsHook` before `stampPublishedDateHook`; `publishedDate` hidden when `sendsForApproval(user)` |
+| `src/collections/hooks/post-hooks.ts`                                            | `postNeedsWords`, `postNeedsWordsHook`                                                                                                                                                                                                                        |
+| `src/collections/hooks/notify-review-outcome.ts`                                 | `NotifyDeps.collection`; `pathFor` may return null; `noPath`                                                                                                                                                                                                  |
+| `src/lib/review-emails.ts`                                                       | `OutcomeEmailInput.noun` (`page` default / `announcement`); `pageUrl: string \| null`                                                                                                                                                                         |
+| `src/lib/district-digest.ts`, `src/jobs/district-digest.ts`                      | `WaitingPage.kind`; both collections read and merged by `submittedAt`; counts say "submission(s)"                                                                                                                                                             |
+| `src/admin/Approvals/page-diff.ts`                                               | `diffPost`; shared `diffFields`                                                                                                                                                                                                                               |
+| `src/admin/Approvals/queue-data.ts`                                              | `QueueItem.collection`, `.noun`; `countWaiting` and `loadQueue` over pages + posts                                                                                                                                                                            |
+| `src/admin/Approvals/ApprovalItem.tsx`, `ApprovalsView.tsx`, `WaitingBanner.tsx` | URLs per collection; "New announcement" / "Announcement" badge; "Open the announcement"; "submission(s)"                                                                                                                                                      |
+| `src/admin/SendForApproval/review-status.ts`                                     | `NEEDS_WORDS`, `sendRefusal(collection, body)`                                                                                                                                                                                                                |
+| `src/admin/SendForApproval/SendForApprovalButton.tsx`                            | queue link uses `approvalAnchor`; `sendRefusal` checked before submit (`toast.error`)                                                                                                                                                                         |
+| `src/admin/SchoolPlane/school-plane.ts`                                          | "Post an announcement" first in `SCHOOL_TASKS`; `checkNewPost`; `explainPostCreateError`; `schoolEditPath`                                                                                                                                                    |
+| `src/admin/SchoolPlane/school-data.ts`, `SchoolHome.tsx`                         | recent submissions over pages + posts, newest first, 20; rows carry `collection`                                                                                                                                                                              |
+| `src/payload.config.ts`                                                          | view `newPost` at `/new-post`                                                                                                                                                                                                                                 |
+
+### Approve
+
+`POST /api/{pages|posts}/:id/approve` with `{ versionId, updatedAt }` → `approveDocument`: district
+admin only; `latestVersion` of THAT collection; `checkApproval`; `payload.update` of that
+collection as the reviewer with the version's content and `_status: 'published'`. A token read
+from one collection never matches the other's versions.
+
+Messages: `forbidden` "Only district staff can approve changes."; `not-waiting` "This is no
+longer waiting…"; `changed` "This was changed after you opened it…"; `not-found` "This no longer exists."
+
+### Queue
+
+`loadQueue` reads each collection's `reviewState = submitted` (as the reviewer, `draft: true`,
+50 each), merges by `submittedAt` ascending, keeps 50. Pages diff with `diffPage` (parent titles
+resolved from pages only); posts with `diffPost`: Headline, Address (the slug alone — no public
+path yet), Summary, Who can see it, then the body. Approved announcement outcome: "Published.
+“{title}” is approved for {school}."
+
+### Words required to send
+
+| Write                                                                | `postNeedsWords` |
+| -------------------------------------------------------------------- | ---------------- |
+| `reviewState: submitted` over a stored state that is not `submitted` | needs words      |
+| `_status: published`                                                 | needs words      |
+| anything else (create, autosave, a save on a waiting post)           | passes           |
+
+Words = `toRichText(body ?? stored body).length > 0`. Refusal: `ValidationError` on `body` with
+`NEEDS_WORDS`. The button checks the same (`sendRefusal`) before submitting, because a refused
+submit made before the Lexical editor mounts leaves it `contenteditable="false"` until reload
+(Payload 3.87; reproduced in e2e), and the production build replaces the server message.
+
+### Emails
+
+| Collection | Approved                                          | Changes requested                                                 |
+| ---------- | ------------------------------------------------- | ----------------------------------------------------------------- |
+| pages      | "Your page is live: {title}" + public URL         | as before                                                         |
+| posts      | "Your announcement is approved: {title}", no link | "…your announcement “{title}”…" + `/admin/collections/posts/{id}` |
+
+Digest lines: `{title} (announcement) — {school} — {wait}` for posts.
+
+### Not here yet
+
+- `FeedBlock`, the post template and route, revalidation with syndication fan-out — and with
+  them a public address for the approval email and the diff's Address row.
+- `posts.routine`.
+- Editing an announcement after it is published: there is no school task for it; a school
+  manager reaches it only from "Your recent submissions" while it is pending.
+- "Published" in recent submissions (reads the audit trail).

@@ -1,7 +1,7 @@
 import { ValidationError } from 'payload'
 import { describe, expect, it, vi } from 'vitest'
 
-import { stampPublishedDate, uniquePostSlug } from '@/collections/hooks/post-hooks'
+import { postNeedsWords, stampPublishedDate, uniquePostSlug } from '@/collections/hooks/post-hooks'
 
 /**
  * The two `posts` hooks that `pages` does not have.
@@ -102,5 +102,63 @@ describe('stampPublishedDate', () => {
 
   it('leaves a draft undated', () => {
     expect(run({ _status: 'draft' })).toEqual({ _status: 'draft' })
+  })
+})
+
+/**
+ * An announcement needs words before anyone sees it. Not `required` on the field: "Post an
+ * announcement" creates the post from its headline first, so autosave covers it from the first
+ * keystroke (as "Add a page" does) — and a required body would refuse that create. The words
+ * are required at the two moments that matter instead: sending it, and publishing it.
+ */
+describe('postNeedsWords', () => {
+  const words = {
+    root: {
+      type: 'root',
+      children: [{ type: 'paragraph', children: [{ type: 'text', text: 'Thursday.' }] }],
+    },
+  }
+  const empty = { root: { type: 'root', children: [{ type: 'paragraph', children: [] }] } }
+
+  it.each([
+    ['sending it', { reviewState: 'submitted' }, { reviewState: 'editing' }],
+    ['publishing it', { _status: 'published' }, {}],
+  ])('refuses %s with no words', (_label, data, originalDoc) => {
+    expect(() => postNeedsWords({ data: { ...data, body: empty }, originalDoc })).toThrow(
+      ValidationError,
+    )
+    expect(() => postNeedsWords({ data, originalDoc })).toThrow(ValidationError)
+  })
+
+  it('reads the stored words when the write does not carry them', () => {
+    expect(() =>
+      postNeedsWords({ data: { _status: 'published' }, originalDoc: { body: words } }),
+    ).not.toThrow()
+  })
+
+  it('lets an empty announcement be saved — a headline with no words yet is work in progress', () => {
+    expect(() => postNeedsWords({ data: { title: 'Picture day', body: empty } })).not.toThrow()
+  })
+
+  it('lets a save on an announcement already waiting through — it was checked when sent', () => {
+    expect(() =>
+      postNeedsWords({
+        data: { reviewState: 'submitted', body: empty },
+        originalDoc: { reviewState: 'submitted' },
+      }),
+    ).not.toThrow()
+  })
+
+  it('says what to do, on the body', () => {
+    let caught: unknown
+    try {
+      postNeedsWords({ data: { reviewState: 'submitted' } })
+    } catch (error) {
+      caught = error
+    }
+    expect(caught).toBeInstanceOf(ValidationError)
+    const [first] = (caught as ValidationError).data.errors
+    expect(first).toMatchObject({ path: 'body' })
+    expect(first!.message).toMatch(/write the announcement/i)
   })
 })
