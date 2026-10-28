@@ -4,13 +4,13 @@ How the content modules work mechanically, and the audit trail they write to. Ph
 with the audit trail (`05`, scheduled at the Phase 4 close); the modules — posts, events, people
 and the PowerSchool sync, alerts — follow, each writing to it.
 
-| Slice                        | State                                                                         |
-| ---------------------------- | ----------------------------------------------------------------------------- |
-| Audit trail                  | Merged (#42) — §1                                                             |
-| News/announcements (`posts`) | §2 (#43); §3 (#44); §4 (#45); **this PR** — §5 public pages; `FeedBlock` next |
-| Calendars and events         | —                                                                             |
-| Directories + PowerSchool    | —                                                                             |
-| Alerts                       | —                                                                             |
+| Slice                        | State                                                                                      |
+| ---------------------------- | ------------------------------------------------------------------------------------------ |
+| Audit trail                  | Merged (#42) — §1                                                                          |
+| News/announcements (`posts`) | §2 (#43); §3 (#44); §4 (#45); §5 (#46); **this PR** — §6 `FeedBlock`; `posts.routine` next |
+| Calendars and events         | —                                                                                          |
+| Directories + PowerSchool    | —                                                                                          |
+| Alerts                       | —                                                                                          |
 
 ---
 
@@ -435,6 +435,61 @@ write revalidates nothing.
 
 ### Not here yet
 
-- `FeedBlock` and the resolve pass for editor-configured blocks (`03` §3.2).
 - Pagination or an archive past 50 on `/news`.
 - `posts.routine`.
+
+---
+
+## 6. `FeedBlock` and the resolve pass (Jason, 2026-10-28)
+
+### Files
+
+| File                                    | Holds                                                                                                  |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `src/content/resolve-blocks.ts`         | `resolvePageBlocks(ctx, blocks, { serverUrl })` → `ResolvedPageBlock[]`                                |
+| `src/blocks/NewsFeed/`                  | `NewsFeed` — renders a `ResolvedFeedBlock`; story                                                      |
+| `src/lib/cross-tenant-relationships.ts` | `crossTenantRelationships(config)` — last in `plugins`                                                 |
+| `tests/e2e/news-feed.spec.ts`           | a feed on School B's page: shared district news, link home, refresh on publish, hidden when empty, axe |
+
+Changed:
+
+| File                                             | Change                                                                                                                                 |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/content/types.ts`                           | `FeedBlock` (stored), `ResolvedFeedBlock`, `PageBlock` + feed, `ResolvedPageBlock`                                                     |
+| `src/content/blocks.ts`                          | `toFeed`: boards (≥1, else dropped), tags, heading, `limit` 1–10 (default 5)                                                           |
+| `src/collections/blocks/index.ts`                | `feedBlock` (slug `feed`, "News feed"): heading, boards (required, not sortable, `custom.crossTenant`), tags (not sortable), limit     |
+| `src/blocks/BlockList.tsx`                       | `blocks: ResolvedPageBlock[]`; `case 'feed'`; drops a feed with no items                                                               |
+| `[[...segments]]/page.tsx`                       | `resolvePageBlocks(ctx, page.layout, { serverUrl })` before `BlockList`                                                                |
+| `src/collections/PostBoards.ts`, `post-hooks.ts` | `label` = `boardLabel(site name, title)` = "Site · Folder → Board"; `useAsTitle: 'label'`                                              |
+| `src/admin/A11yPatch/repairs.ts`                 | names `.collapsible__drag` "Reorder", `.array-actions__button` "Row actions", `.clipboard-action__popup .popup-button` "Copy or paste" |
+| `src/app/(payload)/admin-overrides.css`          | `.blocks-field__drawer-toggler:not(:disabled) .btn` colour                                                                             |
+| `src/payload.config.ts`                          | `crossTenantRelationships` after `multiTenantPlugin`                                                                                   |
+
+### The two passes
+
+| Stage               | Input         | Output                                                                                                 | Pure             |
+| ------------------- | ------------- | ------------------------------------------------------------------------------------------------------ | ---------------- |
+| `toPageBlocks`      | `layout` rows | `PageBlock[]` — a feed is its settings                                                                 | yes              |
+| `resolvePageBlocks` | `PageBlock[]` | `ResolvedPageBlock[]` — a feed is `{ heading, items: NewsItem[], moreHref }`; an empty feed is dropped | no (reads posts) |
+
+Feed → `listPosts(ctx, { boards, tags, limit })` → `toNewsItems(posts, { siteTenantId, locale, serverUrl })`; `moreHref` = `localizedPath('/news', locale)`.
+
+### Rendering
+
+`NewsFeed`: with a heading, a `Section` named by it at the block level and headlines one level
+below; without, headlines at the block level. Then "More news". Nothing for no items.
+
+### Cross-site boards
+
+`multiTenantPlugin` wraps every relationship to `post-boards` with the document's-site filter
+(picker and validation). `crossTenantRelationships` restores `custom.filterOptions` (or none) on
+fields with `custom.crossTenant === true` — only the feed's `boards`. A post's `board` keeps the
+plugin's filter and `boardIsThisSchools`.
+
+### Tests
+
+`blocks.test.ts` (feed mapper), `components/blocks.test.tsx` (NewsFeed), `cross-tenant-relationships.test.ts`,
+`post-hooks.test.ts` (`boardLabel`), `a11y-patch.test.ts` (row controls), `content-layer.test.ts`
+(`resolvePageBlocks`), `tenant-isolation.test.ts` (a feed may pick the district's board; a post
+may not; a school manager cannot add a feed), `news-feed.spec.ts`, `admin-planes-axe.spec.ts`
+("a page with a news feed").

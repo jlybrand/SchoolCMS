@@ -75,6 +75,36 @@ describe('the list view’s “someone is editing this” lock', () => {
   })
 })
 
+/**
+ * A row of a blocks or array field — a news feed in a composed page's layout, a social link in
+ * settings. Payload 3.87 leaves three of its controls without a name. Found 2026-10-28 when the
+ * whole-screen gate first opened a composed page with a block in it.
+ */
+describe('block and array rows', () => {
+  it('names the drag handle — a focusable "sortable" button with no words', () => {
+    render(
+      '<div class="collapsible__drag" role="button" tabindex="0" aria-disabled="false" aria-roledescription="sortable"></div>',
+    )
+    expect($('.collapsible__drag').getAttribute('aria-label')).toBe('Reorder')
+  })
+
+  it('names the row’s "⋯" actions menu', () => {
+    render(
+      '<div class="popup array-actions"><div class="popup__trigger-wrap"><button class="popup-button array-actions__button popup-button--default" type="button"></button></div></div>',
+    )
+    expect($('.array-actions__button').getAttribute('aria-label')).toBe('Row actions')
+  })
+
+  it('names the copy-and-paste menu', () => {
+    render(
+      '<div class="popup clipboard-action__popup"><div class="popup__trigger-wrap"><button class="popup-button popup-button--default" type="button"></button></div></div>',
+    )
+    expect($('.clipboard-action__popup .popup-button').getAttribute('aria-label')).toBe(
+      'Copy or paste',
+    )
+  })
+})
+
 describe('unlabelled inputs take their field’s label', () => {
   it('a relationship combobox', () => {
     render(

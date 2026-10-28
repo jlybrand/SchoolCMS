@@ -61,6 +61,14 @@ export const repairAdminA11y = (root: ParentNode): void => {
     name(lock, tip || 'Someone else is editing this')
   }
 
+  // 4.1.2 — a block or array row's controls (found on a composed page with a news feed): the
+  // drag handle is a focusable "sortable" button with no words, and two "⋯" menus are icons.
+  for (const handle of all(root, '.collapsible__drag[role="button"]')) name(handle, 'Reorder')
+  for (const button of all(root, '.array-actions__button')) name(button, 'Row actions')
+  for (const button of all(root, '.clipboard-action__popup .popup-button')) {
+    name(button, 'Copy or paste')
+  }
+
   // 4.1.2 — list pagination arrows.
   for (const button of all(root, '.clickable-arrow--left')) name(button, 'Previous page')
   for (const button of all(root, '.clickable-arrow--right')) name(button, 'Next page')

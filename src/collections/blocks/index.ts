@@ -272,6 +272,70 @@ export const dividerBlock: Block = {
 }
 
 /**
+ * A news feed (Jason, 2026-10-28) — Finalsite's post element. Stores a QUERY: which boards,
+ * narrowed by which tags, how many. The announcements are loaded at render by the resolve pass
+ * (`src/content/resolve-blocks.ts`); who can see each one is still its own sharing, so a board
+ * from another site shows only what is shared with this one.
+ *
+ * Boards from ANY site may be picked — that is how SHS's homepage shows District News. Both
+ * pickers are not sortable: order means nothing, and a sortable chip nests buttons (axe).
+ */
+export const feedBlock: Block = {
+  slug: 'feed',
+  interfaceName: 'FeedBlockRow',
+  labels: { singular: 'News feed', plural: 'News feeds' },
+  fields: [
+    {
+      name: 'heading',
+      type: 'text',
+      label: 'Heading',
+      admin: {
+        description:
+          'Optional. A title above the announcements, like "District news" — it also names this part of the page for screen readers.',
+      },
+    },
+    {
+      name: 'boards',
+      type: 'relationship',
+      relationTo: 'post-boards',
+      hasMany: true,
+      required: true,
+      label: 'Boards',
+      // Other sites' boards too — see src/lib/cross-tenant-relationships.ts.
+      custom: { crossTenant: true },
+      admin: {
+        isSortable: false,
+        description:
+          'Which boards to show announcements from. Another site’s board shows only the announcements shared with this site.',
+      },
+    },
+    {
+      name: 'tags',
+      type: 'relationship',
+      relationTo: 'post-tags',
+      hasMany: true,
+      label: 'Only these tags',
+      admin: {
+        isSortable: false,
+        description: 'Optional. Show only announcements with any of these tags.',
+      },
+    },
+    {
+      name: 'limit',
+      type: 'number',
+      label: 'How many',
+      min: 1,
+      max: 10,
+      defaultValue: 5,
+      admin: {
+        description:
+          'Up to 10 of the newest. "More news" links to the rest. With none to show, this part of the page is hidden.',
+      },
+    },
+  ],
+}
+
+/**
  * The library, in the order it is offered to an editor. Prose first — it is what most
  * sections are — then the block that interrupts prose to ask for something.
  */
@@ -281,6 +345,7 @@ export const blockLibrary: Block[] = [
   cardGridBlock,
   callToActionBlock,
   childPageNavBlock,
+  feedBlock,
   embedBlock,
   dividerBlock,
 ]

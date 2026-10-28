@@ -8,8 +8,9 @@ import type {
   CardGridBlock,
   ChildPageNavBlock,
   EmbedBlock,
-  PageBlock,
   PageLink,
+  ResolvedFeedBlock,
+  ResolvedPageBlock,
   RichTextPageBlock,
 } from '@/content/types'
 
@@ -58,7 +59,7 @@ describe('BlockList', () => {
   })
 
   it('renders blocks in author order', () => {
-    const blocks: PageBlock[] = [richText('a', 'First'), cta('b'), richText('c', 'Third')]
+    const blocks: ResolvedPageBlock[] = [richText('a', 'First'), cta('b'), richText('c', 'Third')]
     const { container } = renderComponent(<BlockList childPages={[]} blocks={blocks} />)
 
     const headings = [...container.querySelectorAll('h2')].map((el) => el.textContent)
@@ -254,7 +255,7 @@ describe('Divider', () => {
   /** `<hr>` means thematic break — the semantic the editor is reaching for. */
   it('renders a thematic break, not a hidden decoration', () => {
     const { container } = renderComponent(
-      <BlockList childPages={[]} blocks={[{ kind: 'divider', id: 'd' } as PageBlock]} />,
+      <BlockList childPages={[]} blocks={[{ kind: 'divider', id: 'd' } as ResolvedPageBlock]} />,
     )
 
     const rule = container.querySelector('hr')
@@ -389,5 +390,60 @@ describe('Embed', () => {
   it('adds nothing to the page outline', () => {
     const { container } = renderComponent(<BlockList blocks={[block()]} childPages={[]} />)
     expect(levelsIn(container)).toEqual([])
+  })
+})
+
+/**
+ * A news feed, RESOLVED (Jason, 2026-10-28): the renderer gets ready items and fetches nothing.
+ * Its headlines sit one level under its own heading, so a feed cannot skip a level wherever an
+ * editor puts it (`03` §3.2).
+ */
+describe('NewsFeed', () => {
+  const feed = (overrides: Partial<ResolvedFeedBlock> = {}): ResolvedFeedBlock => ({
+    kind: 'feed',
+    id: 'feed-1',
+    heading: 'District news',
+    items: [
+      {
+        id: '1',
+        title: 'Snow day',
+        href: 'https://dd2.org/news/snow-day',
+        date: { iso: '2026-10-28T15:00:00.000Z', label: 'October 28, 2026' },
+        summary: 'Schools are closed.',
+      },
+    ],
+    moreHref: '/news',
+    ...overrides,
+  })
+
+  it('a named region: the heading at the block level, the headlines one below it', () => {
+    const { container } = renderComponent(<BlockList blocks={[feed()]} childPages={[]} />)
+    const section = container.querySelector('section')!
+    expect(section.getAttribute('aria-labelledby')).toBe(container.querySelector('h2')!.id)
+    expect(container.querySelector('h2')!.textContent).toBe('District news')
+    expect(container.querySelector('h3 a')!.getAttribute('href')).toBe(
+      'https://dd2.org/news/snow-day',
+    )
+  })
+
+  it('without a heading, the headlines take the block level', () => {
+    const { container } = renderComponent(
+      <BlockList blocks={[feed({ heading: null })]} childPages={[]} />,
+    )
+    expect(container.querySelector('h2 a')!.textContent).toBe('Snow day')
+    expect(container.querySelector('h3')).toBeNull()
+  })
+
+  it('ends with a link to every announcement on the site', () => {
+    const { container } = renderComponent(<BlockList blocks={[feed()]} childPages={[]} />)
+    const more = [...container.querySelectorAll('a')].find((a) => a.textContent === 'More news')
+    expect(more?.getAttribute('href')).toBe('/news')
+  })
+
+  it('renders nothing with no items — the resolve pass drops it, and the renderer agrees', () => {
+    const { container } = renderComponent(
+      <BlockList blocks={[feed({ items: [] })]} childPages={[]} />,
+    )
+    expect(container.innerHTML).toBe('')
   })
 })

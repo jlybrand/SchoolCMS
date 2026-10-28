@@ -53,3 +53,15 @@
 .LexicalEditorTheme__placeholder {
   color: var(--theme-elevation-800);
 }
+
+/**
+ * The "Add …" button under a blocks field ("Add Section") — 1.4.3 Contrast (Minimum).
+ *
+ * The blocks-field twin of `.array-field__add-row` above: the same 2.81:1 grey label until
+ * hovered — set here as `color` on the inner `span.btn`, not through `--btn-color`. The resting
+ * state takes Payload's own hover colour. The toggler's `disabled` keeps an unavailable one
+ * grey. Found 2026-10-28 by tests/e2e/admin-planes-axe.spec.ts ("a page with a news feed").
+ */
+.blocks-field__drawer-toggler:not(:disabled) .btn {
+  color: var(--theme-elevation-800);
+}

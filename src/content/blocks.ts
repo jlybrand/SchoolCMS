@@ -1,3 +1,4 @@
+import { relationshipIdOf } from '@/access/predicates'
 import { toEmbedTarget } from '@/lib/embed-url'
 import { toSafeHref } from '@/lib/href'
 import { toRichText } from './rich-text'
@@ -10,6 +11,7 @@ import type {
   ChildPageNavBlock,
   DividerBlock,
   EmbedBlock,
+  FeedBlock,
   PageBlock,
   RichTextPageBlock,
 } from './types'
@@ -184,6 +186,37 @@ const toDivider = (row: Row, index: number): DividerBlock => ({
   id: idOf(row, index),
 })
 
+const ids = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? value.map((v) => relationshipIdOf(v as never)).filter((v): v is string => v !== null)
+    : []
+
+/** How many a feed shows: 1-10, 5 unless set. A homepage feed is a glance, not an archive. */
+const feedLimit = (value: unknown): number =>
+  typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(10, Math.max(1, Math.floor(value)))
+    : 5
+
+/**
+ * A news feed's SETTINGS (Jason, 2026-10-28). The announcements are not here: they are loaded by
+ * `resolvePageBlocks`, which keeps this mapper pure.
+ *
+ * No boards: dropped. It would read as "every board", which nobody chose — the admin requires at
+ * least one, so this is a migration or a direct write.
+ */
+const toFeed = (row: Row, index: number): FeedBlock | null => {
+  const boards = ids(row.boards)
+  if (boards.length === 0) return null
+  return {
+    kind: 'feed',
+    id: idOf(row, index),
+    heading: str(row.heading),
+    boards,
+    tags: ids(row.tags),
+    limit: feedLimit(row.limit),
+  }
+}
+
 /**
  * One entry per block in the register (`03` §3.1). A `blockType` absent from this table is
  * dropped — which is the forward-compatibility property, not an oversight.
@@ -196,6 +229,7 @@ const MAPPERS: Record<string, (row: Row, index: number) => PageBlock | null> = {
   childPageNav: toChildPageNav,
   embed: toEmbed,
   divider: toDivider,
+  feed: toFeed,
 }
 
 /**

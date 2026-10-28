@@ -65,7 +65,11 @@ test.describe('school plane — home', () => {
       const row = page.locator('#school-home li').filter({ hasText: fixture.title })
       await expect(row).toContainText('Sent for approval', { timeout: 20_000 })
       await row.getByRole('link', { name: fixture.title }).click()
-      await expect(page).toHaveURL(new RegExp(`/admin/collections/pages/${fixture.id}`))
+      // 20s like every other admin wait here: under a full parallel run, Payload's document view
+      // can take longer than the 5s default to render, and this flaked on exactly that.
+      await expect(page).toHaveURL(new RegExp(`/admin/collections/pages/${fixture.id}`), {
+        timeout: 20_000,
+      })
     } finally {
       await dropPage(fixture)
     }

@@ -14,6 +14,7 @@ import { Pages } from './collections/Pages'
 import { PostBoards } from './collections/PostBoards'
 import { PostFolders } from './collections/PostFolders'
 import { Posts } from './collections/Posts'
+import { crossTenantRelationships } from './lib/cross-tenant-relationships'
 import { PostTags } from './collections/PostTags'
 import { Settings } from './collections/Settings'
 import { Tenants } from './collections/Tenants'
@@ -139,6 +140,11 @@ export default buildConfig({
         settings: { isGlobal: true },
       },
     }),
+    /**
+     * LAST, after the tenant plugin: gives a relationship marked `custom.crossTenant` — only the
+     * news feed's boards — back its own filter. See src/lib/cross-tenant-relationships.ts.
+     */
+    crossTenantRelationships,
   ],
 
   secret: process.env.PAYLOAD_SECRET ?? '',

@@ -1,7 +1,7 @@
 import { BLOCK_HEADING_LEVEL, clampHeadingLevel } from '@/components/Heading'
 import type { HeadingLevel } from '@/components/Heading'
 import { Stack } from '@/components/Stack'
-import type { PageBlock, PageLink } from '@/content/types'
+import type { PageLink, ResolvedPageBlock } from '@/content/types'
 
 import { Accordion } from './Accordion'
 import { CallToAction } from './CallToAction'
@@ -9,6 +9,7 @@ import { CardGrid } from './CardGrid'
 import { ChildPageNav } from './ChildPageNav'
 import { Divider } from './Divider'
 import { Embed } from './Embed'
+import { NewsFeed } from './NewsFeed'
 import { RichTextBlock } from './RichTextBlock'
 
 /**
@@ -38,7 +39,12 @@ import { RichTextBlock } from './RichTextBlock'
  */
 
 export type BlockListProps = {
-  readonly blocks: readonly PageBlock[]
+  /**
+   * RESOLVED blocks only (Jason, 2026-10-28). A page's stored layout must go through
+   * `resolvePageBlocks` first — a stored feed is not a `ResolvedPageBlock`, so passing the layout
+   * straight through does not compile.
+   */
+  readonly blocks: readonly ResolvedPageBlock[]
   /**
    * The current page's children, for `ChildPageNav` (`03` §3.3, decided 2026-08-28).
    *
@@ -49,8 +55,9 @@ export type BlockListProps = {
    * point.
    *
    * Note what this is NOT: a general data bag for blocks. It is one field of the page being
-   * rendered, forwarded. Blocks whose data is an editor-configured query (`FeedBlock`,
-   * `StaffList`, `DocumentList`, `Gallery`) are a Phase 5 decision, not more entries here.
+   * rendered, forwarded. Blocks whose data is an editor-configured query (`FeedBlock` today;
+   * `StaffList`, `DocumentList`, `Gallery` later) get theirs from the resolve pass
+   * (`src/content/resolve-blocks.ts`), not from more entries here.
    */
   readonly childPages: readonly PageLink[]
   /**
@@ -68,7 +75,7 @@ const Block = ({
   baseLevel,
   childPages,
 }: {
-  readonly block: PageBlock
+  readonly block: ResolvedPageBlock
   readonly baseLevel: HeadingLevel
   readonly childPages: readonly PageLink[]
 }) => {
@@ -91,6 +98,9 @@ const Block = ({
     case 'divider':
       // No heading, so no level to thread — see `Divider`.
       return <Divider />
+    case 'feed':
+      // Already resolved — its announcements arrived with it (`resolvePageBlocks`).
+      return <NewsFeed baseLevel={baseLevel} block={block} />
     default: {
       /**
        * Unreachable while the switch is exhaustive. If a new block type makes this line fail
@@ -128,7 +138,12 @@ export const BlockList = ({
    * keeps its own guard for the same case, because it is exported and can be rendered
    * directly — the two answer different questions.
    */
-  const visible = blocks.filter((block) => block.kind !== 'childPageNav' || childPages.length > 0)
+  const visible = blocks.filter(
+    (block) =>
+      (block.kind !== 'childPageNav' || childPages.length > 0) &&
+      // The resolve pass drops an empty feed; a directly-built one is filtered for the same reason.
+      (block.kind !== 'feed' || block.items.length > 0),
+  )
 
   /**
    * A composed page with nothing to show renders nothing rather than an empty `Stack`, which

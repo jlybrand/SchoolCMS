@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 import {
   boardIsThisSchools,
+  boardLabel,
   boardTitle,
   postNeedsWords,
   stampPublishedDate,
@@ -217,5 +218,16 @@ describe('boardTitle', () => {
 
   it('is the board alone when the folder has no name', () => {
     expect(boardTitle(undefined, 'News')).toBe('News')
+  })
+})
+
+/** The district picks boards across 28 sites, so its picker names the site too. */
+describe('boardLabel', () => {
+  it('is "Site · Folder → Board"', () => {
+    expect(boardLabel(' SHS ', 'Athletics → Scores')).toBe('SHS · Athletics → Scores')
+  })
+
+  it('is the title alone when the site has no name', () => {
+    expect(boardLabel(null, 'News')).toBe('News')
   })
 })

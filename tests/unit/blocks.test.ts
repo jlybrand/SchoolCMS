@@ -438,6 +438,59 @@ describe('toPageBlocks — embed', () => {
  * These tests are that check. They import the real schema rather than restating it, so the
  * two halves cannot drift apart without one failing.
  */
+/**
+ * A news feed (Jason, 2026-10-28) — its SETTINGS only. The announcements are loaded by the
+ * resolve pass (`src/content/resolve-blocks.ts`); this mapper stays pure so the migration can run
+ * it with no CMS (`10` §5).
+ */
+describe('toPageBlocks — feed', () => {
+  it('maps the heading, the boards, the tags and how many', () => {
+    expect(
+      toPageBlocks([
+        {
+          blockType: 'feed',
+          id: 'f',
+          heading: ' District news ',
+          boards: [7, { id: 8, title: 'x' }],
+          tags: [{ id: 3 }],
+          limit: 4,
+        },
+      ]),
+    ).toEqual([
+      {
+        kind: 'feed',
+        id: 'f',
+        heading: 'District news',
+        boards: ['7', '8'],
+        tags: ['3'],
+        limit: 4,
+      },
+    ])
+  })
+
+  it('no tags is no tag filter; no heading is null; the count defaults to 5', () => {
+    expect(toPageBlocks([{ blockType: 'feed', id: 'f', boards: [7] }])).toEqual([
+      { kind: 'feed', id: 'f', heading: null, boards: ['7'], tags: [], limit: 5 },
+    ])
+  })
+
+  it.each([
+    [0, 1],
+    [-3, 1],
+    [50, 10],
+    [3.7, 3],
+    ['4', 5],
+  ])('keeps the count between 1 and 10 (%s → %s)', (limit, expected) => {
+    const [block] = toPageBlocks([{ blockType: 'feed', id: 'f', boards: [7], limit }])
+    expect(block).toMatchObject({ limit: expected })
+  })
+
+  it('a feed with no boards is DROPPED — it would mean "every board", which nobody chose', () => {
+    expect(toPageBlocks([{ blockType: 'feed', id: 'f', boards: [] }])).toEqual([])
+    expect(toPageBlocks([{ blockType: 'feed', id: 'f' }])).toEqual([])
+  })
+})
+
 describe('the block library and the mapper agree', () => {
   it('renders a complete row for every block type in the schema', async () => {
     const { blockLibrary } = await import('@/collections/blocks')
@@ -451,6 +504,7 @@ describe('the block library and the mapper agree', () => {
       childPageNav: {},
       embed: { url: 'https://youtu.be/dQw4w9WgXcQ', title: 'A video' },
       divider: {},
+      feed: { boards: [7] },
     }
 
     for (const block of blockLibrary) {
