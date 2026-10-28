@@ -30,7 +30,11 @@ export const ReviewStatusField = () => {
   const reviewState = useFormFields(([fields]) => fields.reviewState?.value)
   const reviewNote = useFormFields(([fields]) => fields.reviewNote?.value)
   const submittedAt = useFormFields(([fields]) => fields.submittedAt?.value)
-  const status = describeReview({ reviewState, reviewNote, submittedAt }, DISTRICT_TIME_ZONE)
+  const _status = useFormFields(([fields]) => fields._status?.value)
+  const status = describeReview(
+    { _status, reviewState, reviewNote, submittedAt },
+    DISTRICT_TIME_ZONE,
+  )
 
   return (
     <div className={styles.status} data-tone={status.tone} id="review-status" role="status">

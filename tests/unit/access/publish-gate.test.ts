@@ -141,3 +141,27 @@ describe('composedPagesAreDistrictOnly', () => {
     expect(composedPagesAreDistrictOnly(hookArgs(managerA, data))).toEqual(data)
   })
 })
+
+/**
+ * The ONE publish a school manager's request may cause: the auto-approval hook publishing an
+ * announcement on their behalf under a district grant (`04` §4.3). It marks its own write in
+ * `req.context`, which Payload fills only from server code — a request cannot set it — so the
+ * same body sent by a person is still refused.
+ */
+describe('publishGate — the auto-approval publish', () => {
+  const managerA = { id: 'm1', roles: ['school-manager'], tenants: [{ tenant: 'A' }] }
+  const run = (context: Record<string, unknown>, data: Record<string, unknown> = {}) =>
+    publishGate({
+      req: { user: managerA, context },
+      data: { _status: 'published', ...data },
+    } as never)
+
+  it('lets the hook’s own publish through', () => {
+    expect(() => run({ autoApproval: { scope: 'posts.routine' } })).not.toThrow()
+  })
+
+  it('refuses it without the server-set mark — even with the mark in the data', () => {
+    expect(() => run({})).toThrow()
+    expect(() => run({}, { autoApproval: { scope: 'posts.routine' } })).toThrow()
+  })
+})

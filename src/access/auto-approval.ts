@@ -12,10 +12,9 @@ import type { AuthUser } from './types'
  * the spec's: the never-auto-approvable list is checked before any scope, and a scope must
  * permit the WHOLE change, so a mixed submission queues in full. A rule that throws queues.
  *
- * TODAY NOTHING AUTO-APPROVES. Both scopes the spec defines are for posts and events, which
- * arrive in Phase 5 and add their rules here; `pages` has none, and page creation is never
- * auto-approvable. Acting on an approve — publishing on the submitter's behalf, audited and
- * flagged as auto-approved — lands with the first collection that has a scope.
+ * `posts.routine` is the first scope that acts (Jason, 2026-10-28) — the publish on the sender's
+ * behalf is `src/collections/hooks/auto-approve.ts`. `events.schedule` arrives with events;
+ * `pages` has no scope, and page creation is never auto-approvable.
  */
 
 export type GrantScope = 'events.schedule' | 'posts.routine'
@@ -66,6 +65,99 @@ export const AUTO_APPROVAL_RULES: AutoApprovalRules = {
     createAllowed: false,
     scopes: [],
   },
+  /**
+   * `posts.routine` (`04` §4.3; Jason, 2026-10-28, option 1). A NARROW EXCEPTION to "never rich
+   * text": an announcement's own `body` may be auto-approved under this grant — the routine news
+   * the grant exists for (picture day, a bake sale) is words. Everything else on the spec's never
+   * list still queues the whole submission: `heroImage` (an upload, Phase 6), `visibility`,
+   * `syndication`, `publishedDate` (district-set), `requiresTranslationReview`. Rich text stays
+   * never-auto-approvable everywhere else.
+   *
+   * A new announcement may be auto-approved — its address is its first. Moving a live one to a
+   * new address may not: that breaks every link to it, which is a page-structure change.
+   */
+  posts: {
+    neverFields: [
+      'heroImage',
+      'visibility',
+      'syndication',
+      'publishedDate',
+      'requiresTranslationReview',
+    ],
+    createAllowed: true,
+    scopes: [
+      {
+        scope: 'posts.routine',
+        permits: ({ isCreate, changedFields }) => isCreate || !changedFields.includes('slug'),
+      },
+    ],
+  },
+}
+
+/** The announcement fields a submission is judged on — everything an editor can write. */
+export const POST_JUDGED_FIELDS: readonly string[] = [
+  'title',
+  'slug',
+  'board',
+  'tags',
+  'excerpt',
+  'body',
+  'heroImage',
+  'visibility',
+  'publishedDate',
+  'syndication',
+  'requiresTranslationReview',
+] as const
+
+/** What a never-published announcement starts as — "unchanged" for a new one means these. */
+export const NEW_POST_BASELINE: Readonly<Record<string, unknown>> = {
+  visibility: 'public',
+  syndication: { scope: 'this-tenant' },
+  requiresTranslationReview: false,
+}
+
+/** A value as a comparison key: relationships to ids, id lists sorted, empty as nothing. */
+const keyOf = (value: unknown): string => {
+  const norm = (v: unknown): unknown => {
+    if (v === null || v === undefined || v === '' || v === false) return null
+    if (Array.isArray(v)) {
+      const items = v.map(norm).filter((i) => i !== null)
+      if (items.length === 0) return null
+      // A list of ids is a set: the order things were ticked in is not a change.
+      return items.every((i) => typeof i === 'string') ? [...(items as string[])].sort() : items
+    }
+    if (typeof v === 'number') return String(v)
+    if (typeof v === 'object') {
+      const o = v as Record<string, unknown>
+      // A populated relationship is its id.
+      if ('id' in o && (typeof o.id === 'number' || typeof o.id === 'string')) return String(o.id)
+      const entries = Object.entries(o)
+        .map(([k, x]) => [k, norm(x)] as const)
+        .filter(([, x]) => x !== null)
+        .sort(([a], [b]) => a.localeCompare(b))
+      return entries.length === 0 ? null : Object.fromEntries(entries)
+    }
+    return v
+  }
+  return JSON.stringify(norm(value))
+}
+
+/**
+ * The fields, of `fields`, whose values differ between `before` and `after`, in field order.
+ * Pure. A populated relationship equals its id, a set of ids equals itself in any order, and
+ * missing, null, empty and `false` are the same. An unset field takes its value from `defaults`,
+ * so a new post's unset sharing reads as the "this site" it is.
+ */
+export const changedFields = (
+  before: Readonly<Record<string, unknown>>,
+  after: Readonly<Record<string, unknown>>,
+  fields: readonly string[],
+  /** A field's value when unset — e.g. `NEW_POST_BASELINE` — so unset equals its default. */
+  defaults: Readonly<Record<string, unknown>> = {},
+): string[] => {
+  const value = (doc: Readonly<Record<string, unknown>>, field: string) =>
+    doc[field] === null || doc[field] === undefined ? defaults[field] : doc[field]
+  return fields.filter((field) => keyOf(value(before, field)) !== keyOf(value(after, field)))
 }
 
 export type QueueReason =

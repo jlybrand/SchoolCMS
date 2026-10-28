@@ -4,13 +4,16 @@ import {
   AUTO_APPROVAL_RULES,
   GRANT_SCOPES,
   applicableScopes,
+  changedFields,
   decideAutoApproval,
+  NEW_POST_BASELINE,
   grantsOf,
   type AutoApprovalRules,
   type Change,
 } from '@/access/auto-approval'
 import type { AuthUser } from '@/access/types'
 import { Pages } from '@/collections/Pages'
+import { Posts } from '@/collections/Posts'
 
 /**
  * The auto-approval grant boundary (`04` §4.3) — one of the five 100%-intent areas in `06` §7.
@@ -234,5 +237,134 @@ describe('the real rule table', () => {
 
   it('the grant options are exactly the scopes the spec defines', () => {
     expect(GRANT_SCOPES.map((s) => s.value)).toEqual(['events.schedule', 'posts.routine'])
+  })
+})
+
+/**
+ * `posts.routine` — the first scope that can act (Jason, 2026-10-28, option 1).
+ *
+ * A NARROW EXCEPTION to "never rich text": an announcement's own words may be auto-approved
+ * under this grant. Everything else on the never list still queues — an upload, visibility,
+ * sharing, the date, translation review — and rich text stays never-auto-approvable everywhere
+ * else. A new announcement may be auto-approved; changing an existing one's address may not.
+ */
+describe('posts.routine', () => {
+  const holder = manager(['posts.routine'])
+  const post = (overrides: Partial<Change> = {}): Change =>
+    change({ collection: 'posts', isCreate: true, changedFields: ['title', 'body'], ...overrides })
+
+  it('a new announcement — headline, words, summary, board, tags — publishes under the grant', () => {
+    expect(
+      decideAutoApproval({
+        user: holder,
+        change: post({ changedFields: ['title', 'body', 'excerpt', 'board', 'tags', 'slug'] }),
+      }),
+    ).toEqual({ approve: true, scope: 'posts.routine' })
+  })
+
+  it('an edit to a live announcement’s words publishes under the grant', () => {
+    expect(
+      decideAutoApproval({
+        user: holder,
+        change: post({ isCreate: false, changedFields: ['body'] }),
+      }),
+    ).toEqual({ approve: true, scope: 'posts.routine' })
+  })
+
+  it.each(['visibility', 'syndication', 'publishedDate', 'requiresTranslationReview', 'heroImage'])(
+    'a change to %s queues — the whole submission',
+    (field) => {
+      expect(
+        decideAutoApproval({ user: holder, change: post({ changedFields: ['body', field] }) }),
+      ).toEqual({ approve: false, reason: 'never-field' })
+    },
+  )
+
+  it('moving a LIVE announcement to a new address queues; a new one’s address is its first', () => {
+    expect(
+      decideAutoApproval({
+        user: holder,
+        change: post({ isCreate: false, changedFields: ['title', 'slug'] }),
+      }),
+    ).toEqual({ approve: false, reason: 'outside-every-scope' })
+  })
+
+  it('an announcement flagged for translation review queues', () => {
+    expect(
+      decideAutoApproval({ user: holder, change: post({ requiresTranslationReview: true }) }),
+    ).toEqual({ approve: false, reason: 'translation-review' })
+  })
+
+  it('without the grant — or with only events.schedule — it queues', () => {
+    for (const user of [manager([]), manager(['events.schedule'])]) {
+      expect(decideAutoApproval({ user, change: post() })).toEqual({
+        approve: false,
+        reason: 'no-grant',
+      })
+    }
+  })
+
+  it('the exception is the BODY only: every other rich-text or upload field on posts is never', () => {
+    const contentTypes = new Set(['richText', 'upload', 'blocks'])
+    const named = Posts.fields.filter(
+      (f): f is typeof f & { name: string } =>
+        'name' in f && contentTypes.has(f.type) && f.name !== 'body',
+    )
+    for (const field of named) {
+      expect(AUTO_APPROVAL_RULES.posts?.neverFields).toContain(field.name)
+    }
+    expect(AUTO_APPROVAL_RULES.posts?.neverFields).not.toContain('body')
+  })
+})
+
+/**
+ * What a submission changed — what `decideAutoApproval` judges. Compared against the live
+ * announcement, or, for one never published, against the defaults a new one starts with, so
+ * "visibility unchanged" means "still public".
+ */
+describe('changedFields', () => {
+  const FIELDS = ['title', 'body', 'board', 'tags', 'visibility', 'syndication']
+  const live = {
+    title: 'Picture day',
+    body: { root: { children: [{ text: 'Thursday' }] } },
+    board: 7,
+    tags: [1, 2],
+    visibility: 'public',
+    syndication: { scope: 'this-tenant', syndicatedTo: [] },
+  }
+
+  it('nothing changed is nothing', () => {
+    expect(changedFields(live, { ...live }, FIELDS)).toEqual([])
+  })
+
+  it('names each field whose value differs, in field order', () => {
+    expect(
+      changedFields(live, { ...live, visibility: 'staff', title: 'Picture day moved' }, FIELDS),
+    ).toEqual(['title', 'visibility'])
+  })
+
+  it('a relationship populated on one side and an id on the other is the same', () => {
+    expect(changedFields(live, { ...live, board: { id: 7, title: 'News' } }, FIELDS)).toEqual([])
+  })
+
+  it('tags ticked in another order are the same tags', () => {
+    expect(changedFields(live, { ...live, tags: [{ id: 2 }, 1] }, FIELDS)).toEqual([])
+  })
+
+  it('a word changed in the body is a body change', () => {
+    expect(
+      changedFields(live, { ...live, body: { root: { children: [{ text: 'Friday' }] } } }, FIELDS),
+    ).toEqual(['body'])
+  })
+
+  it('missing and empty read the same — a new post’s unset sharing is "this site"', () => {
+    expect(
+      changedFields(
+        { visibility: 'public', syndication: { scope: 'this-tenant' } },
+        { visibility: 'public', syndication: null },
+        ['visibility', 'syndication'],
+        NEW_POST_BASELINE,
+      ),
+    ).toEqual([])
   })
 })

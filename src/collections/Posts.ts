@@ -12,6 +12,7 @@ import type { AuthUser } from '@/access/types'
 import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 import { makeApproveEndpoint } from '@/collections/endpoints/approve'
 import { auditChange, auditDelete } from '@/collections/hooks/audit'
+import { autoApprovePost } from '@/collections/hooks/auto-approve'
 import {
   makeNotifyReviewOutcome,
   schoolOf,
@@ -129,6 +130,11 @@ export const Posts: CollectionConfig = {
         schoolFor: schoolOf,
         pathFor: async (doc) => postPath(String(doc.slug)),
       }),
+      /**
+       * LAST: a send covered by a district grant publishes here, in the send's transaction, after
+       * the send's own audit entry (`04` §4.3; `posts.routine`).
+       */
+      autoApprovePost,
     ],
     afterDelete: [auditDelete('posts')],
   },

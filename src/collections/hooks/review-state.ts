@@ -3,6 +3,7 @@ import { Forbidden, ValidationError, type CollectionBeforeChangeHook } from 'pay
 import { relationshipIdOf } from '@/access/predicates'
 import { resolveReview, type ReviewFields, type ReviewState } from '@/access/review-state'
 import type { AuthUser } from '@/access/types'
+import { autoApprovalOf } from '@/collections/hooks/auto-approve'
 
 /**
  * Applies the review-state machine to a `pages` write (`04` §4.1).
@@ -66,6 +67,15 @@ export const applyReviewState: CollectionBeforeChangeHook = ({
    * and the page keeps the review state it has now. (Only the district can restore at all —
    * `src/collections/hooks/page-history.ts`.)
    */
+  /**
+   * An auto-approved publish (`src/collections/hooks/auto-approve.ts`) is an approve made under a
+   * grant: the review fields clear, as the district's approve clears them. Marked in
+   * `req.context`, which no request can set.
+   */
+  if (autoApprovalOf(req) && data?._status === 'published') {
+    return { ...data, reviewState: null, reviewNote: null, submittedAt: null, submittedBy: null }
+  }
+
   const restoring = req.context?.isRestoringVersion === true
   /**
    * A restore carries the restored version's `_status`; it publishes only when it is not

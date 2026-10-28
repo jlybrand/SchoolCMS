@@ -57,6 +57,8 @@ export type AuditInput = {
   user: { id: string | number; email?: unknown } | null | undefined
   /** Payload's `req.context.isRestoringVersion`. */
   restoring?: boolean
+  /** Set by `src/collections/hooks/auto-approve.ts` on the publish it makes for a sender. */
+  autoApproval?: { scope: string } | undefined
 }
 
 const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '')
@@ -90,6 +92,7 @@ const reviewAction = (input: AuditInput): AuditAction | null => {
   const after = input.doc ?? {}
   if (input.operation === 'delete') return 'delete'
   if (input.restoring) return 'restore'
+  if (after._status === 'published' && input.autoApproval) return 'auto-approve'
   if (after._status === 'published') {
     return before.reviewState === 'submitted' ? 'approve' : 'publish'
   }
@@ -109,7 +112,12 @@ const forReviewed = (input: AuditInput, noun: string): AuditEntry[] => {
     entry(input, doc, action, {
       documentTitle: text(doc.title) || `${noun} ${String(doc.id)}`,
       tenant: tenantIdOf(doc.tenant as never),
-      summary: action === 'request-changes' ? text(doc.reviewNote) : '',
+      summary:
+        action === 'request-changes'
+          ? text(doc.reviewNote)
+          : action === 'auto-approve'
+            ? `Under the grant “${GRANT_LABELS.get(input.autoApproval?.scope ?? '') ?? input.autoApproval?.scope ?? ''}”`
+            : '',
     }),
   ]
 }

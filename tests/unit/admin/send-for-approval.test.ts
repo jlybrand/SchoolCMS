@@ -177,3 +177,21 @@ describe('sendRefusal', () => {
     expect(sendRefusal('pages', undefined)).toBeNull()
   })
 })
+
+/**
+ * Nothing pending on something already on the website: say so. Matters most straight after an
+ * auto-approved send, which goes live at once rather than "Sent for approval" (`04` §4.3).
+ */
+describe('describeReview — live with nothing pending', () => {
+  it('says it is live, without the word "published"', () => {
+    const status = describeReview({ reviewState: null, _status: 'published' }, 'America/New_York')
+    expect(status).toMatchObject({ tone: 'idle', heading: 'This is live on the website' })
+    expect(`${status.heading} ${status.detail}`.toLowerCase()).not.toMatch(/publish|draft/)
+  })
+
+  it('a change being made to a live page is still just being edited', () => {
+    expect(
+      describeReview({ reviewState: 'editing', _status: 'draft' }, 'America/New_York').heading,
+    ).toBe('Your changes save automatically')
+  })
+})

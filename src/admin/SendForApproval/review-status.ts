@@ -51,6 +51,8 @@ export type ReviewStatus = {
 }
 
 export type ReviewStatusInput = {
+  /** The form's status: `published` with nothing pending is a live page or announcement. */
+  _status?: unknown
   reviewState?: unknown
   reviewNote?: unknown
   submittedAt?: unknown
@@ -91,6 +93,18 @@ export const describeReview = (input: ReviewStatusInput, timeZone: string): Revi
       heading: 'The district asked for changes',
       detail: 'Make the changes, then send it for approval again.',
       ...(note ? { note } : {}),
+    }
+  }
+
+  /**
+   * Live, nothing pending — straight after an auto-approved send especially, which goes live at
+   * once (`04` §4.3). "Live", never "published" (`04` §2.1).
+   */
+  if (input._status === 'published' && !input.reviewState) {
+    return {
+      tone: 'idle',
+      heading: 'This is live on the website',
+      detail: 'Any change you make saves automatically. Send it for approval when you are ready.',
     }
   }
 

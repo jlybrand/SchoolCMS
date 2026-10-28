@@ -5,6 +5,7 @@ import type {
   PayloadRequest,
 } from 'payload'
 
+import { autoApprovalOf } from '@/collections/hooks/auto-approve'
 import { auditEntries, type AuditInput } from '@/lib/audit'
 
 /**
@@ -84,6 +85,7 @@ export const auditChange =
       doc,
       user: userOf(req),
       restoring: req.context?.isRestoringVersion === true,
+      autoApproval: autoApprovalOf(req) ?? undefined,
     })
     return doc
   }
