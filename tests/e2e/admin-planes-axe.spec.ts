@@ -72,6 +72,7 @@ const LIST_REPAIRED = ['tbody .select-row input[aria-label^="Select "]']
 
 let fixture: FixturePage
 let post: FixturePost
+let feedPage: number
 
 /** The post form, once rendered and repaired — the page form's controls, less the page's own. */
 const POST_FORM_REPAIRED = PAGE_FORM_REPAIRED
@@ -130,8 +131,31 @@ adminTest.describe('district plane — whole screens', () => {
     expect(published.ok(), 'publish the fixture').toBe(true)
     // Shared with chosen sites, so the form shows that field and its chosen site.
     post = await makePost(baseURL, { selected: true, tagged: true })
+    // A composed page carrying a news feed, with a board and a tag chosen.
+    const boards = await fixture.admin.get('/api/post-boards?limit=1&depth=0')
+    const tags = await fixture.admin.get('/api/post-tags?limit=1&depth=0')
+    const made = await fixture.admin.post('/api/pages?draft=true&depth=0', {
+      data: {
+        tenant: (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json()).tenant,
+        title: 'Axe feed page',
+        slug: `axe-feed-${Date.now()}`,
+        pageType: 'composed',
+        layout: [
+          {
+            blockType: 'feed',
+            heading: 'District news',
+            boards: [((await boards.json()).docs as { id: number }[])[0]!.id],
+            tags: [((await tags.json()).docs as { id: number }[])[0]!.id],
+          },
+        ],
+        _status: 'draft',
+      },
+    })
+    expect(made.ok(), await made.text()).toBe(true)
+    feedPage = ((await made.json()).doc as { id: number }).id
   })
   adminTest.afterAll(async () => {
+    await fixture.admin.delete(`/api/pages/${feedPage}`)
     await dropPage(fixture)
     await dropPost(post)
   })
@@ -174,6 +198,20 @@ adminTest.describe('district plane — whole screens', () => {
       adminTest(`@a11y the page form — ${colorScheme}`, async ({ page }) => {
         await page.goto(`/admin/collections/pages/${fixture.id}`)
         await auditScreen(page, ...PAGE_FORM_REPAIRED, '#field-parent input[aria-label="Parent"]')
+      })
+      adminTest(`@a11y a page with a news feed — ${colorScheme}`, async ({ page }) => {
+        await page.goto(`/admin/collections/pages/${feedPage}`)
+        await auditScreen(
+          page,
+          '#field-title',
+          '#field-layout__0__boards input[aria-label="Boards"]',
+          '#field-layout__0__tags input[aria-label="Only these tags"]',
+          '#field-layout__0__limit',
+          // The block row's controls, named by the patch.
+          '.collapsible__drag[aria-label="Reorder"]',
+          '.array-actions__button[aria-label="Row actions"]',
+          '.clipboard-action__popup .popup-button[aria-label="Copy or paste"]',
+        )
       })
       adminTest(`@a11y announcement boards list — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/collections/post-boards')

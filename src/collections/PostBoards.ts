@@ -6,7 +6,7 @@ import { schoolListReadAccess } from '@/access/post-structure'
 import { isDistrictAdmin } from '@/access/predicates'
 import { districtOnly } from '@/access/tenant-scoped'
 import type { AuthUser } from '@/access/types'
-import { boardTitle } from '@/collections/hooks/post-hooks'
+import { boardLabel, boardTitle } from '@/collections/hooks/post-hooks'
 
 /**
  * `post-boards` — where an announcement is filed (Jason, 2026-10-28): one board per post, each
@@ -14,8 +14,8 @@ import { boardTitle } from '@/collections/hooks/post-hooks'
  * posting ("Which board is this for?"). A feed narrows by boards (`feedConstraint`); a board
  * never widens who sees a post — that is the post's own sharing.
  *
- * `title` is "Folder → Board", kept by these hooks and by `PostFolders`, so every picker and the
- * approval diff name a board unambiguously.
+ * `title` is "Folder → Board" (a school's picker, the approval diff) and `label` is
+ * "Site · Folder → Board" (the district's), both kept by these hooks and by `PostFolders`.
  */
 
 /** The folder is this site's, and the title follows it. */
@@ -38,10 +38,16 @@ const placeInFolder: CollectionBeforeChangeHook = async ({ data, originalDoc, re
       errors: [{ path: 'folder', message: 'Choose one of this site’s folders.' }],
     })
   }
-  return {
-    ...data,
-    title: boardTitle((folder as { name?: unknown }).name, data.name ?? originalDoc?.name),
-  }
+  const title = boardTitle((folder as { name?: unknown }).name, data.name ?? originalDoc?.name)
+  const site = await req.payload.findByID({
+    collection: 'tenants',
+    id: tenant!,
+    depth: 0,
+    overrideAccess: true,
+    disableErrors: true,
+    req,
+  })
+  return { ...data, title, label: boardLabel((site as { name?: unknown } | null)?.name, title) }
 }
 
 export const PostBoards: CollectionConfig = {
@@ -49,8 +55,13 @@ export const PostBoards: CollectionConfig = {
   labels: { singular: 'Board', plural: 'Announcement boards' },
   graphQL: { singularName: 'PostBoard', pluralName: 'PostBoards' },
   admin: {
-    useAsTitle: 'title',
-    defaultColumns: ['title', 'tenant'],
+    /**
+     * "Site · Folder → Board": the district picks boards for a feed across every site, where
+     * "Athletics → Scores" alone could be any of 28. Schools see `title`, which is their own.
+     * A renamed SITE is not carried into existing labels until each board is saved again.
+     */
+    useAsTitle: 'label',
+    defaultColumns: ['label'],
     group: 'Content',
     hidden: ({ user }) => !isDistrictAdmin(user as AuthUser | null),
   },
@@ -79,10 +90,7 @@ export const PostBoards: CollectionConfig = {
       required: true,
       admin: { description: 'What this board is called inside its folder, e.g. "News".' },
     },
-    {
-      name: 'title',
-      type: 'text',
-      admin: { hidden: true },
-    },
+    { name: 'title', type: 'text', admin: { hidden: true } },
+    { name: 'label', type: 'text', admin: { hidden: true } },
   ],
 }

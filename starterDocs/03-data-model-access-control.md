@@ -209,7 +209,7 @@ bypasses `media` would also bypass alt-required-at-upload (rule 7).
 
 | Block         | Requires                                                |
 | ------------- | ------------------------------------------------------- |
-| `FeedBlock`   | `posts` / `events`; honours syndication scope (`02` §6) |
+| `FeedBlock`   | `posts` (built 2026-10-28; `events` with that module); honours syndication scope (`02` §6) |
 | `StaffList`   | `people`, filtered by school or department              |
 | `AlertInline` | `alerts`                                                |
 
@@ -254,11 +254,24 @@ Two consequences worth stating, since neither is obvious from the code:
   hooks (`09` §4.2) has to purge the parent too.
 
 This does **not** generalise to `FeedBlock`, `StaffList`, `DocumentList` or `Gallery`. Those
-render an editor-**configured** query — a genuinely different problem, decided in Phase 5 when
-the first of them is real rather than guessed at from the one block that did not need it. The
-shape then most likely to fit is a resolve pass between the mapper and the renderer, keeping
-`toPageBlocks` a pure function over JSON so the Phase 9 migration mappers can still run it with
-no CMS (`10` §5).
+render an editor-**configured** query — a genuinely different problem.
+
+**Decided by Jason, 2026-10-28, with `FeedBlock` (Phase 5): the resolve pass.** `toPageBlocks`
+stays a pure function over JSON and maps a data block's *settings* (a feed: boards, tags, how
+many), so the Phase 9 migration mappers can still run it with no CMS (`10` §5).
+`resolvePageBlocks` (`src/content/resolve-blocks.ts`) then fills each data block with ready-to-
+render items. `BlockList` accepts only `ResolvedPageBlock`s — a separate union from the stored
+`PageBlock` — so a route that skips resolving does not compile. A data block with nothing to
+show is dropped there (no heading over an empty box). Chosen over fetching in the mapper, a
+route-level data bag, a link-only feed, and client-side loading; it is Finalsite's post element
+(a saved board/tag/count query rendered on the server) with the query moved out of the component.
+`StaffList`, `DocumentList` and `Gallery` join the same pass.
+
+`plugin-multi-tenant` limits every relationship to a site-scoped collection to the document's own
+site, with no per-field opt-out. A feed must pick other sites' boards (SHS's homepage showing
+District News), so a field marked `custom.crossTenant` gets its own filter back from a config pass
+that runs after the plugin (`src/lib/cross-tenant-relationships.ts`). Only the feed's boards are
+marked; a feed narrows, and each announcement's own sharing still decides reach.
 
 ### 3.3 Open — require a decision before building
 

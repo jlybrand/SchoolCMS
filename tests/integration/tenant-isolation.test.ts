@@ -1966,11 +1966,16 @@ describe('announcement folders, boards and tags', () => {
   it('a board is named by its folder, and renaming the folder renames it', async () => {
     const board = await payload.findByID({ collection: 'post-boards', id: athleticsBoardDistrict })
     expect(board.title).toBe('Athletics → Scores')
+    // The district's picker spans every site, so its label names the site too.
+    expect(board.label).toBe('District · Athletics → Scores')
     const folderId = relationshipId(board.folder)
     await payload.update({ collection: 'post-folders', id: folderId, data: { name: 'Sport' } })
     expect(
       (await payload.findByID({ collection: 'post-boards', id: athleticsBoardDistrict })).title,
     ).toBe('Sport → Scores')
+    expect(
+      (await payload.findByID({ collection: 'post-boards', id: athleticsBoardDistrict })).label,
+    ).toBe('District · Sport → Scores')
   })
 
   it('a board cannot sit in another site’s folder', async () => {
@@ -2080,6 +2085,58 @@ describe('announcement folders, boards and tags', () => {
         }),
       ),
     ).toBe(true)
+  })
+
+  it('a news feed on School B’s page may pick the DISTRICT’s board — an announcement may not', async () => {
+    // The tenant plugin limits every board picker to the page's own site; the feed's is opened.
+    const page = await payload.create({
+      collection: 'pages',
+      data: {
+        tenant: f.tenantB,
+        title: 'Feed page',
+        slug: `feed-page-${Date.now()}`,
+        pageType: 'composed',
+        visibility: 'public',
+        layout: [{ blockType: 'feed', boards: [f.boardDistrict], limit: 5 }],
+      },
+      draft: true,
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+    expect(page.layout).toHaveLength(1)
+    // …and the announcement's own board is still its site's, through the same plugin.
+    expect(
+      await isDenied(() =>
+        payload.create({
+          collection: 'posts',
+          data: { tenant: f.tenantB, board: f.boardDistrict, title: 'Wrong', _status: 'draft' },
+          draft: true,
+          user: f.districtAdmin,
+          overrideAccess: false,
+        }),
+      ),
+    ).toBe(true)
+  })
+
+  it('a school manager still cannot put a feed on a page at all', async () => {
+    // Refused, or `layout` dropped by field access — either way, no feed lands.
+    await isDenied(() =>
+      payload.update({
+        collection: 'pages',
+        id: f.draftPageA,
+        data: { layout: [{ blockType: 'feed', boards: [f.boardA], limit: 5 }] },
+        draft: true,
+        user: f.managerA,
+        overrideAccess: false,
+      }),
+    )
+    const stored = await payload.findByID({
+      collection: 'pages',
+      id: f.draftPageA,
+      draft: true,
+      overrideAccess: true,
+    })
+    expect(stored.layout ?? []).toEqual([])
   })
 
   describe('feeds narrow by board and tag — never past the post’s own sharing', () => {

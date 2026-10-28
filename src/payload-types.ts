@@ -289,6 +289,7 @@ export interface Page {
         | CardGridBlock
         | CallToActionBlock
         | ChildPageNavBlock
+        | FeedBlockRow
         | EmbedBlock
         | DividerBlock
       )[]
@@ -443,6 +444,75 @@ export interface ChildPageNavBlock {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "FeedBlockRow".
+ */
+export interface FeedBlockRow {
+  /**
+   * Optional. A title above the announcements, like "District news" — it also names this part of the page for screen readers.
+   */
+  heading?: string | null;
+  /**
+   * Which boards to show announcements from. Another site’s board shows only the announcements shared with this site.
+   */
+  boards: (number | PostBoard)[];
+  /**
+   * Optional. Show only announcements with any of these tags.
+   */
+  tags?: (number | PostTag)[] | null;
+  /**
+   * Up to 10 of the newest. "More news" links to the rest. With none to show, this part of the page is hidden.
+   */
+  limit?: number | null;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'feed';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "post-boards".
+ */
+export interface PostBoard {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  folder: number | PostFolder;
+  /**
+   * What this board is called inside its folder, e.g. "News".
+   */
+  name: string;
+  title?: string | null;
+  label?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "post-folders".
+ */
+export interface PostFolder {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  /**
+   * What this group of boards is called, e.g. "Athletics".
+   */
+  name: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "post-tags".
+ */
+export interface PostTag {
+  id: number;
+  /**
+   * One word or two, as it should read on every school’s list.
+   */
+  name: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "EmbedBlock".
  */
 export interface EmbedBlock {
@@ -538,49 +608,6 @@ export interface Post {
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "post-boards".
- */
-export interface PostBoard {
-  id: number;
-  tenant?: (number | null) | Tenant;
-  folder: number | PostFolder;
-  /**
-   * What this board is called inside its folder, e.g. "News".
-   */
-  name: string;
-  title?: string | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "post-folders".
- */
-export interface PostFolder {
-  id: number;
-  tenant?: (number | null) | Tenant;
-  /**
-   * What this group of boards is called, e.g. "Athletics".
-   */
-  name: string;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "post-tags".
- */
-export interface PostTag {
-  id: number;
-  /**
-   * One word or two, as it should read on every school’s list.
-   */
-  name: string;
-  updatedAt: string;
-  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1023,6 +1050,7 @@ export interface PagesSelect<T extends boolean = true> {
         cardGrid?: T | CardGridBlockSelect<T>;
         callToAction?: T | CallToActionBlockSelect<T>;
         childPageNav?: T | ChildPageNavBlockSelect<T>;
+        feed?: T | FeedBlockRowSelect<T>;
         embed?: T | EmbedBlockSelect<T>;
         divider?: T | DividerBlockSelect<T>;
       };
@@ -1107,6 +1135,18 @@ export interface ChildPageNavBlockSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "FeedBlockRow_select".
+ */
+export interface FeedBlockRowSelect<T extends boolean = true> {
+  heading?: T;
+  boards?: T;
+  tags?: T;
+  limit?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "EmbedBlock_select".
  */
 export interface EmbedBlockSelect<T extends boolean = true> {
@@ -1171,6 +1211,7 @@ export interface PostBoardsSelect<T extends boolean = true> {
   folder?: T;
   name?: T;
   title?: T;
+  label?: T;
   updatedAt?: T;
   createdAt?: T;
 }

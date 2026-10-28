@@ -3,10 +3,11 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { getNavigation } from '@/content/navigation'
 import { getPageByPath, listPagePaths } from '@/content/pages'
 import { getPostBySlug, listPostPaths, listPosts } from '@/content/posts'
+import { resolvePageBlocks } from '@/content/resolve-blocks'
 import { getTenantByHostname, listActiveTenants } from '@/content/tenants'
 import { getSettings } from '@/content/settings'
 import { getTheme } from '@/content/theme'
-import type { ContentContext, Tenant } from '@/content/types'
+import type { ContentContext, FeedBlock, ResolvedFeedBlock, Tenant } from '@/content/types'
 import { ROOT_SLUG } from '@/lib/slug'
 import type { Payload } from 'payload'
 
@@ -623,5 +624,78 @@ describe('/news belongs to announcements', () => {
   it('a page called "news" under another page is an ordinary page', async () => {
     const created = await page('news', fixtures.publishedPageA)
     expect(created.slug).toBe('news')
+  })
+})
+
+/**
+ * The resolve pass (Jason, 2026-10-28): stored block settings in, ready-to-render blocks out.
+ * Data blocks are filled here because a block never fetches (CLAUDE.md rule 1).
+ */
+describe('resolvePageBlocks', () => {
+  let p: PostFixtures
+  const ctxFor = async (hostname: string): Promise<ContentContext> => ({
+    tenant: (await getTenantByHostname(hostname))!,
+    locale: 'en',
+  })
+  const feed = (boards: number[], extra: Partial<FeedBlock> = {}): FeedBlock => ({
+    kind: 'feed',
+    id: 'feed-1',
+    heading: 'District news',
+    boards: boards.map(String),
+    tags: [],
+    limit: 5,
+    ...extra,
+  })
+
+  beforeAll(async () => {
+    p = await seedPosts(payload, fixtures)
+  })
+
+  it('fills a feed with ready items — and only what reaches this site', async () => {
+    const [block] = await resolvePageBlocks(
+      await ctxFor('b.localhost'),
+      [feed([fixtures.boardDistrict])],
+      { serverUrl: 'http://localhost:3000' },
+    )
+    expect(block).toMatchObject({
+      kind: 'feed',
+      id: 'feed-1',
+      heading: 'District news',
+      moreHref: '/news',
+    })
+    const titles = (block as ResolvedFeedBlock).items.map((i) => i.title)
+    expect(titles).toContain('district wide post')
+    expect(titles).not.toContain('district wide draft')
+    // Shared with B, filed on the district's board, linked to its home site.
+    const item = (block as ResolvedFeedBlock).items.find((i) => i.title === 'district wide post')
+    // `-2` and on when another block in this file seeded the same fixtures first.
+    expect(item?.href).toMatch(/^http:\/\/localhost:3000\/news\/district-wide-post(-\d+)?$/)
+    expect(p.districtWidePost).toBeGreaterThan(0)
+  })
+
+  it('honours the count', async () => {
+    const [block] = await resolvePageBlocks(
+      await ctxFor('b.localhost'),
+      [feed([fixtures.boardDistrict, fixtures.boardB], { limit: 1 })],
+      { serverUrl: '' },
+    )
+    expect((block as ResolvedFeedBlock).items).toHaveLength(1)
+  })
+
+  it('DROPS a feed with nothing to show — no heading over an empty box', async () => {
+    // School A's board seen from School B: nothing of A's is shared with B.
+    expect(
+      await resolvePageBlocks(await ctxFor('b.localhost'), [feed([fixtures.boardA])], {
+        serverUrl: '',
+      }),
+    ).toEqual([])
+  })
+
+  it('passes every other block through untouched, in order', async () => {
+    const divider = { kind: 'divider' as const, id: 'd' }
+    const nav = { kind: 'childPageNav' as const, id: 'n', heading: null }
+    expect(
+      await resolvePageBlocks(await ctxFor('a.localhost'), [divider, nav], { serverUrl: '' }),
+    ).toEqual([divider, nav])
   })
 })

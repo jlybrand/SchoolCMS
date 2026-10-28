@@ -14,6 +14,8 @@
  */
 
 /** Locale tiers per `08` §2. `en` is the only authored language. */
+import type { NewsItem } from '@/lib/post-url'
+
 export type Locale = string
 
 export type TenantType = 'district' | 'school'
@@ -362,6 +364,31 @@ export type ChildPageNavBlock = BlockBase & {
   heading: string | null
 }
 
+/**
+ * A news feed AS STORED (Jason, 2026-10-28): which boards, narrowed by which tags, how many.
+ * Settings only. The announcements are loaded by the resolve pass into `ResolvedFeedBlock` —
+ * a block never fetches (CLAUDE.md rule 1, `03` §3.2).
+ */
+export type FeedBlock = BlockBase & {
+  kind: 'feed'
+  heading: string | null
+  /** Board ids — at least one; a feed with none is dropped by the mapper. */
+  boards: string[]
+  /** Tag ids; any of them matches. Empty: no tag filter. */
+  tags: string[]
+  /** 1-10. */
+  limit: number
+}
+
+/** A news feed READY TO RENDER: what `resolvePageBlocks` turns a `FeedBlock` into. */
+export type ResolvedFeedBlock = BlockBase & {
+  kind: 'feed'
+  heading: string | null
+  items: NewsItem[]
+  /** The site's full announcement list, for "More news". */
+  moreHref: string
+}
+
 export type PageBlock =
   | RichTextPageBlock
   | CallToActionBlock
@@ -370,6 +397,17 @@ export type PageBlock =
   | ChildPageNavBlock
   | EmbedBlock
   | DividerBlock
+  | FeedBlock
+
+/**
+ * What `BlockList` renders: every block, with each DATA block resolved (Jason, 2026-10-28).
+ *
+ * A SEPARATE UNION ON PURPOSE. A stored `FeedBlock` is not a member, so a route that hands
+ * `BlockList` a page's layout without `resolvePageBlocks` does not compile — the same guarantee
+ * the exhaustive switch gives a block with no renderer. StaffList, DocumentList and Gallery join
+ * the same way.
+ */
+export type ResolvedPageBlock = Exclude<PageBlock, FeedBlock> | ResolvedFeedBlock
 
 /**
  * RICH TEXT (`07` §4.4).

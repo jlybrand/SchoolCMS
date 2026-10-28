@@ -177,3 +177,9 @@ export const boardTitle = (folder: unknown, board: unknown): string => {
   const b = typeof board === 'string' ? board.trim() : ''
   return f === '' ? b : `${f} → ${b}`
 }
+
+/** How the DISTRICT sees a board, picking across every site: "Site · Folder → Board". */
+export const boardLabel = (site: unknown, title: string): string => {
+  const s = typeof site === 'string' ? site.trim() : ''
+  return s === '' ? title : `${s} · ${title}`
+}

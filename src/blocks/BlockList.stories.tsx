@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 
-import type { PageBlock, PageLink } from '@/content/types'
+import type { PageLink, ResolvedPageBlock } from '@/content/types'
 
 import { BlockList } from './BlockList'
 
@@ -28,7 +28,7 @@ type Story = StoryObj<typeof meta>
 const text = (value: string, marks: ('strong' | 'em')[] = []) =>
   ({ kind: 'text', text: value, marks }) as const
 
-const INTRO: PageBlock = {
+const INTRO: ResolvedPageBlock = {
   kind: 'richText',
   id: 'intro',
   content: [
@@ -53,7 +53,7 @@ const INTRO: PageBlock = {
   ],
 }
 
-const ACTION: PageBlock = {
+const ACTION: ResolvedPageBlock = {
   kind: 'callToAction',
   id: 'action',
   heading: 'Enroll for the 2026–27 year',
@@ -63,7 +63,7 @@ const ACTION: PageBlock = {
   newTab: false,
 }
 
-const OUTRO: PageBlock = {
+const OUTRO: ResolvedPageBlock = {
   kind: 'richText',
   id: 'outro',
   content: [
@@ -94,7 +94,7 @@ export const NestedInASection: Story = {
   args: { blocks: [INTRO, ACTION], baseLevel: 3, childPages: [] },
 }
 
-const SECTION_MENU: PageBlock = { kind: 'childPageNav', id: 'section', heading: null }
+const SECTION_MENU: ResolvedPageBlock = { kind: 'childPageNav', id: 'section', heading: null }
 
 const CHILDREN: PageLink[] = [
   { id: '1', title: 'Bell schedule', path: '/about/bell-schedule' },

@@ -7,6 +7,7 @@ import { Heading, PAGE_TITLE_LEVEL } from '@/components/Heading'
 import { RichText } from '@/components/RichText'
 import { Stack } from '@/components/Stack'
 import { getPageByPath } from '@/content/pages'
+import { resolvePageBlocks } from '@/content/resolve-blocks'
 import type { Page } from '@/content/types'
 import { documentTag, tenantTag } from '@/lib/cache-tags'
 import { buildPageMetadata, indexingAllowed } from '@/lib/seo'
@@ -98,6 +99,15 @@ export default async function SitePage({ params }: { params: Promise<Params> }) 
 
   const { page } = resolved
 
+  /**
+   * Data blocks get their data here (Jason, 2026-10-28): a feed's announcements are loaded by
+   * the content layer, never by the block. `BlockList` accepts only resolved blocks, so leaving
+   * this out does not compile (`src/content/resolve-blocks.ts`).
+   */
+  const blocks = await resolvePageBlocks(resolved.ctx, page.layout, {
+    serverUrl: process.env.NEXT_PUBLIC_SERVER_URL ?? '',
+  })
+
   return (
     /**
      * Header, `<main>` and footer come from `SiteFrame` (`../site.tsx`), shared with the
@@ -133,7 +143,7 @@ export default async function SitePage({ params }: { params: Promise<Params> }) 
             deferred add-on (`01` §4.1), it is an access-predicate change and nothing here
             moves (`03` §2).
           */}
-          <BlockList blocks={page.layout} childPages={page.children} />
+          <BlockList blocks={blocks} childPages={page.children} />
         </Stack>
       </Container>
     </SiteFrame>
