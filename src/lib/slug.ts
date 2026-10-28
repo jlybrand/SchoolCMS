@@ -70,6 +70,21 @@ export const slugify = (input: string | null | undefined): string => {
   return trimmed.slice(0, MAX_SLUG_LENGTH).replace(/-+$/, '')
 }
 
+/**
+ * `base`, or `base-2`, `base-3`… — the lowest that `taken` does not hold (`posts`: a title
+ * repeats every year, and the first post's URL must not move). The number survives the length
+ * limit; the base is what gives way.
+ */
+export const nextFreeSlug = (base: string, taken: readonly string[]): string => {
+  const held = new Set(taken)
+  if (!held.has(base)) return base
+  for (let n = 2; ; n++) {
+    const suffix = `-${n}`
+    const candidate = `${base.slice(0, MAX_SLUG_LENGTH - suffix.length).replace(/-+$/, '')}${suffix}`
+    if (!held.has(candidate)) return candidate
+  }
+}
+
 /** True when a slug would collide with a platform route. Compared case-insensitively. */
 export const isReservedSlug = (slug: string | null | undefined): boolean => {
   if (slug === null || slug === undefined) return false

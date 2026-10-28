@@ -9,7 +9,7 @@ import { canUsePageHistory } from '@/access/pages'
 import type { AuthUser } from '@/access/types'
 
 /**
- * Restoring a past version of a page is the district's (Jason, 2026-10-27).
+ * Restoring a past version of a page or post is the district's (Jason, 2026-10-27).
  *
  * Payload's `restoreVersion` checks the collection's UPDATE access, and a school manager holds
  * that for their own school's pages — so access functions alone would let them bring back any
@@ -29,10 +29,14 @@ import type { AuthUser } from '@/access/types'
 
 export const ONLY_PUBLISHED_RESTORES = 'Only a version that was published can be restored.'
 
-const wasPublished = async (req: PayloadRequest, id: unknown): Promise<boolean> => {
+const wasPublished = async (
+  req: PayloadRequest,
+  collection: 'pages' | 'posts',
+  id: unknown,
+): Promise<boolean> => {
   try {
     const version = await req.payload.findVersionByID({
-      collection: 'pages',
+      collection,
       id: String(id),
       depth: 0,
       overrideAccess: true,
@@ -43,8 +47,10 @@ const wasPublished = async (req: PayloadRequest, id: unknown): Promise<boolean> 
     return false
   }
 }
+/** Registered on `pages` and `posts`; reads the version from whichever it runs on. */
 export const restoreIsDistrictOnly: CollectionBeforeOperationHook = async ({
   args,
+  collection,
   operation,
   overrideAccess,
 }) => {
@@ -58,6 +64,8 @@ export const restoreIsDistrictOnly: CollectionBeforeOperationHook = async ({
   if (overrideAccess) return args
   const user = (args?.req?.user as AuthUser | null | undefined) ?? null
   if (!canUsePageHistory(user)) throw new Forbidden()
-  if (!(await wasPublished(args.req, args.id))) throw new APIError(ONLY_PUBLISHED_RESTORES, 403)
+  const slug = collection.slug as 'pages' | 'posts'
+  if (!(await wasPublished(args.req, slug, args.id)))
+    throw new APIError(ONLY_PUBLISHED_RESTORES, 403)
   return args
 }

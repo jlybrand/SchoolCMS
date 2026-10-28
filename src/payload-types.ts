@@ -70,6 +70,7 @@ export interface Config {
     tenants: Tenant;
     users: User;
     pages: Page;
+    posts: Post;
     navigation: Navigation;
     theme: Theme;
     settings: Setting;
@@ -85,6 +86,7 @@ export interface Config {
     tenants: TenantsSelect<false> | TenantsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
+    posts: PostsSelect<false> | PostsSelect<true>;
     navigation: NavigationSelect<false> | NavigationSelect<true>;
     theme: ThemeSelect<false> | ThemeSelect<true>;
     settings: SettingsSelect<false> | SettingsSelect<true>;
@@ -461,6 +463,70 @@ export interface DividerBlock {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "posts".
+ */
+export interface Post {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  /**
+   * The headline. Shown above the announcement and in news lists.
+   */
+  title: string;
+  /**
+   * The announcement's address, filled in from the headline. Changing it breaks existing links.
+   */
+  slug: string;
+  /**
+   * Optional. One or two sentences shown in news lists. Leave it empty and the first paragraph is used.
+   */
+  excerpt?: string | null;
+  /**
+   * The announcement itself.
+   */
+  body: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  };
+  /**
+   * Staff-only announcements never appear on the public site or in the public API (`03` §6.4).
+   */
+  visibility: 'public' | 'staff';
+  /**
+   * Filled in when the announcement is first published.
+   */
+  publishedDate?: string | null;
+  syndication?: {
+    scope?: ('this-tenant' | 'district-wide' | 'selected') | null;
+    /**
+     * The other sites that show this announcement.
+     */
+    syndicatedTo?: (number | Tenant)[] | null;
+  };
+  reviewState?: ('editing' | 'submitted' | 'changes-requested') | null;
+  reviewNote?: string | null;
+  submittedAt?: string | null;
+  submittedBy?: (number | null) | User;
+  /**
+   * Hold translations of this announcement until a person has checked them.
+   */
+  requiresTranslationReview?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "navigation".
  */
 export interface Navigation {
@@ -757,6 +823,10 @@ export interface PayloadLockedDocument {
         value: number | Page;
       } | null)
     | ({
+        relationTo: 'posts';
+        value: number | Post;
+      } | null)
+    | ({
         relationTo: 'navigation';
         value: number | Navigation;
       } | null)
@@ -983,6 +1053,33 @@ export interface EmbedBlockSelect<T extends boolean = true> {
 export interface DividerBlockSelect<T extends boolean = true> {
   id?: T;
   blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "posts_select".
+ */
+export interface PostsSelect<T extends boolean = true> {
+  tenant?: T;
+  title?: T;
+  slug?: T;
+  excerpt?: T;
+  body?: T;
+  visibility?: T;
+  publishedDate?: T;
+  syndication?:
+    | T
+    | {
+        scope?: T;
+        syndicatedTo?: T;
+      };
+  reviewState?: T;
+  reviewNote?: T;
+  submittedAt?: T;
+  submittedBy?: T;
+  requiresTranslationReview?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

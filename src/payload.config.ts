@@ -11,6 +11,7 @@ import type { AuthUser } from './access/types'
 import { AuditEvents } from './collections/AuditEvents'
 import { Navigation } from './collections/Navigation'
 import { Pages } from './collections/Pages'
+import { Posts } from './collections/Posts'
 import { Settings } from './collections/Settings'
 import { Tenants } from './collections/Tenants'
 import { Theme } from './collections/Theme'
@@ -62,7 +63,7 @@ export default buildConfig({
     },
   },
 
-  collections: [Tenants, Users, Pages, Navigation, Theme, Settings, AuditEvents],
+  collections: [Tenants, Users, Pages, Posts, Navigation, Theme, Settings, AuditEvents],
 
   // Postgres, never Mongo — portability is a hard requirement (`00`, ADR-10).
   db: postgresAdapter({
@@ -100,10 +101,10 @@ export default buildConfig({
         /**
          * Registering here is what injects the `tenant` relationship field — which is why
          * src/collections/Pages.ts does not declare one. The remaining tenant-owned
-         * collections join as they land: posts, events, people, documents, media, alerts,
-         * redirects.
+         * collections join as they land: events, people, documents, media, alerts, redirects.
          */
         pages: {},
+        posts: {},
         /**
          * `isGlobal` is how a per-tenant "global" (`03` §5) is expressed under this plugin: a
          * Payload global is one document for the whole install, and there are 28 sites. It

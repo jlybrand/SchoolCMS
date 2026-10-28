@@ -3,6 +3,7 @@ import { expect, type Page } from '@playwright/test'
 
 import { adminCredentials, adminTest } from './support/admin-session'
 import { dropPage, makePage, type FixturePage } from './support/fixture-pages'
+import { dropPost, makePost, type FixturePost } from './support/fixture-posts'
 import { schoolTest } from './support/school-session'
 
 /**
@@ -70,14 +71,20 @@ const PAGE_FORM_REPAIRED = [
 const LIST_REPAIRED = ['tbody .select-row input[aria-label^="Select "]']
 
 let fixture: FixturePage
+let post: FixturePost
+
+/** The post form, once rendered and repaired — the page form's controls, less the page's own. */
+const POST_FORM_REPAIRED = PAGE_FORM_REPAIRED
 
 schoolTest.describe('school plane — whole screens', () => {
   schoolTest.skip(credentials === null, SKIP)
   schoolTest.beforeAll(async ({ baseURL }) => {
     fixture = await makePage(baseURL, { title: 'Axe page' })
+    post = await makePost(baseURL)
   })
   schoolTest.afterAll(async () => {
     await dropPage(fixture)
+    await dropPost(post)
   })
 
   for (const colorScheme of ['light', 'dark'] as const) {
@@ -100,6 +107,10 @@ schoolTest.describe('school plane — whole screens', () => {
         await page.goto(`/admin/collections/pages/${fixture.id}`)
         await auditScreen(page, '#action-send-for-approval', ...PAGE_FORM_REPAIRED)
       })
+      schoolTest(`@a11y the post form — ${colorScheme}`, async ({ page }) => {
+        await page.goto(`/admin/collections/posts/${post.id}`)
+        await auditScreen(page, '#action-send-for-approval', ...POST_FORM_REPAIRED)
+      })
     })
   }
 })
@@ -113,9 +124,12 @@ adminTest.describe('district plane — whole screens', () => {
       data: { _status: 'published' },
     })
     expect(published.ok(), 'publish the fixture').toBe(true)
+    // Shared with chosen sites, so the form shows that field and its chosen site.
+    post = await makePost(baseURL, { selected: true })
   })
   adminTest.afterAll(async () => {
     await dropPage(fixture)
+    await dropPost(post)
   })
 
   for (const colorScheme of ['light', 'dark'] as const) {
@@ -157,6 +171,21 @@ adminTest.describe('district plane — whole screens', () => {
         await page.goto(`/admin/collections/pages/${fixture.id}`)
         await auditScreen(page, ...PAGE_FORM_REPAIRED, '#field-parent input[aria-label="Parent"]')
       })
+      adminTest(`@a11y posts list — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/collections/posts')
+        await auditScreen(page, ...LIST_REPAIRED)
+      })
+      adminTest(
+        `@a11y the post form, shared with chosen sites — ${colorScheme}`,
+        async ({ page }) => {
+          await page.goto(`/admin/collections/posts/${post.id}`)
+          await auditScreen(
+            page,
+            ...POST_FORM_REPAIRED,
+            '#field-syndication__syndicatedTo input[aria-label="Sites"]',
+          )
+        },
+      )
     })
   }
 })

@@ -14,9 +14,9 @@ import { restoreIsDistrictOnly } from '@/collections/hooks/page-history'
  */
 
 /** A stub payload whose stored versions are `{ id: status }`. */
-const payloadWith = (versions: Record<string, string>) => ({
-  findVersionByID: async ({ id }: { id: string }) => {
-    if (!(id in versions)) throw new Error('Not Found')
+const payloadWith = (versions: Record<string, string>, collection = 'pages') => ({
+  findVersionByID: async ({ id, collection: asked }: { id: string; collection: string }) => {
+    if (asked !== collection || !(id in versions)) throw new Error('Not Found')
     return { id, version: { _status: versions[id] } }
   },
 })
@@ -26,10 +26,11 @@ const VERSIONS = { 'v-pub': 'published', 'v-draft': 'draft' }
 const run = (
   operation: string,
   user: AuthUser | null,
-  { overrideAccess = false, id = 'v-pub' } = {},
+  { overrideAccess = false, id = 'v-pub', collection = 'pages' } = {},
 ) =>
   restoreIsDistrictOnly({
-    args: { id, req: { user, payload: payloadWith(VERSIONS) } },
+    args: { id, req: { user, payload: payloadWith(VERSIONS, collection) } },
+    collection: { slug: collection },
     operation,
     overrideAccess,
   } as never)
@@ -47,6 +48,15 @@ describe('restoreIsDistrictOnly', () => {
     await expect(run('restoreVersion', districtAdmin, { id: 'v-draft' })).rejects.toThrow(
       'Only a version that was published can be restored.',
     )
+  })
+
+  it('reads the version from the collection it runs on — posts as well as pages', async () => {
+    await expect(
+      run('restoreVersion', districtAdmin, { collection: 'posts' }),
+    ).resolves.toBeDefined()
+    await expect(
+      run('restoreVersion', districtAdmin, { collection: 'posts', id: 'v-draft' }),
+    ).rejects.toThrow('Only a version that was published can be restored.')
   })
 
   it('refuses a version that does not exist', async () => {

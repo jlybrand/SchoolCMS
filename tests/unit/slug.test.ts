@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { ROOT_SLUG, buildPagePath, isReservedSlug, slugify, splitPagePath } from '@/lib/slug'
+import {
+  ROOT_SLUG,
+  buildPagePath,
+  isReservedSlug,
+  slugify,
+  splitPagePath,
+  nextFreeSlug,
+} from '@/lib/slug'
 
 /**
  * Slug generation and page-path assembly (`03` §2).
@@ -158,5 +165,39 @@ describe('splitPagePath', () => {
 
   it('collapses repeated slashes', () => {
     expect(splitPagePath('//about//staff')).toEqual(['about', 'staff'])
+  })
+})
+
+/**
+ * A post's slug, made free inside its school (`03` §2 `posts`).
+ *
+ * Unlike a page — whose URL an editor chooses and a collision refuses — a post's title repeats
+ * by nature: "Picture Day" every autumn. Refusing the second one would ask a school manager to
+ * understand slugs, which the usability bar rules out, so the second gets `-2`. Predictable from
+ * the title, and the first post's URL never moves.
+ */
+describe('nextFreeSlug', () => {
+  it('keeps the slug when nothing holds it', () => {
+    expect(nextFreeSlug('picture-day', [])).toBe('picture-day')
+  })
+
+  it('takes -2 for the second', () => {
+    expect(nextFreeSlug('picture-day', ['picture-day'])).toBe('picture-day-2')
+  })
+
+  it('takes the lowest free number, not one past the highest', () => {
+    expect(nextFreeSlug('picture-day', ['picture-day', 'picture-day-3'])).toBe('picture-day-2')
+    expect(nextFreeSlug('picture-day', ['picture-day', 'picture-day-2'])).toBe('picture-day-3')
+  })
+
+  it('ignores slugs that merely contain the base', () => {
+    expect(nextFreeSlug('day', ['picture-day', 'day-off'])).toBe('day')
+  })
+
+  it('stays inside the slug length limit, trimming the base rather than the number', () => {
+    const base = 'a'.repeat(80)
+    const next = nextFreeSlug(base, [base])
+    expect(next.length).toBeLessThanOrEqual(80)
+    expect(next.endsWith('-2')).toBe(true)
   })
 })

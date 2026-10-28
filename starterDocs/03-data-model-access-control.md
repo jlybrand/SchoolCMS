@@ -90,6 +90,12 @@ and adds editor guardrails; it does not require new collections, blocks, or temp
   `heroImage` (relation to `media`, alt required), `publishedDate`, `visibility`.
 - **`syndication`:** `scope` (`this-tenant` | `district-wide` | `selected`),
   `syndicatedTo` (relationship to `tenants`). Drives COPE feeds.
+- _As built (2026-10-28):_ `heroImage` waits for `media` (Phase 6), as the pages share image
+  does. **`category` is not built:** this section names the field but not its values, and a
+  fixed list is a taxonomy DD2 has not chosen — **open, for the template census (`10` §2)**.
+  `publishedDate` is display only and district-only; it is stamped on first publish and never
+  holds a post back, since a date a school set that withheld a post would be a scheduled
+  publish. `syndication` is district-only at field level, read included (`04` §2.7).
 
 ### `events` (calendars, meetings, athletics)
 
