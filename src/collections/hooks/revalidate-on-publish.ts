@@ -29,6 +29,15 @@ export type Revalidate = (path: string, type: 'layout' | 'page') => void | Promi
 
 export type RevalidateDeps = {
   revalidate: Revalidate
+  /**
+   * The tenants whose sites show this document. Default: its own. An announcement's are every
+   * site it is shared with (`syndicationTargets`).
+   */
+  targetsFor?: (
+    doc: Record<string, unknown>,
+    previousDoc: Record<string, unknown> | undefined,
+    req: Parameters<CollectionAfterChangeHook>[0]['req'],
+  ) => Promise<string[]>
   hostnameFor: (
     tenantId: string,
     req: Parameters<CollectionAfterChangeHook>[0]['req'],
@@ -45,31 +54,87 @@ const OUTSIDE_NEXT = /static generation store missing/
 export const tenantSitePath = (hostname: string): string => `/sites/${encodeURIComponent(hostname)}`
 
 export const makeRevalidateOnPublish =
-  ({ revalidate, hostnameFor }: RevalidateDeps): CollectionAfterChangeHook =>
-  async ({ doc, req }) => {
+  ({ revalidate, hostnameFor, targetsFor }: RevalidateDeps): CollectionAfterChangeHook =>
+  async ({ doc, previousDoc, req }) => {
     if ((doc as { _status?: unknown })._status !== 'published') return doc
 
     try {
-      const tenantId = relationshipIdOf((doc as { tenant?: unknown }).tenant as never)
-      const hostname = tenantId === null ? null : await hostnameFor(tenantId, req)
-      if (!hostname) {
+      const own = relationshipIdOf((doc as { tenant?: unknown }).tenant as never)
+      const targets = targetsFor
+        ? await targetsFor(doc, previousDoc, req)
+        : own === null
+          ? []
+          : [own]
+      if (targets.length === 0) {
         req.payload.logger.error(
-          `revalidateOnPublish: no hostname for tenant ${String(tenantId)} of page ${String(doc.id)}; nothing revalidated`,
+          `revalidateOnPublish: no tenant for ${String(doc.id)}; nothing revalidated`,
         )
         return doc
       }
-      await revalidate(tenantSitePath(hostname), 'layout')
+      for (const tenantId of [...new Set(targets)]) {
+        const hostname = await hostnameFor(tenantId, req)
+        if (!hostname) {
+          req.payload.logger.error(
+            `revalidateOnPublish: no hostname for tenant ${tenantId} of ${String(doc.id)}; that site not revalidated`,
+          )
+          continue
+        }
+        await revalidate(tenantSitePath(hostname), 'layout')
+      }
     } catch (err) {
       if (OUTSIDE_NEXT.test((err as Error).message)) {
         req.payload.logger.debug(`revalidateOnPublish: not in a Next request; skipped`)
         return doc
       }
       req.payload.logger.error(
-        `revalidateOnPublish: could not revalidate page ${String(doc.id)}: ${(err as Error).message}`,
+        `revalidateOnPublish: could not revalidate ${String(doc.id)}: ${(err as Error).message}`,
       )
     }
     return doc
   }
+
+type Shared = { tenant?: unknown; syndication?: unknown } | null | undefined
+
+const reach = (doc: Shared, all: readonly string[]): string[] => {
+  if (!doc) return []
+  const own = relationshipIdOf(doc.tenant as never)
+  const { scope, syndicatedTo } = (doc.syndication ?? {}) as {
+    scope?: unknown
+    syndicatedTo?: unknown
+  }
+  if (scope === 'district-wide') return [...all]
+  const chosen =
+    scope === 'selected' && Array.isArray(syndicatedTo)
+      ? syndicatedTo.map((t) => relationshipIdOf(t as never)).filter((t): t is string => t !== null)
+      : []
+  return own === null ? chosen : [own, ...chosen]
+}
+
+/**
+ * Every tenant whose site lists an announcement — its own and every site it is shared with
+ * (`02` §6) — after this write AND before it, so a site it was just taken off stops listing it.
+ * Pure; `all` is every tenant id.
+ */
+export const syndicationTargets = (
+  doc: Shared,
+  previous: Shared,
+  all: readonly string[],
+): string[] => [...new Set([...reach(doc, all), ...reach(previous, all)])]
+
+/** Every tenant id, read as the platform — for an announcement shared with every school. */
+export const allTenantIds = async (
+  req: Parameters<CollectionAfterChangeHook>[0]['req'],
+): Promise<string[]> => {
+  const { docs } = await req.payload.find({
+    collection: 'tenants',
+    pagination: false,
+    depth: 0,
+    overrideAccess: true,
+    req,
+    select: {},
+  })
+  return docs.map((d) => String(d.id))
+}
 
 /** The hostname of a tenant, read as the platform (it is routing configuration, not content). */
 export const tenantHostname: RevalidateDeps['hostnameFor'] = async (tenantId, req) => {

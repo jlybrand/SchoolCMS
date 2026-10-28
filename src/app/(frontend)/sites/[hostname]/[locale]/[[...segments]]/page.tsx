@@ -5,19 +5,15 @@ import { BlockList } from '@/blocks'
 import { Container } from '@/components/Container'
 import { Heading, PAGE_TITLE_LEVEL } from '@/components/Heading'
 import { RichText } from '@/components/RichText'
-import { SiteFooter } from '@/components/SiteFooter'
-import { SiteHeader } from '@/components/SiteHeader'
-import { MAIN_CONTENT_ID } from '@/components/SkipLink'
 import { Stack } from '@/components/Stack'
-import { getNavigation } from '@/content/navigation'
 import { getPageByPath } from '@/content/pages'
-import { getSettings } from '@/content/settings'
-import { getTenantByHostname } from '@/content/tenants'
-import type { ContentContext, Navigation, Page, SiteSettings, Tenant } from '@/content/types'
+import type { Page } from '@/content/types'
 import { documentTag, tenantTag } from '@/lib/cache-tags'
 import { buildPageMetadata, indexingAllowed } from '@/lib/seo'
 
-type Params = { hostname: string; locale: string; segments?: string[] }
+import { resolveSite, SiteFrame, type Site, type SiteParams } from '../site'
+
+type Params = SiteParams & { segments?: string[] }
 
 const pathOf = (segments: string[] | undefined) => `/${(segments ?? []).join('/')}`
 
@@ -45,37 +41,17 @@ export const revalidate = 3600
  * kind of mismatch that then gets cached. The duplicate query is affordable because neither
  * caller runs per visitor.
  */
-type Resolved = {
-  tenant: Tenant
-  page: Page
-  ctx: ContentContext
-  settings: SiteSettings
-  /** `settings.siteTitle`, else the tenant's name — decided once, for the tab and the chrome. */
-  siteName: string
-}
+type Resolved = Site & { page: Page }
 
+/** The site (`resolveSite`: unknown host or locale is null), then the page at the path. */
 const resolve = async (params: Params): Promise<Resolved | null> => {
-  const tenant = await getTenantByHostname(decodeURIComponent(params.hostname))
-  if (!tenant) return null
+  const site = await resolveSite(params)
+  if (!site) return null
 
-  /**
-   * A locale this tenant has not enabled is NOT A PAGE (`03` §5, `08` §2). The proxy runs at
-   * the edge, where there is no database, so it recognises every platform locale and the
-   * per-tenant answer is given here — a 404, the same one an unknown path gets. Without it
-   * `/ar/about` would render on a site that offers no Arabic, outside `hreflang`, the
-   * sitemap and the language switcher, which all read the same list.
-   *
-   * A tenant with no `settings` row gets every platform locale, never null.
-   */
-  const settings = await getSettings({ tenant })
-  if (!settings.enabledLocales.includes(params.locale)) return null
-
-  const ctx: ContentContext = { tenant, locale: params.locale }
-
-  const page = await getPageByPath(ctx, pathOf(params.segments))
+  const page = await getPageByPath(site.ctx, pathOf(params.segments))
   if (!page) return null
 
-  return { tenant, page, ctx, settings, siteName: settings.siteTitle ?? tenant.name }
+  return { ...site, page }
 }
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
@@ -120,62 +96,33 @@ export default async function SitePage({ params }: { params: Promise<Params> }) 
    */
   if (!resolved) notFound()
 
-  const { tenant, page, ctx, settings, siteName } = resolved
-
-  /**
-   * Fetched only once the page is known to exist, so a 404 costs no menu query. Not in
-   * `resolve`, which `generateMetadata` shares: metadata has no use for the menus.
-   *
-   * A tenant with no `navigation` row gets three empty menus, never null — so there is no
-   * missing-data branch below, and a site created today renders a header with its name in it.
-   */
-  const navigation: Navigation = await getNavigation(ctx)
+  const { page } = resolved
 
   return (
     /**
-     * THE HEADER AND FOOTER ARE RENDERED HERE, NOT IN THE LAYOUT, because the layout cannot
-     * see `segments`: it would render the menus without knowing which page they are on, and
-     * `aria-current` is the one thing a menu owes a screen-reader user. They are siblings of
-     * `<main>` directly under `<body>`, which is what makes them the banner and contentinfo
-     * landmarks; the skip link, in the layout, still comes first.
-     *
-     * The tenant cache tag on `<main>` covers them: a menu change is a tenant-wide change,
-     * and it purges every page of the site (`09` §4.2).
+     * Header, `<main>` and footer come from `SiteFrame` (`../site.tsx`), shared with the
+     * announcement routes. Both cache tags are emitted: publishing this page purges its own
+     * artifact, and a tenant-wide change (a menu, a theme or a rename) purges every page
+     * (`09` §4.2).
      */
-    <>
-      <SiteHeader
-        siteName={siteName}
-        primary={navigation.primary}
-        utility={navigation.utility}
-        currentPath={page.path}
-        locale={ctx.locale}
-        locales={settings.enabledLocales}
-      />
-      {/*
-        `id` comes from the `SkipLink` module rather than a literal, so the bypass-blocks
-        target cannot be renamed out from under the link (`07` §3). The measure and gutters
-        come from `Container` — the single owner of both, in logical properties.
-
-        Both cache tags are emitted: publishing this page purges its own artifact, and a
-        tenant-wide change (a menu, a theme or a rename) purges every page (`09` §4.2).
-      */}
-      <main
-        data-cache-tag={`${tenantTag(tenant.id)} ${documentTag('pages', page.id)}`}
-        id={MAIN_CONTENT_ID}
-      >
-        <Container>
-          <Stack space="lg">
-            {/*
+    <SiteFrame
+      site={resolved}
+      currentPath={page.path}
+      cacheTags={`${tenantTag(resolved.tenant.id)} ${documentTag('pages', page.id)}`}
+    >
+      <Container>
+        <Stack space="lg">
+          {/*
             The page title is the page's only `h1`, owned here rather than by the body, which
             is why `RichText` clamps an author's headings to `h2` and below. An editor cannot
             reach the element and therefore cannot produce a heading-order violation
             (`03` §3, `07` §3).
           */}
-            <Heading level={PAGE_TITLE_LEVEL}>{page.title}</Heading>
+          <Heading level={PAGE_TITLE_LEVEL}>{page.title}</Heading>
 
-            <RichText content={page.body} />
+          <RichText content={page.body} />
 
-            {/*
+          {/*
             NO BRANCH ON `pageType`. Both renderers return null when they have nothing:
             `RichText` for an empty body, `BlockList` for an empty layout — and the mapper
             already dropped blocks that would have rendered empty. A fixed-type page
@@ -186,18 +133,9 @@ export default async function SitePage({ params }: { params: Promise<Params> }) 
             deferred add-on (`01` §4.1), it is an access-predicate change and nothing here
             moves (`03` §2).
           */}
-            <BlockList blocks={page.layout} childPages={page.children} />
-          </Stack>
-        </Container>
-      </main>
-      <SiteFooter
-        siteName={siteName}
-        links={navigation.footer}
-        contact={settings.contact}
-        social={settings.social}
-        currentPath={page.path}
-        locale={ctx.locale}
-      />
-    </>
+          <BlockList blocks={page.layout} childPages={page.children} />
+        </Stack>
+      </Container>
+    </SiteFrame>
   )
 }

@@ -1,0 +1,6 @@
+/* Logical properties only (CLAUDE.md rule 5). */
+
+.date {
+  color: var(--color-text-muted);
+  margin-block: 0;
+}

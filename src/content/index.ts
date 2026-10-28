@@ -11,7 +11,7 @@
  * Phase 2 (`05`) implements the real functions against Payload's Local API:
  *
  *   pages.ts      getPageBySlug(ctx, slug, opts) -> Page
- *   posts.ts      listPosts(ctx, filter)         -> Post[]
+ *   posts.ts      listPosts(ctx, filter) -> Post[]; getPostBySlug; listPostPaths
  *   events.ts     listEvents(ctx, range)         -> Event[]
  *   people.ts     listPeople(ctx, filter)        -> Person[]
  *   documents.ts  listDocuments(ctx, filter)     -> Document[]

@@ -129,6 +129,3 @@ export const pagePath: NotifyDeps['pathFor'] = async (doc, req) => {
 }
 
 export const sendWithPayload: NotifyDeps['send'] = (message, req) => req.payload.sendEmail(message)
-
-/** Announcements have no public address until the post template lands (Phase 5 part C). */
-export const noPath: NotifyDeps['pathFor'] = async () => null

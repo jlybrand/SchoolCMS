@@ -162,7 +162,7 @@ describe('an announcement’s sender is emailed too', () => {
     return post.id
   }
 
-  it('approve: an announcement email with no website link', async () => {
+  it('approve: an announcement email linking to it on its school’s site', async () => {
     const id = await sentPost()
     const send = spySend()
     const token = await latestVersionToken(payload, 'posts', id)
@@ -178,7 +178,7 @@ describe('an announcement’s sender is emailed too', () => {
     const message = send.mock.calls[0]![0] as { to: string; subject: string; text: string }
     expect(message.to).toBe(f.managerA.email)
     expect(message.subject).toMatch(/^Your announcement is approved: Book fair \d+$/)
-    expect(message.text).not.toContain('a.localhost')
+    expect(message.text).toMatch(/a\.localhost[^\s]*\/news\/emails-post-/)
   })
 
   it('an announcement with no words cannot be sent at all', async () => {

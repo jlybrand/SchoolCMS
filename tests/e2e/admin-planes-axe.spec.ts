@@ -182,7 +182,13 @@ adminTest.describe('district plane — whole screens', () => {
       adminTest(`@a11y a board — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/collections/post-boards')
         await page.locator('tbody tr a').first().click()
-        await auditScreen(page, '#field-name', '#field-folder input[aria-label="Folder"]')
+        await auditScreen(
+          page,
+          '#field-name',
+          '#field-folder input[aria-label="Folder"]',
+          // The chosen folder's clear button, taken out of the tab order by the patch.
+          '#field-folder .clear-indicator[aria-hidden="true"][tabindex="-1"]',
+        )
       })
       adminTest(`@a11y announcement folders list — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/collections/post-folders')

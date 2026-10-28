@@ -42,6 +42,8 @@ describe('toPost', () => {
       publishedDate: '2026-10-01T12:00:00.000Z',
       boardId: '5',
       tagIds: ['1', '2'],
+      // Filled by `listPosts`, which knows the tenants; the mapper does not.
+      homeHostname: null,
     })
   })
 

@@ -14,11 +14,17 @@ import { makeApproveEndpoint } from '@/collections/endpoints/approve'
 import { auditChange, auditDelete } from '@/collections/hooks/audit'
 import {
   makeNotifyReviewOutcome,
-  noPath,
   schoolOf,
   sendWithPayload,
   userEmail,
 } from '@/collections/hooks/notify-review-outcome'
+import {
+  allTenantIds,
+  makeRevalidateOnPublish,
+  syndicationTargets,
+  tenantHostname,
+} from '@/collections/hooks/revalidate-on-publish'
+import { postPath } from '@/lib/post-url'
 import { restoreIsDistrictOnly } from '@/collections/hooks/page-history'
 import { deriveSlugFromTitle } from '@/collections/hooks/page-slug'
 import {
@@ -101,6 +107,19 @@ export const Posts: CollectionConfig = {
     afterChange: [
       /** FIRST, as on pages: the entry is in the change's transaction. */
       auditChange('posts'),
+      /**
+       * Live in seconds on EVERY site that lists it — its own and each it is shared with, before
+       * and after this write (`syndicationTargets`), so a site it was taken off stops listing it.
+       */
+      makeRevalidateOnPublish({
+        revalidate: async (path, type) => {
+          const { revalidatePath } = await import('next/cache')
+          revalidatePath(path, type)
+        },
+        hostnameFor: tenantHostname,
+        targetsFor: async (doc, previousDoc, req) =>
+          syndicationTargets(doc, previousDoc, await allTenantIds(req)),
+      }),
       /** The submitter's email on approve or request changes (`04` §4.5). */
       makeNotifyReviewOutcome({
         collection: 'posts',
@@ -108,7 +127,7 @@ export const Posts: CollectionConfig = {
         serverUrl: process.env.NEXT_PUBLIC_SERVER_URL ?? '',
         recipientFor: userEmail,
         schoolFor: schoolOf,
-        pathFor: noPath,
+        pathFor: async (doc) => postPath(String(doc.slug)),
       }),
     ],
     afterDelete: [auditDelete('posts')],

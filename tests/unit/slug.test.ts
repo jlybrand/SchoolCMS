@@ -4,6 +4,7 @@ import {
   ROOT_SLUG,
   buildPagePath,
   isReservedSlug,
+  isReservedTopLevelSlug,
   slugify,
   splitPagePath,
   nextFreeSlug,
@@ -199,5 +200,25 @@ describe('nextFreeSlug', () => {
     const next = nextFreeSlug(base, [base])
     expect(next.length).toBeLessThanOrEqual(80)
     expect(next.endsWith('-2')).toBe(true)
+  })
+})
+
+/**
+ * `/news` is the site's list of announcements (Jason, 2026-10-28), so a TOP-LEVEL page cannot
+ * take it. A page called "News" nested under another page is an ordinary page.
+ */
+describe('isReservedTopLevelSlug', () => {
+  it('reserves news at the top of a site', () => {
+    expect(isReservedTopLevelSlug('news')).toBe(true)
+    expect(isReservedTopLevelSlug(' NEWS ')).toBe(true)
+  })
+
+  it('also reserves what every page reserves', () => {
+    expect(isReservedTopLevelSlug('admin')).toBe(true)
+  })
+
+  it('leaves everything else alone', () => {
+    expect(isReservedTopLevelSlug('newsletter')).toBe(false)
+    expect(isReservedTopLevelSlug(null)).toBe(false)
   })
 })

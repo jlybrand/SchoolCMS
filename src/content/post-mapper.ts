@@ -39,5 +39,7 @@ export const toPost = (row: unknown): Post | null => {
     tagIds: Array.isArray(doc.tags)
       ? doc.tags.map((t) => relationshipIdOf(t as never)).filter((t): t is string => t !== null)
       : [],
+    // Filled by the content layer, which reads the tenants; this mapper is pure.
+    homeHostname: null,
   }
 }

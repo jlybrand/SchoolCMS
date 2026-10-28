@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 
 import { getNavigation } from '@/content/navigation'
 import { getPageByPath, listPagePaths } from '@/content/pages'
+import { getPostBySlug, listPostPaths, listPosts } from '@/content/posts'
 import { getTenantByHostname, listActiveTenants } from '@/content/tenants'
 import { getSettings } from '@/content/settings'
 import { getTheme } from '@/content/theme'
@@ -9,7 +10,7 @@ import type { ContentContext, Tenant } from '@/content/types'
 import { ROOT_SLUG } from '@/lib/slug'
 import type { Payload } from 'payload'
 
-import { getTestPayload, seed } from '../helpers/payload'
+import { getTestPayload, seed, seedPosts, type PostFixtures } from '../helpers/payload'
 
 /**
  * Content-access layer (`02` §11, ADR-5, `06` §2.8).
@@ -548,5 +549,79 @@ describe('page SEO fields (`03` §2, plugin-seo)', () => {
       title: null,
       description: null,
     })
+  })
+})
+
+/**
+ * Announcements on the public site (Jason, 2026-10-28): `/news/{slug}` on the HOME site only;
+ * a shared one is listed elsewhere and links home.
+ */
+describe('posts on the public site', () => {
+  let p: PostFixtures
+  const ctxFor = async (hostname: string): Promise<ContentContext> => ({
+    tenant: (await getTenantByHostname(hostname))!,
+    locale: 'en',
+  })
+
+  beforeAll(async () => {
+    p = await seedPosts(payload, fixtures)
+  })
+
+  it('getPostBySlug finds a published, public post on its own site', async () => {
+    const post = await getPostBySlug(await ctxFor('a.localhost'), 'published-post-a')
+    expect(post?.id).toBe(String(p.publishedPostA))
+    expect(post?.homeHostname).toBe('a.localhost')
+  })
+
+  it.each([
+    ['a draft', 'a.localhost', 'draft-post-a'],
+    ['a staff-only post', 'a.localhost', 'staff-post-a'],
+    ['another school’s post', 'a.localhost', 'published-post-b'],
+    // Shared with B, but its address is on the district site — one URL per announcement.
+    ['a post shared here from elsewhere', 'b.localhost', 'district-wide-post'],
+    ['nothing', 'a.localhost', 'no-such-post'],
+  ])('getPostBySlug finds no page for %s', async (_label, host, slug) => {
+    expect(await getPostBySlug(await ctxFor(host), slug)).toBeNull()
+  })
+
+  it('listPosts names each post’s home site, so a shared one can link there', async () => {
+    const posts = await listPosts(await ctxFor('b.localhost'), { limit: 100 })
+    const shared = posts.find((x) => x.id === String(p.districtWidePost))
+    expect(shared?.homeHostname).toBe('localhost')
+    expect(posts.find((x) => x.id === String(p.publishedPostB))?.homeHostname).toBe('b.localhost')
+  })
+
+  it('listPostPaths is the site’s OWN published, public posts — what its sitemap names', async () => {
+    const paths = await listPostPaths(await ctxFor('a.localhost'))
+    expect(paths).toContain('/news/published-post-a')
+    for (const slug of ['draft-post-a', 'staff-post-a', 'published-post-b', 'district-wide-post']) {
+      expect(paths).not.toContain(`/news/${slug}`)
+    }
+  })
+})
+
+describe('/news belongs to announcements', () => {
+  const page = (slug: string, parent?: number) =>
+    payload.create({
+      collection: 'pages',
+      data: {
+        tenant: fixtures.tenantA,
+        title: slug,
+        slug,
+        pageType: 'standard',
+        visibility: 'public',
+        ...(parent === undefined ? {} : { parent }),
+      },
+      draft: true,
+      overrideAccess: true,
+    })
+
+  it('a top-level page cannot take the address "news"', async () => {
+    await expect(page('news')).rejects.toThrow()
+  })
+
+  it('a page called "news" under another page is an ordinary page', async () => {
+    const created = await page('news', fixtures.publishedPageA)
+    expect(created.slug).toBe('news')
   })
 })

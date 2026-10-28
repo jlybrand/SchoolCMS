@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { makeRevalidateOnPublish, tenantSitePath } from '@/collections/hooks/revalidate-on-publish'
+import {
+  makeRevalidateOnPublish,
+  syndicationTargets,
+  tenantSitePath,
+} from '@/collections/hooks/revalidate-on-publish'
 
 /**
  * "The district approves … and it goes live within seconds" (`05` Phase 4 exit).
@@ -80,5 +84,64 @@ describe('revalidateOnPublish', () => {
     await run({ id: 1, tenant: 2, _status: 'published' })
     expect(logError).not.toHaveBeenCalled()
     expect(logDebug).toHaveBeenCalledOnce()
+  })
+})
+
+/**
+ * An announcement is on more sites than its own: every site it is shared with lists it
+ * (`02` §6). Publishing it refreshes all of them — including a site it was just taken OFF, or
+ * that site keeps listing it for an hour.
+ */
+describe('syndicationTargets', () => {
+  const ALL = ['1', '2', '3', '4']
+
+  it('this site only: the owner', () => {
+    expect(
+      syndicationTargets({ tenant: 2, syndication: { scope: 'this-tenant' } }, null, ALL),
+    ).toEqual(['2'])
+    expect(syndicationTargets({ tenant: 2 }, null, ALL)).toEqual(['2'])
+  })
+
+  it('every school site: every site', () => {
+    expect(
+      syndicationTargets({ tenant: 1, syndication: { scope: 'district-wide' } }, null, ALL),
+    ).toEqual(ALL)
+  })
+
+  it('chosen sites: the owner and those', () => {
+    expect(
+      syndicationTargets(
+        { tenant: { id: 1 }, syndication: { scope: 'selected', syndicatedTo: [3, { id: 4 }] } },
+        null,
+        ALL,
+      ),
+    ).toEqual(['1', '3', '4'])
+  })
+
+  it('the sites it was on BEFORE this write too', () => {
+    expect(
+      syndicationTargets(
+        { tenant: 1, syndication: { scope: 'this-tenant' } },
+        { tenant: 1, syndication: { scope: 'selected', syndicatedTo: [3] } },
+        ALL,
+      ),
+    ).toEqual(['1', '3'])
+  })
+})
+
+describe('revalidateOnPublish with several sites', () => {
+  it('revalidates every site the targets name, each once', async () => {
+    const revalidate = vi.fn()
+    const hook = makeRevalidateOnPublish({
+      revalidate,
+      hostnameFor: async (tenantId) => hostnames[String(tenantId)] ?? null,
+      targetsFor: async () => ['2', '3', '2'],
+    })
+    const req = { payload: { logger: { error: vi.fn(), debug: vi.fn() } } }
+    await hook({ doc: { id: 9, tenant: 2, _status: 'published' }, req } as never)
+    expect(revalidate.mock.calls).toEqual([
+      ['/sites/a.localhost', 'layout'],
+      ['/sites/b.localhost', 'layout'],
+    ])
   })
 })

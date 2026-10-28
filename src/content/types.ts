@@ -456,4 +456,9 @@ export type Post = {
   boardId: string | null
   /** The district tags ticked on it. */
   tagIds: string[]
+  /**
+   * The hostname of its home site — where its page is (`/news/{slug}`). A site it is shared with
+   * links there. Null where it is not known.
+   */
+  homeHostname: string | null
 }

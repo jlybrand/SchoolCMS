@@ -1,0 +1,24 @@
+/*
+ * Logical properties only (CLAUDE.md rule 5). The list flows in the block direction and drops
+ * only its inline-start gutter, so RTL needs no rule of its own.
+ */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  list-style: none;
+  margin-block: 0;
+  padding-inline-start: 0;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.summary,
+.empty {
+  margin-block: 0;
+}

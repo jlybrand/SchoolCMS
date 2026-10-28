@@ -1,7 +1,9 @@
 import { listPagePaths } from '@/content/pages'
+import { listPostPaths } from '@/content/posts'
 import { getSettings } from '@/content/settings'
 import { getTenantByHostname } from '@/content/tenants'
 import { DEFAULT_LOCALE } from '@/lib/locales'
+import { NEWS_PATH } from '@/lib/post-url'
 import { buildSitemapXml, indexingAllowed, siteOrigin } from '@/lib/seo'
 
 /**
@@ -32,14 +34,20 @@ export async function GET(
    */
   if (!indexingAllowed(process.env)) return new Response('Not found', { status: 404 })
 
-  const pages = await listPagePaths({ tenant, locale: DEFAULT_LOCALE })
+  const ctx = { tenant, locale: DEFAULT_LOCALE }
+  const pages = await listPagePaths(ctx)
+  /**
+   * The site's announcement list and its OWN announcements (Jason, 2026-10-28). A shared one is
+   * in its home site's sitemap, where its address is — never in two.
+   */
+  const posts = await listPostPaths(ctx)
   // The same list the page route 404s against, so the sitemap never names a URL that is not one.
   const { enabledLocales } = await getSettings({ tenant })
 
   return new Response(
     buildSitemapXml({
       origin: siteOrigin(tenant.hostname),
-      paths: pages.map(({ path }) => path),
+      paths: [...pages.map(({ path }) => path), NEWS_PATH, ...posts],
       locales: enabledLocales,
     }),
     { headers: { 'content-type': 'application/xml; charset=utf-8' } },
