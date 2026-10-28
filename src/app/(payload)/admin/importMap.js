@@ -17,6 +17,7 @@ import { ParagraphFeatureClient as ParagraphFeatureClient_e70f5e05f09f93e00b997e
 import { AssignTenantFieldTrigger as AssignTenantFieldTrigger_1d0591e3cf4f332c83a86da13a0de59a } from '@payloadcms/plugin-multi-tenant/client'
 import { SendForApprovalButton as SendForApprovalButton_04ce333b331daae73b75fc6274c29e3a } from '../../../admin/SendForApproval/SendForApprovalButton'
 import { SchoolSaveDraftButton as SchoolSaveDraftButton_cc7b83310c556ae98b1d66c9fab1fdc1 } from '../../../admin/SendForApproval/SchoolSaveDraftButton'
+import { BoardsListView as BoardsListView_a022c7e66bfcc000431bd70c768a08d6 } from '../../../admin/Boards/BoardsListView'
 import { GlobalViewRedirect as GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
 import { ApprovalsNavLink as ApprovalsNavLink_50736d5f53ca3024920ebd70347f12c2 } from '../../../admin/Approvals/ApprovalsNavLink'
 import { WaitingBanner as WaitingBanner_e51af2c63d800fe378f9f84cfaf25672 } from '../../../admin/Approvals/WaitingBanner'
@@ -52,6 +53,7 @@ export const importMap = {
   "@payloadcms/plugin-multi-tenant/client#AssignTenantFieldTrigger": AssignTenantFieldTrigger_1d0591e3cf4f332c83a86da13a0de59a,
   "/admin/SendForApproval/SendForApprovalButton#SendForApprovalButton": SendForApprovalButton_04ce333b331daae73b75fc6274c29e3a,
   "/admin/SendForApproval/SchoolSaveDraftButton#SchoolSaveDraftButton": SchoolSaveDraftButton_cc7b83310c556ae98b1d66c9fab1fdc1,
+  "/admin/Boards/BoardsListView#BoardsListView": BoardsListView_a022c7e66bfcc000431bd70c768a08d6,
   "@payloadcms/plugin-multi-tenant/rsc#GlobalViewRedirect": GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62,
   "/admin/Approvals/ApprovalsNavLink#ApprovalsNavLink": ApprovalsNavLink_50736d5f53ca3024920ebd70347f12c2,
   "/admin/Approvals/WaitingBanner#WaitingBanner": WaitingBanner_e51af2c63d800fe378f9f84cfaf25672,

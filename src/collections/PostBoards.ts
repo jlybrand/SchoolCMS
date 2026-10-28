@@ -64,6 +64,13 @@ export const PostBoards: CollectionConfig = {
     defaultColumns: ['label'],
     group: 'Content',
     hidden: ({ user }) => !isDistrictAdmin(user as AuthUser | null),
+    /**
+     * Site → Folder → Board instead of Payload's flat list (Jason, 2026-10-28): boards belong to
+     * folders, so the district opens a folder to pick a board. See src/admin/Boards/.
+     */
+    components: {
+      views: { list: { Component: '/admin/Boards/BoardsListView#BoardsListView' } },
+    },
   },
   access: {
     read: schoolListReadAccess,

@@ -1,0 +1,79 @@
+/**
+ * The district's boards screen. Payload's theme variables, not DD2 tokens — the tokens are not
+ * loaded in the admin and do not follow its dark theme (see `ReviewStatusField.module.css`).
+ * `tests/e2e/admin-planes-axe.spec.ts` runs axe over it in both themes, folders open.
+ *
+ * Logical properties only (CLAUDE.md rule 5).
+ */
+
+.view {
+  max-inline-size: 60rem;
+  padding-block: 2rem 4rem;
+  color: var(--theme-text);
+  line-height: 1.5;
+}
+
+.title {
+  margin-block: 0 0.5rem;
+  font-size: 2rem;
+  line-height: 1.2;
+}
+
+.muted {
+  margin-block: 0 1rem;
+  color: var(--theme-elevation-800);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-block: 0 2rem;
+}
+
+.view a {
+  color: var(--theme-text);
+  text-decoration: underline;
+}
+
+.site {
+  margin-block-end: 2rem;
+}
+
+.siteName {
+  margin-block: 0 0.75rem;
+  font-size: 1.25rem;
+}
+
+.folder {
+  margin-block-end: 0.5rem;
+  padding-block: 0.5rem;
+  padding-inline: 1rem;
+  border: 1px solid var(--theme-elevation-400);
+  border-radius: 4px;
+  background: var(--theme-elevation-50);
+}
+
+.summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.summary:focus-visible {
+  outline: 2px solid var(--theme-text);
+  outline-offset: 2px;
+}
+
+.count {
+  font-weight: 400;
+  color: var(--theme-elevation-800);
+}
+
+.boards {
+  margin-block: 0.5rem;
+  padding-inline-start: 1.25rem;
+}
+
+.folderActions {
+  margin-block: 0.5rem 0;
+}

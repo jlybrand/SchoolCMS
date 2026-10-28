@@ -550,3 +550,20 @@ exception guard); `publish-gate.test.ts`, `review-state-hook.test.ts`,
 `send-for-approval.test.ts` (live status); `grants.test.ts` (`autoApprovalRows`);
 `tests/integration/auto-approval.test.ts` (`posts.routine` block — mutation-checked: removing the
 hook, the gate exception, or `visibility` from the never list each fails it); `posts-routine.spec.ts`.
+
+---
+
+## 8. The district's boards screen (Jason, 2026-10-28)
+
+`/admin/collections/post-boards` renders `BoardsListView` (`src/admin/Boards/`) instead of Payload's
+flat list — `admin.components.views.list.Component` on `PostBoards`.
+
+| File                                                                   | Holds                                                                                                                                                                                                                                                                                                                         |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/admin/Boards/board-tree.ts`                                       | `boardTree(sites, folders, boards)` → `SiteNode[]` (pure): sites, folders, boards each by name; boards whose folder is unknown under "Boards with no folder"                                                                                                                                                                  |
+| `src/admin/Boards/BoardsListView.tsx`                                  | district only (else redirect `/admin`); tenants read as the platform, folders and boards as the viewer; `h1` "Announcement boards"; "Add a folder", "Add a board"; per site a `section` named by its `h2`; per folder a `<details>`/`<summary>` "{folder} ({n} boards)" holding board links and "Rename or remove the folder" |
+| `src/admin/Boards/Boards.module.css`                                   | Payload theme variables; logical properties                                                                                                                                                                                                                                                                                   |
+| `tests/unit/admin/board-tree.test.ts`, `tests/e2e/boards-view.spec.ts` | grouping; open a folder → pick a board; keyboard open/close; add links                                                                                                                                                                                                                                                        |
+
+`admin-planes-axe.spec.ts`: "announcement boards, folders open" (every `<details>` opened before the
+audit) and "a board" (reached by opening a folder).
