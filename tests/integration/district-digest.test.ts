@@ -93,6 +93,7 @@ describe('the district digest', () => {
       collection: 'posts',
       data: {
         tenant: f.tenantA,
+        board: f.boardA,
         title: 'Book fair',
         slug: `digest-post-${Date.now()}`,
         visibility: 'public',

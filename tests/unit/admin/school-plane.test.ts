@@ -208,33 +208,43 @@ describe('submissionStatus — the plain status in "Your recent submissions"', (
 })
 
 describe('checkNewPost — what a new announcement needs before it is created', () => {
-  it('needs only a headline and the school — there is no kind to choose', () => {
-    expect(checkNewPost({ title: ' Picture day ', schools: [7] })).toEqual({
+  /** The boards the user may post to: their schools' — the school follows from the board. */
+  const one = [{ id: 7, tenant: 3 }]
+  const two = [
+    { id: 7, tenant: 3 },
+    { id: 8, tenant: 4 },
+  ]
+
+  it('needs a headline and a board; with one board it is not asked, and the school follows', () => {
+    expect(checkNewPost({ title: ' Picture day ', boards: one })).toEqual({
       ok: true,
       title: 'Picture day',
-      school: 7,
+      board: 7,
+      school: 3,
     })
   })
 
   it('refuses an empty or over-long headline, in its own words', () => {
-    const empty = checkNewPost({ title: '  ', schools: [7] })
+    const empty = checkNewPost({ title: '  ', boards: one })
     expect(empty).toEqual({ ok: false, errors: { title: 'Give the announcement a headline.' } })
-    const long = checkNewPost({ title: 'x'.repeat(121), schools: [7] })
+    const long = checkNewPost({ title: 'x'.repeat(121), boards: one })
     expect(long.ok ? null : long.errors.title).toMatch(/shorter/)
   })
 
-  it('asks for a school only when there are several, and refuses one not theirs', () => {
-    expect(checkNewPost({ title: 'T', schools: [7, 8], school: '8' })).toMatchObject({
+  it('with several boards, asks which — and refuses one that is not theirs', () => {
+    expect(checkNewPost({ title: 'T', boards: two, board: '8' })).toMatchObject({
       ok: true,
-      school: 8,
+      board: 8,
+      school: 4,
     })
-    expect(checkNewPost({ title: 'T', schools: [7, 8] }).ok).toBe(false)
-    expect(checkNewPost({ title: 'T', schools: [7], school: 9 }).ok).toBe(false)
+    const unchosen = checkNewPost({ title: 'T', boards: two })
+    expect(unchosen.ok ? null : unchosen.errors.board).toBe('Choose which board this goes on.')
+    expect(checkNewPost({ title: 'T', boards: two, board: 99 }).ok).toBe(false)
   })
 
-  it('with no schools at all, says so', () => {
-    const check = checkNewPost({ title: 'T', schools: [] })
-    expect(check.ok ? null : check.errors.school).toMatch(/not linked to a school/)
+  it('with no boards at all, says who sets them up', () => {
+    const check = checkNewPost({ title: 'T', boards: [] })
+    expect(check.ok ? null : check.errors.board).toMatch(/district web team/)
   })
 })
 

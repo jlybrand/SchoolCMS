@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { syndicationConstraint } from '@/content/syndication'
+import { feedConstraint, syndicationConstraint } from '@/content/syndication'
 
 /**
  * COPE syndication (`02` §6, `03` §2) — which tenants a post appears on.
@@ -35,5 +35,29 @@ describe('syndicationConstraint', () => {
 
   it('refuses an empty tenant id rather than building a clause that matches anything', () => {
     expect(() => syndicationConstraint('')).toThrow()
+  })
+})
+
+/**
+ * A feed (Jason, 2026-10-28 — the hybrid): reach is the post's own sharing; boards and tags only
+ * NARROW it. Picking District → News on SHS's feed shows District News that is shared with SHS,
+ * never all of District News.
+ */
+describe('feedConstraint', () => {
+  const reach = syndicationConstraint('B')
+  const live = [{ _status: { equals: 'published' } }, { visibility: { equals: 'public' } }]
+
+  it('with no boards or tags is reach, published and public', () => {
+    expect(feedConstraint('B')).toEqual({ and: [reach, ...live] })
+  })
+
+  it('narrows by boards and by ANY of the tags — never replacing reach', () => {
+    expect(feedConstraint('B', { boards: ['7', '8'], tags: ['3'] })).toEqual({
+      and: [reach, ...live, { board: { in: ['7', '8'] } }, { tags: { in: ['3'] } }],
+    })
+  })
+
+  it('an empty list is no filter, not a filter that matches nothing', () => {
+    expect(feedConstraint('B', { boards: [], tags: [] })).toEqual({ and: [reach, ...live] })
   })
 })

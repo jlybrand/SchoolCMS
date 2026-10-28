@@ -1,4 +1,4 @@
-import { tenantIdOf } from '@/access/predicates'
+import { relationshipIdOf, tenantIdOf } from '@/access/predicates'
 
 import { toRichText } from './rich-text'
 import type { Post } from './types'
@@ -35,5 +35,9 @@ export const toPost = (row: unknown): Post | null => {
     excerpt: text(doc.excerpt),
     body: toRichText(doc.body),
     publishedDate: text(doc.publishedDate),
+    boardId: relationshipIdOf(doc.board as never),
+    tagIds: Array.isArray(doc.tags)
+      ? doc.tags.map((t) => relationshipIdOf(t as never)).filter((t): t is string => t !== null)
+      : [],
   }
 }

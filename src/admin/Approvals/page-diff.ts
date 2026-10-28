@@ -201,9 +201,47 @@ const diffBlocks = (before: KeyedBlock[], after: KeyedBlock[]): BodyDiff | null 
  * where announcements live on a site arrives with the post template (Phase 5 part C), and
  * printing a guessed path would show the reviewer an address that does not exist.
  */
+/** A related row as the queue hands it over: `{ id, title }`, or a bare id. */
+const named = (value: unknown): { id: string; name: string } | null => {
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value === 'object') {
+    const { id, title } = value as { id?: unknown; title?: unknown }
+    if (id === undefined || id === null) return null
+    return { id: String(id), name: textOf(title) ?? `#${String(id)}` }
+  }
+  return { id: String(value), name: `#${String(value)}` }
+}
+
+/** Tags in name order, so the order they were ticked in is not a change. */
+const tagsOf = (doc: Doc) =>
+  (Array.isArray(doc.tags) ? doc.tags : [])
+    .map(named)
+    .filter((t): t is { id: string; name: string } => t !== null)
+    .sort((a, b) => a.name.localeCompare(b.name, 'en'))
+
 const POST_FIELDS: FieldSpec[] = [
   { field: 'title', label: 'Headline', key: (d) => textOf(d.title), always: true },
   { field: 'slug', label: 'Address', key: (d) => textOf(d.slug), always: true },
+  {
+    field: 'board',
+    label: 'Board',
+    key: (d) => named(d.board)?.id ?? null,
+    show: (d) => named(d.board)?.name ?? null,
+    always: true,
+  },
+  {
+    field: 'tags',
+    label: 'Tags',
+    key: (d) =>
+      tagsOf(d)
+        .map((t) => t.id)
+        .sort()
+        .join(',') || null,
+    show: (d) =>
+      tagsOf(d)
+        .map((t) => t.name)
+        .join(', ') || null,
+  },
   { field: 'excerpt', label: 'Summary', key: (d) => textOf(d.excerpt) },
   {
     field: 'visibility',

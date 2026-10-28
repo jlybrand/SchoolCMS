@@ -27,6 +27,8 @@ describe('toPost', () => {
         excerpt: ' Wear a smile. ',
         body: paragraph('Thursday.'),
         publishedDate: '2026-10-01T12:00:00.000Z',
+        board: { id: 5, name: 'News' },
+        tags: [1, { id: 2, name: 'High' }, null],
         syndication: { scope: 'district-wide' },
         reviewState: 'submitted',
       }),
@@ -38,6 +40,8 @@ describe('toPost', () => {
       excerpt: 'Wear a smile.',
       body: [{ kind: 'paragraph', children: [{ kind: 'text', text: 'Thursday.', marks: [] }] }],
       publishedDate: '2026-10-01T12:00:00.000Z',
+      boardId: '5',
+      tagIds: ['1', '2'],
     })
   })
 
@@ -45,10 +49,12 @@ describe('toPost', () => {
     expect(toPost({ id: 1, tenant: 3, title: 'T', slug: 't', excerpt: '  ' })?.excerpt).toBeNull()
   })
 
-  it('a missing body is an empty one, and a missing date is null', () => {
+  it('a missing body is an empty one; a missing date or board is null; no tags is none', () => {
     expect(toPost({ id: 1, tenant: 3, title: 'T', slug: 't' })).toMatchObject({
       body: [],
       publishedDate: null,
+      boardId: null,
+      tagIds: [],
     })
   })
 

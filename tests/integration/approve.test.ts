@@ -154,6 +154,7 @@ describe('approveDocument — posts', () => {
       collection: 'posts',
       data: {
         tenant: f.tenantA,
+        board: f.boardA,
         title: `${title} ${seq}`,
         slug: `approve-post-${Date.now()}-${seq}`,
         visibility: 'public',

@@ -57,6 +57,24 @@ describe('unnamed buttons', () => {
   })
 })
 
+describe('the list view’s “someone is editing this” lock', () => {
+  /**
+   * Payload 3.87's `Locked`: a focusable `role="button"` whose only words are a tooltip shown on
+   * hover. Found when a school had an announcement open while the district looked at the list.
+   */
+  it('takes its name from the tooltip — who is editing', () => {
+    render(
+      '<div class="locked" role="button" tabindex="0"><div class="tooltip locked__tooltip tooltip--show-false">e2e-school-a@example.invalid is editing</div></div>',
+    )
+    expect($('.locked').getAttribute('aria-label')).toBe('e2e-school-a@example.invalid is editing')
+  })
+
+  it('says someone is editing when the tooltip has no words', () => {
+    render('<div class="locked" role="button" tabindex="0"></div>')
+    expect($('.locked').getAttribute('aria-label')).toBe('Someone else is editing this')
+  })
+})
+
 describe('unlabelled inputs take their field’s label', () => {
   it('a relationship combobox', () => {
     render(

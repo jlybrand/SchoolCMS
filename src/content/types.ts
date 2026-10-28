@@ -452,4 +452,8 @@ export type Post = {
   body: RichText
   /** ISO timestamp of first publication, or null for a row that predates the stamp. */
   publishedDate: string | null
+  /** The board it is filed on, or null for a row that predates boards. */
+  boardId: string | null
+  /** The district tags ticked on it. */
+  tagIds: string[]
 }

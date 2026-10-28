@@ -262,6 +262,30 @@ const run = async () => {
     }
 
     /**
+     * A folder named after the site holding a "News" board (Jason, 2026-10-28), created only
+     * when the site has no boards at all — a developer's own folders are never restated. Every
+     * announcement needs a board, so a site without one could not post.
+     */
+    const { totalDocs: boards } = await payload.count({
+      collection: 'post-boards',
+      where: { tenant: { equals: tenantId } },
+      overrideAccess: true,
+    })
+    if (boards === 0) {
+      const folder = await payload.create({
+        collection: 'post-folders',
+        data: { tenant: tenantId, name: tenant.name },
+        overrideAccess: true,
+      })
+      await payload.create({
+        collection: 'post-boards',
+        data: { tenant: tenantId, folder: folder.id, name: 'News' },
+        overrideAccess: true,
+      })
+      payload.logger.info(`created the News board for ${tenant.slug}`)
+    }
+
+    /**
      * Menus (`03` §5) — one row per tenant, pointing at the pages seeded above so every link
      * resolves.
      *
@@ -375,6 +399,19 @@ const run = async () => {
     payload.logger.info(
       'no SEED_ADMIN_PASSWORD set — skipping admin. Create the first user at /admin.',
     )
+  }
+
+  /** The district tag list (Jason, 2026-10-28), each created only when absent. */
+  for (const name of ['Elementary', 'Middle', 'High']) {
+    const { totalDocs } = await payload.count({
+      collection: 'post-tags',
+      where: { name: { equals: name } },
+      overrideAccess: true,
+    })
+    if (totalDocs === 0) {
+      await payload.create({ collection: 'post-tags', data: { name }, overrideAccess: true })
+      payload.logger.info(`created tag ${name}`)
+    }
   }
 
   payload.logger.info('seed complete')

@@ -91,11 +91,20 @@ and adds editor guardrails; it does not require new collections, blocks, or temp
 - **`syndication`:** `scope` (`this-tenant` | `district-wide` | `selected`),
   `syndicatedTo` (relationship to `tenants`). Drives COPE feeds.
 - _As built (2026-10-28):_ `heroImage` waits for `media` (Phase 6), as the pages share image
-  does. **`category` is not built:** this section names the field but not its values, and a
-  fixed list is a taxonomy DD2 has not chosen — **open, for the template census (`10` §2)**.
-  `publishedDate` is display only and district-only; it is stamped on first publish and never
-  holds a post back, since a date a school set that withheld a post would be a scheduled
-  publish. `syndication` is district-only at field level, read included (`04` §2.7).
+  does. `publishedDate` is display only and district-only; it is stamped on first publish and
+  never holds a post back, since a date a school set that withheld a post would be a scheduled
+  publish. `syndication` is district-only at field level, read included (`04` §2.7). `body` is
+  required to send or publish, not to create, so a post can start from its headline.
+- **Boards, folders and tags — decided by Jason, 2026-10-28; replaces `category`.**
+  - `post-folders` (tenant-scoped, `name`) group a site's boards; a site may have several.
+  - `post-boards` (tenant-scoped, `folder` of the same site, `name`; shown as "Folder → Board").
+    Each post has exactly **one** `board`, of its own site.
+  - `post-tags` — **one district-wide list**; a post may carry any of them. Never free-typed.
+  - The **district** makes all three; a school manager reads their own site's folders and
+    boards and the tag list, and picks a board and tags when posting.
+  - **Reach is the post's own `syndication`** (the hybrid, chosen over board-level sharing). A
+    feed shows the posts that reach its site, narrowed by boards and then by ANY of its tags; a
+    filter never widens what a site can show.
 
 ### `events` (calendars, meetings, athletics)
 

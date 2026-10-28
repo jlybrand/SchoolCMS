@@ -23,12 +23,23 @@ const BODY = {
   },
 }
 
+/** The first row a list returns — the seed gives every site a board and the district tags. */
+const firstId = async (admin: APIRequestContext, path: string): Promise<number> => {
+  const res = await admin.get(`${path}${path.includes('?') ? '&' : '?'}limit=1&depth=0`)
+  expect(res.ok(), `lookup ${path}`).toBe(true)
+  const [doc] = (await res.json()).docs as { id: number }[]
+  expect(doc, `the seed creates ${path}`).toBeDefined()
+  return doc!.id
+}
+
 export const makePost = async (
   baseURL: string | undefined,
   {
     title = 'Axe announcement',
     /** Shared with the school itself, so the form shows the chosen-sites field with a chip. */
     selected = false,
+    /** A tag ticked, so the form shows the tags field with a chip. */
+    tagged = false,
   } = {},
 ): Promise<FixturePost> => {
   const admin = await playwrightRequest.newContext({
@@ -36,10 +47,14 @@ export const makePost = async (
     storageState: ADMIN_STORAGE_STATE,
   })
   const tenant = await tenantIdFor(admin, SCHOOL_HOSTNAME)
+  const board = await firstId(admin, `/api/post-boards?where[tenant][equals]=${tenant}`)
+  const tag = tagged ? await firstId(admin, '/api/post-tags?sort=name') : null
   const res = await admin.post('/api/posts?draft=true&depth=0', {
     data: {
       title,
       tenant,
+      board,
+      ...(tag === null ? {} : { tags: [tag] }),
       body: BODY,
       visibility: 'public',
       ...(selected ? { syndication: { scope: 'selected', syndicatedTo: [tenant] } } : {}),

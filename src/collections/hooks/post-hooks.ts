@@ -130,3 +130,50 @@ export const postNeedsWords = ({
 
 export const postNeedsWordsHook: CollectionBeforeChangeHook = ({ data, originalDoc }) =>
   postNeedsWords({ data, originalDoc })
+
+/**
+ * A post's board is its own school's (Jason, 2026-10-28: boards are per site).
+ *
+ * NOT THE ONLY LAYER. Payload also validates the `board` field against its `filterOptions` on the
+ * server, for every writer including trusted code (measured 2026-10-28), and a school manager
+ * cannot read another school's boards at all. This hook is the second layer: it says why in
+ * words ("The following field is invalid: Board" is Payload's), and it does not depend on
+ * `filterOptions` keeping its shape. Read as the platform: the post's own school decides.
+ */
+export const boardIsThisSchools: CollectionBeforeValidateHook = async ({
+  data,
+  originalDoc,
+  req,
+}) => {
+  if (!data || data.board === undefined || data.board === null) return data
+  const boardId = relationshipIdOf(data.board as never)
+  const tenant = relationshipIdOf((data.tenant ?? originalDoc?.tenant) as never)
+  const board =
+    boardId === null
+      ? null
+      : await req.payload.findByID({
+          collection: 'post-boards',
+          id: boardId,
+          depth: 0,
+          overrideAccess: true,
+          disableErrors: true,
+          req,
+        })
+  if (
+    board &&
+    tenant !== null &&
+    relationshipIdOf((board as { tenant?: unknown }).tenant as never) === tenant
+  ) {
+    return data
+  }
+  throw new ValidationError({
+    errors: [{ path: 'board', message: 'Choose one of this school’s boards.' }],
+  })
+}
+
+/** How a board is named wherever one is picked or shown: "Folder → Board". */
+export const boardTitle = (folder: unknown, board: unknown): string => {
+  const f = typeof folder === 'string' ? folder.trim() : ''
+  const b = typeof board === 'string' ? board.trim() : ''
+  return f === '' ? b : `${f} → ${b}`
+}

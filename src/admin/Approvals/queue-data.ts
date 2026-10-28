@@ -49,7 +49,7 @@ const titleOf = (doc: Doc, noun: QueueItem['noun'] = 'page'): string =>
 /** id -> display string, for a handful of related rows read as the platform. */
 const namesFor = async (
   req: PayloadRequest,
-  collection: 'tenants' | 'users' | 'pages',
+  collection: 'tenants' | 'users' | 'pages' | 'post-boards' | 'post-tags',
   ids: string[],
   name: (doc: Doc) => string,
 ): Promise<Map<string, string>> => {
@@ -74,6 +74,24 @@ const withParentTitle = (doc: Doc, titles: Map<string, string>): Doc => {
 }
 
 const REVIEWED: readonly ReviewedCollection[] = ['pages', 'posts']
+
+/** A post's board and tags as `{ id, title }`, so the diff names them (`diffPost`). */
+const withBoardAndTags = (
+  doc: Doc | null,
+  boards: Map<string, string>,
+  tags: Map<string, string>,
+): Doc | null => {
+  if (!doc) return null
+  const board = relationshipIdOf(doc.board as never)
+  const tagIds = (Array.isArray(doc.tags) ? doc.tags : [])
+    .map((t) => relationshipIdOf(t as never))
+    .filter((t): t is string => t !== null)
+  return {
+    ...doc,
+    board: board === null ? null : { id: board, title: boards.get(board) ?? null },
+    tags: tagIds.map((id) => ({ id, title: tags.get(id) ?? null })),
+  }
+}
 
 /** How many submissions wait, counted as `user` — only a district admin sees every school. */
 export const countWaiting = async (
@@ -145,7 +163,15 @@ export const loadQueue = async (req: PayloadRequest, now = new Date()): Promise<
       .map((v) => relationshipIdOf(v as never))
       .filter((v): v is string => v !== null)
 
-  const [schools, submitters, parents] = await Promise.all([
+  const posts = present.filter((r) => r.collection === 'posts')
+  const postRefs = (key: 'board' | 'tags') =>
+    posts
+      .flatMap((r) => [r.latest.version[key], r.live?.[key]])
+      .flatMap((v) => (Array.isArray(v) ? v : [v]))
+      .map((v) => relationshipIdOf(v as never))
+      .filter((v): v is string => v !== null)
+
+  const [schools, submitters, parents, boards, tagNames] = await Promise.all([
     namesFor(
       req,
       'tenants',
@@ -171,6 +197,8 @@ export const loadQueue = async (req: PayloadRequest, now = new Date()): Promise<
         .filter((v): v is string => v !== null),
       (d) => titleOf(d),
     ),
+    namesFor(req, 'post-boards', postRefs('board'), (d) => String(d.title ?? d.name ?? d.id)),
+    namesFor(req, 'post-tags', postRefs('tags'), (d) => String(d.name ?? d.id)),
   ])
 
   return present.map(({ id, collection, latest, live }) => {
@@ -190,7 +218,10 @@ export const loadQueue = async (req: PayloadRequest, now = new Date()): Promise<
       wait: describeWait(proposed.submittedAt, now, DISTRICT_TIME_ZONE),
       diff:
         collection === 'posts'
-          ? diffPost(live, proposed)
+          ? diffPost(
+              withBoardAndTags(live, boards, tagNames),
+              withBoardAndTags(proposed, boards, tagNames)!,
+            )
           : diffPage(
               live ? withParentTitle(live, parents) : null,
               withParentTitle(proposed, parents),

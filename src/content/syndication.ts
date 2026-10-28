@@ -45,3 +45,25 @@ export const syndicationConstraint = (tenantId: string): Where => {
     ],
   }
 }
+
+export type FeedFilter = {
+  /** Board ids. Empty or absent: every board. */
+  boards?: readonly string[]
+  /** Tag ids; a post with ANY of them matches. Empty or absent: no tag filter. */
+  tags?: readonly string[]
+}
+
+/**
+ * What a feed on `tenantId` shows (Jason, 2026-10-28 — the hybrid): the posts that reach the
+ * site, published and public, NARROWED by boards and tags. Reach stays the post's own sharing, so
+ * picking another site's board only ever shows that board's posts that are shared here.
+ */
+export const feedConstraint = (tenantId: string, filter: FeedFilter = {}): Where => ({
+  and: [
+    syndicationConstraint(tenantId),
+    { _status: { equals: 'published' } },
+    { visibility: { equals: 'public' } },
+    ...(filter.boards?.length ? [{ board: { in: [...filter.boards] } }] : []),
+    ...(filter.tags?.length ? [{ tags: { in: [...filter.tags] } }] : []),
+  ],
+})

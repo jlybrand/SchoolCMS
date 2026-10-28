@@ -22,6 +22,7 @@ import {
 import { restoreIsDistrictOnly } from '@/collections/hooks/page-history'
 import { deriveSlugFromTitle } from '@/collections/hooks/page-slug'
 import {
+  boardIsThisSchools,
   postNeedsWordsHook,
   stampPublishedDateHook,
   uniquePostSlug,
@@ -90,7 +91,7 @@ export const Posts: CollectionConfig = {
   hooks: {
     beforeOperation: [restoreIsDistrictOnly],
     /** Derive the slug from the title, then make it this school's own. */
-    beforeValidate: [deriveSlugFromTitle, uniquePostSlug],
+    beforeValidate: [deriveSlugFromTitle, uniquePostSlug, boardIsThisSchools],
     /**
      * The publish gate first, the review state last — the order pages use, for its reason.
      * `postNeedsWordsHook` reads the REQUESTED review state, so it runs before
@@ -149,6 +150,36 @@ export const Posts: CollectionConfig = {
           return `The address can only use lowercase letters, numbers and hyphens. Try "${slugify(value)}".`
         }
         return true
+      },
+    },
+    {
+      /**
+       * Where the announcement is filed (Jason, 2026-10-28): one board, of the post's own site
+       * — `boardIsThisSchools` refuses another's. Organises and filters; it never decides who
+       * sees the post. That is `syndication`.
+       */
+      name: 'board',
+      type: 'relationship',
+      relationTo: 'post-boards',
+      required: true,
+      label: 'Board',
+      filterOptions: ({ data }) => {
+        const tenant = (data as { tenant?: unknown } | undefined)?.tenant
+        return tenant === undefined || tenant === null ? true : { tenant: { equals: tenant } }
+      },
+      admin: { description: 'Which of the school’s boards this goes on.' },
+    },
+    {
+      /** The district-wide list (`post-tags`). Not sortable: order means nothing, and a sortable
+       * chip nests buttons (axe, as `syndicatedTo`). */
+      name: 'tags',
+      type: 'relationship',
+      relationTo: 'post-tags',
+      hasMany: true,
+      label: 'Tags',
+      admin: {
+        isSortable: false,
+        description: 'Optional. Lets news lists that show only, say, "High" find this.',
       },
     },
     {

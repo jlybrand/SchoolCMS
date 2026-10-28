@@ -54,6 +54,13 @@ export const repairAdminA11y = (root: ParentNode): void => {
     name(button, words(button.getAttribute('data-button-key') ?? ''))
   }
 
+  // 4.1.2 — the list's "someone is editing this" lock: a focusable button whose only words are
+  // a hover tooltip.
+  for (const lock of all(root, '.locked[role="button"]')) {
+    const tip = lock.querySelector('.locked__tooltip')?.textContent?.trim()
+    name(lock, tip || 'Someone else is editing this')
+  }
+
   // 4.1.2 — list pagination arrows.
   for (const button of all(root, '.clickable-arrow--left')) name(button, 'Previous page')
   for (const button of all(root, '.clickable-arrow--right')) name(button, 'Next page')

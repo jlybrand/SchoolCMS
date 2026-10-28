@@ -11,7 +11,10 @@ import type { AuthUser } from './access/types'
 import { AuditEvents } from './collections/AuditEvents'
 import { Navigation } from './collections/Navigation'
 import { Pages } from './collections/Pages'
+import { PostBoards } from './collections/PostBoards'
+import { PostFolders } from './collections/PostFolders'
 import { Posts } from './collections/Posts'
+import { PostTags } from './collections/PostTags'
 import { Settings } from './collections/Settings'
 import { Tenants } from './collections/Tenants'
 import { Theme } from './collections/Theme'
@@ -67,7 +70,19 @@ export default buildConfig({
     },
   },
 
-  collections: [Tenants, Users, Pages, Posts, Navigation, Theme, Settings, AuditEvents],
+  collections: [
+    Tenants,
+    Users,
+    Pages,
+    Posts,
+    PostFolders,
+    PostBoards,
+    PostTags,
+    Navigation,
+    Theme,
+    Settings,
+    AuditEvents,
+  ],
 
   // Postgres, never Mongo — portability is a hard requirement (`00`, ADR-10).
   db: postgresAdapter({
@@ -109,6 +124,9 @@ export default buildConfig({
          */
         pages: {},
         posts: {},
+        /** A site's announcement folders and boards (Jason, 2026-10-28). Tags are district-wide. */
+        'post-folders': {},
+        'post-boards': {},
         /**
          * `isGlobal` is how a per-tenant "global" (`03` §5) is expressed under this plugin: a
          * Payload global is one document for the whole install, and there are 28 sites. It
