@@ -4,13 +4,13 @@ How the content modules work mechanically, and the audit trail they write to. Ph
 with the audit trail (`05`, scheduled at the Phase 4 close); the modules — posts, events, people
 and the PowerSchool sync, alerts — follow, each writing to it.
 
-| Slice                        | State                                                                                      |
-| ---------------------------- | ------------------------------------------------------------------------------------------ |
-| Audit trail                  | Merged (#42) — §1                                                                          |
-| News/announcements (`posts`) | §2 (#43); §3 (#44); §4 (#45); §5 (#46); **this PR** — §6 `FeedBlock`; `posts.routine` next |
-| Calendars and events         | —                                                                                          |
-| Directories + PowerSchool    | —                                                                                          |
-| Alerts                       | —                                                                                          |
+| Slice                        | State                                                             |
+| ---------------------------- | ----------------------------------------------------------------- |
+| Audit trail                  | Merged (#42) — §1                                                 |
+| News/announcements (`posts`) | §2–§6 (#43–#47); **this PR** — §7 `posts.routine`. Slice complete |
+| Calendars and events         | —                                                                 |
+| Directories + PowerSchool    | —                                                                 |
+| Alerts                       | —                                                                 |
 
 ---
 
@@ -306,7 +306,6 @@ Digest lines: `{title} (announcement) — {school} — {wait}` for posts.
 
 - `FeedBlock`, the post template and route, revalidation with syndication fan-out — and with
   them a public address for the approval email and the diff's Address row.
-- `posts.routine`.
 - Editing an announcement after it is published: there is no school task for it; a school
   manager reaches it only from "Your recent submissions" while it is pending.
 - "Published" in recent submissions (reads the audit trail).
@@ -436,7 +435,6 @@ write revalidates nothing.
 ### Not here yet
 
 - Pagination or an archive past 50 on `/news`.
-- `posts.routine`.
 
 ---
 
@@ -493,3 +491,62 @@ plugin's filter and `boardIsThisSchools`.
 (`resolvePageBlocks`), `tenant-isolation.test.ts` (a feed may pick the district's board; a post
 may not; a school manager cannot add a feed), `news-feed.spec.ts`, `admin-planes-axe.spec.ts`
 ("a page with a news feed").
+
+---
+
+## 7. `posts.routine` — the first auto-approval that acts (Jason, 2026-10-28)
+
+### Files
+
+| File                                    | Holds                                                                                                      |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `src/collections/hooks/auto-approve.ts` | `autoApprovePost` (afterChange, last on posts); `AUTO_APPROVAL`, `autoApprovalOf(req)`, `AutoApprovalMark` |
+| `tests/e2e/posts-routine.spec.ts`       | a grant holder (School B) posts through the form → live; `/news`; the district's 30-day list; axe          |
+
+Changed:
+
+| File                                                                  | Change                                                                                                                                        |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/access/auto-approval.ts`                                         | `AUTO_APPROVAL_RULES.posts`; `POST_JUDGED_FIELDS`; `NEW_POST_BASELINE`; `changedFields(before, after, fields, defaults)`                      |
+| `src/collections/hooks/publish-gate.ts`                               | a `_status: published` write (not `publishAt`) with `autoApprovalOf(req)` passes                                                              |
+| `src/collections/hooks/review-state.ts`                               | with `autoApprovalOf(req)` and publishing: review fields cleared                                                                              |
+| `src/collections/hooks/notify-review-outcome.ts`                      | with `autoApprovalOf(req)`: no email                                                                                                          |
+| `src/collections/hooks/audit.ts`, `src/lib/audit.ts`                  | `AuditInput.autoApproval`; a publish with it → `auto-approve`, `autoApproved: true`, summary `Under the grant “{label}”`                      |
+| `src/admin/SendForApproval/review-status.ts`, `ReviewStatusField.tsx` | `_status` input; published with nothing pending → "This is live on the website"                                                               |
+| `src/admin/Grants/grants.ts`, `grant-data.ts`, `GrantsPanel.tsx`      | `autoApprovalRows`, `findRecentAutoApprovals` (as the viewer, `SPOT_CHECK_DAYS` = 30, newest first, 100), "Auto-approved in the last 30 days" |
+| `starterDocs/04-authoring-model-approval-workflow.md`                 | §4.3 records the exception                                                                                                                    |
+
+### The rule
+
+|                 |                                                                                                     |
+| --------------- | --------------------------------------------------------------------------------------------------- |
+| scope           | `posts.routine`                                                                                     |
+| `neverFields`   | `heroImage`, `visibility`, `syndication`, `publishedDate`, `requiresTranslationReview` — NOT `body` |
+| `createAllowed` | true                                                                                                |
+| `permits`       | `isCreate` or `slug` unchanged                                                                      |
+
+### The flow
+
+1. A school manager's write moves `reviewState` to `submitted` (the send). Its hooks run as
+   before; `auditChange` writes `submit`.
+2. `autoApprovePost` (last): no applicable posts scope → done. Else reads the main row
+   (`draft: false`); `isCreate` = it is not published; `changedFields(live or NEW_POST_BASELINE,
+doc, POST_JUDGED_FIELDS, NEW_POST_BASELINE)`; `decideAutoApproval`.
+3. Approve → sets `req.context.autoApproval = { scope }`, `payload.update({ data: version content +
+_status: published, draft: false, overrideAccess: true, req })` — same transaction — returns
+   the published doc, then deletes the mark.
+4. The nested publish's hooks: `publishGate` and `applyReviewState` pass on the mark;
+   `postNeedsWords`, `stampPublishedDate` as usual; `auditChange` writes `auto-approve`;
+   revalidation fans out; no email.
+
+A failure in step 3 fails the send (Payload rolls the shared transaction back); nothing is
+half-published.
+
+### Tests
+
+`tests/unit/access/auto-approval.test.ts` (`posts.routine`, `changedFields`, the body-only
+exception guard); `publish-gate.test.ts`, `review-state-hook.test.ts`,
+`notify-review-outcome.test.ts` (the mark); `tests/unit/lib/audit.test.ts`;
+`send-for-approval.test.ts` (live status); `grants.test.ts` (`autoApprovalRows`);
+`tests/integration/auto-approval.test.ts` (`posts.routine` block — mutation-checked: removing the
+hook, the gate exception, or `visibility` from the never list each fails it); `posts-routine.spec.ts`.

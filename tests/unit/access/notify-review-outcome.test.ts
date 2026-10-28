@@ -116,3 +116,27 @@ describe('an announcement', () => {
     expect(message.text).not.toMatch(/https?:/)
   })
 })
+
+describe('an auto-approved announcement', () => {
+  it('emails nobody — the sender published it; nobody approved anything to tell them about', async () => {
+    const { send } = setup('posts')
+    const hook = makeNotifyReviewOutcome({
+      collection: 'posts',
+      send,
+      serverUrl: 'http://localhost:3000',
+      recipientFor: async () => 'manager@school.example',
+      schoolFor: async () => ({ name: 'School A', hostname: 'a.localhost' }),
+      pathFor: async () => '/news/x',
+    })
+    await hook({
+      previousDoc: waiting,
+      doc: { ...waiting, reviewState: null, _status: 'published' },
+      req: {
+        payload: { logger: { error: vi.fn() } },
+        context: { autoApproval: { scope: 'posts.routine' } },
+      },
+      operation: 'update',
+    } as never)
+    expect(send).not.toHaveBeenCalled()
+  })
+})

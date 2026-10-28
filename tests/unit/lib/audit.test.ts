@@ -202,6 +202,26 @@ describe('posts', () => {
     expect(auditEntries(posts({ doc: page({ reviewState: 'editing', title: 'New' }) }))).toEqual([])
   })
 
+  /**
+   * Auto-approval (`04` §4.3): "invisible approval, never invisible change". The person who
+   * sent it is the actor — there is no reviewer — and the grant that let it through is named.
+   */
+  it('a publish under a grant is an auto-approve, flagged, by the sender, naming the grant', () => {
+    const [entry] = auditEntries(
+      posts({
+        previous: page({ reviewState: 'submitted' }),
+        doc: page({ _status: 'published' }),
+        autoApproval: { scope: 'posts.routine' },
+      }),
+    )
+    expect(entry).toMatchObject({
+      action: 'auto-approve',
+      autoApproved: true,
+      actor: '5',
+      summary: 'Under the grant “Posts: routine posts”',
+    })
+  })
+
   it('an untitled post is named as a post', () => {
     const [entry] = auditEntries(posts({ doc: page({ title: '', reviewState: 'submitted' }) }))
     expect(entry!.documentTitle).toBe('Post 41')

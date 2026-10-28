@@ -205,12 +205,13 @@ more scopes:
 | Scope | Permits without review |
 |---|---|
 | `events.schedule` | Creating or editing an event where only `title`, `start`, `end`, `location` changed |
-| `posts.routine` | Publishing a post with no upload and no page-structure change |
+| `posts.routine` | Publishing a post with no upload and no page-structure change — **its body included** (see below) |
 | *(none — the default)* | Nothing. All submissions queue. |
 
 **Never auto-approvable, regardless of grant:**
 
-- Anything touching `agendaBody` or other rich text
+- Anything touching `agendaBody` or other rich text — **except an announcement's own body
+  under `posts.routine`** (decided by Jason, 2026-10-28)
 - Any change involving an upload (image or document)
 - New page creation, or any change to page type
 - Any change to `visibility`, `seo`, navigation placement, or syndication
@@ -218,6 +219,18 @@ more scopes:
 
 If a submission mixes an auto-approvable change with a non-auto-approvable one, **the whole
 submission queues.** There is no partial approval.
+
+**`posts.routine`, as built (Jason, 2026-10-28).** The scope and the rich-text rule above
+contradicted each other: read literally, the grant could never approve a new post, because a
+post's body is rich text. Resolved as a narrow exception: under `posts.routine` an
+announcement's own `body` may be auto-approved, so creating or editing a routine announcement —
+the picture-day notice the grant exists for — publishes at once. Everything else on the never
+list still queues the whole submission: an upload (`heroImage`, Phase 6), `visibility`,
+`syndication`, `publishedDate`, `requiresTranslationReview`; and moving a live announcement to a
+new address is a page-structure change. Rich text stays never-auto-approvable everywhere else —
+page bodies, `agendaBody`, layouts. The publish happens in the same transaction as the send,
+writes an `auto-approve` audit entry naming the sender and the grant, sends no outcome email
+(nobody approved anything), and appears on the district's 30-day spot-check list.
 
 **Governance:**
 

@@ -2,6 +2,7 @@ import { Forbidden, type CollectionBeforeChangeHook } from 'payload'
 
 import { canComposePages, canPublish } from '@/access/pages'
 import type { AuthUser } from '@/access/types'
+import { autoApprovalOf } from '@/collections/hooks/auto-approve'
 
 /**
  * The hook half of two release-blocking gates (CLAUDE.md rules 3 and `03` §6.4 invariant 5).
@@ -47,6 +48,13 @@ export const publishGate: CollectionBeforeChangeHook = ({ data, req }) => {
   const assertsPublished = data?._status === 'published'
   const schedulesPublish =
     data?.publishAt !== undefined && data?.publishAt !== null && data?.publishAt !== ''
+
+  /**
+   * The one exception: the auto-approval hook's own publish, under a district grant
+   * (`src/collections/hooks/auto-approve.ts`). It is marked in `req.context`, which no request
+   * can set; the same body sent by a person has no mark and is refused below.
+   */
+  if (assertsPublished && !schedulesPublish && autoApprovalOf(req)) return data
 
   if ((assertsPublished || schedulesPublish) && !canPublish(user)) {
     throw new Forbidden()

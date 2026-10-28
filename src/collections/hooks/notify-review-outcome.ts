@@ -1,6 +1,7 @@
 import type { CollectionAfterChangeHook, PayloadRequest } from 'payload'
 
 import { relationshipIdOf } from '@/access/predicates'
+import { autoApprovalOf } from '@/collections/hooks/auto-approve'
 import { outcomeEmail, publicUrlFor, reviewOutcome } from '@/lib/review-emails'
 import { buildPagePath } from '@/lib/slug'
 
@@ -41,6 +42,9 @@ export const makeNotifyReviewOutcome =
   async ({ doc, previousDoc, req }) => {
     const outcome = reviewOutcome(previousDoc, doc)
     if (!outcome) return doc
+    // Auto-approved under a grant: the sender published it, and nobody approved anything to tell
+    // them about. The audit trail and the district's 30-day list still show it (`04` §4.3).
+    if (autoApprovalOf(req)) return doc
 
     try {
       const submitter = relationshipIdOf((previousDoc?.submittedBy ?? null) as never)

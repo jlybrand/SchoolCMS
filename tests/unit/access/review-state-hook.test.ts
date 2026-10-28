@@ -105,3 +105,31 @@ describe('applyReviewState', () => {
     expect(result).toMatchObject({ reviewState: 'submitted', submittedBy: 7 })
   })
 })
+
+describe('applyReviewState — the auto-approval publish', () => {
+  it('clears the review fields, as an approve does', () => {
+    const result = applyReviewState({
+      req: { user: managerA, context: { autoApproval: { scope: 'posts.routine' } } },
+      data: { _status: 'published', reviewState: 'submitted' },
+      originalDoc: submittedDoc,
+      operation: 'update',
+    } as never)
+    expect(result).toMatchObject({
+      reviewState: null,
+      reviewNote: null,
+      submittedAt: null,
+      submittedBy: null,
+    })
+  })
+
+  it('without the server-set mark, a school manager’s publish is still refused', () => {
+    expect(() =>
+      applyReviewState({
+        req: { user: managerA, context: {} },
+        data: { _status: 'published' },
+        originalDoc: submittedDoc,
+        operation: 'update',
+      } as never),
+    ).toThrow(Forbidden)
+  })
+})
