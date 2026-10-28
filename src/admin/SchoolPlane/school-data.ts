@@ -1,6 +1,6 @@
 import type { PayloadRequest } from 'payload'
 
-import { tenantIdsFor } from '@/access/predicates'
+import { relationshipIdOf, tenantIdsFor } from '@/access/predicates'
 import type { AuthUser } from '@/access/types'
 
 /**
@@ -110,4 +110,41 @@ export const listMySchools = async (req: PayloadRequest): Promise<SchoolOption[]
     id: doc.id,
     name: typeof doc.name === 'string' ? doc.name : String(doc.id),
   }))
+}
+
+export type BoardOption = { id: number | string; tenant: number | string; label: string }
+
+/**
+ * The boards the user may post to — their schools' — read AS THE USER, so the access constraint
+ * is what limits them. Labelled "Folder → Board", with the school in front when there are
+ * several, since the school follows from the board.
+ */
+export const listMyBoards = async (req: PayloadRequest): Promise<BoardOption[]> => {
+  if (!req.user) return []
+  const [{ docs }, schools] = await Promise.all([
+    req.payload.find({
+      collection: 'post-boards',
+      req,
+      user: req.user,
+      overrideAccess: false,
+      depth: 0,
+      limit: 200,
+      sort: 'title',
+      select: { title: true, name: true, tenant: true },
+    }),
+    listMySchools(req),
+  ])
+  const names = new Map(schools.map((s) => [String(s.id), s.name]))
+  return docs.flatMap((doc) => {
+    const tenant = relationshipIdOf((doc as { tenant?: unknown }).tenant as never)
+    if (tenant === null) return []
+    const title = typeof doc.title === 'string' && doc.title !== '' ? doc.title : String(doc.name)
+    return [
+      {
+        id: doc.id,
+        tenant: Number.isNaN(Number(tenant)) ? tenant : Number(tenant),
+        label: schools.length > 1 ? `${names.get(tenant) ?? ''} · ${title}` : title,
+      },
+    ]
+  })
 }

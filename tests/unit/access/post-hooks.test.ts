@@ -1,7 +1,13 @@
 import { ValidationError } from 'payload'
 import { describe, expect, it, vi } from 'vitest'
 
-import { postNeedsWords, stampPublishedDate, uniquePostSlug } from '@/collections/hooks/post-hooks'
+import {
+  boardIsThisSchools,
+  boardTitle,
+  postNeedsWords,
+  stampPublishedDate,
+  uniquePostSlug,
+} from '@/collections/hooks/post-hooks'
 
 /**
  * The two `posts` hooks that `pages` does not have.
@@ -160,5 +166,56 @@ describe('postNeedsWords', () => {
     const [first] = (caught as ValidationError).data.errors
     expect(first).toMatchObject({ path: 'body' })
     expect(first!.message).toMatch(/write the announcement/i)
+  })
+})
+
+/**
+ * A post's board is its own school's (Jason, 2026-10-28: boards are per site). The board picker
+ * offers only those; this is the API's half, so a hand-made request cannot file a post on
+ * another school's board.
+ */
+describe('boardIsThisSchools', () => {
+  const boards: Record<string, { tenant: unknown }> = {
+    '7': { tenant: 'A' },
+    '8': { tenant: { id: 'B' } },
+  }
+  const run = (data: Record<string, unknown>, originalDoc?: Record<string, unknown>) => {
+    const findByID = vi.fn(async ({ id }: { id: string }) => boards[id] ?? null)
+    return boardIsThisSchools({
+      data,
+      originalDoc,
+      req: { payload: { findByID } },
+    } as never)
+  }
+
+  it('accepts a board of the post’s own school', async () => {
+    await expect(run({ tenant: 'A', board: 7 })).resolves.toMatchObject({ board: 7 })
+  })
+
+  it('reads the school from the stored post when the write does not carry it', async () => {
+    await expect(run({ board: '7' }, { tenant: 'A' })).resolves.toBeDefined()
+  })
+
+  it('REFUSES another school’s board, on the board field', async () => {
+    await expect(run({ tenant: 'A', board: 8 })).rejects.toBeInstanceOf(ValidationError)
+  })
+
+  it('refuses a board that does not exist', async () => {
+    await expect(run({ tenant: 'A', board: 99 })).rejects.toBeInstanceOf(ValidationError)
+  })
+
+  it('does nothing on a write that does not set a board', async () => {
+    await expect(run({ title: 'x' }, { tenant: 'A' })).resolves.toEqual({ title: 'x' })
+  })
+})
+
+/** How a board is named wherever one is picked or shown: its folder, then its own name. */
+describe('boardTitle', () => {
+  it('is "Folder → Board"', () => {
+    expect(boardTitle(' SHS ', ' News ')).toBe('SHS → News')
+  })
+
+  it('is the board alone when the folder has no name', () => {
+    expect(boardTitle(undefined, 'News')).toBe('News')
   })
 })

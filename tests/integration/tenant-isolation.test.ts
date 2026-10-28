@@ -10,6 +10,7 @@ import {
   readsNothing,
   seed,
   seedPosts,
+  boardFor,
   type Fixtures,
   type PostFixtures,
 } from '../helpers/payload'
@@ -1564,6 +1565,7 @@ describe('posts', () => {
             collection: 'posts',
             data: {
               tenant: f.tenantB,
+              board: f.boardB,
               title: 'Rogue',
               slug: 'rogue',
               visibility: 'public',
@@ -1638,6 +1640,7 @@ describe('posts', () => {
         collection: 'posts',
         data: {
           tenant: f.districtTenant,
+          board: f.boardDistrict,
           title: 'Briefly shared',
           slug: 'briefly-shared',
           visibility: 'public',
@@ -1704,6 +1707,7 @@ describe('posts', () => {
             collection: 'posts',
             data: {
               tenant: f.tenantA,
+              board: f.boardA,
               title: 'Sneaky post',
               slug: 'sneaky-post',
               visibility: 'public',
@@ -1817,6 +1821,7 @@ describe('posts', () => {
         collection: 'posts',
         data: {
           tenant: f.tenantA,
+          board: f.boardA,
           title: 'Everywhere please',
           body: emptyBody(),
           syndication: { scope: 'district-wide' },
@@ -1851,6 +1856,7 @@ describe('posts', () => {
         collection: 'posts',
         data: {
           tenant: f.tenantA,
+          board: f.boardA,
           title: 'Pinned to the top',
           body: emptyBody(),
           publishedDate: '2099-01-01T00:00:00.000Z',
@@ -1879,7 +1885,13 @@ describe('posts', () => {
         (
           await payload.create({
             collection: 'posts',
-            data: { tenant, title: 'Picture Day', body: emptyBody(), _status: 'draft' },
+            data: {
+              tenant,
+              board: boardFor(f, tenant),
+              title: 'Picture Day',
+              body: emptyBody(),
+              _status: 'draft',
+            },
             draft: true,
             overrideAccess: true,
           })
@@ -1898,3 +1910,220 @@ const emptyBody = () =>
       children: [{ type: 'paragraph', children: [{ type: 'text', text: 'Body.' }] }],
     },
   }) as never
+
+/**
+ * ============================================================================
+ * FOLDERS, BOARDS AND TAGS (Jason, 2026-10-28) — the district organises; a school
+ * reads its own and picks; a feed filter only ever narrows.
+ * ============================================================================
+ */
+describe('announcement folders, boards and tags', () => {
+  let p: PostFixtures
+  let tagHigh: number
+  let tagSports: number
+  let athleticsBoardDistrict: number
+
+  const site = (tenantId: number): ContentContext => ({
+    tenant: {
+      id: String(tenantId),
+      slug: `t${tenantId}`,
+      name: `t${tenantId}`,
+      hostname: `t${tenantId}.localhost`,
+      type: 'school',
+    },
+    locale: 'en',
+  })
+
+  beforeAll(async () => {
+    p = await seedPosts(payload, f)
+    tagHigh = (await payload.create({ collection: 'post-tags', data: { name: 'High' } })).id
+    tagSports = (await payload.create({ collection: 'post-tags', data: { name: 'Sports' } })).id
+    const folder = await payload.create({
+      collection: 'post-folders',
+      data: { tenant: f.districtTenant, name: 'Athletics' },
+    })
+    athleticsBoardDistrict = (
+      await payload.create({
+        collection: 'post-boards',
+        data: { tenant: f.districtTenant, folder: folder.id, name: 'Scores' },
+      })
+    ).id
+    // The district-wide post gets the High tag; the one shared with B only goes on Athletics.
+    await payload.update({
+      collection: 'posts',
+      id: p.districtWidePost,
+      data: { tags: [tagHigh], _status: 'published' },
+      user: f.districtAdmin,
+    })
+    await payload.update({
+      collection: 'posts',
+      id: p.selectedForBPost,
+      data: { board: athleticsBoardDistrict, tags: [tagSports], _status: 'published' },
+      user: f.districtAdmin,
+    })
+  })
+
+  it('a board is named by its folder, and renaming the folder renames it', async () => {
+    const board = await payload.findByID({ collection: 'post-boards', id: athleticsBoardDistrict })
+    expect(board.title).toBe('Athletics → Scores')
+    const folderId = relationshipId(board.folder)
+    await payload.update({ collection: 'post-folders', id: folderId, data: { name: 'Sport' } })
+    expect(
+      (await payload.findByID({ collection: 'post-boards', id: athleticsBoardDistrict })).title,
+    ).toBe('Sport → Scores')
+  })
+
+  it('a board cannot sit in another site’s folder', async () => {
+    const folderOfA = relationshipId(
+      (await payload.findByID({ collection: 'post-boards', id: f.boardA })).folder,
+    )
+    expect(
+      await isDenied(() =>
+        payload.create({
+          collection: 'post-boards',
+          data: { tenant: f.tenantB, folder: folderOfA, name: 'Stolen' },
+        }),
+      ),
+    ).toBe(true)
+  })
+
+  it('a school manager reads their own site’s folders and boards, and no other’s', async () => {
+    for (const collection of ['post-folders', 'post-boards'] as const) {
+      const { docs } = await payload.find({
+        collection,
+        user: f.managerA,
+        overrideAccess: false,
+        depth: 0,
+        pagination: false,
+      })
+      expect(docs.length).toBeGreaterThan(0)
+      expect(docs.every((d) => String(d.tenant) === String(f.tenantA))).toBe(true)
+    }
+  })
+
+  it('a school manager reads the tag list but cannot change any of the three', async () => {
+    const { docs } = await payload.find({
+      collection: 'post-tags',
+      user: f.managerA,
+      overrideAccess: false,
+    })
+    expect(docs.map((d) => d.name)).toEqual(expect.arrayContaining(['High', 'Sports']))
+
+    const attempts = [
+      () =>
+        payload.create({
+          collection: 'post-tags',
+          data: { name: 'Mine' },
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      () =>
+        payload.create({
+          collection: 'post-folders',
+          data: { tenant: f.tenantA, name: 'Mine' },
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      () =>
+        payload.update({
+          collection: 'post-boards',
+          id: f.boardA,
+          data: { name: 'Renamed' },
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      () =>
+        payload.delete({
+          collection: 'post-boards',
+          id: f.boardA,
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+    ]
+    for (const attempt of attempts) expect(await isDenied(attempt)).toBe(true)
+  })
+
+  it.each([
+    ['the sync account', () => f.systemSync],
+    ['anonymous', () => undefined],
+  ])('%s reads none of them', async (_label, user) => {
+    for (const collection of ['post-folders', 'post-boards', 'post-tags'] as const) {
+      expect(
+        await readsNothing(() =>
+          payload.find({ collection, user: user() as never, overrideAccess: false }),
+        ),
+      ).toBe(true)
+    }
+  })
+
+  it('a school manager cannot file an announcement on another school’s board', async () => {
+    expect(
+      await isDenied(() =>
+        payload.create({
+          collection: 'posts',
+          data: { tenant: f.tenantA, board: f.boardB, title: 'Wrong board', _status: 'draft' },
+          draft: true,
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      ),
+    ).toBe(true)
+    expect(
+      await isDenied(() =>
+        payload.update({
+          collection: 'posts',
+          id: p.draftPostA,
+          data: { board: f.boardB },
+          draft: true,
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      ),
+    ).toBe(true)
+  })
+
+  describe('feeds narrow by board and tag — never past the post’s own sharing', () => {
+    const ids = async (tenant: number, filter: { boards?: number[]; tags?: number[] }) =>
+      (
+        await listPosts(site(tenant), {
+          limit: 100,
+          ...(filter.boards ? { boards: filter.boards.map(String) } : {}),
+          ...(filter.tags ? { tags: filter.tags.map(String) } : {}),
+        })
+      ).map((x) => Number(x.id))
+
+    // Membership, not equality: the `posts` block above seeds its own set onto the same boards.
+    it('own board only', async () => {
+      const onB = await ids(f.tenantB, { boards: [f.boardB] })
+      expect(onB).toContain(p.publishedPostB)
+      for (const id of [p.districtWidePost, p.selectedForBPost]) expect(onB).not.toContain(id)
+    })
+
+    it('another site’s board shows only what is shared HERE', async () => {
+      const districtNewsOnB = await ids(f.tenantB, { boards: [f.boardDistrict] })
+      expect(districtNewsOnB).toContain(p.districtWidePost)
+      for (const id of [p.districtWideDraft, p.districtWideStaffPost, p.selectedForBPost]) {
+        expect(districtNewsOnB).not.toContain(id)
+      }
+      // Athletics → Scores holds the post shared with B only: A picking it gets nothing.
+      expect(await ids(f.tenantA, { boards: [athleticsBoardDistrict] })).toEqual([])
+      expect(await ids(f.tenantB, { boards: [athleticsBoardDistrict] })).toEqual([
+        p.selectedForBPost,
+      ])
+    })
+
+    it('tags match ANY, within reach', async () => {
+      expect((await ids(f.tenantB, { tags: [tagHigh, tagSports] })).sort()).toEqual(
+        [p.districtWidePost, p.selectedForBPost].sort(),
+      )
+      expect(await ids(f.tenantA, { tags: [tagSports] })).toEqual([])
+    })
+
+    it('boards then tags', async () => {
+      expect(await ids(f.tenantB, { boards: [f.boardDistrict], tags: [tagSports] })).toEqual([])
+    })
+  })
+})
+
+const relationshipId = (value: unknown): number =>
+  typeof value === 'object' && value !== null ? (value as { id: number }).id : (value as number)

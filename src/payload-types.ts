@@ -71,6 +71,9 @@ export interface Config {
     users: User;
     pages: Page;
     posts: Post;
+    'post-folders': PostFolder;
+    'post-boards': PostBoard;
+    'post-tags': PostTag;
     navigation: Navigation;
     theme: Theme;
     settings: Setting;
@@ -87,6 +90,9 @@ export interface Config {
     users: UsersSelect<false> | UsersSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
     posts: PostsSelect<false> | PostsSelect<true>;
+    'post-folders': PostFoldersSelect<false> | PostFoldersSelect<true>;
+    'post-boards': PostBoardsSelect<false> | PostBoardsSelect<true>;
+    'post-tags': PostTagsSelect<false> | PostTagsSelect<true>;
     navigation: NavigationSelect<false> | NavigationSelect<true>;
     theme: ThemeSelect<false> | ThemeSelect<true>;
     settings: SettingsSelect<false> | SettingsSelect<true>;
@@ -477,6 +483,14 @@ export interface Post {
    */
   slug: string;
   /**
+   * Which of the school’s boards this goes on.
+   */
+  board: number | PostBoard;
+  /**
+   * Optional. Lets news lists that show only, say, "High" find this.
+   */
+  tags?: (number | PostTag)[] | null;
+  /**
    * Optional. One or two sentences shown in news lists. Leave it empty and the first paragraph is used.
    */
   excerpt?: string | null;
@@ -524,6 +538,49 @@ export interface Post {
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "post-boards".
+ */
+export interface PostBoard {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  folder: number | PostFolder;
+  /**
+   * What this board is called inside its folder, e.g. "News".
+   */
+  name: string;
+  title?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "post-folders".
+ */
+export interface PostFolder {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  /**
+   * What this group of boards is called, e.g. "Athletics".
+   */
+  name: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "post-tags".
+ */
+export interface PostTag {
+  id: number;
+  /**
+   * One word or two, as it should read on every school’s list.
+   */
+  name: string;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -827,6 +884,18 @@ export interface PayloadLockedDocument {
         value: number | Post;
       } | null)
     | ({
+        relationTo: 'post-folders';
+        value: number | PostFolder;
+      } | null)
+    | ({
+        relationTo: 'post-boards';
+        value: number | PostBoard;
+      } | null)
+    | ({
+        relationTo: 'post-tags';
+        value: number | PostTag;
+      } | null)
+    | ({
         relationTo: 'navigation';
         value: number | Navigation;
       } | null)
@@ -1062,6 +1131,8 @@ export interface PostsSelect<T extends boolean = true> {
   tenant?: T;
   title?: T;
   slug?: T;
+  board?: T;
+  tags?: T;
   excerpt?: T;
   body?: T;
   visibility?: T;
@@ -1080,6 +1151,37 @@ export interface PostsSelect<T extends boolean = true> {
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "post-folders_select".
+ */
+export interface PostFoldersSelect<T extends boolean = true> {
+  tenant?: T;
+  name?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "post-boards_select".
+ */
+export interface PostBoardsSelect<T extends boolean = true> {
+  tenant?: T;
+  folder?: T;
+  name?: T;
+  title?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "post-tags_select".
+ */
+export interface PostTagsSelect<T extends boolean = true> {
+  name?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

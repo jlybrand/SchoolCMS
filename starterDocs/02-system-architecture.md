@@ -150,6 +150,10 @@ emergency updates propagate in seconds without a rebuild.
 - Edits propagate by reference; revalidation purges every path that renders the item,
   tracked via cache tags keyed by document id. One edit, many live surfaces, one source of
   truth.
+- _As built (Jason, 2026-10-28):_ **reach is set on the item** — `syndication` on each post, by
+  the district. A feed block picks boards and tags only to NARROW what reaches its site
+  (`03` §2 `posts`). Board-level sharing ("subscribe to a board") was weighed and not chosen:
+  it hides on the item where it will appear, and makes tags decide reach.
 
 ## 7. Authentication & authorization
 

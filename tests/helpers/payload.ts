@@ -46,6 +46,10 @@ export async function getTestPayload(): Promise<Payload> {
 export type Fixtures = {
   /** The district's own tenant — where syndicated posts live (`02` §6). */
   districtTenant: number
+  /** One "News" board per site, each in a folder named after the site (Jason, 2026-10-28). */
+  boardDistrict: number
+  boardA: number
+  boardB: number
   tenantA: number
   tenantB: number
   /** Page fixtures for the content-collection invariants (`03` §6.4 invariants 3–5). */
@@ -77,6 +81,9 @@ export async function seed(payload: Payload): Promise<Fixtures> {
   // Order matters: pages, navigation, theme, settings and users all reference tenants.
   for (const collection of [
     'posts',
+    'post-boards',
+    'post-folders',
+    'post-tags',
     'pages',
     'navigation',
     'theme',
@@ -233,8 +240,27 @@ export async function seed(payload: Payload): Promise<Fixtures> {
       })
     ).id as number
 
+  /** A folder named after the site, holding a "News" board — the shape the seed script gives. */
+  const mkBoard = async (tenant: number, folderName: string): Promise<number> => {
+    const folder = await payload.create({
+      collection: 'post-folders',
+      data: { tenant, name: folderName },
+      overrideAccess: true,
+    })
+    return (
+      await payload.create({
+        collection: 'post-boards',
+        data: { tenant, folder: folder.id, name: 'News' },
+        overrideAccess: true,
+      })
+    ).id as number
+  }
+
   return {
     districtTenant: district,
+    boardDistrict: await mkBoard(district, 'District'),
+    boardA: await mkBoard(tenantA, 'School A'),
+    boardB: await mkBoard(tenantB, 'School B'),
     tenantA,
     tenantB,
     // A serves two languages beside English and B none, so both ends of the list are seeded.
@@ -280,7 +306,12 @@ export type PostFixtures = {
  * Created as the district admin, for the reason `seed` gives for pages: the publish gate runs
  * even with access overridden.
  */
+/** The fixture "News" board of a fixture tenant. */
+export const boardFor = (f: Fixtures, tenant: number): number =>
+  tenant === f.tenantA ? f.boardA : tenant === f.tenantB ? f.boardB : f.boardDistrict
+
 export async function seedPosts(payload: Payload, f: Fixtures): Promise<PostFixtures> {
+  const boardOf = (tenant: number) => boardFor(f, tenant)
   const mk = async (
     tenant: number,
     slug: string,
@@ -298,6 +329,7 @@ export async function seedPosts(payload: Payload, f: Fixtures): Promise<PostFixt
         collection: 'posts',
         data: {
           tenant,
+          board: boardOf(tenant),
           title: slug.replace(/-/g, ' '),
           slug,
           body: {

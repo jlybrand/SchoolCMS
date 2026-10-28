@@ -140,25 +140,47 @@ export const checkNewPage = (input: NewPageInput): NewPageCheck => {
   return { ok: true, title: title.title, school: school.school }
 }
 
-export type NewPostInput = Omit<NewPageInput, 'pageType'>
+/** A board the user may post to, and the school it belongs to. */
+export type BoardChoice = { id: number | string; tenant: SchoolId }
+
+export type NewPostInput = {
+  title?: unknown
+  /** Every board of the user's schools. */
+  boards: readonly BoardChoice[]
+  /** The board chosen in the form, when there was a choice. */
+  board?: unknown
+}
 
 export type NewPostCheck =
-  | { ok: true; title: string; school: SchoolId }
-  | { ok: false; errors: Partial<Record<'title' | 'school', string>> }
+  | { ok: true; title: string; board: number | string; school: SchoolId }
+  | { ok: false; errors: Partial<Record<'title' | 'board', string>> }
+
+const NO_BOARD =
+  'Your school has no boards for announcements yet. Ask the district web team to set one up.'
 
 /**
- * What a new announcement needs before it is created: a headline, and the school. Its words are
- * written on the next screen, where autosave covers them (`postNeedsWords` requires them when
- * it is sent).
+ * What a new announcement needs before it is created: a headline, and the board it goes on
+ * (Jason, 2026-10-28: one board per post). The school follows from the board — boards are per
+ * site — so it is never asked separately. With one board, the board is not asked either.
+ *
+ * Its words are written on the next screen, where autosave covers them.
  */
 export const checkNewPost = (input: NewPostInput): NewPostCheck => {
-  const errors: Partial<Record<'title' | 'school', string>> = {}
+  const errors: Partial<Record<'title' | 'board', string>> = {}
   const title = checkTitle(input.title, 'Give the announcement a headline.')
   if (title.error) errors.title = title.error
-  const school = checkSchool(input, 'Choose which school this announcement is for.')
-  if (school.error) errors.school = school.error
-  if (Object.keys(errors).length > 0 || school.school === undefined) return { ok: false, errors }
-  return { ok: true, title: title.title, school: school.school }
+
+  let board: BoardChoice | undefined
+  if (input.boards.length === 0) errors.board = NO_BOARD
+  else if (input.boards.length === 1 && (input.board === undefined || input.board === '')) {
+    board = input.boards[0]
+  } else {
+    board = input.boards.find((b) => String(b.id) === String(input.board))
+    if (!board) errors.board = 'Choose which board this goes on.'
+  }
+
+  if (Object.keys(errors).length > 0 || !board) return { ok: false, errors }
+  return { ok: true, title: title.title, board: board.id, school: board.tenant }
 }
 
 const TITLE_TAKEN = 'There is already a page with this title. Try a different title.'

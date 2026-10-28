@@ -4,13 +4,13 @@ How the content modules work mechanically, and the audit trail they write to. Ph
 with the audit trail (`05`, scheduled at the Phase 4 close); the modules — posts, events, people
 and the PowerSchool sync, alerts — follow, each writing to it.
 
-| Slice                        | State                                                                                                        |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Audit trail                  | Merged (#42) — §1                                                                                            |
-| News/announcements (`posts`) | §2 collection (#43); **this PR** — §3 approval, school task, emails; feed, template and `posts.routine` next |
-| Calendars and events         | —                                                                                                            |
-| Directories + PowerSchool    | —                                                                                                            |
-| Alerts                       | —                                                                                                            |
+| Slice                        | State                                                                                                  |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Audit trail                  | Merged (#42) — §1                                                                                      |
+| News/announcements (`posts`) | §2 collection (#43); §3 approval (#44); **this PR** — §4 folders, boards, tags; feed and template next |
+| Calendars and events         | —                                                                                                      |
+| Directories + PowerSchool    | —                                                                                                      |
+| Alerts                       | —                                                                                                      |
 
 ---
 
@@ -226,7 +226,7 @@ dropped). A post switched back to `this-tenant` keeps its `syndicatedTo` list in
 - `FeedBlock`, the post template and its route, revalidation with the syndication fan-out
   (`tagsForDocument`'s `syndicatedTo`).
 - `posts.routine` auto-approval.
-- `category` and `heroImage` (see `03` §2).
+- `heroImage` (see `03` §2). (`category` is replaced by boards and tags — §4.)
 - A migration mapper stub.
 
 ---
@@ -310,3 +310,69 @@ Digest lines: `{title} (announcement) — {school} — {wait}` for posts.
 - Editing an announcement after it is published: there is no school task for it; a school
   manager reaches it only from "Your recent submissions" while it is pending.
 - "Published" in recent submissions (reads the audit trail).
+
+---
+
+## 4. Folders, boards and tags (Jason, 2026-10-28)
+
+### Files
+
+| File                             | Holds                                                                                           |
+| -------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `src/collections/PostFolders.ts` | `post-folders` — tenant-scoped; `name`; `retitleBoards` (afterChange)                           |
+| `src/collections/PostBoards.ts`  | `post-boards` — tenant-scoped; `folder`, `name`, hidden `title`; `placeInFolder` (beforeChange) |
+| `src/collections/PostTags.ts`    | `post-tags` — district-wide; `name` (unique)                                                    |
+| `src/access/post-structure.ts`   | `schoolListReadAccess` (folders, boards), `staffReadAccess` (tags)                              |
+
+Changed:
+
+| File                                                | Change                                                                                                                                                 |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/collections/Posts.ts`                          | `board` (relationship, required, `filterOptions` same tenant); `tags` (hasMany, not sortable); `boardIsThisSchools` last in beforeValidate             |
+| `src/collections/hooks/post-hooks.ts`               | `boardIsThisSchools`, `boardTitle`                                                                                                                     |
+| `src/content/syndication.ts`                        | `FeedFilter`, `feedConstraint(tenantId, { boards, tags })`                                                                                             |
+| `src/content/posts.ts`                              | `listPosts(ctx, { limit, boards, tags })` → `feedConstraint`                                                                                           |
+| `src/content/types.ts`, `post-mapper.ts`            | `Post.boardId`, `Post.tagIds`                                                                                                                          |
+| `src/admin/Approvals/page-diff.ts`, `queue-data.ts` | Board and Tags rows; names read from `post-boards.title` / `post-tags.name`                                                                            |
+| `src/admin/SchoolPlane/*`                           | `checkNewPost({ title, boards, board })`; `listMyBoards`; the form asks "Which board is this for?" when there are several and sends `tenant` + `board` |
+| `src/admin/A11yPatch/repairs.ts`                    | names Payload's list "someone is editing" lock from its tooltip                                                                                        |
+| `src/payload.config.ts`                             | the three collections; `post-folders` and `post-boards` in the multi-tenant plugin                                                                     |
+| `scripts/seed.ts`                                   | per site, when it has no boards: a folder named after it + a "News" board; tags Elementary, Middle, High when absent                                   |
+| `tests/helpers/payload.ts`                          | `Fixtures.boardDistrict/boardA/boardB`; `boardFor(f, tenant)`                                                                                          |
+
+### Access
+
+|                                             | District admin | School manager                      | Sync | Anonymous |
+| ------------------------------------------- | -------------- | ----------------------------------- | ---- | --------- |
+| folders, boards — read                      | all            | `{ tenant: { in: their schools } }` | no   | no        |
+| tags — read                                 | yes            | yes                                 | no   | no        |
+| any of the three — create / update / delete | yes            | no                                  | no   | no        |
+
+### Rules
+
+- A board's folder is of the board's site (`placeInFolder`, `ValidationError` on `folder`).
+  `title` = `boardTitle(folder.name, name)` = "Folder → Board"; renaming a folder rewrites its
+  boards' titles.
+- A post's board is of the post's site: Payload validates `filterOptions` on the server for
+  every writer, and `boardIsThisSchools` refuses it again with "Choose one of this school's boards."
+- `feedConstraint(T, { boards, tags })` = `and: [syndicationConstraint(T), published, public,
+board in boards?, tags in tags?]`. Empty lists are no filter.
+
+### New announcement
+
+| Boards the user may post to | The form                                                                                                                   |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| none                        | "Your school has no boards for announcements yet. Ask the district web team to set one up."                                |
+| one                         | not asked                                                                                                                  |
+| several                     | "Which board is this for?" — radios labelled "Folder → Board" (with "School · " in front for a manager of several schools) |
+
+The school is the chosen board's.
+
+### Tests
+
+`tests/unit/access/post-structure.test.ts`; `post-hooks.test.ts` (`boardIsThisSchools`,
+`boardTitle`); `syndication.test.ts` (`feedConstraint`); `post-mapper.test.ts`;
+`page-diff.test.ts` (Board, Tags); `school-plane.test.ts` (`checkNewPost`); `a11y-patch.test.ts`
+(the lock); `tenant-isolation.test.ts` "announcement folders, boards and tags"; `graphql.test.ts`;
+`announcements.spec.ts` (two boards); `admin-planes-axe.spec.ts` (boards, folders, tags lists; a
+board; the post form with board and tag chips).

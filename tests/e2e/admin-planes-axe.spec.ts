@@ -129,7 +129,7 @@ adminTest.describe('district plane — whole screens', () => {
     })
     expect(published.ok(), 'publish the fixture').toBe(true)
     // Shared with chosen sites, so the form shows that field and its chosen site.
-    post = await makePost(baseURL, { selected: true })
+    post = await makePost(baseURL, { selected: true, tagged: true })
   })
   adminTest.afterAll(async () => {
     await dropPage(fixture)
@@ -175,6 +175,23 @@ adminTest.describe('district plane — whole screens', () => {
         await page.goto(`/admin/collections/pages/${fixture.id}`)
         await auditScreen(page, ...PAGE_FORM_REPAIRED, '#field-parent input[aria-label="Parent"]')
       })
+      adminTest(`@a11y announcement boards list — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/collections/post-boards')
+        await auditScreen(page, ...LIST_REPAIRED)
+      })
+      adminTest(`@a11y a board — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/collections/post-boards')
+        await page.locator('tbody tr a').first().click()
+        await auditScreen(page, '#field-name', '#field-folder input[aria-label="Folder"]')
+      })
+      adminTest(`@a11y announcement folders list — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/collections/post-folders')
+        await auditScreen(page, ...LIST_REPAIRED)
+      })
+      adminTest(`@a11y announcement tags list — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/collections/post-tags')
+        await auditScreen(page, ...LIST_REPAIRED)
+      })
       adminTest(`@a11y posts list — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/collections/posts')
         await auditScreen(page, ...LIST_REPAIRED)
@@ -187,6 +204,8 @@ adminTest.describe('district plane — whole screens', () => {
             page,
             ...POST_FORM_REPAIRED,
             '#field-syndication__syndicatedTo input[aria-label="Sites"]',
+            '#field-board input[aria-label="Board"]',
+            '#field-tags input[aria-label="Tags"]',
           )
         },
       )

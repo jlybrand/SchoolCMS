@@ -3,7 +3,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 
 import { toPost } from './post-mapper'
-import { syndicationConstraint } from './syndication'
+import { feedConstraint, type FeedFilter } from './syndication'
 import type { ContentContext, Post } from './types'
 
 /**
@@ -18,8 +18,11 @@ import type { ContentContext, Post } from './types'
  * syndicated to it, and the query says so in two halves that are both required:
  *
  *   - `syndicationConstraint` — which tenants' posts reach this one (src/content/syndication.ts);
- *   - published AND public — stated here, because access is overridden on this path (the
+ *   - published AND public — stated there too, because access is overridden on this path (the
  *     platform rendering its own site, as in `pages.ts`).
+ *
+ * Both are in `feedConstraint`, which then narrows by the feed's boards and tags — a filter can
+ * only take posts away (Jason, 2026-10-28).
  *
  * Drop the first and every school shows every school's news; drop the second and a syndicated
  * DRAFT is on 28 sites. tests/integration/content-layer.test.ts proves each half.
@@ -32,19 +35,13 @@ const MAX_POSTS = 100
 
 export const listPosts = async (
   ctx: ContentContext,
-  { limit = 10 }: { limit?: number } = {},
+  { limit = 10, ...filter }: { limit?: number } & FeedFilter = {},
 ): Promise<Post[]> => {
   const payload = await getPayload({ config })
 
   const { docs } = await payload.find({
     collection: 'posts',
-    where: {
-      and: [
-        syndicationConstraint(ctx.tenant.id),
-        { _status: { equals: 'published' } },
-        { visibility: { equals: 'public' } },
-      ],
-    },
+    where: feedConstraint(ctx.tenant.id, filter),
     // Newest first; the id breaks ties so two posts dated alike never swap between builds.
     sort: ['-publishedDate', '-id'],
     limit: Math.max(1, Math.min(limit, MAX_POSTS)),

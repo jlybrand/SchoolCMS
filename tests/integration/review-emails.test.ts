@@ -139,6 +139,7 @@ describe('an announcement’s sender is emailed too', () => {
       collection: 'posts',
       data: {
         tenant: f.tenantA,
+        board: f.boardA,
         title: `Book fair ${seq}`,
         slug: `emails-post-${Date.now()}-${seq}`,
         visibility: 'public',

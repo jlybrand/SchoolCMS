@@ -229,12 +229,51 @@ describe('diffPost', () => {
     expect(diff.fields.map((f) => [f.label, f.after])).toEqual([
       ['Headline', 'Picture day'],
       ['Address', 'picture-day'],
+      ['Board', null],
       ['Summary', 'Smile.'],
       ['Who can see it', 'Anyone'],
     ])
     expect(diff.body?.changes).toEqual([
       { change: 'added', kind: 'paragraph', lines: ['Thursday.'] },
     ])
+  })
+
+  it('names the board and the tags, not their ids', () => {
+    const before = {
+      ...post,
+      board: { id: 7, title: 'SHS → News' },
+      tags: [{ id: 1, title: 'High' }],
+    }
+    const after = {
+      ...post,
+      board: { id: 8, title: 'SHS → Athletics' },
+      tags: [
+        { id: 2, title: 'Sports' },
+        { id: 1, title: 'High' },
+      ],
+    }
+    expect(diffPost(before, after).fields).toEqual([
+      { field: 'board', label: 'Board', before: 'SHS → News', after: 'SHS → Athletics' },
+      { field: 'tags', label: 'Tags', before: 'High', after: 'High, Sports' },
+    ])
+  })
+
+  it('the order tags were ticked in is not a change', () => {
+    const one = {
+      ...post,
+      tags: [
+        { id: 1, title: 'High' },
+        { id: 2, title: 'Sports' },
+      ],
+    }
+    const two = {
+      ...post,
+      tags: [
+        { id: 2, title: 'Sports' },
+        { id: 1, title: 'High' },
+      ],
+    }
+    expect(diffPost(one, two).fields).toEqual([])
   })
 
   it('ignores the district-only fields', () => {

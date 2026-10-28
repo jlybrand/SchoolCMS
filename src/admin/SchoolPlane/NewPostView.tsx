@@ -7,11 +7,12 @@ import type { AuthUser } from '@/access/types'
 import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 
 import { NewPostForm } from './NewPostForm'
-import { listMySchools } from './school-data'
+import { listMyBoards } from './school-data'
 import styles from './SchoolPlane.module.css'
 
 /**
- * "Post an announcement" (`04` §2.2) — the headline, then the announcement's own form.
+ * "Post an announcement" (`04` §2.2) — the headline and the board, then the announcement's own
+ * form. The school follows from the board.
  *
  * Creating it from the headline first is what lets autosave cover the words from the first
  * keystroke, as "Add a page" does (`docs/phases/04` §5). The words are required when it is sent
@@ -23,7 +24,7 @@ export const NewPostView = async ({ initPageResult }: AdminViewServerProps) => {
   const { req } = initPageResult
   if (!sendsForApproval(req.user as AuthUser | null)) redirect('/admin')
 
-  const schools = await listMySchools(req)
+  const boards = await listMyBoards(req)
 
   return (
     <Gutter>
@@ -32,7 +33,7 @@ export const NewPostView = async ({ initPageResult }: AdminViewServerProps) => {
           <Link href="/admin">Back to start</Link>
         </p>
         <h1 className={styles.title}>Post an announcement</h1>
-        <NewPostForm schools={schools} />
+        <NewPostForm boards={boards} />
       </div>
     </Gutter>
   )

@@ -265,3 +265,29 @@ describe('posts over GraphQL', () => {
     ).toBe(true)
   })
 })
+
+/** The district organises announcements; the route is open, so the refusals are asserted. */
+describe('folders, boards and tags over GraphQL', () => {
+  it('a school manager cannot make a tag, a folder or a board', async () => {
+    for (const mutation of [
+      `mutation { createPostTag(data: { name: "Mine" }) { id } }`,
+      `mutation { createPostFolder(data: { tenant: ${f.tenantA}, name: "Mine" }) { id } }`,
+      `mutation { updatePostBoard(id: ${f.boardA}, data: { name: "Renamed" }) { id } }`,
+    ]) {
+      const result = await gql(mutation, MANAGER_A)
+      expect(refused(result), JSON.stringify(result.errors)).toBe(true)
+    }
+  })
+
+  it('an anonymous caller reads none of them', async () => {
+    for (const query of [
+      '{ PostTags { docs { id } } }',
+      '{ PostFolders { docs { id } } }',
+      '{ PostBoards { docs { id } } }',
+    ]) {
+      const result = await gql(query)
+      const docs = Object.values(result.data ?? {})[0] as { docs?: unknown[] } | null
+      expect(refused(result) || (docs?.docs ?? []).length === 0).toBe(true)
+    }
+  })
+})

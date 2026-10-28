@@ -3,7 +3,7 @@ import { expect, request as playwrightRequest } from '@playwright/test'
 import { ADMIN_STORAGE_STATE, adminCredentials, adminTest } from './support/admin-session'
 import { expectNoBlockingViolations, schoolRequest, uniqueTitle } from './support/fixture-pages'
 import { dropPost, makePost } from './support/fixture-posts'
-import { schoolTest } from './support/school-session'
+import { SCHOOL_HOSTNAME, schoolTest, tenantIdFor } from './support/school-session'
 
 /**
  * "Post an announcement" (`04` §2.2), end to end: the school's task, the announcement's form,
@@ -30,6 +30,8 @@ const postIdFrom = (url: string) => /\/collections\/posts\/(\d+)/.exec(url)?.[1]
 
 schoolTest.describe('post an announcement — school manager', () => {
   schoolTest.skip(credentials === null, SKIP)
+  // In order: one test gives School A a second board for a while, and the others expect one.
+  schoolTest.describe.configure({ mode: 'serial' })
 
   schoolTest(
     '@smoke from the task to the queue: headline, words, one button',
@@ -103,6 +105,54 @@ schoolTest.describe('post an announcement — school manager', () => {
         )
       } finally {
         if (id) await district.delete(`/api/posts/${id}`)
+        await district.dispose()
+      }
+    },
+  )
+
+  schoolTest(
+    'with two boards it asks which — named by folder — and files the post there',
+    async ({ page, baseURL }) => {
+      const district = await asDistrict(baseURL)
+      const tenant = await tenantIdFor(district, SCHOOL_HOSTNAME)
+      const folder = (
+        await (
+          await district.post('/api/post-folders', { data: { tenant, name: 'Athletics' } })
+        ).json()
+      ).doc as { id: number }
+      const board = (
+        await (
+          await district.post('/api/post-boards', {
+            data: { tenant, folder: folder.id, name: 'Scores' },
+          })
+        ).json()
+      ).doc as { id: number }
+      let postId: string | null = null
+      try {
+        for (const colorScheme of ['light', 'dark'] as const) {
+          await page.emulateMedia({ colorScheme })
+          await page.goto('/admin/new-post')
+          const view = page.locator('#new-post')
+          await expect(async () => {
+            await view.getByLabel('What is the headline?').fill('Final score')
+            await view.getByRole('button', { name: 'Write the announcement' }).click()
+            await expect(view.getByText('Choose which board this goes on.')).toBeVisible({
+              timeout: 1_000,
+            })
+          }).toPass({ timeout: 20_000 })
+          await expectNoBlockingViolations(page, '#new-post')
+        }
+        const view = page.locator('#new-post')
+        await view.getByRole('radio', { name: 'Athletics → Scores' }).check()
+        await view.getByRole('button', { name: 'Write the announcement' }).click()
+        await page.waitForURL(/\/admin\/collections\/posts\/\d+/, { timeout: 20_000 })
+        postId = postIdFrom(page.url())
+        const stored = await district.get(`/api/posts/${postId}?draft=true&depth=0`)
+        expect(((await stored.json()) as { board: number }).board).toBe(board.id)
+      } finally {
+        if (postId) await district.delete(`/api/posts/${postId}`)
+        await district.delete(`/api/post-boards/${board.id}`)
+        await district.delete(`/api/post-folders/${folder.id}`)
         await district.dispose()
       }
     },
