@@ -213,13 +213,19 @@ adminTest.describe('district plane — whole screens', () => {
           '.clipboard-action__popup .popup-button[aria-label="Copy or paste"]',
         )
       })
-      adminTest(`@a11y announcement boards list — ${colorScheme}`, async ({ page }) => {
+      adminTest(`@a11y announcement boards, folders open — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/collections/post-boards')
-        await auditScreen(page, ...LIST_REPAIRED)
+        await expect(page.locator('#boards details').first()).toBeAttached({ timeout: 20_000 })
+        // Every folder open, so every board link is audited.
+        await page
+          .locator('#boards details')
+          .evaluateAll((all) => all.forEach((d) => d.setAttribute('open', '')))
+        await auditScreen(page, '#boards h1', '#boards details[open] li a')
       })
       adminTest(`@a11y a board — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/collections/post-boards')
-        await page.locator('tbody tr a').first().click()
+        await page.locator('#boards summary').first().click()
+        await page.locator('#boards details[open] li a').first().click()
         await auditScreen(
           page,
           '#field-name',
