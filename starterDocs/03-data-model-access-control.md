@@ -81,7 +81,12 @@ Payload auth collection, backed by Entra ID (`02` §7).
 - **Hide from navigation** and **hide from search engines** (Jason, 2026-10-29) — district-only
   checkboxes. The first leaves the page out of tree-built section menus (it is still served and
   in the sitemap); the second sets `noindex, follow` and leaves it out of the sitemap. Hiding from
-  the site's own search arrives with search (Phase 6). Linked pages follow.
+  the site's own search arrives with search (Phase 6).
+- **Linked page** (Jason, 2026-10-29) — district-only. *Internal redirect*: visiting the page sends
+  the visitor (307) to a page on the same site or a district page — never an outside address,
+  never itself, never another linked page; a target that is not live makes the page 404. Marked
+  "Linked" with a chain icon in both planes' page lists. *Reuse content* (shows a district page's
+  title and content at the school's own address) follows.
 
 **`pageType` determines the editing shape:**
 

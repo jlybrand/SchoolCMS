@@ -675,3 +675,37 @@ Two district-only checkboxes in the page sidebar (Finalsite's "hide from navigat
 - `tests/unit/seo.test.ts` (robots), `tests/integration/content-layer.test.ts` (children, build
   list, served, flag), `tests/integration/tenant-isolation.test.ts` (school manager cannot set
   either), `tests/e2e/page-options.spec.ts` (noindex + sitemap on School B)
+
+## 12. Linked pages — internal redirect (Jason, 2026-10-29)
+
+A district-only sidebar setting: visiting the page sends the visitor to a page on the same site
+or a district page. Never an outside address. "Reuse content" is the next PR.
+
+### Files
+
+| File                                                                    | Does                                                                                                                                                                                                  |
+| ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/collections/Pages.ts`                                              | `linkMode` (`none` \| `redirect`), `linkTo` (`site` \| `district`), `linkTarget`, `districtLinkTarget` (`custom.crossTenant`, filter `tenant.type = district`); district-only; `linkMode` list column |
+| `src/lib/linked-page.ts`                                                | `validateLinkTarget`, `redirectHref(target, currentHost, locale, port?)`, `isLocalHost`                                                                                                               |
+| `src/collections/hooks/linked-page.ts`                                  | `validateLinkMode` — looks up the target, reads omitted fields from the stored page                                                                                                                   |
+| `src/content/pages.ts`                                                  | `resolveRedirects` → `Page.redirect` (`{ path, hostname }` \| null); `isLive` drops dead-end linked pages from the resolver, children and `listPagePaths`                                             |
+| `src/app/(frontend)/sites/[hostname]/[locale]/[[...segments]]/page.tsx` | `redirect()` (307); `localPort` reads `host` only between `*.localhost` sites; no metadata                                                                                                            |
+| `src/app/(frontend)/sites/[hostname]/sitemap/route.ts`                  | leaves out linked pages                                                                                                                                                                               |
+| `src/collections/hooks/revalidate-on-publish.ts`                        | `pageRevalidationTargets` — own site + sites of pages linked to it                                                                                                                                    |
+| `src/admin/LinkedPage/`                                                 | `LinkedIcon`, `LinkedPageCell` ("Linked" + chain mark); also on "Update a page"                                                                                                                       |
+
+### Rules
+
+- Target required; not the page itself; "this site" = same tenant; "district" = a district
+  page; not itself a linked page (no chains or loops).
+- Target not live (draft, staff-only, deleted): the linked page 404s and leaves the section menus
+  and the build list.
+- A target's publish revalidates every site with a page linked to it.
+
+### Tests
+
+- `tests/unit/lib/linked-page.test.ts`
+- `tests/integration/content-layer.test.ts` (both targets, build list, dead end, refusals),
+  `tests/integration/linked-page-revalidation.test.ts`, `tests/integration/tenant-isolation.test.ts`
+- `tests/e2e/linked-pages.spec.ts` — 307s, sitemap, rename follows, 404, the "Linked" mark + axe
+  on both planes in both themes

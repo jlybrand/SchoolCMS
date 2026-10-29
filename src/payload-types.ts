@@ -276,6 +276,13 @@ export interface Page {
    */
   visibility: 'public' | 'staff';
   /**
+   * A linked page has no content of its own; visiting it opens the page chosen.
+   */
+  linkMode?: ('none' | 'redirect') | null;
+  linkTo?: ('site' | 'district') | null;
+  linkTarget?: (number | null) | Page;
+  districtLinkTarget?: (number | null) | Page;
+  /**
    * Leaves this page out of section menus. Its address still works.
    */
   hideFromNavigation?: boolean | null;
@@ -1074,6 +1081,10 @@ export interface PagesSelect<T extends boolean = true> {
   pageType?: T;
   parent?: T;
   visibility?: T;
+  linkMode?: T;
+  linkTo?: T;
+  linkTarget?: T;
+  districtLinkTarget?: T;
   hideFromNavigation?: T;
   hideFromSearchEngines?: T;
   publishAt?: T;

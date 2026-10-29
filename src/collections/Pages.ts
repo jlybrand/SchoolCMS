@@ -17,6 +17,7 @@ import {
 } from '@/collections/hooks/page-slug'
 import { blockLibrary } from '@/collections/blocks'
 import { auditChange, auditDelete } from '@/collections/hooks/audit'
+import { validateLinkMode } from '@/collections/hooks/linked-page'
 import { restoreIsDistrictOnly } from '@/collections/hooks/page-history'
 import { composedPagesAreDistrictOnly, publishGate } from '@/collections/hooks/publish-gate'
 import { makeApproveEndpoint } from '@/collections/endpoints/approve'
@@ -28,7 +29,11 @@ import {
   sendWithPayload,
   userEmail,
 } from '@/collections/hooks/notify-review-outcome'
-import { makeRevalidateOnPublish, tenantHostname } from '@/collections/hooks/revalidate-on-publish'
+import {
+  makeRevalidateOnPublish,
+  pageRevalidationTargets,
+  tenantHostname,
+} from '@/collections/hooks/revalidate-on-publish'
 import { PERMALINK_SEGMENT } from '@/lib/permalink'
 import { isReservedSlug, isReservedTopLevelSlug, slugify } from '@/lib/slug'
 
@@ -57,7 +62,7 @@ export const Pages: CollectionConfig = {
   slug: 'pages',
   admin: {
     useAsTitle: 'title',
-    defaultColumns: ['title', 'slug', 'pageType', 'visibility', '_status'],
+    defaultColumns: ['title', 'linkMode', 'slug', 'pageType', 'visibility', '_status'],
     /**
      * `04` §2.1 rules out collection-oriented navigation for school users, and the word
      * "collection" with it. This group label is the district plane's; the school plane gets
@@ -142,6 +147,8 @@ export const Pages: CollectionConfig = {
           revalidatePath(path, type)
         },
         hostnameFor: tenantHostname,
+        // Its own site, and every site with a linked page pointing at it.
+        targetsFor: pageRevalidationTargets,
       }),
       /** The submitter's email on approve or request changes (`04` §4.5). */
       makeNotifyReviewOutcome({
@@ -303,6 +310,82 @@ export const Pages: CollectionConfig = {
      * Hidden from search engines: `noindex` on the page and left out of the sitemap; its links
      * are still followed. Hiding from the site's own search waits for that search (Phase 6).
      */
+    /**
+     * LINKED PAGE (Jason, 2026-10-29) — Finalsite's "Linked" setting. An internal redirect sends
+     * the visitor to another page: one on this site, or a district page. Never an outside
+     * address. Two pickers, not one, because a picker shows only titles and every site has an
+     * "About": the district picker lists district pages only.
+     *
+     * The district's, as the page options below are. The rules are `src/lib/linked-page.ts`,
+     * checked on save by `validateLinkMode`; the redirect itself is the page route's.
+     */
+    {
+      name: 'linkMode',
+      type: 'radio',
+      defaultValue: 'none',
+      label: 'Linked page',
+      options: [
+        { label: 'Not linked', value: 'none' },
+        { label: 'Send visitors to another page', value: 'redirect' },
+      ],
+      access: { create: districtOnlyField, update: districtOnlyField },
+      validate: validateLinkMode,
+      admin: {
+        position: 'sidebar',
+        condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
+        description: 'A linked page has no content of its own; visiting it opens the page chosen.',
+        components: { Cell: '/admin/LinkedPage/LinkedPageCell#LinkedPageCell' },
+      },
+    },
+    {
+      name: 'linkTo',
+      type: 'radio',
+      defaultValue: 'site',
+      label: 'Which page',
+      options: [
+        { label: 'A page on this site', value: 'site' },
+        { label: 'A district page', value: 'district' },
+      ],
+      access: { create: districtOnlyField, update: districtOnlyField },
+      admin: {
+        position: 'sidebar',
+        condition: (data, _siblingData, { user }) =>
+          !sendsForApproval(user as AuthUser | null) && data?.linkMode === 'redirect',
+      },
+    },
+    {
+      name: 'linkTarget',
+      type: 'relationship',
+      relationTo: 'pages',
+      label: 'Page on this site',
+      access: { create: districtOnlyField, update: districtOnlyField },
+      admin: {
+        position: 'sidebar',
+        condition: (data, _siblingData, { user }) =>
+          !sendsForApproval(user as AuthUser | null) &&
+          data?.linkMode === 'redirect' &&
+          data?.linkTo !== 'district',
+      },
+    },
+    {
+      name: 'districtLinkTarget',
+      type: 'relationship',
+      relationTo: 'pages',
+      label: 'District page',
+      access: { create: districtOnlyField, update: districtOnlyField },
+      /**
+       * District pages only — reached across sites, see src/lib/cross-tenant-relationships.ts.
+       * The filter is put back in place of the tenant plugin's "this site only".
+       */
+      custom: { crossTenant: true, filterOptions: { 'tenant.type': { equals: 'district' } } },
+      admin: {
+        position: 'sidebar',
+        condition: (data, _siblingData, { user }) =>
+          !sendsForApproval(user as AuthUser | null) &&
+          data?.linkMode === 'redirect' &&
+          data?.linkTo === 'district',
+      },
+    },
     {
       name: 'hideFromNavigation',
       type: 'checkbox',
