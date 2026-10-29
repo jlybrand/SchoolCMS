@@ -6,6 +6,8 @@ import type { AdminViewServerProps } from 'payload'
 import type { AuthUser } from '@/access/types'
 import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 
+import { LinkedIcon } from '@/admin/LinkedPage/LinkedIcon'
+
 import { listSchoolPages } from './school-data'
 import { submissionStatus } from './school-plane'
 import styles from './SchoolPlane.module.css'
@@ -41,6 +43,13 @@ export const UpdatePageView = async ({ initPageResult }: AdminViewServerProps) =
               return (
                 <li className={styles.row} key={page.id}>
                   <Link href={`/admin/collections/pages/${page.id}`}>{page.title}</Link>
+                  {/* A linked page opens another page; editing its words changes nothing seen. */}
+                  {page.linked ? (
+                    <span className={styles.state}>
+                      <LinkedIcon className={styles.linkedIcon} />
+                      Linked
+                    </span>
+                  ) : null}
                   {status ? <span className={styles.state}>{status}</span> : null}
                 </li>
               )

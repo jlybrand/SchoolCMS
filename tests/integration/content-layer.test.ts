@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { getNavigation } from '@/content/navigation'
 import { getPageByPath, getPagePathById, listPagePaths } from '@/content/pages'
@@ -998,5 +998,184 @@ describe('links to a page in the words and the blocks', () => {
     })
     const post = await getPostBySlug(await ctxFor('a.localhost'), 'links-to-a-page')
     expect(JSON.stringify(post?.body)).toContain('"href":"/published-page-a"')
+  })
+})
+
+/**
+ * Linked pages, internal redirect (Jason, 2026-10-29). The content layer says where a linked
+ * page sends visitors — a page on its own site, or a district page — and treats one whose
+ * target is not live as no page at all, so it 404s and leaves the menus.
+ */
+describe('linked pages — internal redirect', () => {
+  const ctxFor = async (hostname: string): Promise<ContentContext> => ({
+    tenant: (await getTenantByHostname(hostname))!,
+    locale: 'en',
+  })
+  const made: (string | number)[] = []
+  const mk = async (data: Record<string, unknown>) => {
+    const doc = await payload.create({
+      collection: 'pages',
+      data: { pageType: 'standard', visibility: 'public', _status: 'published', ...data } as never,
+      user: fixtures.districtAdmin,
+      overrideAccess: true,
+    })
+    made.push(doc.id)
+    return doc.id
+  }
+  let districtPage: string | number
+  let draftDistrictPage: string | number
+
+  beforeAll(async () => {
+    districtPage = await mk({
+      tenant: fixtures.districtTenant,
+      title: 'Enroll',
+      slug: 'linked-enroll',
+    })
+    draftDistrictPage = await mk({
+      tenant: fixtures.districtTenant,
+      title: 'Not yet',
+      slug: 'linked-not-yet',
+      _status: 'draft',
+    })
+  })
+  afterAll(async () => {
+    for (const id of made.reverse()) {
+      await payload.delete({ collection: 'pages', id, overrideAccess: true }).catch(() => null)
+    }
+  })
+
+  it('sends visitors to a page on its own site', async () => {
+    await mk({
+      tenant: fixtures.tenantA,
+      title: 'Go home',
+      slug: 'linked-go-home',
+      linkMode: 'redirect',
+      linkTo: 'site',
+      linkTarget: fixtures.publishedPageA,
+    })
+    const page = await getPageByPath(await ctxFor('a.localhost'), '/linked-go-home')
+    expect(page?.redirect).toEqual({ path: '/published-page-a', hostname: 'a.localhost' })
+  })
+
+  it('sends visitors to a district page', async () => {
+    await mk({
+      tenant: fixtures.tenantA,
+      title: 'Enrollment',
+      slug: 'linked-enrollment',
+      linkMode: 'redirect',
+      linkTo: 'district',
+      districtLinkTarget: districtPage,
+    })
+    const ctx = await ctxFor('a.localhost')
+    expect((await getPageByPath(ctx, '/linked-enrollment'))?.redirect).toEqual({
+      path: '/linked-enroll',
+      hostname: 'localhost',
+    })
+    // The build list says the same thing.
+    const built = (await listPagePaths(ctx)).find(({ path }) => path === '/linked-enrollment')
+    expect(built?.page.redirect).toEqual({ path: '/linked-enroll', hostname: 'localhost' })
+  })
+
+  it('is not a page at all when its target is not live — and is out of the menus', async () => {
+    const parent = await mk({
+      tenant: fixtures.tenantA,
+      title: 'Linked parent',
+      slug: 'linked-parent',
+    })
+    await mk({
+      tenant: fixtures.tenantA,
+      title: 'Dead end',
+      slug: 'linked-dead-end',
+      parent,
+      linkMode: 'redirect',
+      linkTo: 'district',
+      districtLinkTarget: draftDistrictPage,
+    })
+    const ctx = await ctxFor('a.localhost')
+    expect(await getPageByPath(ctx, '/linked-parent/linked-dead-end')).toBeNull()
+    expect((await getPageByPath(ctx, '/linked-parent'))?.children).toEqual([])
+    const paths = (await listPagePaths(ctx)).map(({ path }) => path)
+    expect(paths).toContain('/linked-parent')
+    expect(paths).not.toContain('/linked-parent/linked-dead-end')
+  })
+
+  it('is null on an ordinary page', async () => {
+    expect(
+      (await getPageByPath(await ctxFor('a.localhost'), '/published-page-a'))?.redirect,
+    ).toBeNull()
+  })
+
+  describe('refused on save', () => {
+    const attempt = async (data: Record<string, unknown>) => {
+      const result = await payload
+        .create({
+          collection: 'pages',
+          data: {
+            tenant: fixtures.tenantA,
+            title: 'Refused',
+            slug: `linked-refused-${Math.floor(Math.random() * 1e9)}`,
+            pageType: 'standard',
+            visibility: 'public',
+            linkMode: 'redirect',
+            _status: 'draft',
+            ...data,
+          } as never,
+          user: fixtures.districtAdmin,
+          overrideAccess: false,
+        })
+        .then(
+          (doc) => {
+            made.push(doc.id)
+            return null
+          },
+          (err: { data?: unknown }) => JSON.stringify(err.data ?? err),
+        )
+      return result
+    }
+
+    it("refuses another school's page", async () => {
+      expect(await attempt({ linkTo: 'site', linkTarget: fixtures.publishedPageB })).toMatch(
+        /this site/,
+      )
+    })
+
+    it('refuses a school page offered as a district page', async () => {
+      expect(
+        await attempt({ linkTo: 'district', districtLinkTarget: fixtures.publishedPageB }),
+      ).toMatch(/district page/)
+    })
+
+    it('refuses no target', async () => {
+      expect(await attempt({ linkTo: 'site' })).toMatch(/Choose the page/)
+    })
+
+    it('refuses the page itself', async () => {
+      const id = await mk({ tenant: fixtures.tenantA, title: 'Self', slug: 'linked-self' })
+      const refusal = await payload
+        .update({
+          collection: 'pages',
+          id,
+          data: { linkMode: 'redirect', linkTo: 'site', linkTarget: id },
+          user: fixtures.districtAdmin,
+          overrideAccess: false,
+        })
+        .then(
+          () => null,
+          (err: { data?: unknown }) => JSON.stringify(err.data ?? err),
+        )
+      expect(refusal).toMatch(/itself/)
+    })
+
+    it('refuses a page that is itself linked', async () => {
+      const hop = await mk({
+        tenant: fixtures.tenantA,
+        title: 'Hop',
+        slug: 'linked-hop',
+        linkMode: 'redirect',
+        linkTo: 'site',
+        linkTarget: fixtures.publishedPageA,
+      })
+      expect(await attempt({ linkTo: 'site', linkTarget: hop })).toMatch(/already/)
+    })
   })
 })

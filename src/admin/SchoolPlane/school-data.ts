@@ -21,6 +21,8 @@ export type SchoolPageRow = {
   title: string
   reviewState: string | null
   updatedAt: string
+  /** A linked page (Jason, 2026-10-29) — "Update a page" marks it. */
+  linked: boolean
 }
 
 const toRow = (
@@ -37,6 +39,7 @@ const toRow = (
         : 'Untitled page',
   reviewState: typeof doc.reviewState === 'string' ? doc.reviewState : null,
   updatedAt: typeof doc.updatedAt === 'string' ? doc.updatedAt : '',
+  linked: doc.linkMode === 'redirect',
 })
 
 /** Every page the user may edit, by title. */
@@ -50,7 +53,7 @@ export const listSchoolPages = async (req: PayloadRequest): Promise<SchoolPageRo
     depth: 0,
     limit: 200,
     sort: 'title',
-    select: { title: true, reviewState: true, updatedAt: true },
+    select: { title: true, reviewState: true, updatedAt: true, linkMode: true },
   })
   return result.docs.map((doc) => toRow(doc as unknown as Record<string, unknown>))
 }

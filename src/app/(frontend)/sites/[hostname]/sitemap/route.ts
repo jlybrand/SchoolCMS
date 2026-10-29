@@ -49,7 +49,10 @@ export async function GET(
       origin: siteOrigin(tenant.hostname),
       // A page hidden from search engines (Jason, 2026-10-29) is served but not listed.
       paths: [
-        ...pages.filter(({ page }) => !page.hideFromSearchEngines).map(({ path }) => path),
+        // A linked page is a redirect, which a sitemap must not list (Jason, 2026-10-29).
+        ...pages
+          .filter(({ page }) => !page.hideFromSearchEngines && page.redirect === null)
+          .map(({ path }) => path),
         NEWS_PATH,
         ...posts,
       ],

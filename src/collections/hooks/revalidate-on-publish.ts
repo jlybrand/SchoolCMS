@@ -148,3 +148,31 @@ export const tenantHostname: RevalidateDeps['hostnameFor'] = async (tenantId, re
   const hostname = (tenant as { hostname?: unknown } | null)?.hostname
   return typeof hostname === 'string' && hostname !== '' ? hostname : null
 }
+
+/**
+ * The sites a PAGE's publish revalidates: its own, and every site with a linked page pointing
+ * at it (Jason, 2026-10-29) — their cached redirect names this page's path, which this publish
+ * may just have changed. Read as the platform; one query.
+ */
+export const pageRevalidationTargets: NonNullable<RevalidateDeps['targetsFor']> = async (
+  doc,
+  _previousDoc,
+  req,
+) => {
+  const own = relationshipIdOf((doc as { tenant?: unknown }).tenant as never)
+  const { docs } = await req.payload.find({
+    collection: 'pages',
+    where: {
+      or: [{ linkTarget: { equals: doc.id } }, { districtLinkTarget: { equals: doc.id } }],
+    },
+    pagination: false,
+    depth: 0,
+    overrideAccess: true,
+    req,
+    select: { tenant: true },
+  })
+  const linking = docs
+    .map((d) => relationshipIdOf((d as { tenant?: unknown }).tenant as never))
+    .filter((t): t is string => t !== null)
+  return [...new Set([...(own === null ? [] : [own]), ...linking])]
+}

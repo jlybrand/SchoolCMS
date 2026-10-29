@@ -1,0 +1,16 @@
+/**
+ * Payload's theme variables, not DD2 tokens — see
+ * `src/admin/SendForApproval/ReviewStatusField.module.css`. Logical properties only (rule 5).
+ */
+
+.linked {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--theme-elevation-800);
+  white-space: nowrap;
+}
+
+.icon {
+  flex-shrink: 0;
+}

@@ -6,7 +6,8 @@ import { ROOT_SLUG, buildPagePath, splitPagePath } from '@/lib/slug'
 import { toPageBlocks } from './blocks'
 import { pathIndex, segmentsFor, type PagePaths, type TreeRow } from './page-tree'
 import { toRichText } from './rich-text'
-import type { ContentContext, Page, PageLink, PageType, Visibility } from './types'
+import { listActiveTenants } from './tenants'
+import type { ContentContext, Page, PageLink, PageRedirect, PageType, Visibility } from './types'
 
 /**
  * Page lookups (`02` §11, ADR-5).
@@ -39,6 +40,10 @@ type PayloadPage = {
   requiresTranslationReview?: boolean | null
   hideFromNavigation?: boolean | null
   hideFromSearchEngines?: boolean | null
+  linkMode?: 'none' | 'redirect' | null
+  linkTo?: 'site' | 'district' | null
+  linkTarget?: string | number | { id: string | number } | null
+  districtLinkTarget?: string | number | { id: string | number } | null
   /** Lexical editor state. Deliberately `unknown` — see `toRichText`. */
   body?: unknown
   /** Block rows. Deliberately `unknown` — see `toPageBlocks`. */
@@ -88,6 +93,7 @@ const toDomain = (
   path: string,
   children: PageLink[],
   paths: PagePaths,
+  redirect: PageRedirect | null,
 ): Page => ({
   id: String(doc.id),
   tenantId: String(idOf(doc.tenant as PayloadPage['parent'])),
@@ -102,6 +108,7 @@ const toDomain = (
   body: toRichText(doc.body, paths),
   seo: { title: textOrNull(doc.meta?.title), description: textOrNull(doc.meta?.description) },
   hideFromSearchEngines: doc.hideFromSearchEngines === true,
+  redirect,
   // Likewise for blocks: nothing downstream sees a `blockType` discriminator (`03` §3).
   layout: toPageBlocks(doc.layout, paths),
   /**
@@ -123,6 +130,58 @@ const publishedAndPublic = [
   { _status: { equals: 'published' } },
   { visibility: { equals: 'public' } },
 ]
+
+const isLinked = (doc: PayloadPage): boolean => doc.linkMode === 'redirect'
+
+/**
+ * Where each linked page among `docs` sends visitors (Jason, 2026-10-29): its target's path
+ * today, or null when the target is not live — and a linked page with nowhere to go is not a
+ * page, so callers drop it.
+ *
+ * ISOLATED BY CONSTRUCTION. A "this site" target is looked up in this site's paths and a
+ * "district" target in the district's, so an id from any other site has no path in either and
+ * resolves to null. One extra query pair, and only when a district target is in the set.
+ */
+const resolveRedirects = async (
+  ctx: ContentContext,
+  docs: readonly PayloadPage[],
+  ownPaths: PagePaths,
+): Promise<Map<string, PageRedirect | null>> => {
+  const linked = docs.filter(isLinked)
+  const result = new Map<string, PageRedirect | null>()
+  if (linked.length === 0) return result
+
+  let district: { paths: PagePaths; hostname: string } | null = null
+  if (linked.some((doc) => doc.linkTo === 'district')) {
+    const tenant =
+      ctx.tenant.type === 'district'
+        ? ctx.tenant
+        : ((await listActiveTenants()).find((t) => t.type === 'district') ?? null)
+    if (tenant) {
+      district = {
+        paths:
+          tenant.id === ctx.tenant.id
+            ? ownPaths
+            : await listPagePathIndex({ tenant, locale: ctx.locale }),
+        hostname: tenant.hostname,
+      }
+    }
+  }
+
+  for (const doc of linked) {
+    const toDistrict = doc.linkTo === 'district'
+    const targetId = idOf(toDistrict ? (doc.districtLinkTarget ?? null) : (doc.linkTarget ?? null))
+    const paths = toDistrict ? district?.paths : ownPaths
+    const path = targetId === null ? null : (paths?.get(targetId) ?? null)
+    const hostname = toDistrict ? district?.hostname : ctx.tenant.hostname
+    result.set(String(doc.id), path === null || hostname === undefined ? null : { path, hostname })
+  }
+  return result
+}
+
+/** A linked page with nowhere to go is not a page (see `resolveRedirects`). */
+const isLive = (doc: PayloadPage, redirects: ReadonlyMap<string, PageRedirect | null>): boolean =>
+  !isLinked(doc) || redirects.get(String(doc.id)) != null
 
 /**
  * Resolves a URL path to a page within one tenant.
@@ -205,9 +264,31 @@ export const getPageByPath = async (
    */
   const isFrontPage = lookup.length === 1 && lookup[0] === ROOT_SLUG
 
-  const children = isFrontPage ? [] : await childrenOf(payload, ctx, current, lookup)
+  const childDocs = isFrontPage ? [] : await childrenOf(payload, ctx, current)
+  const paths = await listPagePathIndex(ctx)
+  const redirects = await resolveRedirects(ctx, [current, ...childDocs], paths)
 
-  return toDomain(current, buildPagePath(lookup), children, await listPagePathIndex(ctx))
+  // A linked page whose target is not live 404s, like a missing one.
+  if (!isLive(current, redirects)) return null
+
+  const children = byTitle(
+    childDocs
+      .filter((doc) => inNavigation(doc) && isLive(doc, redirects))
+      .map((doc) => ({
+        id: String(doc.id),
+        title: doc.title,
+        // Assembled from the parent's own segments, so a child's path is the parent's plus one.
+        path: buildPagePath([...lookup, doc.slug]),
+      })),
+  )
+
+  return toDomain(
+    current,
+    buildPagePath(lookup),
+    children,
+    paths,
+    redirects.get(String(current.id)) ?? null,
+  )
 }
 
 /**
@@ -230,8 +311,7 @@ const childrenOf = async (
   payload: Awaited<ReturnType<typeof getPayload>>,
   ctx: ContentContext,
   parent: PayloadPage,
-  parentSegments: string[],
-): Promise<PageLink[]> => {
+): Promise<PayloadPage[]> => {
   const { docs } = await payload.find({
     collection: 'pages',
     where: {
@@ -246,14 +326,8 @@ const childrenOf = async (
     overrideAccess: true,
   })
 
-  return byTitle(
-    (docs as PayloadPage[]).filter(inNavigation).map((doc) => ({
-      id: String(doc.id),
-      title: doc.title,
-      // Assembled from the parent's own segments, so a child's path is the parent's plus one.
-      path: buildPagePath([...parentSegments, doc.slug]),
-    })),
-  )
+  // Filtered by the caller, which also knows which linked children have somewhere to go.
+  return docs as PayloadPage[]
 }
 
 /**
@@ -284,13 +358,26 @@ export const listPagePaths = async (
   const pages = docs as PayloadPage[]
   const byId = new Map<string, TreeRow>(pages.map((doc) => [String(doc.id), doc]))
 
-  const reachable: { doc: PayloadPage; path: string }[] = []
+  const reachableAll: { doc: PayloadPage; path: string }[] = []
   for (const doc of pages) {
     // The shared walk (`page-tree.ts`) — the same answer a permalink and a menu link get.
     const segments = segmentsFor(doc, byId)
     if (!segments) continue
-    reachable.push({ doc, path: buildPagePath(segments) })
+    reachableAll.push({ doc, path: buildPagePath(segments) })
   }
+
+  /**
+   * Linked pages resolved from the same set, and the ones with nowhere to go left out — the
+   * resolver 404s them, and a static param for a 404 is the disagreement this list exists to
+   * avoid. Their own children keep their paths: the parent row is still there to walk.
+   */
+  const allPaths: PagePaths = new Map(reachableAll.map(({ doc, path }) => [String(doc.id), path]))
+  const redirects = await resolveRedirects(
+    ctx,
+    reachableAll.map(({ doc }) => doc),
+    allPaths,
+  )
+  const reachable = reachableAll.filter(({ doc }) => isLive(doc, redirects))
 
   /**
    * Children assembled from the result set already in hand — NO extra query, and none per
@@ -311,11 +398,15 @@ export const listPagePaths = async (
   }
 
   // Every page's links resolved from the same set — no query per page.
-  const paths: PagePaths = new Map(reachable.map(({ doc, path }) => [String(doc.id), path]))
-
   return reachable.map(({ doc, path }) => ({
     path,
-    page: toDomain(doc, path, byTitle(childrenByParent.get(String(doc.id)) ?? []), paths),
+    page: toDomain(
+      doc,
+      path,
+      byTitle(childrenByParent.get(String(doc.id)) ?? []),
+      allPaths,
+      redirects.get(String(doc.id)) ?? null,
+    ),
   }))
 }
 

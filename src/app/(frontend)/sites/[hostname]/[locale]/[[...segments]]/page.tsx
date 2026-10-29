@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { headers } from 'next/headers'
+import { notFound, redirect } from 'next/navigation'
 
 import { BlockList } from '@/blocks'
 import { Container } from '@/components/Container'
@@ -10,6 +11,7 @@ import { getPageByPath } from '@/content/pages'
 import { resolvePageBlocks } from '@/content/resolve-blocks'
 import type { Page } from '@/content/types'
 import { documentTag, tenantTag } from '@/lib/cache-tags'
+import { isLocalHost, redirectHref } from '@/lib/linked-page'
 import { buildPageMetadata, indexingAllowed } from '@/lib/seo'
 
 import { resolveSite, SiteFrame, type Site, type SiteParams } from '../site'
@@ -33,6 +35,17 @@ const pathOf = (segments: string[] | undefined) => `/${(segments ?? []).join('/'
  * without changing the routing or caching shape (`03` §3).
  */
 export const revalidate = 3600
+
+/**
+ * The visitor's port, read ONLY for a redirect between two `*.localhost` sites (development and
+ * e2e, where they share a port). Reading request headers opts a render out of the cache, so it
+ * is never read for a real host — production renders stay cacheable.
+ */
+const localPort = async (target: string, current: string): Promise<string | null> => {
+  if (target === current || !isLocalHost(target) || !isLocalHost(current)) return null
+  const host = (await headers()).get('host') ?? ''
+  return /:(\d+)$/.exec(host)?.[1] ?? null
+}
 
 /**
  * Resolves the tenant and the page for a request, or null if either is missing.
@@ -63,6 +76,9 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 
   const { tenant, page, settings, siteName } = resolved
   const { locale } = await params
+
+  // A linked page is about to send the visitor elsewhere; it has nothing of its own to describe.
+  if (page.redirect) return {}
 
   /**
    * Assembled by a pure function (`src/lib/seo.ts`) — the title rule, the description
@@ -98,6 +114,22 @@ export default async function SitePage({ params }: { params: Promise<Params> }) 
   if (!resolved) notFound()
 
   const { page } = resolved
+
+  /**
+   * A LINKED PAGE (Jason, 2026-10-29) sends the visitor on — to a page on this site, or a
+   * district page — in their language. Next's `redirect` answers 307: temporary, because the
+   * destination is exactly what the district may change, and a browser keeps a permanent one.
+   */
+  if (page.redirect) {
+    redirect(
+      redirectHref(
+        page.redirect,
+        resolved.tenant.hostname,
+        resolved.ctx.locale,
+        await localPort(page.redirect.hostname, resolved.tenant.hostname),
+      ),
+    )
+  }
 
   /**
    * Data blocks get their data here (Jason, 2026-10-28): a feed's announcements are loaded by

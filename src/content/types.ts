@@ -159,6 +159,9 @@ export type SiteSettings = {
   enabledLocales: Locale[]
 }
 
+/** Where a linked page sends visitors: a path on a site, by that site's hostname. */
+export type PageRedirect = { path: string; hostname: string }
+
 export type PageSeo = {
   /** Replaces the page part of the document title. The site name is always appended. */
   title: string | null
@@ -196,6 +199,12 @@ export type Page = {
   seo: PageSeo
   /** `noindex` and out of the sitemap (Jason, 2026-10-29). Its links are still followed. */
   hideFromSearchEngines: boolean
+  /**
+   * A linked page's target (Jason, 2026-10-29): visiting this page sends the visitor there.
+   * Null on an ordinary page. A page on this site or the district site — never anywhere else.
+   * The route turns it into an address in the visitor's language (`redirectHref`).
+   */
+  redirect: PageRedirect | null
   /**
    * The block array, for `composed` pages only (`03` §3). Empty on every fixed type, which
    * is not a special case: a fixed-type page has no layout to render and the template does
