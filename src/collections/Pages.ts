@@ -279,9 +279,9 @@ export const Pages: CollectionConfig = {
     },
     {
       /**
-       * The page's permanent link, `/p/<id>` (Jason, 2026-10-29). Display only — a `ui` field
+       * The page's permanent link, `/dd2/pages/<id>` (Jason, 2026-10-29). Display only — a `ui` field
        * stores nothing; the route that answers it is `src/app/(frontend)/sites/[hostname]/
-       * [locale]/p/[id]/route.ts`.
+       * [locale]/dd2/pages/[id]/route.ts`.
        */
       name: 'permalink',
       type: 'ui',

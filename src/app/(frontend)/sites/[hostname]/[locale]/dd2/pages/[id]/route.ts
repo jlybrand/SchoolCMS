@@ -2,10 +2,10 @@ import { getPagePathById } from '@/content/pages'
 import { localizedPath } from '@/lib/locales'
 import { parsePermalinkId } from '@/lib/permalink'
 
-import { resolveSite, type SiteParams } from '../../site'
+import { resolveSite, type SiteParams } from '../../../site'
 
 /**
- * A page's permalink, `/p/<id>` (Jason, 2026-10-29): redirects to wherever the page is now, so
+ * A page's permalink, `/dd2/pages/<id>` (Jason, 2026-10-29): redirects to wherever the page is now, so
  * a link that uses it survives the page being renamed or moved.
  *
  * Cached like a page (`02` §5) — the lookup runs at build or revalidate time, never per

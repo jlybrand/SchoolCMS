@@ -323,7 +323,7 @@ export const listPagePathIndex = async (ctx: ContentContext): Promise<Map<string
  * Where a permalink goes: the page's path today, or null.
  *
  * Null for a page on ANOTHER site, as well as for a missing, draft or staff-only one — the
- * `tenant` clause in `listPagePathIndex` is the only scoping on this path. `/p/<id>` on one
+ * `tenant` clause in `listPagePathIndex` is the only scoping on this path. `/dd2/pages/<id>` on one
  * school's host must never redirect into another school's page, and must not tell the two
  * cases apart, or it becomes a way to learn which ids exist elsewhere (`03` §6.4).
  */

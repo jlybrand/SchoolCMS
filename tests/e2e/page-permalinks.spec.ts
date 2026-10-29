@@ -1,4 +1,3 @@
-import AxeBuilder from '@axe-core/playwright'
 import {
   expect,
   request as playwrightRequest,
@@ -12,11 +11,15 @@ import { tenantIdFor } from './support/school-session'
 import { siteUrl } from './support/site-url'
 
 /**
- * Permalinks (Jason, 2026-10-29): `/p/<id>` redirects to wherever the page is now, and keeps
+ * Permalinks (Jason, 2026-10-29): `/dd2/pages/<id>` redirects to wherever the page is now, and keeps
  * doing so after the page is renamed and moved. Another site's id, a draft, and junk all 404.
  *
  * The lookup and its isolation are proven in `tests/integration/content-layer.test.ts`; this
  * drives the real route, through the proxy, on real hostnames.
+ *
+ * Fixtures live on School B and the district site, never School A: the sitemap specs count
+ * School A's published pages exactly (`tenant-routing.spec.ts`), and a page published here
+ * mid-run would land in that count.
  */
 
 const credentials = adminCredentials()
@@ -70,15 +73,15 @@ test.describe('page permalinks', () => {
     const admin = await asDistrict(baseURL)
     const made: number[] = []
     try {
-      const page = await mkPage(admin, 'a.localhost')
+      const page = await mkPage(admin, 'b.localhost')
       made.push(page.id)
 
-      expect(await locationOf(baseURL, 'a.localhost', `/p/${page.id}`)).toEqual({
+      expect(await locationOf(baseURL, 'b.localhost', `/dd2/pages/${page.id}`)).toEqual({
         status: 302,
         location: `/${page.slug}`,
       })
 
-      const parent = await mkPage(admin, 'a.localhost')
+      const parent = await mkPage(admin, 'b.localhost')
       made.push(parent.id)
       const moved = await admin.patch(`/api/pages/${page.id}?depth=0`, {
         data: { parent: parent.id, slug: `${page.slug}-renamed`, _status: 'published' },
@@ -86,7 +89,7 @@ test.describe('page permalinks', () => {
       expect(moved.ok(), await moved.text()).toBe(true)
 
       // The publish purged the site, so the permalink answers with the new address at once.
-      expect(await locationOf(baseURL, 'a.localhost', `/p/${page.id}`)).toEqual({
+      expect(await locationOf(baseURL, 'b.localhost', `/dd2/pages/${page.id}`)).toEqual({
         status: 302,
         location: `/${parent.slug}/${page.slug}-renamed`,
       })
@@ -102,12 +105,20 @@ test.describe('page permalinks', () => {
     const admin = await asDistrict(baseURL)
     const made: number[] = []
     try {
-      const onB = await mkPage(admin, 'b.localhost')
-      const draft = await mkPage(admin, 'a.localhost', { _status: 'draft' })
-      made.push(onB.id, draft.id)
+      const elsewhere = await mkPage(admin, 'localhost')
+      const draft = await mkPage(admin, 'b.localhost', { _status: 'draft' })
+      made.push(elsewhere.id, draft.id)
 
-      for (const path of [`/p/${onB.id}`, `/p/${draft.id}`, '/p/abc', '/p/0', '/p/012']) {
-        expect((await locationOf(baseURL, 'a.localhost', path)).status, path).toBe(404)
+      for (const path of [
+        `/dd2/pages/${elsewhere.id}`,
+        `/dd2/pages/${draft.id}`,
+        '/dd2/pages/abc',
+        '/dd2/pages/0',
+        '/dd2/pages/012',
+        '/dd2/pages',
+        '/dd2',
+      ]) {
+        expect((await locationOf(baseURL, 'b.localhost', path)).status, path).toBe(404)
       }
     } finally {
       for (const id of made) await admin.delete(`/api/pages/${id}`)
@@ -115,33 +126,24 @@ test.describe('page permalinks', () => {
     }
   })
 
-  /** Both of Payload's themes — the field takes its colours from Payload's inverting scale. */
-  for (const colorScheme of ['light', 'dark'] as const) {
-    test.describe(`in the ${colorScheme} theme`, () => {
-      test.use({ colorScheme, storageState: ADMIN_STORAGE_STATE })
+  /**
+   * Axe over this field is `admin-planes-axe.spec.ts`, which audits the page form in both themes
+   * AFTER `A11yPatch` has repaired Payload's own markup — an audit run before that repair fails
+   * on Payload's controls, not on this field.
+   */
+  test.describe('in the page form', () => {
+    test.use({ storageState: ADMIN_STORAGE_STATE })
 
-      test('@a11y the page form shows the permanent link, with no blocking axe violations', async ({
-        page,
-        baseURL,
-      }) => {
-        const admin = await asDistrict(baseURL)
-        const made = await mkPage(admin, 'a.localhost')
-        try {
-          await page.goto(`/admin/collections/pages/${made.id}`)
-          await expect(page.getByText(`/p/${made.id}`)).toBeVisible({ timeout: 20_000 })
-
-          const results = await new AxeBuilder({ page })
-            .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-            .analyze()
-          const blocking = results.violations.filter(
-            (v) => v.impact === 'critical' || v.impact === 'serious',
-          )
-          expect(blocking.map((v) => v.id)).toEqual([])
-        } finally {
-          await admin.delete(`/api/pages/${made.id}`)
-          await admin.dispose()
-        }
-      })
+    test('the sidebar shows the permanent link', async ({ page, baseURL }) => {
+      const admin = await asDistrict(baseURL)
+      const made = await mkPage(admin, 'b.localhost')
+      try {
+        await page.goto(`/admin/collections/pages/${made.id}`)
+        await expect(page.getByText(`/dd2/pages/${made.id}`)).toBeVisible({ timeout: 20_000 })
+      } finally {
+        await admin.delete(`/api/pages/${made.id}`)
+        await admin.dispose()
+      }
     })
-  }
+  })
 })

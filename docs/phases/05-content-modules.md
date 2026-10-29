@@ -570,27 +570,27 @@ audit) and "a board" (reached by opening a folder).
 
 ## 9. Page permalinks and menu links to a page (Jason, 2026-10-29)
 
-Every page answers at `/p/<id>`; menu links may store a page instead of an address. Both
+Every page answers at `/dd2/pages/<id>`; menu links may store a page instead of an address. Both
 resolve the page id to its current path, so a rename or a move breaks neither.
 
 ### Files
 
-| File                                                           | Does                                                                                     |
-| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `src/lib/permalink.ts`                                         | `PERMALINK_SEGMENT` (`p`), `permalinkPath(id)`, `parsePermalinkId(raw)`                  |
-| `src/lib/slug.ts`                                              | `p` joins `RESERVED_TOP_LEVEL_SLUGS`                                                     |
-| `src/content/page-tree.ts`                                     | pure `segmentsFor` / `pathIndex(rows)` — id → current path                               |
-| `src/content/pages.ts`                                         | `listPagePathIndex(ctx)`, `getPagePathById(ctx, id)`; `listPagePaths` uses `segmentsFor` |
-| `src/app/(frontend)/sites/[hostname]/[locale]/p/[id]/route.ts` | GET → 302 `Location: localizedPath(path, locale)`, or 404                                |
-| `src/content/menus.ts`                                         | `toNavigation(doc, paths)`; `linksToPages(doc)`                                          |
-| `src/content/navigation.ts`                                    | reads `listPagePathIndex` only when a menu has a page link                               |
-| `src/collections/Navigation.ts`                                | link fields `linkType` (`page` \| `address`), `page`, `href`                             |
-| `src/lib/menu-page-link.ts`                                    | `validateMenuPageLink` — page required on a page link, and on the menu's site            |
-| `src/admin/Permalink/PermalinkField.tsx`                       | `ui` field in the page sidebar showing `/p/<id>`                                         |
+| File                                                                   | Does                                                                                     |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `src/lib/permalink.ts`                                                 | `PERMALINK_SEGMENT` (`dd2`), `permalinkPath(id)`, `parsePermalinkId(raw)`                |
+| `src/lib/slug.ts`                                                      | `dd2` joins `RESERVED_TOP_LEVEL_SLUGS`                                                   |
+| `src/content/page-tree.ts`                                             | pure `segmentsFor` / `pathIndex(rows)` — id → current path                               |
+| `src/content/pages.ts`                                                 | `listPagePathIndex(ctx)`, `getPagePathById(ctx, id)`; `listPagePaths` uses `segmentsFor` |
+| `src/app/(frontend)/sites/[hostname]/[locale]/dd2/pages/[id]/route.ts` | GET → 302 `Location: localizedPath(path, locale)`, or 404                                |
+| `src/content/menus.ts`                                                 | `toNavigation(doc, paths)`; `linksToPages(doc)`                                          |
+| `src/content/navigation.ts`                                            | reads `listPagePathIndex` only when a menu has a page link                               |
+| `src/collections/Navigation.ts`                                        | link fields `linkType` (`page` \| `address`), `page`, `href`                             |
+| `src/lib/menu-page-link.ts`                                            | `validateMenuPageLink` — page required on a page link, and on the menu's site            |
+| `src/admin/Permalink/PermalinkField.tsx`                               | `ui` field in the page sidebar showing `/dd2/pages/<id>`                                 |
 
 ### The flow
 
-1. `/p/12` on `a.localhost` → proxy rewrites to `/sites/a.localhost/en/p/12` → `route.ts`.
+1. `/dd2/pages/12` on `a.localhost` → proxy rewrites to `/sites/a.localhost/en/dd2/pages/12` → `route.ts`.
 2. `parsePermalinkId` refuses anything but a positive integer with no leading zero → 404.
 3. `resolveSite` (unknown host or locale → 404) → `getPagePathById` → `listPagePathIndex`:
    one query for the tenant's published, public pages (`slug`, `parent`), then `pathIndex`.

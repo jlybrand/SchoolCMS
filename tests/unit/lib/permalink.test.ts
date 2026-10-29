@@ -5,13 +5,13 @@ import { isReservedTopLevelSlug } from '@/lib/slug'
 
 /**
  * Permalinks (Jason, 2026-10-29): every page has an address that does not change when the page
- * is renamed or moved — Finalsite's `/fs/pages/<id>`. Ours is `/p/<id>`, and it redirects to
+ * is renamed or moved — Finalsite's `/fs/pages/<id>`. Ours is `/dd2/pages/<id>`, and it redirects to
  * wherever the page is now.
  */
 describe('permalinkPath', () => {
-  it('is /p/ and the page id', () => {
-    expect(permalinkPath('12')).toBe('/p/12')
-    expect(permalinkPath(12)).toBe('/p/12')
+  it('is /dd2/pages/ and the page id', () => {
+    expect(permalinkPath('12')).toBe('/dd2/pages/12')
+    expect(permalinkPath(12)).toBe('/dd2/pages/12')
   })
 })
 
@@ -22,7 +22,7 @@ describe('parsePermalinkId', () => {
   })
 
   /**
-   * Anything else is refused before it reaches a query, so `/p/` is never a way to probe the
+   * Anything else is refused before it reaches a query, so `/dd2/pages/` is never a way to probe the
    * database with arbitrary input.
    */
   it('refuses anything that is not a page id', () => {
@@ -35,13 +35,15 @@ describe('parsePermalinkId', () => {
 })
 
 describe('the permalink segment', () => {
-  it('is reserved, so no top-level page can take /p', () => {
-    expect(PERMALINK_SEGMENT).toBe('p')
-    expect(isReservedTopLevelSlug('p')).toBe(true)
-    expect(isReservedTopLevelSlug('P')).toBe(true)
+  it('is reserved, so no top-level page can take /dd2', () => {
+    expect(PERMALINK_SEGMENT).toBe('dd2')
+    expect(isReservedTopLevelSlug('dd2')).toBe(true)
+    expect(isReservedTopLevelSlug('DD2')).toBe(true)
   })
 
-  it('reserves only the top level — a page called "p" under another page is fine', () => {
-    expect(isReservedTopLevelSlug('pe')).toBe(false)
+  it('reserves only that segment — /pages and /p stay ordinary addresses', () => {
+    expect(isReservedTopLevelSlug('pages')).toBe(false)
+    expect(isReservedTopLevelSlug('p')).toBe(false)
+    expect(isReservedTopLevelSlug('dd2-news')).toBe(false)
   })
 })

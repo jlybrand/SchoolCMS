@@ -71,9 +71,9 @@ Payload auth collection, backed by Entra ID (`02` §7).
   adopted (`02` §2); the group keeps its name and shape.
 - `requiresTranslationReview` (bool) — gates locale publication for high-stakes content
   (`08` §7.1).
-- **Permalink** (Jason, 2026-10-29) — every page answers at `/p/<id>`, which redirects (302)
+- **Permalink** (Jason, 2026-10-29) — every page answers at `/dd2/pages/<id>`, which redirects (302)
   to its current path, so a link survives a rename or a move (cf. Finalsite `/fs/pages/<id>`).
-  `p` is a reserved top-level slug. Menu links (`navigation`) may point at a page rather than
+  `dd2` is a reserved top-level slug — the platform's namespace on every site. Menu links (`navigation`) may point at a page rather than
   an address and resolve to its current path at render; a page that is not published, public
   and on the menu's own site is dropped. Linked pages and hide-from-navigation/search follow.
 

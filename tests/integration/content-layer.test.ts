@@ -768,7 +768,7 @@ describe('getPagePathById', () => {
   it("never resolves another site's page", async () => {
     /**
      * Access is overridden on this path; the tenant clause is the only thing keeping
-     * `/p/<B's id>` on School A's host from redirecting into School B (`02` §4.2).
+     * `/dd2/pages/<B's id>` on School A's host from redirecting into School B (`02` §4.2).
      */
     expect(
       await getPagePathById(await ctxFor('a.localhost'), String(fixtures.publishedPageB)),
