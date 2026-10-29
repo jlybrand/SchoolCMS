@@ -199,6 +199,20 @@ describe('buildPageMetadata', () => {
     expect(build({}, 'en', false).robots).toEqual({ index: false, follow: false })
     expect(build().robots).toEqual({ index: true, follow: true })
   })
+
+  /**
+   * "Hide from search engines" (Jason, 2026-10-29) keeps this page out of results, and only
+   * this page: its links are still followed, so the pages it links to are found as before.
+   */
+  it('is noindex but still followed for a page hidden from search engines', () => {
+    const hidden = { hideFromSearchEngines: true }
+    expect(build(hidden).robots).toEqual({ index: false, follow: true })
+  })
+
+  it('never opens a page to search engines where the site is closed to them', () => {
+    const hidden = { hideFromSearchEngines: true }
+    expect(build(hidden, 'en', false).robots).toEqual({ index: false, follow: false })
+  })
 })
 
 describe('indexingAllowed', () => {

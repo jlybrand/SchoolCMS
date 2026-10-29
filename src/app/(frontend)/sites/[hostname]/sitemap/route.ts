@@ -47,7 +47,12 @@ export async function GET(
   return new Response(
     buildSitemapXml({
       origin: siteOrigin(tenant.hostname),
-      paths: [...pages.map(({ path }) => path), NEWS_PATH, ...posts],
+      // A page hidden from search engines (Jason, 2026-10-29) is served but not listed.
+      paths: [
+        ...pages.filter(({ page }) => !page.hideFromSearchEngines).map(({ path }) => path),
+        NEWS_PATH,
+        ...posts,
+      ],
       locales: enabledLocales,
     }),
     { headers: { 'content-type': 'application/xml; charset=utf-8' } },

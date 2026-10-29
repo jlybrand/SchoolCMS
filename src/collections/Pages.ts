@@ -290,6 +290,44 @@ export const Pages: CollectionConfig = {
         components: { Field: '/admin/Permalink/PermalinkField#PermalinkField' },
       },
     },
+    /**
+     * PAGE OPTIONS (Jason, 2026-10-29) — Finalsite's "hide from navigation elements" and "hide
+     * from external search engines". The district's: field-level access refuses a school
+     * manager's write, and the condition keeps them off the school plane, where the usability
+     * bar has no room for them (`04` §2.1).
+     *
+     * Hidden from navigation: left out of the section menus built from the page tree (its
+     * parent's child list, `ChildPageNav`). Still at its address, still in the sitemap, and a
+     * menu link the district added by hand still shows — that was chosen, not built.
+     *
+     * Hidden from search engines: `noindex` on the page and left out of the sitemap; its links
+     * are still followed. Hiding from the site's own search waits for that search (Phase 6).
+     */
+    {
+      name: 'hideFromNavigation',
+      type: 'checkbox',
+      defaultValue: false,
+      label: 'Hide from navigation',
+      access: { create: districtOnlyField, update: districtOnlyField },
+      admin: {
+        position: 'sidebar',
+        condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
+        description: 'Leaves this page out of section menus. Its address still works.',
+      },
+    },
+    {
+      name: 'hideFromSearchEngines',
+      type: 'checkbox',
+      defaultValue: false,
+      label: 'Hide from search engines',
+      access: { create: districtOnlyField, update: districtOnlyField },
+      admin: {
+        position: 'sidebar',
+        condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
+        description:
+          'Asks Google and others not to list this page. Anyone with the link can still visit it.',
+      },
+    },
     {
       name: 'publishAt',
       type: 'date',

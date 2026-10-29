@@ -646,3 +646,32 @@ of an address, and render with the path the page has today — the same path ind
   list), cross-site button refused, announcement body
 - `tests/e2e/page-permalinks.spec.ts` — button and words follow a renamed page
 - `tests/e2e/admin-planes-axe.spec.ts` — a page with a button and cards linking to pages
+
+## 11. Hide from navigation and from search engines (Jason, 2026-10-29)
+
+Two district-only checkboxes in the page sidebar (Finalsite's "hide from navigation elements" and
+"hide from external search engines").
+
+### Files
+
+| File                                                   | Does                                                                                                                    |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `src/collections/Pages.ts`                             | `hideFromNavigation`, `hideFromSearchEngines` — `districtOnlyField` access; hidden from the school plane by `condition` |
+| `src/content/pages.ts`                                 | `inNavigation(doc)` filters `childrenOf` and `listPagePaths`' child lists; `Page.hideFromSearchEngines`                 |
+| `src/lib/seo.ts`                                       | `robots.index = indexable && !page.hideFromSearchEngines`; `follow = indexable`                                         |
+| `src/app/(frontend)/sites/[hostname]/sitemap/route.ts` | leaves out pages hidden from search engines                                                                             |
+
+### Rules
+
+- Hidden from navigation: out of `Page.children` (so `ChildPageNav` and section menus); still
+  served at its path, still in `listPagePaths`, the sitemap and permalinks; hand-added menu links
+  unaffected. Null (rows before the field) counts as shown.
+- Hidden from search engines: served; `<meta name="robots" content="noindex, follow">`; not in
+  the sitemap. On a closed site both halves stay off.
+- Hide from the site's own search: not built — Phase 6 search.
+
+### Tests
+
+- `tests/unit/seo.test.ts` (robots), `tests/integration/content-layer.test.ts` (children, build
+  list, served, flag), `tests/integration/tenant-isolation.test.ts` (school manager cannot set
+  either), `tests/e2e/page-options.spec.ts` (noindex + sitemap on School B)

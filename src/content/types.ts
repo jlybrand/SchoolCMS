@@ -194,6 +194,8 @@ export type Page = {
    * title changes does not keep describing itself by the old one.
    */
   seo: PageSeo
+  /** `noindex` and out of the sitemap (Jason, 2026-10-29). Its links are still followed. */
+  hideFromSearchEngines: boolean
   /**
    * The block array, for `composed` pages only (`03` §3). Empty on every fixed type, which
    * is not a special case: a fixed-type page has no layout to render and the template does

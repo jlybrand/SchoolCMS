@@ -87,6 +87,8 @@ export type PageMetadataInput = {
     readonly path: string
     readonly body: RichText
     readonly seo: { readonly title: string | null; readonly description: string | null }
+    /** Absent is false — a page is listed unless someone chose otherwise. */
+    readonly hideFromSearchEngines?: boolean
   }
   readonly locale: Locale
   /** Every locale this page is served in (`08` §5). */
@@ -168,8 +170,12 @@ export const buildPageMetadata = (input: PageMetadataInput): PageMetadata => {
       siteName: tenant.name,
       locale,
     },
-    // Both halves, so a non-production site is not crawled THROUGH either (see `indexingAllowed`).
-    robots: { index: indexable, follow: indexable },
+    /**
+     * Both halves off on a closed site, so it is not crawled THROUGH either (see
+     * `indexingAllowed`). A page hidden from search engines (Jason, 2026-10-29) drops only the
+     * first: it is not listed, but the pages it links to are still found through it.
+     */
+    robots: { index: indexable && page.hideFromSearchEngines !== true, follow: indexable },
   }
 }
 
