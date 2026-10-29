@@ -89,6 +89,8 @@ export type PageMetadataInput = {
     readonly seo: { readonly title: string | null; readonly description: string | null }
     /** Absent is false — a page is listed unless someone chose otherwise. */
     readonly hideFromSearchEngines?: boolean
+    /** A reuse page's district original (Jason, 2026-10-29) — the canonical. */
+    readonly reusedFrom?: { readonly path: string; readonly hostname: string } | null
   }
   readonly locale: Locale
   /** Every locale this page is served in (`08` §5). */
@@ -149,17 +151,27 @@ export const buildPageMetadata = (input: PageMetadataInput): PageMetadata => {
   const description =
     clean(page.seo.description) ?? excerptOf(page.body) ?? clean(input.defaultDescription)
   const url = absoluteUrl(origin, page.path, locale)
+  /**
+   * The canonical and the language alternates name the ORIGINAL: for a reuse page that is the
+   * district page it shows, so the two copies do not compete in results. Open Graph keeps `url`,
+   * the address the visitor is actually on.
+   */
+  const original = page.reusedFrom
+    ? { origin: siteOrigin(page.reusedFrom.hostname), path: page.reusedFrom.path }
+    : { origin, path: page.path }
 
   return {
     title,
     // Omitted, never empty: `exactOptionalPropertyTypes`, and an empty tag is noise.
     ...(description === null ? {} : { description }),
     alternates: {
-      canonical: url,
+      canonical: absoluteUrl(original.origin, original.path, locale),
       // `08` §5 — an alternate for every enabled locale, plus x-default on the English URL.
       languages: {
-        ...Object.fromEntries(locales.map((code) => [code, absoluteUrl(origin, page.path, code)])),
-        'x-default': absoluteUrl(origin, page.path, DEFAULT_LOCALE),
+        ...Object.fromEntries(
+          locales.map((code) => [code, absoluteUrl(original.origin, original.path, code)]),
+        ),
+        'x-default': absoluteUrl(original.origin, original.path, DEFAULT_LOCALE),
       },
     },
     openGraph: {

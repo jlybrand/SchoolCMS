@@ -357,6 +357,8 @@ export const Pages: CollectionConfig = {
       options: [
         { label: 'Not linked', value: 'none' },
         { label: 'Send visitors to another page', value: 'redirect' },
+        // Jason, 2026-10-29: the district page's title and content, at this page's address.
+        { label: "Show a district page's content here", value: 'reuse' },
       ],
       access: { create: districtOnlyField, update: districtOnlyField },
       validate: validateLinkMode,
@@ -364,7 +366,8 @@ export const Pages: CollectionConfig = {
         className: SETTING_CLASS,
         position: 'sidebar',
         condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
-        description: 'A linked page has no content of its own; visiting it opens the page chosen.',
+        description:
+          "A linked page has no content of its own. Visitors are sent to the page chosen, or see a district page's title and content here, at this page's address.",
         components: { Cell: '/admin/LinkedPage/LinkedPageCell#LinkedPageCell' },
       },
     },
@@ -416,8 +419,8 @@ export const Pages: CollectionConfig = {
         position: 'sidebar',
         condition: (data, _siblingData, { user }) =>
           !sendsForApproval(user as AuthUser | null) &&
-          data?.linkMode === 'redirect' &&
-          data?.linkTo === 'district',
+          (data?.linkMode === 'reuse' ||
+            (data?.linkMode === 'redirect' && data?.linkTo === 'district')),
       },
     },
     {

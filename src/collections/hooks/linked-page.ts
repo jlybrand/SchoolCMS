@@ -20,7 +20,7 @@ type PageFields = {
 }
 
 export const validateLinkMode: RadioFieldValidation = async (value, { data, id, req }) => {
-  if (value !== 'redirect') return true
+  if (value !== 'redirect' && value !== 'reuse') return true
 
   const sent = (data ?? {}) as PageFields
   const stored =
@@ -32,7 +32,8 @@ export const validateLinkMode: RadioFieldValidation = async (value, { data, id, 
   const pick = <K extends keyof PageFields>(key: K): unknown =>
     key in sent ? sent[key] : stored[key]
 
-  const linkTo = pick('linkTo') === 'district' ? 'district' : 'site'
+  // Reused content is always a district page's, from the district picker.
+  const linkTo = value === 'reuse' || pick('linkTo') === 'district' ? 'district' : 'site'
   const targetId = relationshipIdOf(
     (linkTo === 'district' ? pick('districtLinkTarget') : pick('linkTarget')) as never,
   )
@@ -53,7 +54,7 @@ export const validateLinkMode: RadioFieldValidation = async (value, { data, id, 
           (tenant.type === 'district' || tenant.type === 'school')
             ? tenant.type
             : null,
-        linkMode: doc.linkMode === 'redirect' ? 'redirect' : 'none',
+        linkMode: doc.linkMode === 'redirect' || doc.linkMode === 'reuse' ? doc.linkMode : 'none',
       }
     }
   }

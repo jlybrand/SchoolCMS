@@ -206,6 +206,11 @@ export type Page = {
    */
   redirect: PageRedirect | null
   /**
+   * A reuse page's source (Jason, 2026-10-29): the district page whose title and content this
+   * page shows at its own address. Null otherwise. The page's canonical address is the source's.
+   */
+  reusedFrom: PageRedirect | null
+  /**
    * The block array, for `composed` pages only (`03` §3). Empty on every fixed type, which
    * is not a special case: a fixed-type page has no layout to render and the template does
    * not ask for one.

@@ -276,9 +276,9 @@ export interface Page {
    */
   visibility: 'public' | 'staff';
   /**
-   * A linked page has no content of its own; visiting it opens the page chosen.
+   * A linked page has no content of its own. Visitors are sent to the page chosen, or see a district page's title and content here, at this page's address.
    */
-  linkMode?: ('none' | 'redirect') | null;
+  linkMode?: ('none' | 'redirect' | 'reuse') | null;
   linkTo?: ('site' | 'district') | null;
   linkTarget?: (number | null) | Page;
   districtLinkTarget?: (number | null) | Page;

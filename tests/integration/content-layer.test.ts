@@ -1179,3 +1179,160 @@ describe('linked pages — internal redirect', () => {
     })
   })
 })
+
+/**
+ * Linked pages, reuse content (Jason, 2026-10-29): a school page shows a DISTRICT page's title
+ * and content at the school's own address. Links in that content were written for the district
+ * site, so they lead there; the school's menus show the district title; and a source that is
+ * not live leaves nothing to show.
+ */
+describe('linked pages — reuse content', () => {
+  const ctxFor = async (hostname: string): Promise<ContentContext> => ({
+    tenant: (await getTenantByHostname(hostname))!,
+    locale: 'en',
+  })
+  const made: (string | number)[] = []
+  const mk = async (data: Record<string, unknown>) => {
+    const doc = await payload.create({
+      collection: 'pages',
+      data: { pageType: 'standard', visibility: 'public', _status: 'published', ...data } as never,
+      user: fixtures.districtAdmin,
+      overrideAccess: true,
+    })
+    made.push(doc.id)
+    return doc.id
+  }
+  const wordsLinking = (link: Record<string, unknown>) => ({
+    root: {
+      type: 'root',
+      children: [
+        {
+          type: 'paragraph',
+          children: [
+            {
+              type: 'link',
+              version: 3,
+              fields: link,
+              children: [{ type: 'text', text: 'Go', format: 0 }],
+            },
+          ],
+        },
+      ],
+    },
+  })
+  let enroll: string | number
+  let source: string | number
+  let draftSource: string | number
+
+  beforeAll(async () => {
+    enroll = await mk({
+      tenant: fixtures.districtTenant,
+      title: 'Enroll now',
+      slug: 'reuse-enroll',
+    })
+    source = await mk({
+      tenant: fixtures.districtTenant,
+      title: 'District supply list',
+      slug: 'reuse-supplies',
+      body: wordsLinking({ linkType: 'internal', doc: { relationTo: 'pages', value: enroll } }),
+      meta: { title: 'Supplies for every school', description: null },
+    })
+    draftSource = await mk({
+      tenant: fixtures.districtTenant,
+      title: 'Not ready',
+      slug: 'reuse-not-ready',
+      _status: 'draft',
+    })
+  })
+  afterAll(async () => {
+    for (const id of made.reverse()) {
+      await payload.delete({ collection: 'pages', id, overrideAccess: true }).catch(() => null)
+    }
+  })
+
+  it("shows the district page's title and content at the school's address", async () => {
+    await mk({
+      tenant: fixtures.tenantA,
+      title: 'Our supplies',
+      slug: 'reuse-our-supplies',
+      linkMode: 'reuse',
+      districtLinkTarget: source,
+    })
+    const ctx = await ctxFor('a.localhost')
+    const page = await getPageByPath(ctx, '/reuse-our-supplies')
+    expect(page?.title).toBe('District supply list')
+    expect(page?.path).toBe('/reuse-our-supplies')
+    expect(page?.redirect).toBeNull()
+    expect(page?.reusedFrom).toEqual({ path: '/reuse-supplies', hostname: 'localhost' })
+    expect(page?.seo.title).toBe('Supplies for every school')
+    // The district page's link leads to the district site, not to the school's /reuse-enroll.
+    expect(JSON.stringify(page?.body)).toContain('"href":"http://localhost/reuse-enroll"')
+
+    // The build list says the same.
+    const built = (await listPagePaths(ctx)).find(({ path }) => path === '/reuse-our-supplies')
+    expect(built?.page.title).toBe('District supply list')
+    expect(JSON.stringify(built?.page.body)).toContain('"href":"http://localhost/reuse-enroll"')
+  })
+
+  it("names it by the district page's title in the school's menus", async () => {
+    const parent = await mk({
+      tenant: fixtures.tenantA,
+      title: 'Reuse parent',
+      slug: 'reuse-parent',
+    })
+    await mk({
+      tenant: fixtures.tenantA,
+      title: 'School label',
+      slug: 'reuse-child',
+      parent,
+      linkMode: 'reuse',
+      districtLinkTarget: source,
+    })
+    const ctx = await ctxFor('a.localhost')
+    expect((await getPageByPath(ctx, '/reuse-parent'))?.children.map((c) => c.title)).toEqual([
+      'District supply list',
+    ])
+    const built = (await listPagePaths(ctx)).find(({ path }) => path === '/reuse-parent')
+    expect(built?.page.children.map((c) => c.title)).toEqual(['District supply list'])
+  })
+
+  it('is not a page at all when the district page is not live', async () => {
+    await mk({
+      tenant: fixtures.tenantA,
+      title: 'Waiting',
+      slug: 'reuse-waiting',
+      linkMode: 'reuse',
+      districtLinkTarget: draftSource,
+    })
+    const ctx = await ctxFor('a.localhost')
+    expect(await getPageByPath(ctx, '/reuse-waiting')).toBeNull()
+    expect((await listPagePaths(ctx)).map(({ path }) => path)).not.toContain('/reuse-waiting')
+  })
+
+  it("refuses a school's page as the source", async () => {
+    const refusal = await payload
+      .create({
+        collection: 'pages',
+        data: {
+          tenant: fixtures.tenantA,
+          title: 'Refused reuse',
+          slug: 'reuse-refused',
+          pageType: 'standard',
+          visibility: 'public',
+          linkMode: 'reuse',
+          districtLinkTarget: fixtures.publishedPageA,
+          _status: 'draft',
+        } as never,
+        user: fixtures.districtAdmin,
+        overrideAccess: false,
+      })
+      .then(
+        (doc) => {
+          made.push(doc.id)
+          return null
+        },
+        (err: { data?: unknown }) => JSON.stringify(err.data ?? err),
+      )
+    expect(refusal).toMatch(/district page/)
+  })
+})

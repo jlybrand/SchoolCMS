@@ -51,7 +51,11 @@ export async function GET(
       paths: [
         // A linked page is a redirect, which a sitemap must not list (Jason, 2026-10-29).
         ...pages
-          .filter(({ page }) => !page.hideFromSearchEngines && page.redirect === null)
+          // A reuse page's canonical is the district's, which lists it (Jason, 2026-10-29).
+          .filter(
+            ({ page }) =>
+              !page.hideFromSearchEngines && page.redirect === null && page.reusedFrom === null,
+          )
           .map(({ path }) => path),
         NEWS_PATH,
         ...posts,

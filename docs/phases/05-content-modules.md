@@ -745,3 +745,40 @@ forms are unchanged. Save and Publish stay in Payload's header.
 - `tests/e2e/page-toolbar.spec.ts` — closed/open + axe in both themes, Escape and focus, the
   address change, the required-title guard, History, Clone, Delete, Unpublish (404 at once), the
   school form unchanged; `tests/e2e/support/page-settings.ts` (`openPageSettings`)
+
+## 14. Linked pages — reuse content (Jason, 2026-10-29)
+
+`linkMode: 'reuse'`: the page shows a DISTRICT page's title and content at its own address.
+District picker only (`districtLinkTarget`); district-only, in Page settings (§13).
+
+### Files
+
+| File                                                                    | Does                                                                                                                                                                                      |
+| ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/linked-page.ts`                                                | `validateLinkTarget` for `reuse` (district page, not itself, not linked); `withLocalPort`                                                                                                 |
+| `src/content/pages.ts`                                                  | `resolveLinks` (was `resolveRedirects`) → `{ redirect }` or `{ reuse: from, source, paths }`; `toDomain` takes the source's title, body, layout, SEO text; `menuTitle`; `Page.reusedFrom` |
+| `src/content/rehome-links.ts`                                           | `mapRichTextLinks`, `mapBlockLinks`; `rehomeRichText`/`rehomeBlocks` give paths the district origin                                                                                       |
+| `src/lib/seo.ts`                                                        | canonical + language alternates → the district original when `reusedFrom`; OG `url` stays the school's                                                                                    |
+| `src/app/(frontend)/sites/[hostname]/[locale]/[[...segments]]/page.tsx` | renders the reused page; between `*.localhost` sites adds the visitor's port to its district links                                                                                        |
+| `src/app/(frontend)/sites/[hostname]/sitemap/route.ts`                  | leaves out reuse pages                                                                                                                                                                    |
+
+### Rules
+
+- Source: a published, public district page that is not itself linked; else the reuse page 404s
+  and leaves menus and the build list.
+- The school page keeps its address, place in the tree, children, visibility and hide options;
+  title, words, sections and search text are the district page's. Menus name it by the district
+  title.
+- Links in the reused content that are paths become district addresses; full addresses,
+  `mailto:` and `tel:` are unchanged. Data blocks (feeds) resolve for the school's site.
+- A source's publish revalidates every site reusing it (`pageRevalidationTargets`, §12).
+
+### Tests
+
+- `tests/unit/lib/linked-page.test.ts` (reuse, `withLocalPort`), `tests/unit/rehome-links.test.ts`,
+  `tests/unit/seo.test.ts` (canonical)
+- `tests/integration/content-layer.test.ts` — reuse by path and build list, menu title, dead
+  source, school-page source refused
+- `tests/e2e/linked-pages.spec.ts` — the school page shows the district's heading and words,
+  links to the district site, canonical, not in the sitemap, follows an edit; Page settings with
+  reuse chosen + axe in both themes

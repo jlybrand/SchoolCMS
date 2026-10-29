@@ -2,9 +2,11 @@ import { getPayload } from 'payload'
 
 import config from '@payload-config'
 
+import { siteOrigin } from '@/lib/seo'
 import { ROOT_SLUG, buildPagePath, splitPagePath } from '@/lib/slug'
 import { toPageBlocks } from './blocks'
 import { pathIndex, segmentsFor, type PagePaths, type TreeRow } from './page-tree'
+import { rehomeBlocks, rehomeRichText } from './rehome-links'
 import { toRichText } from './rich-text'
 import { listActiveTenants } from './tenants'
 import type { ContentContext, Page, PageLink, PageRedirect, PageType, Visibility } from './types'
@@ -40,7 +42,7 @@ type PayloadPage = {
   requiresTranslationReview?: boolean | null
   hideFromNavigation?: boolean | null
   hideFromSearchEngines?: boolean | null
-  linkMode?: 'none' | 'redirect' | null
+  linkMode?: 'none' | 'redirect' | 'reuse' | null
   linkTo?: 'site' | 'district' | null
   linkTarget?: string | number | { id: string | number } | null
   districtLinkTarget?: string | number | { id: string | number } | null
@@ -93,30 +95,49 @@ const toDomain = (
   path: string,
   children: PageLink[],
   paths: PagePaths,
-  redirect: PageRedirect | null,
-): Page => ({
-  id: String(doc.id),
-  tenantId: String(idOf(doc.tenant as PayloadPage['parent'])),
-  title: doc.title,
-  slug: doc.slug,
-  path,
-  pageType: doc.pageType,
-  visibility: doc.visibility,
-  parentId: idOf(doc.parent ?? null),
-  requiresTranslationReview: doc.requiresTranslationReview === true,
-  // The single point where Lexical becomes DD2 nodes. Nothing downstream sees editor state.
-  body: toRichText(doc.body, paths),
-  seo: { title: textOrNull(doc.meta?.title), description: textOrNull(doc.meta?.description) },
-  hideFromSearchEngines: doc.hideFromSearchEngines === true,
-  redirect,
-  // Likewise for blocks: nothing downstream sees a `blockType` discriminator (`03` §3).
-  layout: toPageBlocks(doc.layout, paths),
+  link: PageLinkResolution | null,
+): Page => {
   /**
-   * The page's own position in the tree, resolved HERE rather than by the block that renders
-   * it — `src/blocks/` may not import the SDK (`03` §3.3, decided 2026-08-28).
+   * REUSE CONTENT (Jason, 2026-10-29): the district page's title, words, sections and search
+   * text, at THIS page's address and in this page's place in the tree. Its links are resolved
+   * against the district's paths and then given the district origin, because on the school's
+   * host a path would lead to the school's page of that name (`rehome-links.ts`).
    */
-  children,
-})
+  const reuse = link?.kind === 'reuse' ? link : null
+  const content = reuse ? reuse.source : doc
+  const contentPaths = reuse ? reuse.paths : paths
+  const origin = reuse ? siteOrigin(reuse.from.hostname) : null
+  const body = toRichText(content.body, contentPaths)
+  const layout = toPageBlocks(content.layout, contentPaths)
+
+  return {
+    id: String(doc.id),
+    tenantId: String(idOf(doc.tenant as PayloadPage['parent'])),
+    title: content.title,
+    slug: doc.slug,
+    path,
+    pageType: content.pageType,
+    visibility: doc.visibility,
+    parentId: idOf(doc.parent ?? null),
+    requiresTranslationReview: doc.requiresTranslationReview === true,
+    // The single point where Lexical becomes DD2 nodes. Nothing downstream sees editor state.
+    body: origin ? rehomeRichText(body, origin) : body,
+    seo: {
+      title: textOrNull(content.meta?.title),
+      description: textOrNull(content.meta?.description),
+    },
+    hideFromSearchEngines: doc.hideFromSearchEngines === true,
+    redirect: link?.kind === 'redirect' ? link.target : null,
+    reusedFrom: reuse ? reuse.from : null,
+    // Likewise for blocks: nothing downstream sees a `blockType` discriminator (`03` §3).
+    layout: origin ? rehomeBlocks(layout, origin) : layout,
+    /**
+     * The page's own position in the tree, resolved HERE rather than by the block that renders
+     * it — `src/blocks/` may not import the SDK (`03` §3.3, decided 2026-08-28).
+     */
+    children,
+  }
+}
 
 /**
  * The published, publicly-visible constraint.
@@ -131,57 +152,118 @@ const publishedAndPublic = [
   { visibility: { equals: 'public' } },
 ]
 
-const isLinked = (doc: PayloadPage): boolean => doc.linkMode === 'redirect'
+const isLinked = (doc: PayloadPage): boolean =>
+  doc.linkMode === 'redirect' || doc.linkMode === 'reuse'
 
 /**
- * Where each linked page among `docs` sends visitors (Jason, 2026-10-29): its target's path
- * today, or null when the target is not live — and a linked page with nowhere to go is not a
- * page, so callers drop it.
+ * What a linked page resolves to (Jason, 2026-10-29): where a REDIRECT sends visitors, or the
+ * district page whose title and content a REUSE page shows — with that district's paths, so the
+ * content's own links can be resolved and then rehomed (`rehome-links.ts`).
+ */
+type PageLinkResolution =
+  | { kind: 'redirect'; target: PageRedirect }
+  | { kind: 'reuse'; from: PageRedirect; source: PayloadPage; paths: PagePaths }
+
+/**
+ * Each linked page among `docs`, resolved — or null when its target is not live. A linked page
+ * with nowhere to go and nothing to show is not a page, so callers drop it.
  *
  * ISOLATED BY CONSTRUCTION. A "this site" target is looked up in this site's paths and a
- * "district" target in the district's, so an id from any other site has no path in either and
- * resolves to null. One extra query pair, and only when a district target is in the set.
+ * "district" target, and every reuse source, in the district's — so an id from any other site
+ * has no path in either and resolves to null. A reuse source is read from the district's
+ * published, public pages, and one that is itself linked shows nothing (no chains). At most one
+ * extra query pair for the district's paths, and one for the reuse sources.
  */
-const resolveRedirects = async (
+const resolveLinks = async (
   ctx: ContentContext,
   docs: readonly PayloadPage[],
   ownPaths: PagePaths,
-): Promise<Map<string, PageRedirect | null>> => {
+): Promise<Map<string, PageLinkResolution | null>> => {
   const linked = docs.filter(isLinked)
-  const result = new Map<string, PageRedirect | null>()
+  const result = new Map<string, PageLinkResolution | null>()
   if (linked.length === 0) return result
 
-  let district: { paths: PagePaths; hostname: string } | null = null
-  if (linked.some((doc) => doc.linkTo === 'district')) {
+  const toDistrict = (doc: PayloadPage) => doc.linkMode === 'reuse' || doc.linkTo === 'district'
+  const targetOf = (doc: PayloadPage) =>
+    idOf(toDistrict(doc) ? (doc.districtLinkTarget ?? null) : (doc.linkTarget ?? null))
+
+  let district: { tenant: ContentContext['tenant']; paths: PagePaths } | null = null
+  if (linked.some(toDistrict)) {
     const tenant =
       ctx.tenant.type === 'district'
         ? ctx.tenant
         : ((await listActiveTenants()).find((t) => t.type === 'district') ?? null)
     if (tenant) {
       district = {
+        tenant,
         paths:
           tenant.id === ctx.tenant.id
             ? ownPaths
             : await listPagePathIndex({ tenant, locale: ctx.locale }),
-        hostname: tenant.hostname,
       }
     }
   }
 
+  // The reuse sources, in one query: the district's own published, public pages only.
+  const sourceIds = linked
+    .filter((doc) => doc.linkMode === 'reuse')
+    .map(targetOf)
+    .filter((id): id is string => id !== null)
+  const sources = new Map<string, PayloadPage>()
+  if (district && sourceIds.length > 0) {
+    const payload = await getPayload({ config })
+    const { docs: rows } = await payload.find({
+      collection: 'pages',
+      where: {
+        and: [
+          { id: { in: [...new Set(sourceIds)] } },
+          { tenant: { equals: district.tenant.id } },
+          ...publishedAndPublic,
+        ],
+      },
+      pagination: false,
+      depth: 0,
+      overrideAccess: true,
+    })
+    for (const row of rows as PayloadPage[]) sources.set(String(row.id), row)
+  }
+
   for (const doc of linked) {
-    const toDistrict = doc.linkTo === 'district'
-    const targetId = idOf(toDistrict ? (doc.districtLinkTarget ?? null) : (doc.linkTarget ?? null))
-    const paths = toDistrict ? district?.paths : ownPaths
+    const targetId = targetOf(doc)
+    const paths = toDistrict(doc) ? district?.paths : ownPaths
     const path = targetId === null ? null : (paths?.get(targetId) ?? null)
-    const hostname = toDistrict ? district?.hostname : ctx.tenant.hostname
-    result.set(String(doc.id), path === null || hostname === undefined ? null : { path, hostname })
+    const hostname = toDistrict(doc) ? district?.tenant.hostname : ctx.tenant.hostname
+    if (path === null || hostname === undefined) {
+      result.set(String(doc.id), null)
+      continue
+    }
+    if (doc.linkMode === 'redirect') {
+      result.set(String(doc.id), { kind: 'redirect', target: { path, hostname } })
+      continue
+    }
+    const source = targetId === null ? undefined : sources.get(targetId)
+    result.set(
+      String(doc.id),
+      source && !isLinked(source) && district
+        ? { kind: 'reuse', from: { path, hostname }, source, paths: district.paths }
+        : null,
+    )
   }
   return result
 }
 
-/** A linked page with nowhere to go is not a page (see `resolveRedirects`). */
-const isLive = (doc: PayloadPage, redirects: ReadonlyMap<string, PageRedirect | null>): boolean =>
-  !isLinked(doc) || redirects.get(String(doc.id)) != null
+/** A linked page with nowhere to go and nothing to show is not a page (see `resolveLinks`). */
+const isLive = (doc: PayloadPage, links: ReadonlyMap<string, PageLinkResolution | null>): boolean =>
+  !isLinked(doc) || links.get(String(doc.id)) != null
+
+/** How a page is named in a menu: a reuse page by the district page it shows (Jason). */
+const menuTitle = (
+  doc: PayloadPage,
+  links: ReadonlyMap<string, PageLinkResolution | null>,
+): string => {
+  const link = links.get(String(doc.id))
+  return link?.kind === 'reuse' ? link.source.title : doc.title
+}
 
 /**
  * Resolves a URL path to a page within one tenant.
@@ -266,17 +348,17 @@ export const getPageByPath = async (
 
   const childDocs = isFrontPage ? [] : await childrenOf(payload, ctx, current)
   const paths = await listPagePathIndex(ctx)
-  const redirects = await resolveRedirects(ctx, [current, ...childDocs], paths)
+  const links = await resolveLinks(ctx, [current, ...childDocs], paths)
 
   // A linked page whose target is not live 404s, like a missing one.
-  if (!isLive(current, redirects)) return null
+  if (!isLive(current, links)) return null
 
   const children = byTitle(
     childDocs
-      .filter((doc) => inNavigation(doc) && isLive(doc, redirects))
+      .filter((doc) => inNavigation(doc) && isLive(doc, links))
       .map((doc) => ({
         id: String(doc.id),
-        title: doc.title,
+        title: menuTitle(doc, links),
         // Assembled from the parent's own segments, so a child's path is the parent's plus one.
         path: buildPagePath([...lookup, doc.slug]),
       })),
@@ -287,7 +369,7 @@ export const getPageByPath = async (
     buildPagePath(lookup),
     children,
     paths,
-    redirects.get(String(current.id)) ?? null,
+    links.get(String(current.id)) ?? null,
   )
 }
 
@@ -372,12 +454,12 @@ export const listPagePaths = async (
    * avoid. Their own children keep their paths: the parent row is still there to walk.
    */
   const allPaths: PagePaths = new Map(reachableAll.map(({ doc, path }) => [String(doc.id), path]))
-  const redirects = await resolveRedirects(
+  const links = await resolveLinks(
     ctx,
     reachableAll.map(({ doc }) => doc),
     allPaths,
   )
-  const reachable = reachableAll.filter(({ doc }) => isLive(doc, redirects))
+  const reachable = reachableAll.filter(({ doc }) => isLive(doc, links))
 
   /**
    * Children assembled from the result set already in hand — NO extra query, and none per
@@ -393,7 +475,7 @@ export const listPagePaths = async (
     if (parent === null || !inNavigation(doc)) continue
 
     const siblings = childrenByParent.get(parent) ?? []
-    siblings.push({ id: String(doc.id), title: doc.title, path })
+    siblings.push({ id: String(doc.id), title: menuTitle(doc, links), path })
     childrenByParent.set(parent, siblings)
   }
 
@@ -405,7 +487,7 @@ export const listPagePaths = async (
       path,
       byTitle(childrenByParent.get(String(doc.id)) ?? []),
       allPaths,
-      redirects.get(String(doc.id)) ?? null,
+      links.get(String(doc.id)) ?? null,
     ),
   }))
 }
