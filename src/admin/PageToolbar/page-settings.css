@@ -1,0 +1,90 @@
+/**
+ * The district's Page settings dialog (Jason, 2026-10-29) — see `PageToolbar.tsx`.
+ *
+ * GLOBAL, not a module, because it styles Payload's own form (`.document-fields`, `__main`,
+ * `__sidebar-wrap`, `.render-fields`) and the fields marked `dd2-page-setting`. Keyed to the
+ * toolbar (`#page-toolbar`), which only the district gets on a saved page — so a school manager's
+ * form, and a new page's, are untouched. If a Payload bump renames these classes,
+ * `tests/e2e/page-toolbar.spec.ts` fails on the dialog.
+ *
+ * Logical properties only (rule 5).
+ */
+
+/* Closed: the settings live in the dialog, so the page shows its contents. */
+.document-fields:has(#page-toolbar):not([data-page-settings='open']) .dd2-page-setting {
+  display: none;
+}
+
+/* The dialog's own heading and footer exist only inside it. */
+.document-fields:not([data-page-settings='open']) #page-settings-header,
+.document-fields:not([data-page-settings='open']) #page-settings-footer {
+  display: none;
+}
+
+/* Open: Payload's form area becomes the dialog, over a backdrop. */
+.document-fields[data-page-settings='open'] {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-block: auto;
+  padding-block: 2rem;
+  padding-inline: 1rem;
+  background: rgb(0 0 0 / 55%);
+}
+
+/* The two columns stack into one panel. */
+.document-fields[data-page-settings='open'] > .document-fields__main,
+.document-fields[data-page-settings='open'] > .document-fields__sidebar-wrap {
+  position: static;
+  flex: none;
+  inline-size: min(44rem, 100%);
+  max-inline-size: none;
+  block-size: auto;
+  min-block-size: 0;
+  margin: 0;
+  /* Payload's group dividers reach past their column on purpose; the panel's edge stops them. */
+  overflow: clip;
+  border: 0;
+  background: var(--theme-elevation-0);
+}
+
+.document-fields[data-page-settings='open'] > .document-fields__main {
+  padding-block: 1.5rem 0;
+  padding-inline: 1.5rem;
+  border-start-start-radius: 8px;
+  border-start-end-radius: 8px;
+}
+
+.document-fields[data-page-settings='open'] > .document-fields__sidebar-wrap {
+  padding-block: 0 1.5rem;
+  padding-inline: 1.5rem;
+  border-end-start-radius: 8px;
+  border-end-end-radius: 8px;
+}
+
+.document-fields[data-page-settings='open'] .document-fields__sidebar,
+.document-fields[data-page-settings='open'] .document-fields__sidebar-fields,
+.document-fields[data-page-settings='open'] .document-fields__edit {
+  position: static;
+  inline-size: auto;
+  block-size: auto;
+  padding: 0;
+  overflow: visible;
+  /* The column rule between Payload's main area and its sidebar means nothing in one panel. */
+  border: 0;
+}
+
+/*
+ * Only the settings: the page's contents, the toolbar and the review fields wait outside. The
+ * main column's fields sit directly in `.document-fields__fields`; the sidebar's one level down.
+ */
+.document-fields[data-page-settings='open'] .document-fields__fields > :not(.dd2-page-setting),
+.document-fields[data-page-settings='open']
+  .document-fields__sidebar-fields
+  > .render-fields
+  > :not(.dd2-page-setting) {
+  display: none;
+}

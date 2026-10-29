@@ -42,6 +42,15 @@ export type RevalidateDeps = {
     tenantId: string,
     req: Parameters<CollectionAfterChangeHook>[0]['req'],
   ) => Promise<string | null>
+  /**
+   * Whether the LIVE record is still published after a non-publishing write to a published
+   * document. False means it was unpublished (Jason, 2026-10-29) and the site must be told now.
+   * Without it, only publishes revalidate.
+   */
+  stillLive?: (
+    doc: Record<string, unknown>,
+    req: Parameters<CollectionAfterChangeHook>[0]['req'],
+  ) => Promise<boolean>
 }
 
 /**
@@ -54,9 +63,23 @@ const OUTSIDE_NEXT = /static generation store missing/
 export const tenantSitePath = (hostname: string): string => `/sites/${encodeURIComponent(hostname)}`
 
 export const makeRevalidateOnPublish =
-  ({ revalidate, hostnameFor, targetsFor }: RevalidateDeps): CollectionAfterChangeHook =>
+  ({ revalidate, hostnameFor, targetsFor, stillLive }: RevalidateDeps): CollectionAfterChangeHook =>
   async ({ doc, previousDoc, req }) => {
-    if ((doc as { _status?: unknown })._status !== 'published') return doc
+    if ((doc as { _status?: unknown })._status !== 'published') {
+      /**
+       * Not a publish. It is an UNPUBLISH only if the document was published and its live
+       * record no longer is — a draft save over a published page leaves the live one standing,
+       * and so does every autosave.
+       */
+      const wasPublished =
+        (previousDoc as { _status?: unknown } | undefined)?._status === 'published'
+      if (!wasPublished || !stillLive) return doc
+      try {
+        if (await stillLive(doc, req)) return doc
+      } catch {
+        return doc
+      }
+    }
 
     try {
       const own = relationshipIdOf((doc as { tenant?: unknown }).tenant as never)
@@ -176,3 +199,23 @@ export const pageRevalidationTargets: NonNullable<RevalidateDeps['targetsFor']> 
     .filter((t): t is string => t !== null)
   return [...new Set([...(own === null ? [] : [own]), ...linking])]
 }
+
+/**
+ * The live record of a document, read as the platform: still published? An unpublish leaves it
+ * a draft; a draft save leaves it published. `draft: false` reads the record, not the newest
+ * version.
+ */
+export const liveStillPublished =
+  (collection: 'pages' | 'posts'): NonNullable<RevalidateDeps['stillLive']> =>
+  async (doc, req) => {
+    const live = await req.payload.findByID({
+      collection,
+      id: doc.id as string | number,
+      draft: false,
+      depth: 0,
+      overrideAccess: true,
+      req,
+      select: { _status: true } as never,
+    })
+    return (live as { _status?: unknown } | null)?._status === 'published'
+  }

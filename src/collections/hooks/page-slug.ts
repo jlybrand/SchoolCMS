@@ -1,7 +1,7 @@
-import { ValidationError, type CollectionBeforeValidateHook } from 'payload'
+import { ValidationError, type CollectionBeforeValidateHook, type FieldHook } from 'payload'
 
 import { relationshipIdOf } from '@/access/predicates'
-import { ROOT_SLUG, slugify } from '@/lib/slug'
+import { ROOT_SLUG, nextFreeSlug, slugify } from '@/lib/slug'
 
 /**
  * Slug derivation and sibling uniqueness for `pages`.
@@ -152,4 +152,41 @@ export const rootPageCannotBeParent: CollectionBeforeValidateHook = async ({
       },
     ],
   })
+}
+
+/**
+ * A CLONE's address (Jason, 2026-10-29: "Clone" in the page toolbar): the original's with
+ * `-copy`, or `-copy-2`, `-copy-3`… — the lowest free one beside it. Without this the copy
+ * takes the original's slug and `uniqueSlugWithinParent` refuses it.
+ *
+ * A field `beforeDuplicate` hook: Payload runs it on the copied value before the create.
+ */
+export const freeSlugForCopy: FieldHook = async ({ value, siblingData, req }) => {
+  const base = slugify(`${typeof value === 'string' ? value : 'page'}-copy`)
+  const tenant = relationshipIdOf(
+    (siblingData as { tenant?: unknown } | undefined)?.tenant as never,
+  )
+  const parent = relationshipIdOf(
+    (siblingData as { parent?: unknown } | undefined)?.parent as never,
+  )
+
+  const { docs } = await req.payload.find({
+    collection: 'pages',
+    where: {
+      and: [
+        { tenant: { equals: tenant } },
+        parent === null ? { parent: { exists: false } } : { parent: { equals: parent } },
+        { slug: { like: base } },
+      ],
+    },
+    pagination: false,
+    depth: 0,
+    overrideAccess: true,
+    req,
+    select: { slug: true },
+  })
+  return nextFreeSlug(
+    base,
+    docs.map((doc) => String((doc as { slug?: unknown }).slug ?? '')),
+  )
 }

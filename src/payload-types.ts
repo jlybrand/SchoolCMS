@@ -242,7 +242,7 @@ export interface Page {
    */
   title: string;
   /**
-   * The page's address, filled in from the title. Changing it changes the URL and breaks existing links.
+   * The page's address, filled in from the title. Links chosen as pages, menus and the permanent link follow a change; addresses typed by hand and links from other websites do not.
    */
   slug: string;
   /**

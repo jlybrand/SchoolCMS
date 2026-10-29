@@ -1,7 +1,10 @@
 import { createLocalReq, type Payload } from 'payload'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { pageRevalidationTargets } from '@/collections/hooks/revalidate-on-publish'
+import {
+  liveStillPublished,
+  pageRevalidationTargets,
+} from '@/collections/hooks/revalidate-on-publish'
 
 import { getTestPayload, seed } from '../helpers/payload'
 
@@ -80,5 +83,33 @@ describe('pageRevalidationTargets', () => {
     })
     const req = await createLocalReq({}, payload)
     expect(await pageRevalidationTargets(target, undefined, req)).toEqual([String(f.tenantA)])
+  })
+})
+
+/** What tells an unpublish from a draft save (the page toolbar, Jason 2026-10-29). */
+describe('liveStillPublished', () => {
+  it('is true after a draft save over a published page, false after an unpublish', async () => {
+    const page = await mk({ tenant: f.tenantA, title: 'Live check', slug: 'reval-live' })
+    const req = await createLocalReq({}, payload)
+    const stillLive = liveStillPublished('pages')
+
+    await payload.update({
+      collection: 'pages',
+      id: page.id,
+      data: { title: 'Live check, edited' },
+      draft: true,
+      user: f.districtAdmin,
+      overrideAccess: true,
+    })
+    expect(await stillLive(page, req)).toBe(true)
+
+    await payload.update({
+      collection: 'pages',
+      id: page.id,
+      data: { _status: 'draft' },
+      user: f.districtAdmin,
+      overrideAccess: true,
+    })
+    expect(await stillLive(page, req)).toBe(false)
   })
 })

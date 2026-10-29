@@ -61,6 +61,61 @@ describe('revalidateOnPublish', () => {
     expect(revalidate).not.toHaveBeenCalled()
   })
 
+  /**
+   * UNPUBLISH (Jason, 2026-10-29: the page toolbar's Unpublish). Payload sends it as a save
+   * with `_status: 'draft'` and no draft flag, so it reaches this hook looking like a draft
+   * save. What differs is the live record: after a draft save it is still published, after an
+   * unpublish it is not — and then the page must leave the site now, not in an hour.
+   */
+  it('an unpublish revalidates — the live record is no longer published', async () => {
+    const revalidate = vi.fn()
+    const stillLive = vi.fn(async () => false)
+    const hook = makeRevalidateOnPublish({
+      revalidate,
+      hostnameFor: async (tenantId) => hostnames[String(tenantId)] ?? null,
+      stillLive,
+    })
+    const req = { payload: { logger: { error: vi.fn(), debug: vi.fn() } } }
+    await hook({
+      doc: { id: 1, tenant: 2, _status: 'draft' },
+      previousDoc: { _status: 'published' },
+      req,
+    } as never)
+    expect(revalidate).toHaveBeenCalledExactlyOnceWith('/sites/a.localhost', 'layout')
+  })
+
+  it('a draft save over a published page is not an unpublish', async () => {
+    const revalidate = vi.fn()
+    const hook = makeRevalidateOnPublish({
+      revalidate,
+      hostnameFor: async (tenantId) => hostnames[String(tenantId)] ?? null,
+      stillLive: async () => true,
+    })
+    const req = { payload: { logger: { error: vi.fn(), debug: vi.fn() } } }
+    await hook({
+      doc: { id: 1, tenant: 2, _status: 'draft' },
+      previousDoc: { _status: 'published' },
+      req,
+    } as never)
+    expect(revalidate).not.toHaveBeenCalled()
+  })
+
+  it('never asks about a page that was not published before — nothing could have left the site', async () => {
+    const stillLive = vi.fn(async () => false)
+    const hook = makeRevalidateOnPublish({
+      revalidate: vi.fn(),
+      hostnameFor: async () => 'a.localhost',
+      stillLive,
+    })
+    const req = { payload: { logger: { error: vi.fn(), debug: vi.fn() } } }
+    await hook({
+      doc: { id: 1, tenant: 2, _status: 'draft' },
+      previousDoc: { _status: 'draft' },
+      req,
+    } as never)
+    expect(stillLive).not.toHaveBeenCalled()
+  })
+
   it('an unknown tenant revalidates nothing and logs, rather than purging everything', async () => {
     const { revalidate, logError, run } = setup()
     await run({ id: 1, tenant: 99, _status: 'published' })

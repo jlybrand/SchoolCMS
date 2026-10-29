@@ -9,12 +9,13 @@ import {
 import { ADMIN_STORAGE_STATE, adminCredentials } from './support/admin-session'
 import { uniqueTitle } from './support/fixture-pages'
 import { SCHOOL_HOSTNAME, schoolTest, tenantIdFor } from './support/school-session'
+import { openPageSettings } from './support/page-settings'
 import { siteUrl } from './support/site-url'
 
 /**
  * Linked pages, internal redirect (Jason, 2026-10-29): visiting the page sends the visitor to a
  * page on the same site or a district page; renaming the target moves every redirect with it;
- * the page is out of the sitemap; and both planes mark it "Linked".
+ * the page is out of the sitemap; and both planes mark it with the linked icon, and only that.
  *
  * Published fixtures live on School B and the district site — the routing specs count School A's
  * sitemap exactly. The school-plane check uses a DRAFT on School A, the manager's own school.
@@ -40,7 +41,7 @@ const mkPage = async (
   const res = await admin.post('/api/pages?depth=0', {
     data: {
       tenant: await tenantIdFor(admin, hostname),
-      title: uniqueTitle('Linked'),
+      title: uniqueTitle('Redirect'),
       slug,
       pageType: 'standard',
       visibility: 'public',
@@ -171,7 +172,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
     test.describe('district', () => {
       test.use({ storageState: ADMIN_STORAGE_STATE })
 
-      test(`@a11y the page list says "Linked", and the form shows the choice — ${colorScheme}`, async ({
+      test(`@a11y the page list marks it with the icon, and Page settings shows the choice — ${colorScheme}`, async ({
         page,
         baseURL,
       }) => {
@@ -181,19 +182,25 @@ for (const colorScheme of ['light', 'dark'] as const) {
           const district = await mkPage(admin, 'localhost')
           made.push(district.id)
           const linked = await mkPage(admin, 'b.localhost', {
-            title: uniqueTitle('Marked linked'),
+            title: uniqueTitle('Marked'),
             linkMode: 'redirect',
             linkTo: 'district',
             districtLinkTarget: district.id,
           })
           made.push(linked.id)
 
+          // The mark alone identifies a linked page (Jason, 2026-10-29) — no word beside it.
           await page.goto(`/admin/collections/pages?where[id][equals]=${linked.id}`)
-          await expect(page.locator('tbody tr').first()).toContainText('Linked', {
-            timeout: 20_000,
+          await expect(
+            page.locator('tbody tr').first().getByRole('img', { name: 'Linked page' }),
+          ).toBeVisible({ timeout: 20_000 })
+          await expect(page.locator('tbody tr').first()).not.toContainText('Linked', {
+            useInnerText: true,
           })
 
           await page.goto(`/admin/collections/pages/${linked.id}`)
+          // The choice is a Page setting, behind the toolbar's gear (Jason, 2026-10-29).
+          await openPageSettings(page)
           await expect(
             page.getByRole('radio', { name: 'Send visitors to another page' }),
           ).toBeChecked({ timeout: 20_000 })
@@ -225,7 +232,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
         const admin = await asDistrict(baseURL)
         const made: number[] = []
         try {
-          const title = uniqueTitle('School linked')
+          const title = uniqueTitle('School redirect')
           const target = await mkPage(admin, SCHOOL_HOSTNAME, { _status: 'draft' })
           made.push(target.id)
           const linked = await mkPage(admin, SCHOOL_HOSTNAME, {
@@ -239,7 +246,10 @@ for (const colorScheme of ['light', 'dark'] as const) {
 
           await page.goto('/admin/update-page')
           const row = page.locator('#update-page li', { hasText: title })
-          await expect(row).toContainText('Linked', { timeout: 20_000 })
+          await expect(row.getByRole('img', { name: 'Linked page' })).toBeVisible({
+            timeout: 20_000,
+          })
+          await expect(row).not.toContainText('Linked', { useInnerText: true })
 
           const results = await new AxeBuilder({ page })
             .include('#update-page')

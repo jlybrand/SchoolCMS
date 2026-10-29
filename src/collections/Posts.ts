@@ -21,6 +21,7 @@ import {
 } from '@/collections/hooks/notify-review-outcome'
 import {
   allTenantIds,
+  liveStillPublished,
   makeRevalidateOnPublish,
   syndicationTargets,
   tenantHostname,
@@ -120,6 +121,8 @@ export const Posts: CollectionConfig = {
         hostnameFor: tenantHostname,
         targetsFor: async (doc, previousDoc, req) =>
           syndicationTargets(doc, previousDoc, await allTenantIds(req)),
+        // An unpublished announcement leaves every site that lists it now, not in an hour.
+        stillLive: liveStillPublished('posts'),
       }),
       /** The submitter's email on approve or request changes (`04` §4.5). */
       makeNotifyReviewOutcome({
