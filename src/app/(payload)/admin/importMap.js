@@ -2,6 +2,7 @@ import { WatchTenantCollection as WatchTenantCollection_1d0591e3cf4f332c83a86da1
 import { GrantScopesField as GrantScopesField_f72aa3c0d135b885b20d14c3fe6f775a } from '../../../admin/Grants/GrantScopesField'
 import { TenantField as TenantField_1d0591e3cf4f332c83a86da13a0de59a } from '@payloadcms/plugin-multi-tenant/client'
 import { ReviewStatusField as ReviewStatusField_078936fce220cbf8e528e3d7e8fc0dfa } from '../../../admin/SendForApproval/ReviewStatusField'
+import { PageSettingsHeader as PageSettingsHeader_db46844617032efcf0d7dec80489bbeb } from '../../../admin/PageToolbar/PageSettingsHeader'
 import { RscEntryLexicalCell as RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
 import { RscEntryLexicalField as RscEntryLexicalField_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
 import { LexicalDiffComponent as LexicalDiffComponent_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
@@ -16,6 +17,8 @@ import { HeadingFeatureClient as HeadingFeatureClient_e70f5e05f09f93e00b997edb1e
 import { ParagraphFeatureClient as ParagraphFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { PermalinkField as PermalinkField_f6814ebdf510877580b089f38a229b9a } from '../../../admin/Permalink/PermalinkField'
 import { LinkedPageCell as LinkedPageCell_7356ccf667888eca398b067f1932d5a1 } from '../../../admin/LinkedPage/LinkedPageCell'
+import { PageSettingsFooter as PageSettingsFooter_db46844617032efcf0d7dec80489bbeb } from '../../../admin/PageToolbar/PageSettingsHeader'
+import { PageToolbar as PageToolbar_f3bd17167892b923c2a1c372b53f0d6e } from '../../../admin/PageToolbar/PageToolbar'
 import { AssignTenantFieldTrigger as AssignTenantFieldTrigger_1d0591e3cf4f332c83a86da13a0de59a } from '@payloadcms/plugin-multi-tenant/client'
 import { SendForApprovalButton as SendForApprovalButton_04ce333b331daae73b75fc6274c29e3a } from '../../../admin/SendForApproval/SendForApprovalButton'
 import { SchoolSaveDraftButton as SchoolSaveDraftButton_cc7b83310c556ae98b1d66c9fab1fdc1 } from '../../../admin/SendForApproval/SchoolSaveDraftButton'
@@ -40,6 +43,7 @@ export const importMap = {
   "/admin/Grants/GrantScopesField#GrantScopesField": GrantScopesField_f72aa3c0d135b885b20d14c3fe6f775a,
   "@payloadcms/plugin-multi-tenant/client#TenantField": TenantField_1d0591e3cf4f332c83a86da13a0de59a,
   "/admin/SendForApproval/ReviewStatusField#ReviewStatusField": ReviewStatusField_078936fce220cbf8e528e3d7e8fc0dfa,
+  "/admin/PageToolbar/PageSettingsHeader#PageSettingsHeader": PageSettingsHeader_db46844617032efcf0d7dec80489bbeb,
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalCell": RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e,
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalField": RscEntryLexicalField_44fe37237e0ebf4470c9990d8cb7b07e,
   "@payloadcms/richtext-lexical/rsc#LexicalDiffComponent": LexicalDiffComponent_44fe37237e0ebf4470c9990d8cb7b07e,
@@ -54,6 +58,8 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#ParagraphFeatureClient": ParagraphFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "/admin/Permalink/PermalinkField#PermalinkField": PermalinkField_f6814ebdf510877580b089f38a229b9a,
   "/admin/LinkedPage/LinkedPageCell#LinkedPageCell": LinkedPageCell_7356ccf667888eca398b067f1932d5a1,
+  "/admin/PageToolbar/PageSettingsHeader#PageSettingsFooter": PageSettingsFooter_db46844617032efcf0d7dec80489bbeb,
+  "/admin/PageToolbar/PageToolbar#PageToolbar": PageToolbar_f3bd17167892b923c2a1c372b53f0d6e,
   "@payloadcms/plugin-multi-tenant/client#AssignTenantFieldTrigger": AssignTenantFieldTrigger_1d0591e3cf4f332c83a86da13a0de59a,
   "/admin/SendForApproval/SendForApprovalButton#SendForApprovalButton": SendForApprovalButton_04ce333b331daae73b75fc6274c29e3a,
   "/admin/SendForApproval/SchoolSaveDraftButton#SchoolSaveDraftButton": SchoolSaveDraftButton_cc7b83310c556ae98b1d66c9fab1fdc1,

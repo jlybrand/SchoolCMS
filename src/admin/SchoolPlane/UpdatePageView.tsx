@@ -42,14 +42,11 @@ export const UpdatePageView = async ({ initPageResult }: AdminViewServerProps) =
               const status = submissionStatus(page.reviewState)
               return (
                 <li className={styles.row} key={page.id}>
-                  <Link href={`/admin/collections/pages/${page.id}`}>{page.title}</Link>
-                  {/* A linked page opens another page; editing its words changes nothing seen. */}
-                  {page.linked ? (
-                    <span className={styles.state}>
-                      <LinkedIcon className={styles.linkedIcon} />
-                      Linked
-                    </span>
-                  ) : null}
+                  {/* A linked page opens another page; the mark alone says so (Jason, 2026-10-29). */}
+                  <span className={styles.named}>
+                    <Link href={`/admin/collections/pages/${page.id}`}>{page.title}</Link>
+                    {page.linked ? <LinkedIcon className={styles.linkedIcon} /> : null}
+                  </span>
                   {status ? <span className={styles.state}>{status}</span> : null}
                 </li>
               )

@@ -678,7 +678,7 @@ Two district-only checkboxes in the page sidebar (Finalsite's "hide from navigat
 
 ## 12. Linked pages — internal redirect (Jason, 2026-10-29)
 
-A district-only sidebar setting: visiting the page sends the visitor to a page on the same site
+A district-only Page setting (§13): visiting the page sends the visitor to a page on the same site
 or a district page. Never an outside address. "Reuse content" is the next PR.
 
 ### Files
@@ -709,3 +709,39 @@ or a district page. Never an outside address. "Reuse content" is the next PR.
   `tests/integration/linked-page-revalidation.test.ts`, `tests/integration/tenant-isolation.test.ts`
 - `tests/e2e/linked-pages.spec.ts` — 307s, sitemap, rename follows, 404, the "Linked" mark + axe
   on both planes in both themes
+
+## 13. The district page toolbar and Page settings (Jason, 2026-10-29)
+
+His Finalsite workflow: the page's contents, and along the bottom History, Clone, Delete,
+Unpublish and a gear opening Page settings. District only, saved pages only; school managers'
+forms are unchanged. Save and Publish stay in Payload's header.
+
+### Files
+
+| File                                             | Does                                                                                                                                                                                                                                                                                                |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/admin/PageToolbar/PageToolbar.tsx`          | `ui` field `pageToolbar` (last in main): History link → `/versions`; Clone → `POST /api/pages/:id/duplicate`; Delete → `ConfirmationModal` + `DELETE`; Unpublish → `ConfirmationModal` + `PATCH { _status: 'draft' }`; the gear                                                                     |
+| `src/admin/PageToolbar/PageSettingsHeader.tsx`   | `pageSettingsHeader` (first in main): heading, Close, the "needs a title/address" alert; `PageSettingsFooter` (last in sidebar): Done                                                                                                                                                               |
+| `src/admin/PageToolbar/page-settings.ts`         | `SETTING_CLASS`, `SETTING_PATHS`, `REQUIRED_SETTINGS`, `missingRequired`, events                                                                                                                                                                                                                    |
+| `src/admin/PageToolbar/page-settings.css`        | global: hides `.dd2-page-setting` when `.document-fields:has(#page-toolbar)`; `[data-page-settings='open']` turns `.document-fields` into the dialog showing only them                                                                                                                              |
+| `src/collections/Pages.ts`                       | `admin.className: SETTING_CLASS` on title, slug, pageType, parent, visibility, meta, publishAt, linkMode, linkTo, linkTarget, districtLinkTarget, hideFromNavigation, hideFromSearchEngines (+ `PermalinkField`); `beforeDuplicate` on title (`(copy)`), slug (`freeSlugForCopy`), publishAt (null) |
+| `src/collections/hooks/revalidate-on-publish.ts` | `stillLive` dep + `liveStillPublished(collection)` — an unpublish revalidates (pages, posts)                                                                                                                                                                                                        |
+
+### The dialog
+
+- Opening sets `data-page-settings`, `role="dialog"`, `aria-modal`, `aria-labelledby` on
+  `.document-fields`, makes every element outside it `inert`, focuses the heading.
+- Close, Done and Escape close it and return focus to the gear — unless title or slug is empty
+  (`missingRequired`): it stays, alerts, and focuses the field.
+- A setting with `valid === false` in form state opens it.
+- Payload renders a group's fields as they near the view (`RenderIfInViewport`), so the search
+  fields appear as the dialog is scrolled.
+
+### Tests
+
+- `tests/unit/admin/page-settings.test.ts`, `tests/unit/access/revalidate-on-publish.test.ts`
+  (unpublish), `tests/integration/page-clone.test.ts`,
+  `tests/integration/linked-page-revalidation.test.ts` (`liveStillPublished`)
+- `tests/e2e/page-toolbar.spec.ts` — closed/open + axe in both themes, Escape and focus, the
+  address change, the required-title guard, History, Clone, Delete, Unpublish (404 at once), the
+  school form unchanged; `tests/e2e/support/page-settings.ts` (`openPageSettings`)

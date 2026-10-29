@@ -12,6 +12,7 @@ import type { AuthUser } from '@/access/types'
 import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 import {
   deriveSlugFromTitle,
+  freeSlugForCopy,
   rootPageCannotBeParent,
   uniqueSlugWithinParent,
 } from '@/collections/hooks/page-slug'
@@ -31,9 +32,11 @@ import {
 } from '@/collections/hooks/notify-review-outcome'
 import {
   makeRevalidateOnPublish,
+  liveStillPublished,
   pageRevalidationTargets,
   tenantHostname,
 } from '@/collections/hooks/revalidate-on-publish'
+import { SETTING_CLASS } from '@/admin/PageToolbar/page-settings'
 import { PERMALINK_SEGMENT } from '@/lib/permalink'
 import { isReservedSlug, isReservedTopLevelSlug, slugify } from '@/lib/slug'
 
@@ -149,6 +152,8 @@ export const Pages: CollectionConfig = {
         hostnameFor: tenantHostname,
         // Its own site, and every site with a linked page pointing at it.
         targetsFor: pageRevalidationTargets,
+        // An unpublish takes the page off the site now (Jason, 2026-10-29).
+        stillLive: liveStillPublished('pages'),
       }),
       /** The submitter's email on approve or request changes (`04` §4.5). */
       makeNotifyReviewOutcome({
@@ -181,19 +186,41 @@ export const Pages: CollectionConfig = {
       },
     },
     {
+      /**
+       * The Page settings dialog's heading and Close (Jason, 2026-10-29) — first, so it heads the
+       * dialog. Shown only inside it; the district's only. See `src/admin/PageToolbar/`.
+       */
+      name: 'pageSettingsHeader',
+      type: 'ui',
+      admin: {
+        condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
+        components: { Field: '/admin/PageToolbar/PageSettingsHeader#PageSettingsHeader' },
+      },
+    },
+    {
       name: 'title',
       type: 'text',
       required: true,
-      admin: { description: 'What this page is called. Shown as the page heading.' },
+      admin: {
+        className: SETTING_CLASS,
+        description: 'What this page is called. Shown as the page heading.',
+      },
+      // A clone says it is one (the page toolbar's Clone, Jason 2026-10-29).
+      hooks: {
+        beforeDuplicate: [({ value }) => (typeof value === 'string' ? `${value} (copy)` : value)],
+      },
     },
     {
       name: 'slug',
       type: 'text',
       required: true,
       index: true,
+      // A clone takes a free address beside the original — see `freeSlugForCopy`.
+      hooks: { beforeDuplicate: [freeSlugForCopy] },
       admin: {
+        className: SETTING_CLASS,
         description:
-          "The page's address, filled in from the title. Changing it changes the URL and breaks existing links.",
+          "The page's address, filled in from the title. Links chosen as pages, menus and the permanent link follow a change; addresses typed by hand and links from other websites do not.",
       },
       validate: (value: unknown, { siblingData }: { siblingData?: { parent?: unknown } }) => {
         if (typeof value !== 'string' || value.trim() === '') {
@@ -245,6 +272,7 @@ export const Pages: CollectionConfig = {
         { label: 'Composed (district only)', value: 'composed' },
       ],
       admin: {
+        className: SETTING_CLASS,
         description:
           'Decides which fields this page offers. "Composed" is the district-only block layout (`03` §2).',
       },
@@ -255,6 +283,7 @@ export const Pages: CollectionConfig = {
       relationTo: 'pages',
       index: true,
       admin: {
+        className: SETTING_CLASS,
         description: 'Sits this page underneath another one. Drives the URL and the menus.',
       },
       /**
@@ -280,6 +309,7 @@ export const Pages: CollectionConfig = {
         { label: 'Staff only', value: 'staff' },
       ],
       admin: {
+        className: SETTING_CLASS,
         description:
           'Staff-only pages never appear on the public site or in the public API (`03` §6.4).',
       },
@@ -331,6 +361,7 @@ export const Pages: CollectionConfig = {
       access: { create: districtOnlyField, update: districtOnlyField },
       validate: validateLinkMode,
       admin: {
+        className: SETTING_CLASS,
         position: 'sidebar',
         condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
         description: 'A linked page has no content of its own; visiting it opens the page chosen.',
@@ -348,6 +379,7 @@ export const Pages: CollectionConfig = {
       ],
       access: { create: districtOnlyField, update: districtOnlyField },
       admin: {
+        className: SETTING_CLASS,
         position: 'sidebar',
         condition: (data, _siblingData, { user }) =>
           !sendsForApproval(user as AuthUser | null) && data?.linkMode === 'redirect',
@@ -360,6 +392,7 @@ export const Pages: CollectionConfig = {
       label: 'Page on this site',
       access: { create: districtOnlyField, update: districtOnlyField },
       admin: {
+        className: SETTING_CLASS,
         position: 'sidebar',
         condition: (data, _siblingData, { user }) =>
           !sendsForApproval(user as AuthUser | null) &&
@@ -379,6 +412,7 @@ export const Pages: CollectionConfig = {
        */
       custom: { crossTenant: true, filterOptions: { 'tenant.type': { equals: 'district' } } },
       admin: {
+        className: SETTING_CLASS,
         position: 'sidebar',
         condition: (data, _siblingData, { user }) =>
           !sendsForApproval(user as AuthUser | null) &&
@@ -393,6 +427,7 @@ export const Pages: CollectionConfig = {
       label: 'Hide from navigation',
       access: { create: districtOnlyField, update: districtOnlyField },
       admin: {
+        className: SETTING_CLASS,
         position: 'sidebar',
         condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
         description: 'Leaves this page out of section menus. Its address still works.',
@@ -405,6 +440,7 @@ export const Pages: CollectionConfig = {
       label: 'Hide from search engines',
       access: { create: districtOnlyField, update: districtOnlyField },
       admin: {
+        className: SETTING_CLASS,
         position: 'sidebar',
         condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
         description:
@@ -414,6 +450,8 @@ export const Pages: CollectionConfig = {
     {
       name: 'publishAt',
       type: 'date',
+      // A clone is not scheduled: going live at the original's time is a surprise nobody chose.
+      hooks: { beforeDuplicate: [() => null] },
       /**
        * District-only at FIELD level, on top of the access functions and the publish-gate
        * hook. A scheduled publish is a publish (CLAUDE.md rule 3) — leaving this open would
@@ -421,8 +459,19 @@ export const Pages: CollectionConfig = {
        */
       access: { create: districtOnlyField, update: districtOnlyField },
       admin: {
+        className: SETTING_CLASS,
         description: 'Optional. Goes live at this time instead of immediately.',
         position: 'sidebar',
+      },
+    },
+    {
+      // The dialog's "Done", after its last setting.
+      name: 'pageSettingsFooter',
+      type: 'ui',
+      admin: {
+        position: 'sidebar',
+        condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
+        components: { Field: '/admin/PageToolbar/PageSettingsHeader#PageSettingsFooter' },
       },
     },
     {
@@ -480,6 +529,7 @@ export const Pages: CollectionConfig = {
       type: 'group',
       label: 'Search and sharing',
       admin: {
+        className: SETTING_CLASS,
         description:
           'How this page appears in search results and when its link is shared. Both are optional — leave them empty and the page title and its first paragraph are used.',
       },
@@ -507,6 +557,19 @@ export const Pages: CollectionConfig = {
           },
         },
       ],
+    },
+    {
+      /**
+       * The district's page toolbar (Jason, 2026-10-29): History, Clone, Delete, Unpublish and the
+       * gear that opens Page settings, along the bottom of the page. Last in the form, so it
+       * follows the contents. See `src/admin/PageToolbar/PageToolbar.tsx`.
+       */
+      name: 'pageToolbar',
+      type: 'ui',
+      admin: {
+        condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
+        components: { Field: '/admin/PageToolbar/PageToolbar#PageToolbar' },
+      },
     },
     /**
      * REVIEW STATE (`04` §4.1). All four are owned by `applyReviewState`, which overwrites

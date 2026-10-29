@@ -1,6 +1,7 @@
 import { expect } from '@playwright/test'
 
 import { adminCredentials, adminTest as test } from './support/admin-session'
+import { openPageSettings } from './support/page-settings'
 import { siteUrl } from './support/site-url'
 
 /**
@@ -31,6 +32,8 @@ test.describe('page autosave', () => {
     expect(home, 'the seed creates a front page for the district').toBeDefined()
 
     await page.goto(`/admin/collections/pages/${home!.id}`)
+    // The title is one of the district's Page settings, behind the toolbar's gear.
+    await openPageSettings(page)
     const title = page.locator('#field-title')
     await expect(title).toBeEditable({ timeout: 20_000 })
 

@@ -2,6 +2,7 @@
 
 import { useDocumentInfo } from '@payloadcms/ui'
 
+import { SETTING_CLASS } from '@/admin/PageToolbar/page-settings'
 import { permalinkPath } from '@/lib/permalink'
 
 import styles from './PermalinkField.module.css'
@@ -21,7 +22,8 @@ export const PermalinkField = () => {
   if (id === undefined || id === null || id === '') return null
 
   return (
-    <div className={styles.permalink}>
+    // A page setting: in the district's Page settings dialog (`src/admin/PageToolbar/`).
+    <div className={`${SETTING_CLASS} ${styles.permalink}`}>
       <p className={styles.label}>Permanent link</p>
       <p className={styles.path}>
         <code>{permalinkPath(id)}</code>

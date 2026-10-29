@@ -100,15 +100,20 @@
 }
 
 .state {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
   color: var(--theme-elevation-800);
 }
 
-/* The linked-page mark beside "Linked" (`src/admin/LinkedPage/LinkedIcon.tsx`). */
+/* A page's name, with its linked-page mark beside it when it has one. */
+.named {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+/* The linked-page mark, which alone identifies one (`src/admin/LinkedPage/LinkedIcon.tsx`). */
 .linkedIcon {
   flex-shrink: 0;
+  color: var(--theme-elevation-800);
 }
 
 .form {

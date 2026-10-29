@@ -8,6 +8,7 @@ import {
 import { ADMIN_STORAGE_STATE, adminCredentials } from './support/admin-session'
 import { uniqueTitle } from './support/fixture-pages'
 import { tenantIdFor } from './support/school-session'
+import { openPageSettings } from './support/page-settings'
 import { siteUrl } from './support/site-url'
 
 /**
@@ -215,11 +216,13 @@ test.describe('page permalinks', () => {
   test.describe('in the page form', () => {
     test.use({ storageState: ADMIN_STORAGE_STATE })
 
-    test('the sidebar shows the permanent link', async ({ page, baseURL }) => {
+    test('Page settings shows the permanent link', async ({ page, baseURL }) => {
       const admin = await asDistrict(baseURL)
       const made = await mkPage(admin, 'b.localhost')
       try {
         await page.goto(`/admin/collections/pages/${made.id}`)
+        // A Page setting: behind the toolbar's gear (Jason, 2026-10-29).
+        await openPageSettings(page)
         await expect(page.getByText(`/dd2/pages/${made.id}`)).toBeVisible({ timeout: 20_000 })
       } finally {
         await admin.delete(`/api/pages/${made.id}`)
