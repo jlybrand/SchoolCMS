@@ -11,6 +11,8 @@
  * validation refuses to save (see src/collections/Pages.ts).
  */
 
+import { PERMALINK_SEGMENT } from './permalink'
+
 /** Longest slug we emit. Comfortably inside every practical URL limit, still readable. */
 const MAX_SLUG_LENGTH = 80
 
@@ -88,8 +90,9 @@ export const nextFreeSlug = (base: string, taken: readonly string[]): string => 
 /**
  * Slugs reserved at the TOP of a site only. `/news` is the site's announcement list and
  * `/news/{slug}` an announcement (Jason, 2026-10-28); `/about/news` is an ordinary page.
+ * `/dd2/pages/{id}` is a page's permalink (Jason, 2026-10-29).
  */
-const RESERVED_TOP_LEVEL_SLUGS: readonly string[] = ['news'] as const
+const RESERVED_TOP_LEVEL_SLUGS: readonly string[] = ['news', PERMALINK_SEGMENT] as const
 
 /** True when a top-level page could not take this slug. */
 export const isReservedTopLevelSlug = (slug: string | null | undefined): boolean => {

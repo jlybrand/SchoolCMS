@@ -105,3 +105,54 @@ describe('toNavigation', () => {
     expect(toNavigation(null).primary).toEqual([])
   })
 })
+
+/**
+ * A menu link may point at a PAGE rather than a typed address (Jason, 2026-10-29), so renaming
+ * or moving the page never breaks the menu. The mapper is handed the tenant's current paths.
+ */
+describe('toNavigation — links to a page', () => {
+  const paths = new Map([
+    ['5', '/about/staff'],
+    ['6', '/'],
+  ])
+
+  it('uses the page’s current path', () => {
+    const nav = toNavigation(
+      {
+        primary: [
+          item('Staff', null, { linkType: 'page', page: 5 }),
+          item('Home', null, { linkType: 'page', page: { id: 6 } }),
+        ],
+      },
+      paths,
+    )
+    expect(nav.primary.map((link) => link.href)).toEqual(['/about/staff', '/'])
+  })
+
+  it('ignores any stale address stored on a page link', () => {
+    const nav = toNavigation(
+      { primary: [item('Staff', '/old-staff', { linkType: 'page', page: 5 })] },
+      paths,
+    )
+    expect(nav.primary[0]?.href).toBe('/about/staff')
+  })
+
+  /** An unpublished, staff-only, deleted or other-site page has no path here — and a menu entry that 404s is a bug (`03` §5). */
+  it('drops a link to a page with no current path', () => {
+    const nav = toNavigation(
+      { primary: [item('Gone', null, { linkType: 'page', page: 99 }), item('About', '/about')] },
+      paths,
+    )
+    expect(nav.primary.map((link) => link.label)).toEqual(['About'])
+  })
+
+  it('treats a row saved before link types existed as an address', () => {
+    const nav = toNavigation({ primary: [item('About', '/about')] }, paths)
+    expect(nav.primary[0]?.href).toBe('/about')
+  })
+
+  it('drops page links when no paths are given', () => {
+    const nav = toNavigation({ primary: [item('Staff', null, { linkType: 'page', page: 5 })] })
+    expect(nav.primary).toEqual([])
+  })
+})

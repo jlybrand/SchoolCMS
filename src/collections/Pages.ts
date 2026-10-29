@@ -29,6 +29,7 @@ import {
   userEmail,
 } from '@/collections/hooks/notify-review-outcome'
 import { makeRevalidateOnPublish, tenantHostname } from '@/collections/hooks/revalidate-on-publish'
+import { PERMALINK_SEGMENT } from '@/lib/permalink'
 import { isReservedSlug, isReservedTopLevelSlug, slugify } from '@/lib/slug'
 
 /**
@@ -200,7 +201,9 @@ export const Pages: CollectionConfig = {
         // `/news` is the site's announcement list (Jason, 2026-10-28) — at the top level only.
         const topLevel = siblingData?.parent === undefined || siblingData.parent === null
         if (topLevel && isReservedTopLevelSlug(value)) {
-          return `"${value}" is where this site's announcements are listed. Please choose a different address, or place this page under another one.`
+          return value === PERMALINK_SEGMENT
+            ? `"${value}" is reserved for permanent page links. Please choose a different address, or place this page under another one.`
+            : `"${value}" is where this site's announcements are listed. Please choose a different address, or place this page under another one.`
         }
         return true
       },
@@ -272,6 +275,19 @@ export const Pages: CollectionConfig = {
       admin: {
         description:
           'Staff-only pages never appear on the public site or in the public API (`03` §6.4).',
+      },
+    },
+    {
+      /**
+       * The page's permanent link, `/dd2/pages/<id>` (Jason, 2026-10-29). Display only — a `ui` field
+       * stores nothing; the route that answers it is `src/app/(frontend)/sites/[hostname]/
+       * [locale]/dd2/pages/[id]/route.ts`.
+       */
+      name: 'permalink',
+      type: 'ui',
+      admin: {
+        position: 'sidebar',
+        components: { Field: '/admin/Permalink/PermalinkField#PermalinkField' },
       },
     },
     {

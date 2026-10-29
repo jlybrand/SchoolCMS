@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 
 import { getNavigation } from '@/content/navigation'
-import { getPageByPath, listPagePaths } from '@/content/pages'
+import { getPageByPath, getPagePathById, listPagePaths } from '@/content/pages'
 import { getPostBySlug, listPostPaths, listPosts } from '@/content/posts'
 import { resolvePageBlocks } from '@/content/resolve-blocks'
 import { getTenantByHostname, listActiveTenants } from '@/content/tenants'
@@ -697,5 +697,140 @@ describe('resolvePageBlocks', () => {
     expect(
       await resolvePageBlocks(await ctxFor('a.localhost'), [divider, nav], { serverUrl: '' }),
     ).toEqual([divider, nav])
+  })
+})
+
+/**
+ * Permalinks and menu links to a page (Jason, 2026-10-29): both resolve a page id to the path
+ * the page has today, through the tenant's published, public pages only.
+ */
+describe('getPagePathById', () => {
+  const ctxFor = async (hostname: string): Promise<ContentContext> => {
+    const tenant = await getTenantByHostname(hostname)
+    if (!tenant) throw new Error(`fixture tenant ${hostname} did not resolve`)
+    return { tenant, locale: 'en' }
+  }
+
+  it("returns a published page's current path", async () => {
+    const path = await getPagePathById(await ctxFor('a.localhost'), String(fixtures.publishedPageA))
+    expect(path).toBe('/published-page-a')
+  })
+
+  it('follows a move — the path is the one the page has now', async () => {
+    const ctx = await ctxFor('a.localhost')
+    const parent = await payload.create({
+      collection: 'pages',
+      data: {
+        tenant: fixtures.tenantA,
+        title: 'Moved under',
+        slug: 'moved-under',
+        pageType: 'standard',
+        visibility: 'public',
+        _status: 'published',
+      },
+      user: fixtures.districtAdmin,
+      overrideAccess: true,
+    })
+    const child = await payload.create({
+      collection: 'pages',
+      data: {
+        tenant: fixtures.tenantA,
+        title: 'Wanders',
+        slug: 'wanders',
+        pageType: 'standard',
+        visibility: 'public',
+        _status: 'published',
+      },
+      user: fixtures.districtAdmin,
+      overrideAccess: true,
+    })
+    expect(await getPagePathById(ctx, String(child.id))).toBe('/wanders')
+
+    await payload.update({
+      collection: 'pages',
+      id: child.id,
+      data: { parent: parent.id, slug: 'wandered', _status: 'published' },
+      user: fixtures.districtAdmin,
+      overrideAccess: true,
+    })
+    expect(await getPagePathById(ctx, String(child.id))).toBe('/moved-under/wandered')
+
+    await payload.delete({ collection: 'pages', id: child.id, overrideAccess: true })
+    await payload.delete({ collection: 'pages', id: parent.id, overrideAccess: true })
+  })
+
+  it('returns null for a draft or a staff-only page', async () => {
+    const ctx = await ctxFor('a.localhost')
+    expect(await getPagePathById(ctx, String(fixtures.draftPageA))).toBeNull()
+    expect(await getPagePathById(ctx, String(fixtures.staffPageA))).toBeNull()
+  })
+
+  it("never resolves another site's page", async () => {
+    /**
+     * Access is overridden on this path; the tenant clause is the only thing keeping
+     * `/dd2/pages/<B's id>` on School A's host from redirecting into School B (`02` §4.2).
+     */
+    expect(
+      await getPagePathById(await ctxFor('a.localhost'), String(fixtures.publishedPageB)),
+    ).toBeNull()
+  })
+
+  it('returns null for an id that is no page', async () => {
+    expect(await getPagePathById(await ctxFor('a.localhost'), '999999999')).toBeNull()
+  })
+})
+
+describe('getNavigation — links to a page', () => {
+  const ctxFor = async (hostname: string): Promise<ContentContext> => {
+    const tenant = await getTenantByHostname(hostname)
+    if (!tenant) throw new Error(`fixture tenant ${hostname} did not resolve`)
+    return { tenant, locale: 'en' }
+  }
+
+  it("uses the page's path, and drops links to pages that are not live on this site", async () => {
+    const original = await payload.findByID({
+      collection: 'navigation',
+      id: fixtures.navigationA,
+      depth: 0,
+      overrideAccess: true,
+    })
+    await payload.update({
+      collection: 'navigation',
+      id: fixtures.navigationA,
+      data: {
+        primary: [
+          { label: 'Live', linkType: 'page', page: fixtures.publishedPageA },
+          { label: 'Draft', linkType: 'page', page: fixtures.draftPageA },
+          { label: 'Staff', linkType: 'page', page: fixtures.staffPageA },
+        ],
+      },
+      overrideAccess: true,
+    })
+
+    try {
+      const nav = await getNavigation(await ctxFor('a.localhost'))
+      expect(nav.primary.map((l) => [l.label, l.href])).toEqual([['Live', '/published-page-a']])
+    } finally {
+      await payload.update({
+        collection: 'navigation',
+        id: fixtures.navigationA,
+        data: { primary: original.primary ?? [] },
+        overrideAccess: true,
+      })
+    }
+  })
+
+  it("refuses a menu link to another site's page", async () => {
+    await expect(
+      payload.update({
+        collection: 'navigation',
+        id: fixtures.navigationA,
+        data: {
+          primary: [{ label: 'Elsewhere', linkType: 'page', page: fixtures.publishedPageB }],
+        },
+        user: fixtures.districtAdmin,
+        overrideAccess: false,
+      }),
+    ).rejects.toThrow()
   })
 })

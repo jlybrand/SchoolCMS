@@ -908,7 +908,9 @@ describe('navigation — district-only, one row per tenant (`03` §5, §6.1)', (
         payload.update({
           collection: 'navigation',
           id,
-          data: { primary: [{ label: 'Hijacked', href: 'https://evil.example' }] },
+          data: {
+            primary: [{ label: 'Hijacked', linkType: 'address', href: 'https://evil.example' }],
+          },
           user: f.managerA,
           overrideAccess: false,
         }),
@@ -946,7 +948,10 @@ describe('navigation — district-only, one row per tenant (`03` §5, §6.1)', (
     const denied = await isDenied(() =>
       payload.create({
         collection: 'navigation',
-        data: { tenant: district, primary: [{ label: 'About', href: '/about' }] },
+        data: {
+          tenant: district,
+          primary: [{ label: 'About', linkType: 'address', href: '/about' }],
+        },
         user: f.managerA,
         overrideAccess: false,
       }),
@@ -970,7 +975,7 @@ describe('navigation — district-only, one row per tenant (`03` §5, §6.1)', (
     const updated = await payload.update({
       collection: 'navigation',
       id: f.navigationB,
-      data: { footer: [{ label: 'Contact School B', href: '/contact' }] },
+      data: { footer: [{ label: 'Contact School B', linkType: 'address', href: '/contact' }] },
       user: f.districtAdmin,
       overrideAccess: false,
     })
@@ -985,7 +990,10 @@ describe('navigation — district-only, one row per tenant (`03` §5, §6.1)', (
     const denied = await isDenied(() =>
       payload.create({
         collection: 'navigation',
-        data: { tenant: f.tenantA, primary: [{ label: 'Second', href: '/second' }] },
+        data: {
+          tenant: f.tenantA,
+          primary: [{ label: 'Second', linkType: 'address', href: '/second' }],
+        },
         user: f.districtAdmin,
         overrideAccess: false,
       }),
@@ -999,7 +1007,7 @@ describe('navigation — district-only, one row per tenant (`03` §5, §6.1)', (
         payload.update({
           collection: 'navigation',
           id: f.navigationA,
-          data: { primary: [{ label: 'Bad', href }] },
+          data: { primary: [{ label: 'Bad', linkType: 'address', href }] },
           user: f.districtAdmin,
           overrideAccess: false,
         }),

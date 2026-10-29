@@ -2,7 +2,8 @@ import { getPayload } from 'payload'
 
 import config from '@payload-config'
 
-import { toNavigation } from './menus'
+import { linksToPages, toNavigation } from './menus'
+import { listPagePathIndex } from './pages'
 import type { ContentContext, Navigation } from './types'
 
 /**
@@ -40,5 +41,12 @@ export const getNavigation = async (ctx: ContentContext): Promise<Navigation> =>
     overrideAccess: true,
   })
 
-  return toNavigation(docs[0])
+  /**
+   * Links to a page are resolved to its path today (Jason, 2026-10-29). The tree is read only
+   * when a menu has one, and read through `listPagePathIndex`, so it is this tenant's
+   * published, public pages — a page on another site cannot become a link here.
+   */
+  const paths = linksToPages(docs[0]) ? await listPagePathIndex(ctx) : undefined
+
+  return toNavigation(docs[0], paths)
 }

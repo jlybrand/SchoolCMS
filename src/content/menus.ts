@@ -34,7 +34,36 @@ export const EMPTY_NAVIGATION: Readonly<Navigation> = Object.freeze({
   footer: [],
 })
 
-const toMenu = (value: unknown, menu: MenuName): MenuLink[] => {
+/** Page id -> its current path (`page-tree.ts`). Empty when the caller has none. */
+type Paths = ReadonlyMap<string, string>
+
+const NO_PATHS: Paths = new Map()
+
+const pageIdOf = (value: unknown): string | null => {
+  if (typeof value === 'number' || typeof value === 'string') return String(value)
+  if (isRow(value) && (typeof value.id === 'number' || typeof value.id === 'string')) {
+    return String(value.id)
+  }
+  return null
+}
+
+/**
+ * Where a link goes. A link to a PAGE (Jason, 2026-10-29) takes the path the page has today,
+ * so a rename or a move never breaks the menu; any address stored on the row is ignored. A page
+ * with no current path — unpublished, staff-only, deleted, or on another site — gives null and
+ * the link is dropped: a menu entry that 404s is a bug (`03` §5).
+ *
+ * A row with no `linkType` predates link types and is an address.
+ */
+const hrefOf = (row: Row, paths: Paths): string | null => {
+  if (row.linkType === 'page') {
+    const id = pageIdOf(row.page)
+    return id === null ? null : (paths.get(id) ?? null)
+  }
+  return toSafeHref(row.href)
+}
+
+const toMenu = (value: unknown, menu: MenuName, paths: Paths): MenuLink[] => {
   if (!Array.isArray(value)) return []
 
   const links: MenuLink[] = []
@@ -48,7 +77,7 @@ const toMenu = (value: unknown, menu: MenuName): MenuLink[] => {
      * what keeps an unsafe destination off the site when the row arrived by a route that
      * never ran it (`src/lib/href.ts`).
      */
-    const href = toSafeHref(row.href)
+    const href = hrefOf(row, paths)
 
     // No words is a link with no accessible name (WCAG 2.4.4, 4.1.2); no href is not a link.
     if (label === null || href === null) return
@@ -65,12 +94,22 @@ const toMenu = (value: unknown, menu: MenuName): MenuLink[] => {
   return links
 }
 
-export const toNavigation = (doc: unknown): Navigation => {
+export const toNavigation = (doc: unknown, paths: Paths = NO_PATHS): Navigation => {
   const row: Row = isRow(doc) ? doc : {}
 
   return {
-    primary: toMenu(row.primary, 'primary'),
-    utility: toMenu(row.utility, 'utility'),
-    footer: toMenu(row.footer, 'footer'),
+    primary: toMenu(row.primary, 'primary', paths),
+    utility: toMenu(row.utility, 'utility', paths),
+    footer: toMenu(row.footer, 'footer', paths),
   }
+}
+
+/** True when any link in the row points at a page — the only case that needs the page tree. */
+export const linksToPages = (doc: unknown): boolean => {
+  if (!isRow(doc)) return false
+  return (['primary', 'utility', 'footer'] as const).some(
+    (menu) =>
+      Array.isArray(doc[menu]) &&
+      (doc[menu] as unknown[]).some((row) => isRow(row) && row.linkType === 'page'),
+  )
 }

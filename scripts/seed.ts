@@ -306,11 +306,18 @@ const run = async () => {
         data: {
           tenant: tenantId,
           primary: [
-            { label: 'About', href: '/about' },
-            { label: 'Staff directory', href: '/about/staff' },
+            { label: 'About', linkType: 'address', href: '/about' },
+            { label: 'Staff directory', linkType: 'address', href: '/about/staff' },
           ],
-          utility: [{ label: 'Staff email', href: 'https://outlook.office.com', newTab: true }],
-          footer: [{ label: `About ${tenant.name}`, href: '/about' }],
+          utility: [
+            {
+              label: 'Staff email',
+              linkType: 'address',
+              href: 'https://outlook.office.com',
+              newTab: true,
+            },
+          ],
+          footer: [{ label: `About ${tenant.name}`, linkType: 'address', href: '/about' }],
         },
         overrideAccess: true,
         ...asDistrict,
