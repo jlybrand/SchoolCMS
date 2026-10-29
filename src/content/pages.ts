@@ -4,6 +4,7 @@ import config from '@payload-config'
 
 import { ROOT_SLUG, buildPagePath, splitPagePath } from '@/lib/slug'
 import { toPageBlocks } from './blocks'
+import { pathIndex, segmentsFor, type TreeRow } from './page-tree'
 import { toRichText } from './rich-text'
 import type { ContentContext, Page, PageLink, PageType, Visibility } from './types'
 
@@ -262,49 +263,12 @@ export const listPagePaths = async (
   })
 
   const pages = docs as PayloadPage[]
-  const byId = new Map(pages.map((doc) => [String(doc.id), doc]))
-
-  const segmentsFor = (doc: PayloadPage): string[] | null => {
-    const chain: string[] = []
-    let cursor: PayloadPage | undefined = doc
-    // Bounded by the map size, so a parent cycle introduced by bad data terminates here
-    // rather than hanging the build.
-    const seen = new Set<string>()
-
-    while (cursor) {
-      const id = String(cursor.id)
-      if (seen.has(id)) return null
-      seen.add(id)
-
-      chain.unshift(cursor.slug)
-
-      const parent = idOf(cursor.parent ?? null)
-      if (parent === null) {
-        /**
-         * A page NESTED under the front page has no reachable URL: its path would start
-         * `/home/...`, and `getPageByPath` refuses anything under `/home` so that the front
-         * page has one URL. Emitting it would generate a static param for a route that 404s
-         * at request time.
-         *
-         * `rootPageCannotBeParent` refuses this shape on write, so it should not exist — but
-         * validation and resolution are separate guarantees, and a migration or a direct
-         * database write only has to defeat the first one.
-         */
-        if (chain.length > 1 && chain[0] === ROOT_SLUG) return null
-
-        return chain
-      }
-
-      cursor = byId.get(parent)
-    }
-
-    // Parent exists but is not in the published set — the page has no reachable URL.
-    return null
-  }
+  const byId = new Map<string, TreeRow>(pages.map((doc) => [String(doc.id), doc]))
 
   const reachable: { doc: PayloadPage; path: string }[] = []
   for (const doc of pages) {
-    const segments = segmentsFor(doc)
+    // The shared walk (`page-tree.ts`) — the same answer a permalink and a menu link get.
+    const segments = segmentsFor(doc, byId)
     if (!segments) continue
     reachable.push({ doc, path: buildPagePath(segments) })
   }
@@ -332,3 +296,36 @@ export const listPagePaths = async (
     page: toDomain(doc, path, byTitle(childrenByParent.get(String(doc.id)) ?? [])),
   }))
 }
+
+/**
+ * Every published, public page in a tenant, by id, at the path it has today.
+ *
+ * What resolves a permalink and a menu link to a page (Jason, 2026-10-29), so neither stores
+ * an address that a rename or a move would strand. One query for the whole tenant, reading
+ * only what the tree needs, at build or revalidate time.
+ */
+export const listPagePathIndex = async (ctx: ContentContext): Promise<Map<string, string>> => {
+  const payload = await getPayload({ config })
+
+  const { docs } = await payload.find({
+    collection: 'pages',
+    where: { and: [{ tenant: { equals: ctx.tenant.id } }, ...publishedAndPublic] },
+    limit: 5000,
+    depth: 0,
+    select: { slug: true, parent: true },
+    overrideAccess: true,
+  })
+
+  return pathIndex(docs as unknown as TreeRow[])
+}
+
+/**
+ * Where a permalink goes: the page's path today, or null.
+ *
+ * Null for a page on ANOTHER site, as well as for a missing, draft or staff-only one — the
+ * `tenant` clause in `listPagePathIndex` is the only scoping on this path. `/p/<id>` on one
+ * school's host must never redirect into another school's page, and must not tell the two
+ * cases apart, or it becomes a way to learn which ids exist elsewhere (`03` §6.4).
+ */
+export const getPagePathById = async (ctx: ContentContext, id: string): Promise<string | null> =>
+  (await listPagePathIndex(ctx)).get(id) ?? null

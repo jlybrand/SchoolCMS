@@ -567,3 +567,45 @@ flat list — `admin.components.views.list.Component` on `PostBoards`.
 
 `admin-planes-axe.spec.ts`: "announcement boards, folders open" (every `<details>` opened before the
 audit) and "a board" (reached by opening a folder).
+
+## 9. Page permalinks and menu links to a page (Jason, 2026-10-29)
+
+Every page answers at `/p/<id>`; menu links may store a page instead of an address. Both
+resolve the page id to its current path, so a rename or a move breaks neither.
+
+### Files
+
+| File                                                           | Does                                                                                     |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `src/lib/permalink.ts`                                         | `PERMALINK_SEGMENT` (`p`), `permalinkPath(id)`, `parsePermalinkId(raw)`                  |
+| `src/lib/slug.ts`                                              | `p` joins `RESERVED_TOP_LEVEL_SLUGS`                                                     |
+| `src/content/page-tree.ts`                                     | pure `segmentsFor` / `pathIndex(rows)` — id → current path                               |
+| `src/content/pages.ts`                                         | `listPagePathIndex(ctx)`, `getPagePathById(ctx, id)`; `listPagePaths` uses `segmentsFor` |
+| `src/app/(frontend)/sites/[hostname]/[locale]/p/[id]/route.ts` | GET → 302 `Location: localizedPath(path, locale)`, or 404                                |
+| `src/content/menus.ts`                                         | `toNavigation(doc, paths)`; `linksToPages(doc)`                                          |
+| `src/content/navigation.ts`                                    | reads `listPagePathIndex` only when a menu has a page link                               |
+| `src/collections/Navigation.ts`                                | link fields `linkType` (`page` \| `address`), `page`, `href`                             |
+| `src/lib/menu-page-link.ts`                                    | `validateMenuPageLink` — page required on a page link, and on the menu's site            |
+| `src/admin/Permalink/PermalinkField.tsx`                       | `ui` field in the page sidebar showing `/p/<id>`                                         |
+
+### The flow
+
+1. `/p/12` on `a.localhost` → proxy rewrites to `/sites/a.localhost/en/p/12` → `route.ts`.
+2. `parsePermalinkId` refuses anything but a positive integer with no leading zero → 404.
+3. `resolveSite` (unknown host or locale → 404) → `getPagePathById` → `listPagePathIndex`:
+   one query for the tenant's published, public pages (`slug`, `parent`), then `pathIndex`.
+4. No path (missing, draft, staff-only, other site, unreachable) → 404; else 302 to the path,
+   locale-prefixed. `revalidate = 3600`; any page publish purges the site layout-deep.
+
+Menus: a row with `linkType: 'page'` takes `paths.get(pageId)` and ignores `href`; no path →
+dropped. A row with no `linkType` (saved before the field) is an address. New links default
+to `page`.
+
+### Tests
+
+- `tests/unit/lib/permalink.test.ts`, `tests/unit/page-tree.test.ts`,
+  `tests/unit/lib/menu-page-link.test.ts`, `tests/unit/menus.test.ts` (page links)
+- `tests/integration/content-layer.test.ts` — `getPagePathById` (move, draft, staff, other
+  site), `getNavigation` page links, cross-site menu link refused on write
+- `tests/e2e/page-permalinks.spec.ts` — 302 before and after rename + move; 404s; sidebar
+  field + axe in both themes

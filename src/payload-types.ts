@@ -625,10 +625,15 @@ export interface Navigation {
          * What the link says. Name the destination — "Lunch menus", never "Click here" (WCAG 2.4.4).
          */
         label: string;
+        linkType?: ('page' | 'address') | null;
+        /**
+         * Keeps working if the page is renamed or moved.
+         */
+        page?: (number | null) | Page;
         /**
          * A path on this site, like /about, or a full web address starting https://
          */
-        href: string;
+        href?: string | null;
         /**
          * The link says so out loud when this is on, so people using a screen reader are not moved without warning.
          */
@@ -645,10 +650,15 @@ export interface Navigation {
          * What the link says. Name the destination — "Lunch menus", never "Click here" (WCAG 2.4.4).
          */
         label: string;
+        linkType?: ('page' | 'address') | null;
+        /**
+         * Keeps working if the page is renamed or moved.
+         */
+        page?: (number | null) | Page;
         /**
          * A path on this site, like /about, or a full web address starting https://
          */
-        href: string;
+        href?: string | null;
         /**
          * The link says so out loud when this is on, so people using a screen reader are not moved without warning.
          */
@@ -665,10 +675,15 @@ export interface Navigation {
          * What the link says. Name the destination — "Lunch menus", never "Click here" (WCAG 2.4.4).
          */
         label: string;
+        linkType?: ('page' | 'address') | null;
+        /**
+         * Keeps working if the page is renamed or moved.
+         */
+        page?: (number | null) | Page;
         /**
          * A path on this site, like /about, or a full web address starting https://
          */
-        href: string;
+        href?: string | null;
         /**
          * The link says so out loud when this is on, so people using a screen reader are not moved without warning.
          */
@@ -1234,6 +1249,8 @@ export interface NavigationSelect<T extends boolean = true> {
     | T
     | {
         label?: T;
+        linkType?: T;
+        page?: T;
         href?: T;
         newTab?: T;
         id?: T;
@@ -1242,6 +1259,8 @@ export interface NavigationSelect<T extends boolean = true> {
     | T
     | {
         label?: T;
+        linkType?: T;
+        page?: T;
         href?: T;
         newTab?: T;
         id?: T;
@@ -1250,6 +1269,8 @@ export interface NavigationSelect<T extends boolean = true> {
     | T
     | {
         label?: T;
+        linkType?: T;
+        page?: T;
         href?: T;
         newTab?: T;
         id?: T;

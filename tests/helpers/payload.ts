@@ -189,11 +189,18 @@ export async function seed(payload: Payload): Promise<Fixtures> {
         data: {
           tenant,
           primary: [
-            { label: `About ${name}`, href: '/about' },
-            { label: 'Calendar', href: '/calendar' },
+            { label: `About ${name}`, linkType: 'address', href: '/about' },
+            { label: 'Calendar', linkType: 'address', href: '/calendar' },
           ],
-          utility: [{ label: 'Staff email', href: 'https://outlook.office.com', newTab: true }],
-          footer: [{ label: `Contact ${name}`, href: '/contact' }],
+          utility: [
+            {
+              label: 'Staff email',
+              linkType: 'address',
+              href: 'https://outlook.office.com',
+              newTab: true,
+            },
+          ],
+          footer: [{ label: `Contact ${name}`, linkType: 'address', href: '/contact' }],
         },
         overrideAccess: true,
       })
