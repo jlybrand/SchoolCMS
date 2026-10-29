@@ -516,3 +516,83 @@ describe('the block library and the mapper agree', () => {
     }
   })
 })
+
+/**
+ * Buttons and cards that point at a PAGE (Jason, 2026-10-29) store the page and take its path
+ * today, as menu links do. A row saved before link types existed reads as an address.
+ */
+describe('toPageBlocks — links to a page', () => {
+  const paths = new Map([['5', '/enroll']])
+  const cta = (extra: Record<string, unknown>) => ({
+    blockType: 'callToAction',
+    id: 'c',
+    heading: 'Enroll',
+    linkLabel: 'Start enrollment',
+    ...extra,
+  })
+
+  it("points a call to action at the page's current path", () => {
+    const [block] = toPageBlocks([cta({ linkType: 'page', page: 5, href: '/stale' })], paths)
+    expect(block).toMatchObject({ kind: 'callToAction', href: '/enroll' })
+  })
+
+  it('drops a call to action whose page has no current path — a button that goes nowhere', () => {
+    expect(toPageBlocks([cta({ linkType: 'page', page: 99 })], paths)).toEqual([])
+    expect(toPageBlocks([cta({ linkType: 'page', page: 5 })])).toEqual([])
+  })
+
+  it('keeps a call to action saved before link types existed', () => {
+    const [block] = toPageBlocks([cta({ href: '/apply' })], paths)
+    expect(block).toMatchObject({ href: '/apply' })
+  })
+
+  const cards = (...rows: Record<string, unknown>[]) => [
+    {
+      blockType: 'cardGrid',
+      id: 'g',
+      cards: rows.map((row, i) => ({ title: `Card ${i}`, ...row })),
+    },
+  ]
+  const hrefs = (blocks: ReturnType<typeof toPageBlocks>) =>
+    blocks[0]?.kind === 'cardGrid' ? blocks[0].cards.map((card) => card.href) : null
+
+  it('links a card to a page, an address, or nothing', () => {
+    const result = toPageBlocks(
+      cards(
+        { linkType: 'page', page: 5 },
+        { linkType: 'address', href: '/athletics' },
+        { linkType: 'none', href: '/ignored' },
+        { href: '/legacy' },
+        {},
+      ),
+      paths,
+    )
+    expect(hrefs(result)).toEqual(['/enroll', '/athletics', null, '/legacy', null])
+  })
+
+  it('keeps a card whose page has no current path, without its link', () => {
+    expect(hrefs(toPageBlocks(cards({ linkType: 'page', page: 99 }), paths))).toEqual([null])
+  })
+
+  it('resolves page links in the words of a text block and an accordion', () => {
+    const words = lexical({
+      type: 'paragraph',
+      children: [
+        {
+          type: 'link',
+          fields: { linkType: 'internal', doc: { relationTo: 'pages', value: 5 } },
+          children: [{ type: 'text', text: 'Enroll', format: 0 }],
+        },
+      ],
+    })
+    const [text, accordion] = toPageBlocks(
+      [
+        { blockType: 'richText', id: 't', content: words },
+        { blockType: 'accordion', id: 'a', items: [{ heading: 'How?', content: words }] },
+      ],
+      paths,
+    )
+    expect(JSON.stringify(text)).toContain('"href":"/enroll"')
+    expect(JSON.stringify(accordion)).toContain('"href":"/enroll"')
+  })
+})

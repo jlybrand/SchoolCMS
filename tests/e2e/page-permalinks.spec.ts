@@ -127,6 +127,87 @@ test.describe('page permalinks', () => {
   })
 
   /**
+   * The same promise for a button and for a link in the words (Jason, 2026-10-29): both store
+   * the page, so after the page is renamed they point at its new address with nobody editing
+   * them.
+   */
+  test('a button and a link in the words follow a page that is renamed', async ({
+    page,
+    baseURL,
+  }) => {
+    const admin = await asDistrict(baseURL)
+    const made: number[] = []
+    try {
+      const target = await mkPage(admin, 'b.localhost')
+      made.push(target.id)
+      const words = {
+        root: {
+          type: 'root',
+          version: 1,
+          direction: null,
+          format: '',
+          indent: 0,
+          children: [
+            {
+              type: 'paragraph',
+              version: 1,
+              children: [
+                {
+                  type: 'link',
+                  version: 3,
+                  fields: {
+                    linkType: 'internal',
+                    doc: { relationTo: 'pages', value: target.id },
+                    newTab: false,
+                  },
+                  children: [{ type: 'text', text: 'Read the details', version: 1 }],
+                },
+              ],
+            },
+          ],
+        },
+      }
+      const linking = await mkPage(admin, 'b.localhost', {
+        pageType: 'composed',
+        layout: [
+          { blockType: 'richText', content: words },
+          {
+            blockType: 'callToAction',
+            heading: 'Enroll',
+            linkLabel: 'Start enrollment',
+            linkType: 'page',
+            page: target.id,
+          },
+        ],
+      })
+      made.push(linking.id)
+
+      const hrefs = async () => {
+        await page.goto(siteUrl(baseURL, 'b.localhost', `/${linking.slug}`))
+        return {
+          button: await page.getByRole('link', { name: 'Start enrollment' }).getAttribute('href'),
+          words: await page.getByRole('link', { name: 'Read the details' }).getAttribute('href'),
+        }
+      }
+      expect(await hrefs()).toEqual({ button: `/${target.slug}`, words: `/${target.slug}` })
+
+      const renamed = await admin.patch(`/api/pages/${target.id}?depth=0`, {
+        data: { slug: `${target.slug}-renamed`, _status: 'published' },
+      })
+      expect(renamed.ok(), await renamed.text()).toBe(true)
+
+      // The rename was a publish on the site, so the linking page is rebuilt with the new path.
+      expect(await hrefs()).toEqual({
+        button: `/${target.slug}-renamed`,
+        words: `/${target.slug}-renamed`,
+      })
+    } finally {
+      for (const id of made.reverse()) await admin.delete(`/api/pages/${id}`)
+      await admin.dispose()
+    }
+  })
+
+  /**
    * Axe over this field is `admin-planes-axe.spec.ts`, which audits the page form in both themes
    * AFTER `A11yPatch` has repaired Payload's own markup — an audit run before that repair fails
    * on Payload's controls, not on this field.

@@ -1,14 +1,7 @@
-import type {
-  ArrayField,
-  CollectionConfig,
-  Field,
-  RelationshipFieldSingleValidation,
-} from 'payload'
+import type { ArrayField, CollectionConfig, Field } from 'payload'
 
 import { districtOnly } from '@/access/tenant-scoped'
-import { relationshipIdOf } from '@/access/predicates'
-import { validateHref } from '@/lib/href'
-import { validateMenuPageLink } from '@/lib/menu-page-link'
+import { linkFields as destinationFields } from '@/collections/fields/link'
 
 /**
  * `navigation` — a tenant's primary, utility and footer menus (`03` §5).
@@ -30,7 +23,7 @@ import { validateMenuPageLink } from '@/lib/menu-page-link'
  * second concept with no workflow behind it.
  *
  * Per CLAUDE.md's TDD exception table the declarations are not test-first. The behaviour is
- * `validateHref` and the mapper in `src/content/menus.ts`, and both are.
+ * `validateHref`, `validatePageLink` and the mapper in `src/content/menus.ts`, and all three are.
  */
 
 const linkFields: Field[] = [
@@ -44,71 +37,14 @@ const linkFields: Field[] = [
         'What the link says. Name the destination — "Lunch menus", never "Click here" (WCAG 2.4.4).',
     },
   },
-  {
-    /**
-     * A page, or an address (Jason, 2026-10-29). A link to a page stores the page, not its
-     * path, so renaming or moving it never breaks the menu — `src/content/menus.ts` resolves
-     * it at render. A row saved before this field existed has no value and reads as an address.
-     *
-     * A radio, not a select: Payload's select fails axe (`docs/phases/04` §17).
-     */
-    name: 'linkType',
-    type: 'radio',
-    defaultValue: 'page',
-    label: 'Links to',
-    options: [
-      { label: 'A page on this site', value: 'page' },
-      { label: 'A web address', value: 'address' },
-    ],
-  },
-  {
-    name: 'page',
-    type: 'relationship',
-    relationTo: 'pages',
-    label: 'Page',
-    admin: {
-      condition: (_data, siblingData) => siblingData?.linkType === 'page',
-      description: 'Keeps working if the page is renamed or moved.',
-    },
-    /** This site's pages only — the same convenience, and the same reason, as `pages.parent`. */
-    filterOptions: ({ data }) => {
-      const tenant = (data as { tenant?: unknown } | undefined)?.tenant
-      return tenant === undefined || tenant === null ? true : { tenant: { equals: tenant } }
-    },
-    /** Required on a page link, and on this site — see `src/lib/menu-page-link.ts`. */
-    validate: (async (value, { data, id, req, siblingData }) => {
-      const tenantOf = async (collection: 'pages' | 'navigation', docId: string) => {
-        const doc = await req.payload
-          .findByID({ collection, id: docId, depth: 0, overrideAccess: true, req })
-          .catch(() => null)
-        return relationshipIdOf((doc as { tenant?: unknown } | null)?.tenant as never)
-      }
-      return validateMenuPageLink(
-        {
-          linkType: (siblingData as { linkType?: unknown } | undefined)?.linkType,
-          page: value,
-          tenant: (data as { tenant?: unknown } | undefined)?.tenant,
-          menuId: id,
-        },
-        {
-          tenantOfPage: (pageId) => tenantOf('pages', pageId),
-          tenantOfMenu: (menuId) => tenantOf('navigation', menuId),
-        },
-      )
-    }) satisfies RelationshipFieldSingleValidation,
-  },
-  {
-    name: 'href',
-    type: 'text',
-    label: 'Goes to',
-    admin: {
-      condition: (_data, siblingData) => siblingData?.linkType !== 'page',
-      description: 'A path on this site, like /about, or a full web address starting https://',
-    },
-    // Required for an address only; a page link carries none.
-    validate: (value: unknown, { siblingData }: { siblingData?: { linkType?: unknown } }) =>
-      siblingData?.linkType === 'page' ? true : validateHref(value, { required: true }),
-  },
+  /**
+   * A page on this site or a web address (Jason, 2026-10-29) — `src/collections/fields/link.ts`.
+   * A link to a page follows it through a rename or a move.
+   */
+  ...destinationFields({
+    owner: 'navigation',
+    hrefDescription: 'A path on this site, like /about, or a full web address starting https://',
+  }),
   {
     name: 'newTab',
     type: 'checkbox',

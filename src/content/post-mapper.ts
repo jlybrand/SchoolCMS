@@ -1,5 +1,6 @@
 import { relationshipIdOf, tenantIdOf } from '@/access/predicates'
 
+import { NO_PAGE_PATHS, type PagePaths } from './page-tree'
 import { toRichText } from './rich-text'
 import type { Post } from './types'
 
@@ -17,7 +18,12 @@ const text = (value: unknown): string | null => {
   return trimmed === '' ? null : trimmed
 }
 
-export const toPost = (row: unknown): Post | null => {
+/**
+ * `paths` is the post's HOME site's page id -> current path, for links to a page in its words
+ * (Jason, 2026-10-29). Only `getPostBySlug` passes it — it is the one caller that renders the
+ * body, and it renders it on the home site, where those paths are.
+ */
+export const toPost = (row: unknown, paths: PagePaths = NO_PAGE_PATHS): Post | null => {
   if (typeof row !== 'object' || row === null) return null
   const doc = row as Record<string, unknown>
 
@@ -33,7 +39,7 @@ export const toPost = (row: unknown): Post | null => {
     title,
     slug,
     excerpt: text(doc.excerpt),
-    body: toRichText(doc.body),
+    body: toRichText(doc.body, paths),
     publishedDate: text(doc.publishedDate),
     boardId: relationshipIdOf(doc.board as never),
     tagIds: Array.isArray(doc.tags)

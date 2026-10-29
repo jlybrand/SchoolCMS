@@ -1,7 +1,7 @@
 import type { Block } from 'payload'
 
 import { toEmbedTarget } from '@/lib/embed-url'
-import { validateHref } from '@/lib/href'
+import { linkFields } from '@/collections/fields/link'
 
 /**
  * THE PAYLOAD SIDE of the block library (`03` §3).
@@ -42,10 +42,10 @@ export const richTextBlock: Block = {
 /**
  * One decision, presented once.
  *
- * `href` is a plain text field rather than a relationship because a call to action points at
- * enrollment portals and district forms as often as at pages here, and a picker that cannot
- * express half the real destinations pushes editors into a workaround. The cost is that a
- * page rename can strand one — which `redirects` (`03` §2) is what covers.
+ * A PAGE OR AN ADDRESS (Jason, 2026-10-29). A call to action points at enrollment portals and
+ * district forms as often as at pages here, so a page picker alone would push editors into a
+ * workaround — and a typed path alone is stranded by a page rename. A link to a page stores the
+ * page and follows it (`src/collections/fields/link.ts`).
  */
 export const callToActionBlock: Block = {
   slug: 'callToAction',
@@ -65,14 +65,10 @@ export const callToActionBlock: Block = {
       label: 'Supporting line',
       admin: { description: 'Optional. One or two sentences of context.' },
     },
-    {
-      name: 'href',
-      type: 'text',
-      required: true,
-      label: 'Goes to',
-      admin: { description: 'A path on this site, like /enroll, or a full web address.' },
-      validate: (value: unknown) => validateHref(value, { required: true }),
-    },
+    ...linkFields({
+      owner: 'pages',
+      hrefDescription: 'A path on this site, like /enroll, or a full web address.',
+    }),
     {
       name: 'linkLabel',
       type: 'text',
@@ -155,16 +151,13 @@ export const cardGridBlock: Block = {
       fields: [
         { name: 'title', type: 'text', required: true, label: 'Title' },
         { name: 'text', type: 'textarea', label: 'Description' },
-        {
-          name: 'href',
-          type: 'text',
-          label: 'Goes to',
-          admin: {
-            description:
-              'Optional. A path like /athletics, or a full web address. The title becomes the link.',
-          },
-          validate: (value: unknown) => validateHref(value, { required: false }),
-        },
+        // Optional: "Nothing" is the default. The title becomes the link.
+        ...linkFields({
+          owner: 'pages',
+          optional: true,
+          hrefDescription:
+            'A path like /athletics, or a full web address. The title becomes the link.',
+        }),
       ],
     },
   ],

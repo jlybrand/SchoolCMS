@@ -77,7 +77,13 @@ export const CONSTRAINED_FEATURES = [
   HeadingFeature({ enabledHeadingSizes: ['h2', 'h3'] }),
   BoldFeature(),
   ItalicFeature(),
-  LinkFeature(),
+  /**
+   * Internal links go to PAGES only (Jason, 2026-10-29): a page is the only thing here with a
+   * public address, and `src/content/rich-text.ts` resolves the stored page to its path today,
+   * so a rename or a move never breaks the link. `maxDepth: 0` stores the page's id, not a copy
+   * of the whole page inside the words.
+   */
+  LinkFeature({ enabledCollections: ['pages'], maxDepth: 0 }),
   UnorderedListFeature(),
   OrderedListFeature(),
   /**

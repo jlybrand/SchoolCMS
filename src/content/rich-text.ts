@@ -1,3 +1,4 @@
+import { NO_PAGE_PATHS, pathOfPage, type PagePaths } from './page-tree'
 import type {
   RichText,
   RichTextBlock,
@@ -56,7 +57,22 @@ const toText = (node: Node): RichTextText | null => {
   return { kind: 'text', text: node.text, marks: marksOf(node.format) }
 }
 
-const toInline = (value: unknown): RichTextInline[] => {
+/**
+ * Where a link goes. The editor's "internal link" (Jason, 2026-10-29) stores a PAGE, not an
+ * address, and takes the path the page has today — so a rename or a move never breaks it, and
+ * any `url` stored beside it is ignored. Only pages: a link to any other collection has no
+ * public address here. A page with no current path (unpublished, staff-only, deleted, another
+ * site's) gives '' and the words survive without the link.
+ */
+const hrefOf = (fields: Node, paths: PagePaths): string => {
+  if (fields.linkType === 'internal') {
+    const doc = isNode(fields.doc) ? fields.doc : {}
+    return doc.relationTo === 'pages' ? (pathOfPage(doc.value, paths) ?? '') : ''
+  }
+  return typeof fields.url === 'string' ? fields.url.trim() : ''
+}
+
+const toInline = (value: unknown, paths: PagePaths): RichTextInline[] => {
   if (!isNode(value)) return []
 
   if (value.type === 'text') {
@@ -66,10 +82,10 @@ const toInline = (value: unknown): RichTextInline[] => {
 
   if (value.type === 'link') {
     const fields = isNode(value.fields) ? value.fields : {}
-    const href = typeof fields.url === 'string' ? fields.url.trim() : ''
+    const href = hrefOf(fields, paths)
 
     const children = childrenOf(value)
-      .flatMap(toInline)
+      .flatMap((child) => toInline(child, paths))
       // A link's children are text; a nested link is not something the editor can make and
       // not something HTML permits.
       .filter((child): child is RichTextText => child.kind === 'text')
@@ -92,7 +108,7 @@ const hasContent = (children: RichTextInline[]): boolean =>
     child.kind === 'text' ? child.text.trim() !== '' : child.children.length > 0,
   )
 
-const toListItem = (value: unknown): RichTextListItem | null => {
+const toListItem = (value: unknown, paths: PagePaths): RichTextListItem | null => {
   if (!isNode(value) || value.type !== 'listitem') return null
 
   const children: RichTextInline[] = []
@@ -100,19 +116,19 @@ const toListItem = (value: unknown): RichTextListItem | null => {
 
   for (const child of childrenOf(value)) {
     if (isNode(child) && child.type === 'list') {
-      nested = nested ?? toList(child)
+      nested = nested ?? toList(child, paths)
       continue
     }
-    children.push(...toInline(child))
+    children.push(...toInline(child, paths))
   }
 
   if (!hasContent(children) && nested === null) return null
   return { children, list: nested }
 }
 
-const toList = (node: Node): RichTextList | null => {
+const toList = (node: Node, paths: PagePaths): RichTextList | null => {
   const items = childrenOf(node)
-    .map(toListItem)
+    .map((item) => toListItem(item, paths))
     .filter((item): item is RichTextListItem => item !== null)
 
   if (items.length === 0) return null
@@ -124,12 +140,12 @@ const toList = (node: Node): RichTextList | null => {
 
 const HEADING_LEVELS: Record<string, 2 | 3> = { h2: 2, h3: 3 }
 
-const toBlock = (value: unknown): RichTextBlock | null => {
+const toBlock = (value: unknown, paths: PagePaths): RichTextBlock | null => {
   if (!isNode(value)) return null
 
   switch (value.type) {
     case 'paragraph': {
-      const children = childrenOf(value).flatMap(toInline)
+      const children = childrenOf(value).flatMap((child) => toInline(child, paths))
       // Word pastes are full of spacer paragraphs — vertical rhythm expressed as content,
       // which the design system owns instead.
       return hasContent(children) ? { kind: 'paragraph', children } : null
@@ -140,12 +156,12 @@ const toBlock = (value: unknown): RichTextBlock | null => {
       // Includes `h1`: dropped, not demoted. The page title already owns level 1.
       if (!level) return null
 
-      const children = childrenOf(value).flatMap(toInline)
+      const children = childrenOf(value).flatMap((child) => toInline(child, paths))
       return hasContent(children) ? { kind: 'heading', level, children } : null
     }
 
     case 'list':
-      return toList(value)
+      return toList(value, paths)
 
     default:
       return null
@@ -158,15 +174,19 @@ const toBlock = (value: unknown): RichTextBlock | null => {
  * Accepts `unknown` on purpose. The caller has a value from the database whose shape is a
  * promise nobody can enforce, and a signature that claimed otherwise would push the
  * defensive checks out to every call site.
+ *
+ * `paths` is the site's page id -> current path (`page-tree.ts`), for links to a page. Without
+ * it those links keep their words and lose the link — right for a caller that only measures or
+ * diffs the words.
  */
-export const toRichText = (state: unknown): RichText => {
+export const toRichText = (state: unknown, paths: PagePaths = NO_PAGE_PATHS): RichText => {
   if (!isNode(state)) return []
 
   const root = state.root
   if (!isNode(root)) return []
 
   return childrenOf(root)
-    .map(toBlock)
+    .map((block) => toBlock(block, paths))
     .filter((block): block is RichTextBlock => block !== null)
 }
 
