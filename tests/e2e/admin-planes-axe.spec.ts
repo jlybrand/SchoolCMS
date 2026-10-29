@@ -73,6 +73,7 @@ const LIST_REPAIRED = ['tbody .select-row input[aria-label^="Select "]']
 let fixture: FixturePage
 let post: FixturePost
 let feedPage: number
+let linksPage: number
 
 /** The post form, once rendered and repaired — the page form's controls, less the page's own. */
 const POST_FORM_REPAIRED = PAGE_FORM_REPAIRED
@@ -153,9 +154,42 @@ adminTest.describe('district plane — whole screens', () => {
     })
     expect(made.ok(), await made.text()).toBe(true)
     feedPage = ((await made.json()).doc as { id: number }).id
+    /**
+     * A composed page whose button and first card link to a PAGE and second card to an address
+     * (Jason, 2026-10-29), so the page picker inside a block row is on screen with a page
+     * chosen. Menus use the same fields (`src/collections/fields/link.ts`).
+     */
+    const linked = await fixture.admin.post('/api/pages?draft=true&depth=0', {
+      data: {
+        tenant: (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json()).tenant,
+        title: 'Axe links page',
+        slug: `axe-links-${Date.now()}`,
+        pageType: 'composed',
+        layout: [
+          {
+            blockType: 'callToAction',
+            heading: 'Enroll',
+            linkLabel: 'Start enrollment',
+            linkType: 'page',
+            page: fixture.id,
+          },
+          {
+            blockType: 'cardGrid',
+            cards: [
+              { title: 'A page', linkType: 'page', page: fixture.id },
+              { title: 'An address', linkType: 'address', href: '/athletics' },
+            ],
+          },
+        ],
+        _status: 'draft',
+      },
+    })
+    expect(linked.ok(), await linked.text()).toBe(true)
+    linksPage = ((await linked.json()).doc as { id: number }).id
   })
   adminTest.afterAll(async () => {
     await fixture.admin.delete(`/api/pages/${feedPage}`)
+    await fixture.admin.delete(`/api/pages/${linksPage}`)
     await dropPage(fixture)
     await dropPost(post)
   })
@@ -213,6 +247,37 @@ adminTest.describe('district plane — whole screens', () => {
           '.clipboard-action__popup .popup-button[aria-label="Copy or paste"]',
         )
       })
+      adminTest(
+        `@a11y a page with buttons and cards linking to pages — ${colorScheme}`,
+        async ({ page }) => {
+          await page.goto(`/admin/collections/pages/${linksPage}`)
+          /**
+           * A saved block's nested rows open collapsed; open the cards so theirs are audited.
+           * Retried: Payload keeps which rows are open in the USER's preferences, and the other
+           * theme's run, as the same user on the same page, can close them again mid-way.
+           */
+          await expect(async () => {
+            // The layout's own "Show All" too, when the other run has collapsed the blocks.
+            for (const showAll of await page.getByRole('button', { name: 'Show All' }).all()) {
+              await showAll.click()
+            }
+            await expect(page.locator('#field-layout__1__cards__1__href')).toBeAttached({
+              timeout: 2_000,
+            })
+          }).toPass({ timeout: 20_000 })
+          await auditScreen(
+            page,
+            '#field-title',
+            '#field-layout__0__page input[aria-label="Page"]',
+            '#field-layout__1__cards__0__page input[aria-label="Page"]',
+            '#field-layout__1__cards__1__href',
+            // Each chosen page's clear button, taken out of the tab order by the patch.
+            '#field-layout__0__page .clear-indicator[aria-hidden="true"][tabindex="-1"]',
+            '#field-layout__1__cards__0__page .clear-indicator[aria-hidden="true"][tabindex="-1"]',
+            '.collapsible__drag[aria-label="Reorder"]',
+          )
+        },
+      )
       adminTest(`@a11y announcement boards, folders open — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/collections/post-boards')
         await expect(page.locator('#boards details').first()).toBeAttached({ timeout: 20_000 })

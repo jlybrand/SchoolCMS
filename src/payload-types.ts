@@ -390,8 +390,13 @@ export interface CardGridBlock {
   cards: {
     title: string;
     text?: string | null;
+    linkType?: ('none' | 'page' | 'address') | null;
     /**
-     * Optional. A path like /athletics, or a full web address. The title becomes the link.
+     * Keeps working if the page is renamed or moved.
+     */
+    page?: (number | null) | Page;
+    /**
+     * A path like /athletics, or a full web address. The title becomes the link.
      */
     href?: string | null;
     id?: string | null;
@@ -413,10 +418,15 @@ export interface CallToActionBlock {
    * Optional. One or two sentences of context.
    */
   text?: string | null;
+  linkType?: ('page' | 'address') | null;
+  /**
+   * Keeps working if the page is renamed or moved.
+   */
+  page?: (number | null) | Page;
   /**
    * A path on this site, like /enroll, or a full web address.
    */
-  href: string;
+  href?: string | null;
   /**
    * What the button says. Describe the destination — "Start enrollment", never "Click here" (WCAG 2.4.4).
    */
@@ -1120,6 +1130,8 @@ export interface CardGridBlockSelect<T extends boolean = true> {
     | {
         title?: T;
         text?: T;
+        linkType?: T;
+        page?: T;
         href?: T;
         id?: T;
       };
@@ -1133,6 +1145,8 @@ export interface CardGridBlockSelect<T extends boolean = true> {
 export interface CallToActionBlockSelect<T extends boolean = true> {
   heading?: T;
   text?: T;
+  linkType?: T;
+  page?: T;
   href?: T;
   linkLabel?: T;
   newTab?: T;

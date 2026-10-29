@@ -4,7 +4,7 @@ import config from '@payload-config'
 
 import { ROOT_SLUG, buildPagePath, splitPagePath } from '@/lib/slug'
 import { toPageBlocks } from './blocks'
-import { pathIndex, segmentsFor, type TreeRow } from './page-tree'
+import { pathIndex, segmentsFor, type PagePaths, type TreeRow } from './page-tree'
 import { toRichText } from './rich-text'
 import type { ContentContext, Page, PageLink, PageType, Visibility } from './types'
 
@@ -77,7 +77,16 @@ const byTitle = (links: PageLink[]): PageLink[] =>
  */
 const MAX_CHILDREN = 200
 
-const toDomain = (doc: PayloadPage, path: string, children: PageLink[]): Page => ({
+/**
+ * `paths` is this site's page id -> current path, so links to a page in the body and the blocks
+ * take the address the page has today (Jason, 2026-10-29).
+ */
+const toDomain = (
+  doc: PayloadPage,
+  path: string,
+  children: PageLink[],
+  paths: PagePaths,
+): Page => ({
   id: String(doc.id),
   tenantId: String(idOf(doc.tenant as PayloadPage['parent'])),
   title: doc.title,
@@ -88,10 +97,10 @@ const toDomain = (doc: PayloadPage, path: string, children: PageLink[]): Page =>
   parentId: idOf(doc.parent ?? null),
   requiresTranslationReview: doc.requiresTranslationReview === true,
   // The single point where Lexical becomes DD2 nodes. Nothing downstream sees editor state.
-  body: toRichText(doc.body),
+  body: toRichText(doc.body, paths),
   seo: { title: textOrNull(doc.meta?.title), description: textOrNull(doc.meta?.description) },
   // Likewise for blocks: nothing downstream sees a `blockType` discriminator (`03` §3).
-  layout: toPageBlocks(doc.layout),
+  layout: toPageBlocks(doc.layout, paths),
   /**
    * The page's own position in the tree, resolved HERE rather than by the block that renders
    * it — `src/blocks/` may not import the SDK (`03` §3.3, decided 2026-08-28).
@@ -195,7 +204,7 @@ export const getPageByPath = async (
 
   const children = isFrontPage ? [] : await childrenOf(payload, ctx, current, lookup)
 
-  return toDomain(current, buildPagePath(lookup), children)
+  return toDomain(current, buildPagePath(lookup), children, await listPagePathIndex(ctx))
 }
 
 /**
@@ -291,9 +300,12 @@ export const listPagePaths = async (
     childrenByParent.set(parent, siblings)
   }
 
+  // Every page's links resolved from the same set — no query per page.
+  const paths: PagePaths = new Map(reachable.map(({ doc, path }) => [String(doc.id), path]))
+
   return reachable.map(({ doc, path }) => ({
     path,
-    page: toDomain(doc, path, byTitle(childrenByParent.get(String(doc.id)) ?? [])),
+    page: toDomain(doc, path, byTitle(childrenByParent.get(String(doc.id)) ?? []), paths),
   }))
 }
 

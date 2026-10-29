@@ -73,8 +73,8 @@ Payload auth collection, backed by Entra ID (`02` §7).
   (`08` §7.1).
 - **Permalink** (Jason, 2026-10-29) — every page answers at `/dd2/pages/<id>`, which redirects (302)
   to its current path, so a link survives a rename or a move (cf. Finalsite `/fs/pages/<id>`).
-  `dd2` is a reserved top-level slug — the platform's namespace on every site. Menu links (`navigation`) may point at a page rather than
-  an address and resolve to its current path at render; a page that is not published, public
+  `dd2` is a reserved top-level slug — the platform's namespace on every site. Menu links (`navigation`), call-to-action buttons, cards and
+  links in the words may point at a page rather than an address and resolve to its current path at render; a page that is not published, public
   and on the menu's own site is dropped. Linked pages and hide-from-navigation/search follow.
 
 **`pageType` determines the editing shape:**

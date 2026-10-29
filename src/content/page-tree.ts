@@ -64,6 +64,30 @@ export const segmentsFor = (doc: TreeRow, byId: ReadonlyMap<string, TreeRow>): s
   return null
 }
 
+/**
+ * Page id -> current path, as `pathIndex` returns it. What every mapper that renders a link to
+ * a page is handed: menus, block buttons and cards, and links in the words.
+ */
+export type PagePaths = ReadonlyMap<string, string>
+
+export const NO_PAGE_PATHS: PagePaths = new Map()
+
+/** A page reference as Payload stores it — an id, or the populated page — as a string id. */
+export const pageIdOf = (value: unknown): string | null => {
+  if (typeof value === 'number' || typeof value === 'string') return String(value)
+  if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    const id = (value as { id?: unknown }).id
+    if (typeof id === 'number' || typeof id === 'string') return String(id)
+  }
+  return null
+}
+
+/** Where a page reference leads today, or null when it has no current path. */
+export const pathOfPage = (value: unknown, paths: PagePaths): string | null => {
+  const id = pageIdOf(value)
+  return id === null ? null : (paths.get(id) ?? null)
+}
+
 export const pathIndex = (rows: readonly TreeRow[]): Map<string, string> => {
   const byId = new Map(rows.map((row) => [String(row.id), row]))
   const paths = new Map<string, string>()

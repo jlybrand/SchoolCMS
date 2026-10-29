@@ -4,6 +4,7 @@ import config from '@payload-config'
 
 import { postPath } from '@/lib/post-url'
 
+import { listPagePathIndex } from './pages'
 import { toPost } from './post-mapper'
 import { feedConstraint, type FeedFilter } from './syndication'
 import type { ContentContext, Post } from './types'
@@ -79,7 +80,7 @@ export const getPostBySlug = async (ctx: ContentContext, slug: string): Promise<
     depth: 0,
     overrideAccess: true,
   })
-  const post = toPost(docs[0])
+  const post = toPost(docs[0], await listPagePathIndex(ctx))
   if (!post) return null
   return { ...post, homeHostname: ctx.tenant.hostname }
 }
@@ -118,6 +119,6 @@ export const listPosts = async (
 
   return withHomes(
     payload,
-    docs.map(toPost).filter((post): post is Post => post !== null),
+    docs.map((doc) => toPost(doc)).filter((post): post is Post => post !== null),
   )
 }

@@ -272,3 +272,104 @@ describe('toRichText — malformed input never throws', () => {
     expect(toRichText(root({ type: 'list', listType: 'bullet', children: [] }))).toEqual([])
   })
 })
+
+/**
+ * A link in the words to a PAGE on the site (Jason, 2026-10-29) — the editor's "internal link".
+ * It stores the page, and takes the path the page has today, so renaming or moving the page
+ * never breaks it. Before this, the mapper read only typed addresses and turned these back
+ * into plain words.
+ */
+describe('toRichText — links to a page', () => {
+  const paths = new Map([
+    ['5', '/about/staff'],
+    ['6', '/'],
+  ])
+  const internal = (doc: unknown, words = 'Our staff') =>
+    root({
+      type: 'paragraph',
+      children: [
+        {
+          type: 'link',
+          fields: { linkType: 'internal', doc, newTab: false },
+          children: [text(words)],
+        },
+      ],
+    })
+  const linkOf = (result: ReturnType<typeof toRichText>) => {
+    const block = result[0]
+    return block?.kind === 'paragraph' ? block.children[0] : undefined
+  }
+
+  it("uses the page's current path", () => {
+    expect(linkOf(toRichText(internal({ relationTo: 'pages', value: 5 }), paths))).toEqual({
+      kind: 'link',
+      href: '/about/staff',
+      newTab: false,
+      children: [{ kind: 'text', text: 'Our staff', marks: [] }],
+    })
+  })
+
+  it('reads a populated page as well as an id', () => {
+    const link = linkOf(toRichText(internal({ relationTo: 'pages', value: { id: 6 } }), paths))
+    expect(link).toMatchObject({ kind: 'link', href: '/' })
+  })
+
+  it('ignores any address stored beside the page', () => {
+    const state = root({
+      type: 'paragraph',
+      children: [
+        {
+          type: 'link',
+          fields: { linkType: 'internal', doc: { relationTo: 'pages', value: 5 }, url: '/old' },
+          children: [text('Staff')],
+        },
+      ],
+    })
+    expect(linkOf(toRichText(state, paths))).toMatchObject({ href: '/about/staff' })
+  })
+
+  /** Unpublished, staff-only, deleted or another site's page: the words stay, the link goes. */
+  it('keeps the words of a link to a page with no current path', () => {
+    expect(linkOf(toRichText(internal({ relationTo: 'pages', value: 99 }), paths))).toEqual({
+      kind: 'text',
+      text: 'Our staff',
+      marks: [],
+    })
+  })
+
+  it('keeps the words when no paths are given', () => {
+    expect(linkOf(toRichText(internal({ relationTo: 'pages', value: 5 })))).toMatchObject({
+      kind: 'text',
+    })
+  })
+
+  it('keeps the words of a link to anything that is not a page', () => {
+    expect(linkOf(toRichText(internal({ relationTo: 'users', value: 5 }), paths))).toMatchObject({
+      kind: 'text',
+    })
+  })
+
+  it('resolves links inside list items too', () => {
+    const state = root({
+      type: 'list',
+      listType: 'bullet',
+      children: [
+        {
+          type: 'listitem',
+          children: [
+            {
+              type: 'link',
+              fields: { linkType: 'internal', doc: { relationTo: 'pages', value: 5 } },
+              children: [text('Staff')],
+            },
+          ],
+        },
+      ],
+    })
+    const [list] = toRichText(state, paths)
+    expect(list?.kind === 'list' ? list.items[0]?.children[0] : null).toMatchObject({
+      kind: 'link',
+      href: '/about/staff',
+    })
+  })
+})

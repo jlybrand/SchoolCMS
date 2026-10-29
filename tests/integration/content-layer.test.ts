@@ -834,3 +834,131 @@ describe('getNavigation — links to a page', () => {
     ).rejects.toThrow()
   })
 })
+
+/**
+ * Buttons, cards and the words linking to a page (Jason, 2026-10-29) take the page's path
+ * today, through the same tenant-scoped path index as permalinks and menus.
+ */
+describe('links to a page in the words and the blocks', () => {
+  const ctxFor = async (hostname: string): Promise<ContentContext> => ({
+    tenant: (await getTenantByHostname(hostname))!,
+    locale: 'en',
+  })
+  const wordsLinkingTo = (page: number) => ({
+    root: {
+      type: 'root',
+      children: [
+        {
+          type: 'paragraph',
+          children: [
+            {
+              type: 'link',
+              version: 3,
+              fields: { linkType: 'internal', doc: { relationTo: 'pages', value: page } },
+              children: [{ type: 'text', text: 'See this', format: 0, version: 1 }],
+            },
+          ],
+        },
+      ],
+    },
+  })
+
+  it('resolves them on the page — by path and in the build list alike', async () => {
+    const made = await payload.create({
+      collection: 'pages',
+      data: {
+        tenant: fixtures.tenantA,
+        title: 'Links out',
+        slug: 'links-out',
+        pageType: 'composed',
+        visibility: 'public',
+        body: wordsLinkingTo(fixtures.publishedPageA) as never,
+        layout: [
+          {
+            blockType: 'callToAction',
+            heading: 'Go',
+            linkLabel: 'Go there',
+            linkType: 'page',
+            page: fixtures.publishedPageA,
+          },
+          {
+            blockType: 'callToAction',
+            heading: 'Draft',
+            linkLabel: 'Go nowhere',
+            linkType: 'page',
+            page: fixtures.draftPageA,
+          },
+        ],
+        _status: 'published',
+      },
+      user: fixtures.districtAdmin,
+      overrideAccess: true,
+    })
+
+    try {
+      const ctx = await ctxFor('a.localhost')
+      const byPath = await getPageByPath(ctx, '/links-out')
+      const built = (await listPagePaths(ctx)).find(({ path }) => path === '/links-out')?.page
+
+      for (const page of [byPath, built]) {
+        expect(JSON.stringify(page?.body)).toContain('"href":"/published-page-a"')
+        // The draft's button goes nowhere, so it is not on the page at all.
+        expect(page?.layout.map((b) => (b.kind === 'callToAction' ? b.href : b.kind))).toEqual([
+          '/published-page-a',
+        ])
+      }
+    } finally {
+      await payload.delete({ collection: 'pages', id: made.id, overrideAccess: true })
+    }
+  })
+
+  it("refuses a button that links to another site's page", async () => {
+    // Payload's message names the field; the reason is in its details.
+    const refusal = await payload
+      .create({
+        collection: 'pages',
+        data: {
+          tenant: fixtures.tenantA,
+          title: 'Links away',
+          slug: 'links-away',
+          pageType: 'composed',
+          visibility: 'public',
+          layout: [
+            {
+              blockType: 'callToAction',
+              heading: 'Elsewhere',
+              linkLabel: 'Go to B',
+              linkType: 'page',
+              page: fixtures.publishedPageB,
+            },
+          ],
+          _status: 'draft',
+        },
+        user: fixtures.districtAdmin,
+        overrideAccess: false,
+      })
+      .then(
+        () => null,
+        (err: { data?: unknown }) => err,
+      )
+    expect(JSON.stringify(refusal?.data)).toMatch(/this site/)
+  })
+
+  it('resolves them in an announcement, on its home site', async () => {
+    const p = await seedPosts(payload, fixtures)
+    await payload.update({
+      collection: 'posts',
+      id: p.publishedPostA,
+      // Its own slug: every `seedPosts` call makes another `published-post-a`.
+      data: {
+        slug: 'links-to-a-page',
+        body: wordsLinkingTo(fixtures.publishedPageA) as never,
+        _status: 'published',
+      },
+      user: fixtures.districtAdmin,
+      overrideAccess: true,
+    })
+    const post = await getPostBySlug(await ctxFor('a.localhost'), 'links-to-a-page')
+    expect(JSON.stringify(post?.body)).toContain('"href":"/published-page-a"')
+  })
+})

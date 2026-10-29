@@ -1,6 +1,7 @@
 import { relationshipIdOf } from '@/access/predicates'
 import { toEmbedTarget } from '@/lib/embed-url'
 import { toSafeHref } from '@/lib/href'
+import { NO_PAGE_PATHS, pathOfPage, type PagePaths } from './page-tree'
 import { toRichText } from './rich-text'
 import type {
   AccordionBlock,
@@ -63,8 +64,20 @@ const str = (value: unknown): string | null => {
  */
 const idOf = (row: Row, index: number): string => str(row.id) ?? `block-${index}`
 
-const toRichTextBlock = (row: Row, index: number): RichTextPageBlock | null => {
-  const content = toRichText(row.content)
+/**
+ * Where a button or a card goes (Jason, 2026-10-29): a PAGE takes the path it has today, so a
+ * rename or a move never breaks it, and any address stored beside it is ignored; an address
+ * goes through `toSafeHref`; `none` (cards only) is no link. A row with no `linkType` predates
+ * link types and is an address.
+ */
+const hrefOf = (row: Row, paths: PagePaths): string | null => {
+  if (row.linkType === 'page') return pathOfPage(row.page, paths)
+  if (row.linkType === 'none') return null
+  return toSafeHref(row.href)
+}
+
+const toRichTextBlock = (row: Row, index: number, paths: PagePaths): RichTextPageBlock | null => {
+  const content = toRichText(row.content, paths)
 
   /**
    * `RichText` renders null for an empty document, so an empty block would occupy a slot in
@@ -76,8 +89,9 @@ const toRichTextBlock = (row: Row, index: number): RichTextPageBlock | null => {
   return { kind: 'richText', id: idOf(row, index), content }
 }
 
-const toCallToAction = (row: Row, index: number): CallToActionBlock | null => {
-  const href = toSafeHref(row.href)
+const toCallToAction = (row: Row, index: number, paths: PagePaths): CallToActionBlock | null => {
+  // A page with no current path leaves the button going nowhere, so the block goes too.
+  const href = hrefOf(row, paths)
   const linkLabel = str(row.linkLabel)
 
   // The link is the block. See the file header.
@@ -98,11 +112,11 @@ const toCallToAction = (row: Row, index: number): CallToActionBlock | null => {
 const rowsOf = (value: unknown): Row[] =>
   Array.isArray(value) ? value.filter((row): row is Row => isRow(row)) : []
 
-const toAccordion = (row: Row, index: number): AccordionBlock | null => {
+const toAccordion = (row: Row, index: number, paths: PagePaths): AccordionBlock | null => {
   const items = rowsOf(row.items)
     .map((item): AccordionItem | null => {
       const heading = str(item.heading)
-      const content = toRichText(item.content)
+      const content = toRichText(item.content, paths)
 
       /**
        * A disclosure with no question is an unlabelled control; one with no answer opens onto
@@ -120,15 +134,18 @@ const toAccordion = (row: Row, index: number): AccordionBlock | null => {
   return { kind: 'accordion', id: idOf(row, index), heading: str(row.heading), items }
 }
 
-const toCardGrid = (row: Row, index: number): CardGridBlock | null => {
+const toCardGrid = (row: Row, index: number, paths: PagePaths): CardGridBlock | null => {
   const cards = rowsOf(row.cards)
     .map((card): Card | null => {
       // The title is the card's name — without one there is nothing to announce or link.
       const title = str(card.title)
       if (title === null) return null
 
-      // An unsafe destination costs the card its link, not the card — `href` is optional.
-      return { title, text: str(card.text), href: toSafeHref(card.href) }
+      /**
+       * An unsafe destination, or a page with no current path, costs the card its link, not the
+       * card — the link is optional.
+       */
+      return { title, text: str(card.text), href: hrefOf(card, paths) }
     })
     .filter((card): card is Card => card !== null)
 
@@ -221,7 +238,7 @@ const toFeed = (row: Row, index: number): FeedBlock | null => {
  * One entry per block in the register (`03` §3.1). A `blockType` absent from this table is
  * dropped — which is the forward-compatibility property, not an oversight.
  */
-const MAPPERS: Record<string, (row: Row, index: number) => PageBlock | null> = {
+const MAPPERS: Record<string, (row: Row, index: number, paths: PagePaths) => PageBlock | null> = {
   richText: toRichTextBlock,
   callToAction: toCallToAction,
   accordion: toAccordion,
@@ -238,15 +255,18 @@ const MAPPERS: Record<string, (row: Row, index: number) => PageBlock | null> = {
  * Accepts `unknown` for the same reason `toRichText` does: the caller has a value from the
  * database whose shape is a promise nobody can enforce, and a stricter signature would push
  * the defensive checks out to every call site.
+ *
+ * `paths` is the site's page id -> current path (`page-tree.ts`), for buttons, cards and words
+ * that link to a page. Still pure: the caller looks the paths up.
  */
-export const toPageBlocks = (value: unknown): PageBlock[] => {
+export const toPageBlocks = (value: unknown, paths: PagePaths = NO_PAGE_PATHS): PageBlock[] => {
   if (!Array.isArray(value)) return []
 
   return value
     .map((row, index) => {
       if (!isRow(row)) return null
       const map = typeof row.blockType === 'string' ? MAPPERS[row.blockType] : undefined
-      return map ? map(row, index) : null
+      return map ? map(row, index, paths) : null
     })
     .filter((block): block is PageBlock => block !== null)
 }

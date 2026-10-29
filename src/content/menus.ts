@@ -1,5 +1,6 @@
 import { toSafeHref } from '@/lib/href'
 
+import { NO_PAGE_PATHS, pathOfPage, type PagePaths } from './page-tree'
 import type { MenuLink, Navigation } from './types'
 
 /**
@@ -34,19 +35,6 @@ export const EMPTY_NAVIGATION: Readonly<Navigation> = Object.freeze({
   footer: [],
 })
 
-/** Page id -> its current path (`page-tree.ts`). Empty when the caller has none. */
-type Paths = ReadonlyMap<string, string>
-
-const NO_PATHS: Paths = new Map()
-
-const pageIdOf = (value: unknown): string | null => {
-  if (typeof value === 'number' || typeof value === 'string') return String(value)
-  if (isRow(value) && (typeof value.id === 'number' || typeof value.id === 'string')) {
-    return String(value.id)
-  }
-  return null
-}
-
 /**
  * Where a link goes. A link to a PAGE (Jason, 2026-10-29) takes the path the page has today,
  * so a rename or a move never breaks the menu; any address stored on the row is ignored. A page
@@ -55,15 +43,12 @@ const pageIdOf = (value: unknown): string | null => {
  *
  * A row with no `linkType` predates link types and is an address.
  */
-const hrefOf = (row: Row, paths: Paths): string | null => {
-  if (row.linkType === 'page') {
-    const id = pageIdOf(row.page)
-    return id === null ? null : (paths.get(id) ?? null)
-  }
+const hrefOf = (row: Row, paths: PagePaths): string | null => {
+  if (row.linkType === 'page') return pathOfPage(row.page, paths)
   return toSafeHref(row.href)
 }
 
-const toMenu = (value: unknown, menu: MenuName, paths: Paths): MenuLink[] => {
+const toMenu = (value: unknown, menu: MenuName, paths: PagePaths): MenuLink[] => {
   if (!Array.isArray(value)) return []
 
   const links: MenuLink[] = []
@@ -94,7 +79,7 @@ const toMenu = (value: unknown, menu: MenuName, paths: Paths): MenuLink[] => {
   return links
 }
 
-export const toNavigation = (doc: unknown, paths: Paths = NO_PATHS): Navigation => {
+export const toNavigation = (doc: unknown, paths: PagePaths = NO_PAGE_PATHS): Navigation => {
   const row: Row = isRow(doc) ? doc : {}
 
   return {

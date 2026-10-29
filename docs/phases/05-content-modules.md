@@ -585,7 +585,7 @@ resolve the page id to its current path, so a rename or a move breaks neither.
 | `src/content/menus.ts`                                                 | `toNavigation(doc, paths)`; `linksToPages(doc)`                                          |
 | `src/content/navigation.ts`                                            | reads `listPagePathIndex` only when a menu has a page link                               |
 | `src/collections/Navigation.ts`                                        | link fields `linkType` (`page` \| `address`), `page`, `href`                             |
-| `src/lib/menu-page-link.ts`                                            | `validateMenuPageLink` — page required on a page link, and on the menu's site            |
+| `src/lib/page-link.ts`                                                 | `validatePageLink` — page required on a page link, and on the owner's site (§10)         |
 | `src/admin/Permalink/PermalinkField.tsx`                               | `ui` field in the page sidebar showing `/dd2/pages/<id>`                                 |
 
 ### The flow
@@ -604,8 +604,45 @@ to `page`.
 ### Tests
 
 - `tests/unit/lib/permalink.test.ts`, `tests/unit/page-tree.test.ts`,
-  `tests/unit/lib/menu-page-link.test.ts`, `tests/unit/menus.test.ts` (page links)
+  `tests/unit/lib/page-link.test.ts`, `tests/unit/menus.test.ts` (page links)
 - `tests/integration/content-layer.test.ts` — `getPagePathById` (move, draft, staff, other
   site), `getNavigation` page links, cross-site menu link refused on write
 - `tests/e2e/page-permalinks.spec.ts` — 302 before and after rename + move; 404s; sidebar
   field + axe in both themes
+
+## 10. Buttons, cards and links in the words that point at a page (Jason, 2026-10-29)
+
+The call-to-action button, each card, and the editor's "internal link" can store a page instead
+of an address, and render with the path the page has today — the same path index as §9.
+
+### Files
+
+| File                                     | Does                                                                                                                         |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `src/collections/fields/link.ts`         | `linkFields({ owner, optional, hrefDescription })` — `linkType`, `page`, `href`; used by menus, the call to action and cards |
+| `src/lib/page-link.ts`                   | `validatePageLink` — page required on a page link, and on the owner's site (was `menu-page-link.ts`)                         |
+| `src/lib/editor.ts`                      | `LinkFeature({ enabledCollections: ['pages'], maxDepth: 0 })`                                                                |
+| `src/content/page-tree.ts`               | `PagePaths`, `NO_PAGE_PATHS`, `pageIdOf`, `pathOfPage`                                                                       |
+| `src/content/rich-text.ts`               | `toRichText(state, paths?)` — `linkType: 'internal'` + `doc.relationTo: 'pages'` → path                                      |
+| `src/content/blocks.ts`                  | `toPageBlocks(layout, paths?)` — call to action, cards, and the words in text and accordion blocks                           |
+| `src/content/pages.ts`                   | `getPageByPath` reads `listPagePathIndex`; `listPagePaths` builds the map from its own rows                                  |
+| `src/content/post-mapper.ts`, `posts.ts` | `toPost(row, paths?)`; `getPostBySlug` passes the home site's paths                                                          |
+
+### Rules
+
+- `linkType: 'page'` → `paths.get(pageId)`; a stored `href`/`url` beside it is ignored.
+- No current path (draft, staff-only, deleted, other site): the call to action is dropped, a
+  card keeps its title without a link, a link in the words keeps its words.
+- `linkType: 'none'` (cards only, the default) → no link. No `linkType` → an address.
+- Callers that only measure or diff the words (`review-status.ts`, `page-diff.ts`) pass no paths.
+- The editor's page picker is not filtered by site; a link to another site's page renders as
+  words.
+
+### Tests
+
+- `tests/unit/rich-text.test.ts`, `tests/unit/blocks.test.ts` (links to a page),
+  `tests/unit/lib/page-link.test.ts`
+- `tests/integration/content-layer.test.ts` — body + button on a page (by path and build
+  list), cross-site button refused, announcement body
+- `tests/e2e/page-permalinks.spec.ts` — button and words follow a renamed page
+- `tests/e2e/admin-planes-axe.spec.ts` — a page with a button and cards linking to pages
