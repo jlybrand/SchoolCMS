@@ -174,6 +174,24 @@ describe('getPageByPath', () => {
       parent: about,
       visibility: 'staff',
     })
+    /**
+     * Hidden from navigation (Jason, 2026-10-29): reachable by its address, absent from its
+     * parent's section menu. A child of `about`, so the menu assertions above prove it.
+     */
+    await mkPage({
+      tenant: district.id,
+      title: 'Quiet corner',
+      slug: 'quiet-corner',
+      parent: about,
+      hideFromNavigation: true,
+    })
+    // Hidden from search engines: an ordinary page in every other way.
+    await mkPage({
+      tenant: district.id,
+      title: 'Not in results',
+      slug: 'not-in-results',
+      hideFromSearchEngines: true,
+    })
     await mkPage({ tenant: district.id, title: 'Draft', slug: 'draft-only', _status: 'draft' })
     await mkPage({
       tenant: district.id,
@@ -374,6 +392,26 @@ describe('getPageByPath', () => {
 
       expect(paths).not.toContain('/draft-only')
       expect(paths).not.toContain('/internal')
+    })
+
+    it('leaves a page hidden from navigation out of its parent’s menu here too', async () => {
+      const about = (await listPagePaths(ctx)).find(({ path }) => path === '/about')
+      expect(about?.page.children.map((child) => child.title)).toEqual(['Bell schedule', 'Staff'])
+    })
+  })
+
+  describe('hidden pages (Jason, 2026-10-29)', () => {
+    it('serves a page hidden from navigation at its address', async () => {
+      const page = await getPageByPath(ctx, '/about/quiet-corner')
+      expect(page?.title).toBe('Quiet corner')
+      // Built too — hidden from menus is not hidden from the site.
+      const paths = (await listPagePaths(ctx)).map((entry) => entry.path)
+      expect(paths).toContain('/about/quiet-corner')
+    })
+
+    it('says which pages are hidden from search engines', async () => {
+      expect((await getPageByPath(ctx, '/not-in-results'))?.hideFromSearchEngines).toBe(true)
+      expect((await getPageByPath(ctx, '/about'))?.hideFromSearchEngines).toBe(false)
     })
   })
 })

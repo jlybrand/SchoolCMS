@@ -276,6 +276,14 @@ export interface Page {
    */
   visibility: 'public' | 'staff';
   /**
+   * Leaves this page out of section menus. Its address still works.
+   */
+  hideFromNavigation?: boolean | null;
+  /**
+   * Asks Google and others not to list this page. Anyone with the link can still visit it.
+   */
+  hideFromSearchEngines?: boolean | null;
+  /**
    * Optional. Goes live at this time instead of immediately.
    */
   publishAt?: string | null;
@@ -1066,6 +1074,8 @@ export interface PagesSelect<T extends boolean = true> {
   pageType?: T;
   parent?: T;
   visibility?: T;
+  hideFromNavigation?: T;
+  hideFromSearchEngines?: T;
   publishAt?: T;
   layout?:
     | T

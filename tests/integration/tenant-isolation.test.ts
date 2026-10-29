@@ -582,6 +582,29 @@ describe('invariant 5 — a school-manager cannot PUBLISH by any route', () => {
     expect(still._status).toBe('draft')
   })
 
+  it('cannot hide a page from navigation or from search engines', async () => {
+    // The district's page options (Jason, 2026-10-29). Field access drops the write silently,
+    // as Payload does for any field a user may not update; the value is what proves it.
+    await payload
+      .update({
+        collection: 'pages',
+        id: f.draftPageA,
+        data: { hideFromNavigation: true, hideFromSearchEngines: true },
+        user: f.managerA,
+        overrideAccess: false,
+      })
+      .catch(() => null)
+
+    const still = await payload.findByID({
+      collection: 'pages',
+      id: f.draftPageA,
+      draft: true,
+      overrideAccess: true,
+    })
+    expect(still.hideFromNavigation ?? false).toBe(false)
+    expect(still.hideFromSearchEngines ?? false).toBe(false)
+  })
+
   it('CAN still save a draft — the gate blocks publishing, not working', async () => {
     /**
      * The other half of the guarantee, and the one that makes the platform usable: a school

@@ -37,6 +37,8 @@ type PayloadPage = {
   visibility: Visibility
   parent?: string | number | { id: string | number } | null
   requiresTranslationReview?: boolean | null
+  hideFromNavigation?: boolean | null
+  hideFromSearchEngines?: boolean | null
   /** Lexical editor state. Deliberately `unknown` — see `toRichText`. */
   body?: unknown
   /** Block rows. Deliberately `unknown` — see `toPageBlocks`. */
@@ -99,6 +101,7 @@ const toDomain = (
   // The single point where Lexical becomes DD2 nodes. Nothing downstream sees editor state.
   body: toRichText(doc.body, paths),
   seo: { title: textOrNull(doc.meta?.title), description: textOrNull(doc.meta?.description) },
+  hideFromSearchEngines: doc.hideFromSearchEngines === true,
   // Likewise for blocks: nothing downstream sees a `blockType` discriminator (`03` §3).
   layout: toPageBlocks(doc.layout, paths),
   /**
@@ -208,6 +211,13 @@ export const getPageByPath = async (
 }
 
 /**
+ * Whether a page belongs in the section menus built from the tree (Jason, 2026-10-29). Read in
+ * memory rather than queried, so a row saved before the field existed — null, not false — is
+ * in the menu without a null-aware query.
+ */
+const inNavigation = (doc: PayloadPage): boolean => doc.hideFromNavigation !== true
+
+/**
  * The published, public pages directly beneath one page, as links.
  *
  * The same `publishedAndPublic` filter the page itself passed. A draft child in a menu would
@@ -237,7 +247,7 @@ const childrenOf = async (
   })
 
   return byTitle(
-    (docs as PayloadPage[]).map((doc) => ({
+    (docs as PayloadPage[]).filter(inNavigation).map((doc) => ({
       id: String(doc.id),
       title: doc.title,
       // Assembled from the parent's own segments, so a child's path is the parent's plus one.
@@ -293,7 +303,7 @@ export const listPagePaths = async (
   const childrenByParent = new Map<string, PageLink[]>()
   for (const { doc, path } of reachable) {
     const parent = idOf(doc.parent ?? null)
-    if (parent === null) continue
+    if (parent === null || !inNavigation(doc)) continue
 
     const siblings = childrenByParent.get(parent) ?? []
     siblings.push({ id: String(doc.id), title: doc.title, path })
