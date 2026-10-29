@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { redirectHref, validateLinkTarget, type LinkTargetFacts } from '@/lib/linked-page'
+import {
+  redirectHref,
+  validateLinkTarget,
+  withLocalPort,
+  type LinkTargetFacts,
+} from '@/lib/linked-page'
 
 /**
  * Linked pages, internal redirect (Jason, 2026-10-29): a page that sends visitors to another
@@ -121,5 +126,72 @@ describe('redirectHref', () => {
     expect(
       redirectHref({ path: '/enroll', hostname: 'dd2.example' }, 'a.dd2.example', 'en', '3100'),
     ).toBe('https://dd2.example/enroll')
+  })
+})
+
+/**
+ * Reuse content (Jason, 2026-10-29): the page shows a DISTRICT page's title and content at its
+ * own address. The district picker only — a school's page is never the source.
+ */
+describe('validateLinkTarget — reuse content', () => {
+  it('passes a district page', () => {
+    expect(
+      validateLinkTarget(
+        { mode: 'reuse', linkTo: 'site', pageId: '10', pageTenant: '1' },
+        target({ tenant: '9', tenantType: 'district' }),
+      ),
+    ).toBe(true)
+  })
+
+  it('refuses a school page, even its own site’s', () => {
+    expect(
+      validateLinkTarget(
+        { mode: 'reuse', linkTo: 'site', pageId: '10', pageTenant: '1' },
+        target({ tenant: '1', tenantType: 'school' }),
+      ),
+    ).toMatch(/district page/)
+  })
+
+  it('requires the page to show', () => {
+    expect(
+      validateLinkTarget(
+        { mode: 'reuse', linkTo: 'district', pageId: '10', pageTenant: '1' },
+        null,
+      ),
+    ).toMatch(/Choose the district page/)
+  })
+
+  it('refuses a district page that is itself linked', () => {
+    expect(
+      validateLinkTarget(
+        { mode: 'reuse', linkTo: 'district', pageId: '10', pageTenant: '1' },
+        target({ tenant: '9', tenantType: 'district', linkMode: 'reuse' }),
+      ),
+    ).toMatch(/already/)
+  })
+
+  it('refuses the page itself', () => {
+    expect(
+      validateLinkTarget(
+        { mode: 'reuse', linkTo: 'district', pageId: '20', pageTenant: '9' },
+        target({ id: '20', tenant: '9', tenantType: 'district' }),
+      ),
+    ).toMatch(/itself/)
+  })
+})
+
+/**
+ * Reused content's links are full district addresses with no port. Between `*.localhost` sites
+ * in development, which share one port, the visitor's port is added — the same rule as a
+ * redirect's (`redirectHref`).
+ */
+describe('withLocalPort', () => {
+  it('adds the port to a link on that origin, and touches nothing else', () => {
+    const rewrite = withLocalPort('http://localhost', '3100')
+    expect(rewrite('http://localhost/enroll')).toBe('http://localhost:3100/enroll')
+    expect(rewrite('http://localhost/')).toBe('http://localhost:3100/')
+    expect(rewrite('http://localhost.evil.example/x')).toBe('http://localhost.evil.example/x')
+    expect(rewrite('https://forms.office.com/x')).toBe('https://forms.office.com/x')
+    expect(rewrite('/local')).toBe('/local')
   })
 })

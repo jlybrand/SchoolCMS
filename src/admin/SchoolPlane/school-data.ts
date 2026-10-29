@@ -39,7 +39,7 @@ const toRow = (
         : 'Untitled page',
   reviewState: typeof doc.reviewState === 'string' ? doc.reviewState : null,
   updatedAt: typeof doc.updatedAt === 'string' ? doc.updatedAt : '',
-  linked: doc.linkMode === 'redirect',
+  linked: doc.linkMode === 'redirect' || doc.linkMode === 'reuse',
 })
 
 /** Every page the user may edit, by title. */

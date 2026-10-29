@@ -204,6 +204,22 @@ describe('buildPageMetadata', () => {
    * "Hide from search engines" (Jason, 2026-10-29) keeps this page out of results, and only
    * this page: its links are still followed, so the pages it links to are found as before.
    */
+  /**
+   * A reuse page (Jason, 2026-10-29) shows a district page at a school's address. The district
+   * page is the original, so it is the canonical — two copies of one page compete in results
+   * otherwise. The school's own address is still where Open Graph says the visitor is.
+   */
+  it("points a reuse page's canonical and alternates at the district original", () => {
+    const meta = build({ reusedFrom: { path: '/supplies', hostname: 'dd2.example' } }, 'es')
+    expect(meta.alternates.canonical).toBe('https://dd2.example/es/supplies')
+    expect(meta.alternates.languages).toMatchObject({
+      en: 'https://dd2.example/supplies',
+      ar: 'https://dd2.example/ar/supplies',
+      'x-default': 'https://dd2.example/supplies',
+    })
+    expect(meta.openGraph.url).toBe('https://a.dd2.example/es/about')
+  })
+
   it('is noindex but still followed for a page hidden from search engines', () => {
     const hidden = { hideFromSearchEngines: true }
     expect(build(hidden).robots).toEqual({ index: false, follow: true })

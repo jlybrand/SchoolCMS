@@ -163,6 +163,169 @@ test.describe('linked pages — internal redirect', () => {
   })
 })
 
+/**
+ * Reuse content (Jason, 2026-10-29): a school page shows a district page's title and content at
+ * the school's address. Its links lead to the district site, its canonical is the district page,
+ * and it is not in the school's sitemap.
+ */
+test.describe('linked pages — reuse content', () => {
+  test.skip(credentials === null, SKIP)
+
+  test("shows a district page's title and content at the school's address", async ({
+    page,
+    baseURL,
+  }) => {
+    const admin = await asDistrict(baseURL)
+    const made: number[] = []
+    try {
+      const enroll = await mkPage(admin, 'localhost', { title: uniqueTitle('Enroll') })
+      made.push(enroll.id)
+      const sourceTitle = uniqueTitle('District supplies')
+      const source = await mkPage(admin, 'localhost', {
+        title: sourceTitle,
+        body: {
+          root: {
+            type: 'root',
+            version: 1,
+            direction: null,
+            format: '',
+            indent: 0,
+            children: [
+              {
+                type: 'paragraph',
+                version: 1,
+                children: [
+                  {
+                    type: 'link',
+                    version: 3,
+                    fields: {
+                      linkType: 'internal',
+                      doc: { relationTo: 'pages', value: enroll.id },
+                      newTab: false,
+                    },
+                    children: [{ type: 'text', text: 'Enroll here', version: 1 }],
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      })
+      made.push(source.id)
+      const reuse = await mkPage(admin, 'b.localhost', {
+        title: uniqueTitle('School label'),
+        linkMode: 'reuse',
+        districtLinkTarget: source.id,
+      })
+      made.push(reuse.id)
+
+      const response = await page.goto(siteUrl(baseURL, 'b.localhost', `/${reuse.slug}`))
+      expect(response?.status()).toBe(200)
+      // At the school's address, with the district's heading and words.
+      expect(new URL(page.url()).hostname).toBe('b.localhost')
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(sourceTitle)
+      await expect(page.getByRole('link', { name: 'Enroll here' })).toHaveAttribute(
+        'href',
+        `http://localhost:${PORT()}/${enroll.slug}`,
+      )
+
+      // The original is the district's: read from the response, as crawlers do.
+      const html = await (
+        await page.request.get(siteUrl(baseURL, 'b.localhost', `/${reuse.slug}`))
+      ).text()
+      expect(html).toContain(`<link rel="canonical" href="http://localhost/${source.slug}"`)
+
+      const sitemap = await (
+        await page.request.get(siteUrl(baseURL, 'b.localhost', '/sitemap.xml'))
+      ).text()
+      expect(sitemap).not.toContain(reuse.slug)
+    } finally {
+      for (const id of made.reverse()) await admin.delete(`/api/pages/${id}`)
+      await admin.dispose()
+    }
+  })
+
+  test('follows the district page — an edit there shows on the school page at once', async ({
+    page,
+    baseURL,
+  }) => {
+    const admin = await asDistrict(baseURL)
+    const made: number[] = []
+    try {
+      const source = await mkPage(admin, 'localhost', { title: uniqueTitle('Before') })
+      made.push(source.id)
+      const reuse = await mkPage(admin, 'b.localhost', {
+        linkMode: 'reuse',
+        districtLinkTarget: source.id,
+      })
+      made.push(reuse.id)
+      const url = siteUrl(baseURL, 'b.localhost', `/${reuse.slug}`)
+      // Warm School B's cached copy first.
+      await page.goto(url)
+      await expect(page.getByRole('heading', { level: 1 })).toContainText('Before')
+
+      const renamed = uniqueTitle('After')
+      const edited = await admin.patch(`/api/pages/${source.id}?depth=0`, {
+        data: { title: renamed, _status: 'published' },
+      })
+      expect(edited.ok(), await edited.text()).toBe(true)
+
+      await page.goto(url)
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(renamed)
+    } finally {
+      for (const id of made.reverse()) await admin.delete(`/api/pages/${id}`)
+      await admin.dispose()
+    }
+  })
+
+  test.describe('in Page settings', () => {
+    test.use({ storageState: ADMIN_STORAGE_STATE })
+
+    for (const colorScheme of ['light', 'dark'] as const) {
+      test(`@a11y choosing "show a district page's content" offers the district picker only — ${colorScheme}`, async ({
+        page,
+        baseURL,
+      }) => {
+        await page.emulateMedia({ colorScheme })
+        const admin = await asDistrict(baseURL)
+        const made: number[] = []
+        try {
+          const source = await mkPage(admin, 'localhost')
+          made.push(source.id)
+          const reuse = await mkPage(admin, 'b.localhost', {
+            linkMode: 'reuse',
+            districtLinkTarget: source.id,
+          })
+          made.push(reuse.id)
+
+          await page.goto(`/admin/collections/pages/${reuse.id}`)
+          await openPageSettings(page)
+          await expect(
+            page.getByRole('radio', { name: "Show a district page's content here" }),
+          ).toBeChecked()
+          await expect(page.locator('#field-districtLinkTarget')).toBeVisible()
+          await expect(page.locator('#field-linkTo')).toHaveCount(0)
+          await expect(page.locator('#field-linkTarget')).toHaveCount(0)
+          await expect(
+            page.locator(
+              '#field-districtLinkTarget .clear-indicator[aria-hidden="true"][tabindex="-1"]',
+            ),
+          ).toBeAttached({ timeout: 20_000 })
+          const results = await new AxeBuilder({ page })
+            .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+            .analyze()
+          expect(
+            results.violations.filter((v) => BLOCKING.includes(v.impact ?? '')).map((v) => v.id),
+          ).toEqual([])
+        } finally {
+          for (const id of made.reverse()) await admin.delete(`/api/pages/${id}`)
+          await admin.dispose()
+        }
+      })
+    }
+  })
+})
+
 /** The mark on both planes, with no blocking axe violations, in both themes. */
 for (const colorScheme of ['light', 'dark'] as const) {
   test.describe(`the linked mark — ${colorScheme}`, () => {

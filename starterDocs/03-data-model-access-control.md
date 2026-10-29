@@ -89,8 +89,10 @@ Payload auth collection, backed by Entra ID (`02` §7).
 - **Linked page** (Jason, 2026-10-29) — district-only. *Internal redirect*: visiting the page sends
   the visitor (307) to a page on the same site or a district page — never an outside address,
   never itself, never another linked page; a target that is not live makes the page 404. Marked
-  by a chain icon alone (named "Linked page" for assistive technology) in both planes' page lists. *Reuse content* (shows a district page's
-  title and content at the school's own address) follows.
+  by a chain icon alone (named "Linked page" for assistive technology) in both planes' page lists. *Reuse content*: the page shows a
+  district page's title and content at its own address (links in it lead to the district site;
+  canonical is the district page; out of the school's sitemap; follows the district page's
+  edits); a source that is not live makes the page 404.
 
 **`pageType` determines the editing shape:**
 

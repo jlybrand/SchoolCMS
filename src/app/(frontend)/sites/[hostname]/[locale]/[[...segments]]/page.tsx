@@ -8,11 +8,12 @@ import { Heading, PAGE_TITLE_LEVEL } from '@/components/Heading'
 import { RichText } from '@/components/RichText'
 import { Stack } from '@/components/Stack'
 import { getPageByPath } from '@/content/pages'
+import { mapBlockLinks, mapRichTextLinks } from '@/content/rehome-links'
 import { resolvePageBlocks } from '@/content/resolve-blocks'
 import type { Page } from '@/content/types'
 import { documentTag, tenantTag } from '@/lib/cache-tags'
-import { isLocalHost, redirectHref } from '@/lib/linked-page'
-import { buildPageMetadata, indexingAllowed } from '@/lib/seo'
+import { isLocalHost, redirectHref, withLocalPort } from '@/lib/linked-page'
+import { buildPageMetadata, indexingAllowed, siteOrigin } from '@/lib/seo'
 
 import { resolveSite, SiteFrame, type Site, type SiteParams } from '../site'
 
@@ -136,7 +137,20 @@ export default async function SitePage({ params }: { params: Promise<Params> }) 
    * the content layer, never by the block. `BlockList` accepts only resolved blocks, so leaving
    * this out does not compile (`src/content/resolve-blocks.ts`).
    */
-  const blocks = await resolvePageBlocks(resolved.ctx, page.layout, {
+  /**
+   * REUSED CONTENT (Jason, 2026-10-29) arrives with its links already made district addresses
+   * (`src/content/rehome-links.ts`). Between `*.localhost` sites in development, which share a
+   * port, they also take the visitor's — never on a real host, so production stays cacheable.
+   */
+  const port = page.reusedFrom
+    ? await localPort(page.reusedFrom.hostname, resolved.tenant.hostname)
+    : null
+  const rewrite =
+    port && page.reusedFrom ? withLocalPort(siteOrigin(page.reusedFrom.hostname), port) : null
+  const body = rewrite ? mapRichTextLinks(page.body, rewrite) : page.body
+  const layout = rewrite ? mapBlockLinks(page.layout, rewrite) : page.layout
+
+  const blocks = await resolvePageBlocks(resolved.ctx, layout, {
     serverUrl: process.env.NEXT_PUBLIC_SERVER_URL ?? '',
   })
 
@@ -162,7 +176,7 @@ export default async function SitePage({ params }: { params: Promise<Params> }) 
           */}
           <Heading level={PAGE_TITLE_LEVEL}>{page.title}</Heading>
 
-          <RichText content={page.body} />
+          <RichText content={body} />
 
           {/*
             NO BRANCH ON `pageType`. Both renderers return null when they have nothing:

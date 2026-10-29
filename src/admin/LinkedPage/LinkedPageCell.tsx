@@ -9,4 +9,4 @@ import styles from './LinkedPage.module.css'
  * saying it 300 times.
  */
 export const LinkedPageCell = ({ cellData }: DefaultCellComponentProps) =>
-  cellData === 'redirect' ? <LinkedIcon className={styles.icon} /> : null
+  cellData === 'redirect' || cellData === 'reuse' ? <LinkedIcon className={styles.icon} /> : null

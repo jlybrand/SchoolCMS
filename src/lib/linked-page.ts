@@ -8,13 +8,16 @@ import { siteOrigin } from './seo'
  *
  * INTERNAL REDIRECT: visiting the page sends the visitor to another page — a district page, or
  * one on the page's own site. Never an outside address: buttons, cards, menus and the words
- * carry those. ("Reuse content", which stays at the page's own address, is the next PR.)
+ * carry those.
+ *
+ * REUSE CONTENT: the page shows a DISTRICT page's title and content at its own address, so the
+ * visitor stays on the school's site. The source is always a district page.
  *
  * PURE. The fields are `src/collections/Pages.ts`; the content layer resolves the target to an
  * address (`src/content/pages.ts`); the route redirects.
  */
 
-export type LinkMode = 'none' | 'redirect'
+export type LinkMode = 'none' | 'redirect' | 'reuse'
 
 /** Where the target is chosen from — two pickers, so two "About" pages can't be confused. */
 export type LinkTo = 'site' | 'district'
@@ -45,24 +48,27 @@ export const validateLinkTarget = (
   input: LinkTargetInput,
   target: LinkTargetFacts | null,
 ): true | string => {
-  if (input.mode !== 'redirect') return true
+  if (input.mode !== 'redirect' && input.mode !== 'reuse') return true
+  const reuse = input.mode === 'reuse'
 
   if (target === null) {
-    return input.targetId
-      ? 'That page no longer exists. Choose another.'
-      : 'Choose the page to send visitors to.'
+    if (input.targetId) return 'That page no longer exists. Choose another.'
+    return reuse ? 'Choose the district page to show here.' : 'Choose the page to send visitors to.'
   }
   if (input.pageId !== undefined && input.pageId !== null && target.id === input.pageId) {
-    return 'A page cannot send visitors to itself. Choose another page.'
+    return reuse
+      ? 'A page cannot show itself. Choose another page.'
+      : 'A page cannot send visitors to itself. Choose another page.'
   }
-  if (input.linkTo === 'district') {
+  // Reused content is always a district page's — whichever picker the form last showed.
+  if (reuse || input.linkTo === 'district') {
     if (target.tenantType !== 'district') return 'Choose a district page.'
   } else if (target.tenant === null || target.tenant !== input.pageTenant) {
     return 'Choose a page on this site.'
   }
   /** A chain is two hops for every visitor, and two linked pages pointing at each other loop. */
   if (target.linkMode !== null && target.linkMode !== 'none') {
-    return 'That page already sends visitors somewhere else. Choose the page it leads to instead.'
+    return 'That page is already linked to another page. Choose the page it leads to instead.'
   }
   return true
 }
@@ -89,3 +95,14 @@ export const redirectHref = (
   const keepPort = port && isLocalHost(target.hostname) && isLocalHost(currentHostname)
   return `${siteOrigin(target.hostname)}${keepPort ? `:${port}` : ''}${path}`
 }
+
+/**
+ * A link rewrite for reused content in development: a full address on `origin` gains the
+ * visitor's port. Only ever applied between `*.localhost` sites — see `redirectHref`.
+ */
+export const withLocalPort =
+  (origin: string, port: string) =>
+  (href: string): string =>
+    href === origin || href.startsWith(`${origin}/`)
+      ? `${origin}:${port}${href.slice(origin.length)}`
+      : href
