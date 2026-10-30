@@ -1,6 +1,7 @@
 import { ValidationError, type CollectionConfig } from 'payload'
 
 import { validatePassword } from '@/auth/password-policy'
+import { resetPasswordEmailHTML, resetPasswordLink } from '@/auth/reset-email'
 import { GRANT_SCOPES } from '@/access/auto-approval'
 import { auditChange, auditDelete, auditLogin } from '@/collections/hooks/audit'
 import {
@@ -38,6 +39,17 @@ export const Users: CollectionConfig = {
     // directory and none of this is ours to get right (`02` §7).
     maxLoginAttempts: 5,
     lockTime: 10 * 60 * 1000,
+    // Payload's own link has no origin here — see `src/auth/reset-email.ts`.
+    forgotPassword: {
+      generateEmailHTML: ({ req, token } = {}) =>
+        resetPasswordEmailHTML(
+          resetPasswordLink({
+            serverUrl: process.env.NEXT_PUBLIC_SERVER_URL,
+            adminRoute: req?.payload.config.routes.admin ?? '/admin',
+            token: token ?? '',
+          }),
+        ),
+    },
   },
   hooks: {
     beforeOperation: [
