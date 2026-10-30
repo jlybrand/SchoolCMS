@@ -4,10 +4,10 @@ import { redirect } from 'next/navigation'
 import type { AdminViewServerProps } from 'payload'
 
 import type { AuthUser } from '@/access/types'
-import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 
+import { BOARDS_PATH, newPostRoute } from './new-post-route'
 import { NewPostForm } from './NewPostForm'
-import { listMyBoards } from './school-data'
+import { boardById, listMyBoards } from './school-data'
 import styles from './SchoolPlane.module.css'
 
 /**
@@ -18,11 +18,33 @@ import styles from './SchoolPlane.module.css'
  * keystroke, as "Add a page" does (`docs/phases/04` §5). The words are required when it is sent
  * (`postNeedsWords`), not here.
  *
- * School plane only; the district posts through Payload's own form.
+ * Board-first for the district too (Jason, 2026-10-29): it arrives from the boards screen with
+ * `?board=<id>`, sees that board named, and gives only the headline — the site follows from the
+ * board, so Payload's site question never comes up. Who gets which is `newPostRoute`.
  */
-export const NewPostView = async ({ initPageResult }: AdminViewServerProps) => {
+export const NewPostView = async ({ initPageResult, searchParams }: AdminViewServerProps) => {
   const { req } = initPageResult
-  if (!sendsForApproval(req.user as AuthUser | null)) redirect('/admin')
+  const route = newPostRoute(req.user as AuthUser | null, searchParams?.board)
+  if ('redirect' in route) redirect(route.redirect)
+
+  if (route.as === 'district') {
+    const board = await boardById(req, route.board)
+    if (!board) redirect(BOARDS_PATH)
+    return (
+      <Gutter>
+        <div className={styles.view} id="new-post">
+          <p className={styles.back}>
+            <Link href={BOARDS_PATH}>Back to announcement boards</Link>
+          </p>
+          <h1 className={styles.title}>Post an announcement</h1>
+          <p className={styles.hint} id="new-post-board">
+            On the board <strong>{board.label}</strong>.
+          </p>
+          <NewPostForm boards={[board]} />
+        </div>
+      </Gutter>
+    )
+  }
 
   const boards = await listMyBoards(req)
 

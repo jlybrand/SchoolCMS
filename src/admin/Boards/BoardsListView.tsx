@@ -52,7 +52,8 @@ export const BoardsListView = async ({ payload, user, newDocumentURL }: ListView
       <div className={styles.view} id="boards">
         <h1 className={styles.title}>Announcement boards</h1>
         <p className={styles.muted}>
-          Each site’s folders. Open a folder to see its boards; choose a board to change it.
+          Each site’s folders. Open a folder to see its boards: choose a board to change it, or post
+          a new announcement on it.
         </p>
         <p className={styles.actions}>
           <Link href="/admin/collections/post-folders/create">Add a folder</Link>
@@ -80,9 +81,18 @@ export const BoardsListView = async ({ payload, user, newDocumentURL }: ListView
                   ) : (
                     <ul className={styles.boards}>
                       {folder.boards.map((board) => (
-                        <li key={board.id}>
+                        <li className={styles.board} key={board.id}>
                           <Link href={`/admin/collections/post-boards/${board.id}`}>
                             {board.name}
+                          </Link>
+                          {/* Board-first, as in Finalsite (Jason, 2026-10-29). Named in full for
+                              a screen reader: every site has a "News". */}
+                          <Link href={`/admin/new-post?board=${encodeURIComponent(board.id)}`}>
+                            New announcement
+                            <span className={styles.visuallyHidden}>
+                              {' '}
+                              on {site.name} · {folder.name} → {board.name}
+                            </span>
                           </Link>
                         </li>
                       ))}

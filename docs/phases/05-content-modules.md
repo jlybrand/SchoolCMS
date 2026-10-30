@@ -239,7 +239,7 @@ dropped). A post switched back to `this-tenant` keeps its `syndicatedTo` list in
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/collections/endpoints/approve.ts`  | (was `approve-page.ts`) `ReviewedCollection`, `latestVersion(payload, collection, id)`, `latestVersionToken`, `approveDocument(req, collection, id, seen)`, `makeApproveEndpoint(collection)`, `APPROVE_MESSAGES` |
 | `src/admin/Approvals/anchor.ts`         | `approvalAnchor(collection, id)` → `approval-{collection}-{id}`                                                                                                                                                   |
-| `src/admin/SchoolPlane/NewPostView.tsx` | `/admin/new-post` — school managers only, else redirect to `/admin`                                                                                                                                               |
+| `src/admin/SchoolPlane/NewPostView.tsx` | `/admin/new-post` — routed by `newPostRoute` (§15)                                                                                                                                                                |
 | `src/admin/SchoolPlane/NewPostForm.tsx` | headline (+ school when several) → `POST /api/posts?draft=true` → the post form                                                                                                                                   |
 | `tests/e2e/announcements.spec.ts`       | the task to the queue; new-post axe; an announcement approved from the queue                                                                                                                                      |
 
@@ -782,3 +782,29 @@ District picker only (`districtLinkTarget`); district-only, in Page settings (§
 - `tests/e2e/linked-pages.spec.ts` — the school page shows the district's heading and words,
   links to the district site, canonical, not in the sitemap, follows an edit; Page settings with
   reuse chosen + axe in both themes
+
+## 15. Board-first announcements for the district (Jason, 2026-10-29)
+
+Finalsite is board-first: open a board, then create a post on it. The boards screen (§8) gives each
+board a "New announcement" link to `/admin/new-post?board=<id>`; the school's new-post screen (§3)
+serves the district with the board fixed.
+
+| File                                      | Holds                                                                                                                                                                                                 |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/admin/SchoolPlane/new-post-route.ts` | `newPostRoute(user, board)` (pure): school manager → `school`; district admin with one numeric `board` → `district`; district admin without → redirect `BOARDS_PATH`; anyone else → redirect `/admin` |
+| `src/admin/SchoolPlane/school-data.ts`    | `boardById(req, id)` — the board read as the user; `label` "Site · Folder → Board"                                                                                                                    |
+| `src/admin/SchoolPlane/NewPostView.tsx`   | district: board unreadable → `BOARDS_PATH`; "Back to announcement boards"; `#new-post-board` "On the board {label}"; `NewPostForm` with that one board (no choice shown)                              |
+| `src/admin/Boards/BoardsListView.tsx`     | per board: its link, and "New announcement" — accessible name "New announcement on {site} · {folder} → {board}" (visually hidden tail)                                                                |
+
+### Flow
+
+`NewPostForm` creates the draft through REST as the user with `tenant` from the board, so
+Payload's site question (multi-tenant `assign-tenant` modal) never opens; then the post's own form,
+where the district publishes as usual.
+
+### Tests
+
+- `tests/unit/admin/school-plane.test.ts` — `newPostRoute`
+- `tests/e2e/boards-view.spec.ts` — board → headline → the post's form on that board, draft, no site
+  question; `/admin/new-post` with no board → the boards screen
+- `tests/e2e/admin-planes-axe.spec.ts` — "post an announcement on a board", both themes
