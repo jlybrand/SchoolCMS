@@ -8,8 +8,13 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  // Spread rather than `workers: undefined` — tsconfig sets exactOptionalPropertyTypes.
-  ...(process.env.CI ? { workers: 1 } : {}),
+  /**
+   * CI runs serially. Locally, 4 — not Playwright's default of half the cores: every worker
+   * shares one `next start`, and at 16 workers it drops connections (ECONNRESET) and lets clicks
+   * land before hydration, failing a different spec on most full runs. At 4 a full run takes
+   * ~2m instead of ~1.5m.
+   */
+  workers: process.env.CI ? 1 : 4,
   reporter: process.env.CI
     ? ([['github'], ['html', { open: 'never' }]] as const)
     : ([['list']] as const),

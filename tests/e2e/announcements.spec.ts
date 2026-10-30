@@ -87,14 +87,25 @@ schoolTest.describe('post an announcement — school manager', () => {
           await editor.pressSequentially('Thursday, in the gym.')
           await expect(editor).toContainText('Thursday, in the gym.', { timeout: 1_000 })
         }).toPass({ timeout: 15_000 })
-        const sent = page.waitForResponse(
-          (res) => res.url().includes(`/api/posts/${id}`) && res.request().method() === 'PATCH',
-        )
-        await controls.getByRole('button', SEND).click()
-        expect((await sent).ok(), 'the send is accepted').toBe(true)
-        await expect(
-          page.getByRole('status').filter({ hasText: /^Sent for approval on / }),
-        ).toBeVisible()
+        /**
+         * The send itself, not the autosave the typing set off — both PATCH this post. And
+         * retried: under load the editor can hand its text to the form after the click, so the
+         * button refuses an "empty" announcement and sends nothing. A second click sends it.
+         */
+        const sentStatus = page.getByRole('status').filter({ hasText: /^Sent for approval on / })
+        await expect(async () => {
+          if (await sentStatus.isVisible()) return
+          const sent = page.waitForResponse(
+            (res) =>
+              res.url().includes(`/api/posts/${id}`) &&
+              !res.url().includes('autosave=true') &&
+              res.request().method() === 'PATCH',
+            { timeout: 5_000 },
+          )
+          await controls.getByRole('button', SEND).click()
+          expect((await sent).ok(), 'the send is accepted').toBe(true)
+        }).toPass({ intervals: [500, 1_000], timeout: 30_000 })
+        await expect(sentStatus).toBeVisible()
 
         await page.goto('/admin')
         const row = page.locator('#school-home li').filter({ hasText: title })

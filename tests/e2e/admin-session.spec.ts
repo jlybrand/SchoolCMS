@@ -30,6 +30,8 @@ test.describe('district admin session', () => {
   )
 
   test('@smoke the seeded district admin can reach the admin plane', async ({ page }) => {
+    // Room for loginAsAdmin's retries — it logs in fresh while the rest of the suite runs.
+    test.slow()
     await loginAsAdmin(page, credentials!)
 
     // Reaching the dashboard is the assertion; asserting on its contents would pin

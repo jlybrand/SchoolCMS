@@ -4,6 +4,7 @@ import { expect, type Page } from '@playwright/test'
 import { adminCredentials, adminTest } from './support/admin-session'
 import { dropPage, makePage, type FixturePage } from './support/fixture-pages'
 import { dropPost, makePost, type FixturePost } from './support/fixture-posts'
+import { followLink } from './support/follow-link'
 import { schoolTest } from './support/school-session'
 
 /**
@@ -204,7 +205,7 @@ adminTest.describe('district plane — whole screens', () => {
       })
       adminTest(`@a11y an activity entry — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/collections/audit-events')
-        await page.locator('tbody tr a').first().click()
+        await followLink(page, page.locator('tbody tr a').first(), /\/audit-events\/[^/]+$/)
         await auditScreen(page, '#field-actorLabel')
       })
 
@@ -319,6 +320,8 @@ adminTest.describe('district plane — whole screens', () => {
             page,
             ...POST_FORM_REPAIRED,
             '#field-syndication__syndicatedTo input[aria-label="Sites"]',
+            // The chosen sites' clear button, taken out of the tab order by the patch.
+            '#field-syndication__syndicatedTo .clear-indicator[aria-hidden="true"][tabindex="-1"]',
             '#field-board input[aria-label="Board"]',
             '#field-tags input[aria-label="Tags"]',
           )
