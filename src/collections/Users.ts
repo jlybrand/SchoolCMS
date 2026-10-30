@@ -40,6 +40,21 @@ export const Users: CollectionConfig = {
     lockTime: 10 * 60 * 1000,
   },
   hooks: {
+    beforeOperation: [
+      ({ args, operation }) => {
+        /**
+         * The same password policy on the forgot-password reset. That path hashes the new
+         * password before the collection hooks run and hands `beforeValidate` the user without
+         * it, so the hook below never sees it — without this, a reset accepted any non-empty
+         * password. Checked here, before the token is looked up or anything is written.
+         */
+        if (operation !== 'resetPassword') return args
+        const result = validatePassword((args as { data?: { password?: unknown } }).data?.password)
+        if (result !== true)
+          throw new ValidationError({ errors: [{ path: 'password', message: result }] })
+        return args
+      },
+    ],
     beforeValidate: [
       ({ data }) => {
         /**

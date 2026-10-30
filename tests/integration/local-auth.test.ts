@@ -121,6 +121,70 @@ describe('password policy is enforced on the API, not just the form', () => {
     })
     expect(updated.name).toBe('Renamed Manager')
   })
+
+  describe('on password reset', () => {
+    /**
+     * The forgot-password link is its own write path. Payload hashes the new password before
+     * the collection hooks run and hands them the user without it, so a hook-only policy never
+     * sees it — the reset path needs its own proof.
+     */
+    const resetToken = async (email: string): Promise<string> => {
+      const token = await payload.forgotPassword({
+        collection: 'users',
+        data: { email },
+        disableEmail: true,
+      })
+      if (!token) throw new Error(`no reset token for ${email}`)
+      return token
+    }
+
+    let email: string
+    beforeAll(async () => {
+      email = 'resetter@test.local'
+      await payload.create({
+        collection: 'users',
+        data: {
+          email,
+          password: 'quiet-lantern-37',
+          roles: ['school-manager'],
+          tenants: [{ tenant: f.tenantA }],
+        },
+        overrideAccess: true,
+      })
+    })
+
+    it.each(weak)('rejects a new password that is %s', async (_label, password) => {
+      const token = await resetToken(email)
+      const denied = await isDenied(() =>
+        payload.resetPassword({
+          collection: 'users',
+          data: { token, password },
+          overrideAccess: true,
+        }),
+      )
+      expect(denied).toBe(true)
+      // And the old password still works: a refused reset changed nothing.
+      const login = await payload.login({
+        collection: 'users',
+        data: { email, password: 'quiet-lantern-37' },
+      })
+      expect(login.user?.email).toBe(email)
+    })
+
+    it('accepts a compliant new password, which then logs in', async () => {
+      const token = await resetToken(email)
+      await payload.resetPassword({
+        collection: 'users',
+        data: { token, password: 'amber-harbour-52' },
+        overrideAccess: true,
+      })
+      const login = await payload.login({
+        collection: 'users',
+        data: { email, password: 'amber-harbour-52' },
+      })
+      expect(login.user?.email).toBe(email)
+    })
+  })
 })
 
 describe('credentials are never exposed', () => {
