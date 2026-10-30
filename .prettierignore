@@ -11,3 +11,5 @@ starterDocs/
 # Clipboard payloads, kept byte-for-byte as Word and Google Docs emit them.
 # Reformatting them would change what the normalizer is tested against (`06` §5).
 tests/fixtures/paste/
+# Vendored verbatim from Payload (see its SOURCE.md); replaced whole on a Payload bump.
+.claude/skills/payload/
