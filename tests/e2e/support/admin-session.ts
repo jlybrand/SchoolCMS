@@ -101,6 +101,9 @@ export const submitLogin = (page: Page): Promise<void> =>
  * A blank submit is not a failed credential attempt. Payload's client validation rejects an
  * empty email before it posts, and an unmatched email cannot increment the lockout counter on
  * `users` (`maxLoginAttempts: 5`), so a retry costs nothing but time.
+ *
+ * 60s, not 25s: one attempt can take most of 25s mid-suite, leaving no room for the retry
+ * that is the point. Callers outside the setup project need `test.slow()` to fit it.
  */
 export const loginAsAdmin = async (page: Page, credentials: AdminCredentials): Promise<void> => {
   await expect(async () => {
@@ -112,7 +115,7 @@ export const loginAsAdmin = async (page: Page, credentials: AdminCredentials): P
     // error on failure, so leaving /login distinguishes the two without asserting on any
     // particular dashboard content.
     await page.waitForURL((url) => !url.pathname.endsWith('/login'), { timeout: 8_000 })
-  }).toPass({ intervals: [250, 500, 1_000], timeout: 25_000 })
+  }).toPass({ intervals: [250, 500, 1_000], timeout: 60_000 })
 
   await expect(page).toHaveURL(/\/admin/)
 }

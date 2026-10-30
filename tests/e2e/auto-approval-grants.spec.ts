@@ -1,9 +1,10 @@
 import { randomBytes } from 'node:crypto'
 
 import AxeBuilder from '@axe-core/playwright'
-import { expect, type APIRequestContext, type Page } from '@playwright/test'
+import { expect, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 
 import { adminCredentials, adminTest as test } from './support/admin-session'
+import { followLink } from './support/follow-link'
 import { SCHOOL_HOSTNAME, tenantIdFor } from './support/school-session'
 
 /**
@@ -53,6 +54,31 @@ const ensureHolder = async (request: APIRequestContext): Promise<number> => {
 const storedGrants = async (request: APIRequestContext, id: number): Promise<unknown> =>
   ((await (await request.get(`/api/users/${id}?depth=0`)).json()) as { autoApprove?: unknown })
     .autoApprove ?? []
+
+/**
+ * Tick or untick one scope and save, retried until the server holds the change.
+ *
+ * Enabled is not settled. Under a full parallel run the form can re-render from its stored
+ * state after the box is enabled, discarding the tick: Save goes back to disabled and nothing is
+ * written (seen as a stored `[]` where `['posts.routine']` was expected). A retry meets a
+ * settled form, and the stored value — not the toast — decides when it worked.
+ */
+const setGrant = async (
+  page: Page,
+  box: Locator,
+  on: boolean,
+  id: number,
+  expected: string[],
+): Promise<void> => {
+  await expect(async () => {
+    // A save that landed after the last attempt's poll gave up leaves Save disabled.
+    if (JSON.stringify(await storedGrants(page.request, id)) === JSON.stringify(expected)) return
+    await box.setChecked(on, { timeout: 5_000 })
+    await expect(box).toBeChecked({ checked: on, timeout: 1_000 })
+    await page.getByRole('button', { name: 'Save' }).click({ timeout: 5_000 })
+    await expect.poll(() => storedGrants(page.request, id), { timeout: 5_000 }).toEqual(expected)
+  }).toPass({ intervals: [500, 1_000], timeout: 30_000 })
+}
 
 const audit = async (page: Page, selector: string) => {
   const results = await new AxeBuilder({ page })
@@ -108,10 +134,7 @@ test.describe('auto-approval grants', () => {
     await expect(field.getByRole('checkbox')).toHaveCount(2)
     await expect(posts).not.toBeChecked()
 
-    await posts.check()
-    await page.getByRole('button', { name: 'Save' }).click()
-    // The toast can show before the write is readable; the stored value is what counts.
-    await expect.poll(() => storedGrants(page.request, holderId)).toEqual(['posts.routine'])
+    await setGrant(page, posts, true, holderId, ['posts.routine'])
 
     await page.goto('/admin')
     const panel = page.locator('#grants-panel')
@@ -121,12 +144,14 @@ test.describe('auto-approval grants', () => {
     const row = panel.getByRole('listitem').filter({ hasText: HOLDER_NAME })
     await expect(row).toContainText('Posts: routine posts')
 
-    await row.getByRole('link', { name: HOLDER_NAME }).click()
+    await followLink(
+      page,
+      row.getByRole('link', { name: HOLDER_NAME }),
+      new RegExp(`/admin/collections/users/${holderId}$`),
+    )
     await expect(posts).toBeEnabled({ timeout: 20_000 })
     await expect(posts).toBeChecked()
-    await posts.uncheck()
-    await page.getByRole('button', { name: 'Save' }).click()
-    await expect.poll(() => storedGrants(page.request, holderId)).toEqual([])
+    await setGrant(page, posts, false, holderId, [])
 
     await page.goto('/admin')
     await expect(panel.getByRole('heading', { name: 'Auto-approval grants' })).toBeVisible({

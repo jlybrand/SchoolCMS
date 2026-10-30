@@ -1,6 +1,7 @@
 import { expect } from '@playwright/test'
 
 import { adminCredentials, adminTest as test } from './support/admin-session'
+import { followLink } from './support/follow-link'
 
 /**
  * The district's boards screen (Jason, 2026-10-28): each site's folders, each opened to pick a
@@ -31,8 +32,11 @@ test.describe('announcement boards, by folder', () => {
     await folder.locator('summary').click()
     await expect(folder).toHaveAttribute('open', '')
 
-    await folder.getByRole('link', { name: 'News' }).click()
-    await expect(page).toHaveURL(/\/admin\/collections\/post-boards\/\d+$/, { timeout: 20_000 })
+    await followLink(
+      page,
+      folder.getByRole('link', { name: 'News' }),
+      /\/admin\/collections\/post-boards\/\d+$/,
+    )
     await expect(page.locator('#field-name')).toHaveValue('News', { timeout: 20_000 })
   })
 
