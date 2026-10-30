@@ -1,5 +1,5 @@
 import type { Payload } from 'payload'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { getTestPayload, isDenied, SEED_PASSWORD, seed, type Fixtures } from '../helpers/payload'
 
@@ -184,6 +184,46 @@ describe('password policy is enforced on the API, not just the form', () => {
       })
       expect(login.user?.email).toBe(email)
     })
+  })
+})
+
+describe('the forgot-password email', () => {
+  /**
+   * The link must be absolute, on the district origin. Payload's own build of it falls back to an
+   * empty origin here (no `serverURL`), and mail clients opened `http:///admin/reset/<token>`.
+   */
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
+  })
+
+  const requestReset = async () => {
+    const send = vi.spyOn(payload.email, 'sendEmail').mockResolvedValue(undefined)
+    const token = await payload.forgotPassword({
+      collection: 'users',
+      data: { email: 'manager-a@test.local' },
+    })
+    return { send, token }
+  }
+
+  it('links to the reset page on the district origin', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SERVER_URL', 'https://dd2.example.org')
+    const { send, token } = await requestReset()
+
+    expect(send).toHaveBeenCalledTimes(1)
+    const message = send.mock.calls[0]![0] as { to: string; html: string }
+    expect(message.to).toBe('manager-a@test.local')
+    expect(message.html).toContain(`href="https://dd2.example.org/admin/reset/${token}"`)
+  })
+
+  it('sends nothing rather than a dead link when the origin is not set', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SERVER_URL', '')
+    const send = vi.spyOn(payload.email, 'sendEmail').mockResolvedValue(undefined)
+    const denied = await isDenied(() =>
+      payload.forgotPassword({ collection: 'users', data: { email: 'manager-a@test.local' } }),
+    )
+    expect(denied).toBe(true)
+    expect(send).not.toHaveBeenCalled()
   })
 })
 
