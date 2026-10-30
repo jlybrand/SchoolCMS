@@ -1480,16 +1480,15 @@ the same `<input>`; they are outside that spec's scope and are on the Phase 4 li
 | Array header row-actions `<button>` has no accessible name | Excluded BY SELECTOR in the spec; Phase 4         |
 | Inputs are greyed while the form initialises               | The spec waits for `toBeEnabled()` before axe     |
 
-### Open: custom validator messages do not reach the admin form
+### Fixed: custom validator messages reach the admin form
 
-In the production build a refused save returns
-`{"errors":[{"message":"The following field is invalid: …"}]}` — no `name`, no `data`. Payload's
-`formatErrors` includes `data.errors[].message` only when `err instanceof ValidationError`, and
-`.next/server` holds that class in more than one chunk, so the check is false. The admin shows the
-toast naming the field and no sentence under it. Reproduced on the `theme` form, which this slice
-does not touch, so every custom `validate` message is affected. The API still refuses the write;
-what is lost is the explanation. Not fixed here. `settings-fields.spec.ts` asserts the toast and
-says where to tighten it.
+In the production build a refused save used to return
+`{"errors":[{"message":"The following field is invalid: …"}]}` with no `data`, because Payload's
+`formatErrors` includes `data.errors[]` only when `err instanceof ValidationError` and the bundle
+holds more than one copy of that class. The config's `afterError` hook now rebuilds the response
+from the error's shape — a public 400 whose `data.errors[]` each carry `path` and `message` —
+in `src/lib/validation-errors.ts` (`validationResponse`, unit-tested). The admin form shows each
+sentence at its field again. `settings-fields.spec.ts` asserts the phone sentence at the field.
 
 ### Cache
 
@@ -1568,5 +1567,4 @@ days, on pass or fail.
 | -------------------------------------------------------- | ----------------- |
 | `Link` takes `variant`, not `className`                  | §17               |
 | `secondaryColor` decorative-only; black-as-primary swap  | §22               |
-| Custom validator messages lost in the production admin   | §24               |
 | Language choice remembered in a cookie for link building | `08` §5 — Phase 7 |

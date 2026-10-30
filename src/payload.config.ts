@@ -22,6 +22,7 @@ import { Theme } from './collections/Theme'
 import { Users } from './collections/Users'
 import { districtDigestTask } from './jobs/district-digest'
 import { constrainedEditor } from './lib/editor'
+import { validationResponse } from './lib/validation-errors'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -200,6 +201,18 @@ export default buildConfig({
         delete: () => false,
       },
     }),
+  },
+  hooks: {
+    /**
+     * Puts each field's validation message back into a refused write's response, which the
+     * production bundle otherwise drops — see `src/lib/validation-errors.ts`.
+     */
+    afterError: [
+      ({ error }) => {
+        const response = validationResponse(error)
+        return response ? { response } : undefined
+      },
+    ],
   },
   typescript: { outputFile: path.resolve(dirname, 'payload-types.ts') },
 

@@ -73,15 +73,13 @@ test.describe('the settings form', () => {
     await page.getByRole('button', { name: 'Save' }).click()
 
     /**
-     * The field is NAMED; the validator's own sentence is not shown, and that is a known gap
-     * rather than the design. In the production build the REST response carries only
-     * Payload's summary — `formatErrors` tests `instanceof ValidationError`, and the bundle
-     * holds more than one copy of that class — so the per-field message never reaches the
-     * form. It affects every custom validator in the admin, not this form, and is tracked in
-     * docs/phases/03 §24. Tighten this to the sentence when that is fixed.
+     * The validator's own sentence, AT THE FIELD — not just Payload's toast naming it. This is
+     * the production build, where that sentence used to be lost: see
+     * `src/lib/validation-errors.ts`.
      */
-    await expect(page.locator('[data-sonner-toast]').filter({ hasText: 'Phone' })).toContainText(
-      'The following field is invalid',
+    await expect(page.locator('.field-type.text', { has: phone })).toContainText(
+      'Use a phone number people can dial, like (843) 555-0100, without an extension.',
+      { timeout: 10_000 },
     )
     // Still the create form: nothing was saved.
     await expect(page).toHaveURL(/\/settings\/create/)
