@@ -300,6 +300,12 @@ adminTest.describe('district plane — whole screens', () => {
           '#field-folder .clear-indicator[aria-hidden="true"][tabindex="-1"]',
         )
       })
+      adminTest(`@a11y post an announcement on a board — ${colorScheme}`, async ({ page }) => {
+        const boards = await page.request.get('/api/post-boards?limit=1&depth=0')
+        const [board] = (await boards.json()).docs as { id: number }[]
+        await page.goto(`/admin/new-post?board=${board!.id}`)
+        await auditScreen(page, '#new-post-board', '#new-post form')
+      })
       adminTest(`@a11y announcement folders list — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/collections/post-folders')
         await auditScreen(page, ...LIST_REPAIRED)

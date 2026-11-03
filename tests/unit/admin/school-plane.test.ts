@@ -10,6 +10,7 @@ import {
   SCHOOL_TASKS,
   submissionStatus,
 } from '@/admin/SchoolPlane/school-plane'
+import { newPostRoute } from '@/admin/SchoolPlane/new-post-route'
 
 /**
  * The school plane's landing view and new-page form (`04` §2.2, §2.4).
@@ -266,5 +267,42 @@ describe('schoolEditPath — where a submission opens', () => {
   it('opens a page or an announcement in its own form', () => {
     expect(schoolEditPath('pages', 4)).toBe('/admin/collections/pages/4')
     expect(schoolEditPath('posts', 9)).toBe('/admin/collections/posts/9')
+  })
+})
+
+describe('newPostRoute — who the new-announcement screen is for', () => {
+  /**
+   * Finalsite is board-first: open a board, then create a post on it (Jason, 2026-10-29). A
+   * school picks its board on this screen; the district arrives from the boards screen with the
+   * board already chosen. The view renders what this decides.
+   */
+  const manager = { id: 1, roles: ['school-manager' as const] }
+  const district = { id: 2, roles: ['district-admin' as const] }
+
+  it('a school manager gets the school form, whatever the address says', () => {
+    expect(newPostRoute(manager, undefined)).toEqual({ as: 'school' })
+    expect(newPostRoute(manager, '7')).toEqual({ as: 'school' })
+  })
+
+  it('a district admin with a board posts on that board', () => {
+    expect(newPostRoute(district, '7')).toEqual({ as: 'district', board: '7' })
+  })
+
+  it.each([
+    ['no board', undefined],
+    ['an empty board', ''],
+    ['two boards', ['7', '8']],
+    ['a board that is not an id', '7; drop'],
+  ])('a district admin with %s is sent to choose one on the boards screen', (_label, board) => {
+    expect(newPostRoute(district, board)).toEqual({
+      redirect: '/admin/collections/post-boards',
+    })
+  })
+
+  it.each([
+    ['nobody', null],
+    ['an account with no role', { id: 3, roles: [] }],
+  ])('%s is sent home', (_label, user) => {
+    expect(newPostRoute(user, '7')).toEqual({ redirect: '/admin' })
   })
 })

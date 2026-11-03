@@ -151,3 +151,29 @@ export const listMyBoards = async (req: PayloadRequest): Promise<BoardOption[]> 
     ]
   })
 }
+
+/**
+ * One board, for the district posting from the boards screen — read AS THE USER, so a board they
+ * may not see is no board at all. Labelled "Site · Folder → Board", as on district pickers.
+ */
+export const boardById = async (req: PayloadRequest, id: string): Promise<BoardOption | null> => {
+  if (!req.user) return null
+  const { docs } = await req.payload.find({
+    collection: 'post-boards',
+    req,
+    user: req.user,
+    overrideAccess: false,
+    depth: 0,
+    limit: 1,
+    where: { id: { equals: id } },
+    select: { label: true, title: true, name: true, tenant: true },
+  })
+  const doc = docs[0]
+  if (!doc) return null
+  const tenant = relationshipIdOf((doc as { tenant?: unknown }).tenant as never)
+  if (tenant === null) return null
+  const label =
+    [doc.label, doc.title, doc.name].find((v): v is string => typeof v === 'string' && v !== '') ??
+    String(doc.id)
+  return { id: doc.id, tenant: Number.isNaN(Number(tenant)) ? tenant : Number(tenant), label }
+}
