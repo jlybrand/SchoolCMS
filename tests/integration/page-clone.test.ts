@@ -55,6 +55,8 @@ describe('cloning a page', () => {
     expect(first.slug).toBe('clone-supply-list-copy')
     expect(first._status).toBe('draft')
     expect(first.publishAt ?? null).toBeNull()
+    // The original was published with a Start to come, so it is scheduled; its clone is not.
+    expect(first.reviewState ?? null).toBeNull()
 
     // A second clone of the same page takes the next free address.
     const second = await payload.duplicate({

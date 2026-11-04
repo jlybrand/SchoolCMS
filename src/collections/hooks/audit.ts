@@ -6,7 +6,7 @@ import type {
 } from 'payload'
 
 import { autoApprovalOf } from '@/collections/hooks/auto-approve'
-import { scheduledRunOf } from '@/collections/hooks/post-dates'
+import { scheduledRunOf } from '@/collections/hooks/scheduled-dates'
 import { auditEntries, type AuditInput } from '@/lib/audit'
 
 /**

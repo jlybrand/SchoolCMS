@@ -2,8 +2,8 @@ import { createLocalReq, type Payload, type TypedUser } from 'payload'
 import { beforeAll, describe, expect, it } from 'vitest'
 
 import { approveDocument, latestVersionToken } from '@/collections/endpoints/approve'
-import { runPostSchedule } from '@/collections/endpoints/post-schedule'
-import { SCHEDULED_RUN } from '@/collections/hooks/post-dates'
+import { runSchedule } from '@/collections/endpoints/schedule'
+import { SCHEDULED_RUN } from '@/collections/hooks/scheduled-dates'
 import { checkPostDates } from '@/lib/post-dates'
 
 import { getTestPayload, seed, type Fixtures } from '../helpers/payload'
@@ -99,11 +99,11 @@ describe('approving with a future Start schedules', () => {
     const start = inHours(2)
     await approve(id, { publishAt: start.toISOString() })
 
-    await runPostSchedule(await system(), inHours(1))
+    await runSchedule(await system(), inHours(1))
     expect((await live(id))._status).not.toBe('published')
 
-    const run = await runPostSchedule(await system(), inHours(3))
-    expect(run.published).toContain(String(id))
+    const run = await runSchedule(await system(), inHours(3))
+    expect(run.published).toContain(`posts/${id}`)
     const doc = await live(id)
     expect(doc._status).toBe('published')
     expect(doc.reviewState ?? null).toBeNull()
@@ -123,8 +123,8 @@ describe('approving with a future Start schedules', () => {
     })
     expect((await latest(id)).reviewState).toBe('editing')
 
-    const run = await runPostSchedule(await system(), inHours(3))
-    expect(run.published).not.toContain(String(id))
+    const run = await runSchedule(await system(), inHours(3))
+    expect(run.published).not.toContain(`posts/${id}`)
     expect((await live(id))._status).not.toBe('published')
   })
 
@@ -213,11 +213,11 @@ describe('Expires', () => {
     await approve(id, { expiresAt: expires.toISOString() })
     expect((await live(id))._status).toBe('published')
 
-    await runPostSchedule(await system(), inHours(4))
+    await runSchedule(await system(), inHours(4))
     expect((await live(id))._status).toBe('published')
 
-    const run = await runPostSchedule(await system(), inHours(6))
-    expect(run.expired).toContain(String(id))
+    const run = await runSchedule(await system(), inHours(6))
+    expect(run.expired).toContain(`posts/${id}`)
     expect((await live(id))._status).toBe('draft')
     const { totalDocs } = await payload.count({
       collection: 'audit-events',
@@ -251,5 +251,80 @@ describe('Expires', () => {
     const doc = await live(id)
     expect(doc._status).toBe('published')
     expect(doc.expiresAt ?? null).toBeNull()
+  })
+})
+
+/**
+ * A page's Start (Page settings), which nothing acted on until now (Jason, 2026-11-04): the same
+ * schedule as an announcement's.
+ */
+describe('a page’s Start', () => {
+  const page = (data: Record<string, unknown>) =>
+    payload.create({
+      collection: 'pages',
+      data: {
+        tenant: f.tenantA,
+        title: `Scheduled page ${Date.now()}-${(seq += 1)}`,
+        slug: `scheduled-page-${Date.now()}-${seq}`,
+        pageType: 'standard',
+        visibility: 'public',
+        ...data,
+      } as never,
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+  const livePage = (id: number | string) =>
+    payload.findByID({ collection: 'pages', id, draft: false, depth: 0, overrideAccess: true })
+
+  it('publishing with a Start to come schedules the page; the sweep puts it live at its time', async () => {
+    const created = await page({ publishAt: inHours(3).toISOString(), _status: 'published' })
+    expect((await livePage(created.id))._status).toBe('draft')
+
+    await runSchedule(await system(), inHours(2))
+    expect((await livePage(created.id))._status).toBe('draft')
+
+    const run = await runSchedule(await system(), inHours(4))
+    expect(run.published).toContain(`pages/${created.id}`)
+    expect((await livePage(created.id))._status).toBe('published')
+  })
+
+  it('a school can still edit a page the district scheduled — and never sees the Start', async () => {
+    const created = await page({ publishAt: inHours(3).toISOString(), _status: 'published' })
+    // The district places school A's manager on it by tenant; their save carries the stored Start.
+    await expect(
+      payload.update({
+        collection: 'pages',
+        id: created.id,
+        data: { title: 'A school’s edit' } as never,
+        draft: true,
+        user: f.managerA,
+        overrideAccess: false,
+      }),
+    ).resolves.toBeTruthy()
+    const seen = await payload.findByID({
+      collection: 'pages',
+      id: created.id,
+      draft: true,
+      depth: 0,
+      user: f.managerA,
+      overrideAccess: false,
+    })
+    expect(seen).not.toHaveProperty('publishAt')
+    // Their edit was not approved: the schedule is dropped, so it does not go live by waiting.
+    const run = await runSchedule(await system(), inHours(4))
+    expect(run.published).not.toContain(`pages/${created.id}`)
+  })
+
+  it('a Start on a page already live is refused, with the way out', async () => {
+    const created = await page({ _status: 'published' })
+    await expect(
+      payload.update({
+        collection: 'pages',
+        id: created.id,
+        data: { publishAt: inHours(3).toISOString(), _status: 'published' } as never,
+        user: f.districtAdmin,
+        overrideAccess: false,
+      }),
+    ).rejects.toThrow(/publishAt/)
   })
 })

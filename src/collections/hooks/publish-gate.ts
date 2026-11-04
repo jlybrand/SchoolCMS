@@ -3,7 +3,7 @@ import { Forbidden, type CollectionBeforeChangeHook } from 'payload'
 import { canComposePages, canPublish } from '@/access/pages'
 import type { AuthUser } from '@/access/types'
 import { autoApprovalOf } from '@/collections/hooks/auto-approve'
-import { scheduledRunOf } from '@/collections/hooks/post-dates'
+import { scheduledRunOf } from '@/collections/hooks/scheduled-dates'
 
 /**
  * The hook half of two release-blocking gates (CLAUDE.md rules 3 and `03` §6.4 invariant 5).

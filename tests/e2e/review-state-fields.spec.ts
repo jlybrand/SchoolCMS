@@ -34,7 +34,8 @@ test.describe('review state on the page form', () => {
   test('@smoke shows the state read-only — it is moved by actions, not typed', async ({ page }) => {
     const field = page.locator('#field-reviewState')
     await expect(field).toBeVisible({ timeout: 20_000 })
-    await expect(field.getByRole('radio')).toHaveCount(3)
+    // Being edited, Waiting, Changes requested, and Scheduled (a page's Start, Jason 2026-11-04).
+    await expect(field.getByRole('radio')).toHaveCount(4)
     for (const radio of await field.getByRole('radio').all()) {
       await expect(radio).toBeDisabled()
     }

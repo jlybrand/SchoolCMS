@@ -1,8 +1,15 @@
 import { expect, request as playwrightRequest } from '@playwright/test'
 
 import { adminCredentials, adminTest } from './support/admin-session'
-import { expectNoBlockingViolations, schoolRequest, uniqueTitle } from './support/fixture-pages'
+import {
+  dropPage,
+  expectNoBlockingViolations,
+  makePage,
+  schoolRequest,
+  uniqueTitle,
+} from './support/fixture-pages'
 import { dropPost, makePost, type FixturePost } from './support/fixture-posts'
+import { openPageSettings } from './support/page-settings'
 import { schoolTest } from './support/school-session'
 
 /**
@@ -134,12 +141,12 @@ schoolTest.describe('dates are the district’s', () => {
   schoolTest(
     'the schedule’s endpoint answers nobody but the district and the job',
     async ({ page, baseURL }) => {
-      expect((await page.request.post('/api/posts/schedule/run')).status()).toBe(403)
+      expect((await page.request.post('/api/schedule/run')).status()).toBe(403)
       const anonymous = await playwrightRequest.newContext(baseURL ? { baseURL } : {})
-      expect((await anonymous.post('/api/posts/schedule/run')).status()).toBe(403)
+      expect((await anonymous.post('/api/schedule/run')).status()).toBe(403)
       expect(
         (
-          await anonymous.post('/api/posts/schedule/run', {
+          await anonymous.post('/api/schedule/run', {
             headers: { 'x-dd2-schedule-key': 'guess' },
           })
         ).status(),
@@ -147,4 +154,36 @@ schoolTest.describe('dates are the district’s', () => {
       await anonymous.dispose()
     },
   )
+})
+
+/** A page's Start (Jason, 2026-11-04): in the district's Page settings, with a time; never a school's. */
+adminTest.describe('a page’s Start', () => {
+  adminTest.skip(credentials === null, SKIP)
+
+  adminTest('is in Page settings, as a day and time', async ({ page, baseURL }) => {
+    const fixture = await makePage(baseURL, { title: uniqueTitle('Start setting') })
+    try {
+      await page.goto(`/admin/collections/pages/${fixture.id}`)
+      const dialog = await openPageSettings(page)
+      await expect(dialog.getByText('Start', { exact: true })).toBeVisible()
+      await expect(dialog).toContainText('Publishing with a time still to come schedules the page')
+    } finally {
+      await dropPage(fixture)
+    }
+  })
+})
+
+schoolTest.describe('a page’s Start is the district’s', () => {
+  schoolTest.skip(credentials === null, SKIP)
+
+  schoolTest('a school’s page form has no Start', async ({ page, baseURL }) => {
+    const fixture = await makePage(baseURL, { title: uniqueTitle('School page') })
+    try {
+      await page.goto(`/admin/collections/pages/${fixture.id}`)
+      await expect(page.locator('#field-title')).toBeVisible({ timeout: 20_000 })
+      await expect(page.locator('#field-publishAt')).toHaveCount(0)
+    } finally {
+      await dropPage(fixture)
+    }
+  })
 })
