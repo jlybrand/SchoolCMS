@@ -193,6 +193,49 @@ describe('posts', () => {
     expect(entries.map((e) => e.action)).toEqual([action])
   })
 
+  /** Post dates (Jason, 2026-11-04): an approval for later, its going live, and its expiry. */
+  it('approving with a future Start records a schedule, saying when', () => {
+    const [entry] = auditEntries(
+      posts({
+        user: district,
+        previous: page({ reviewState: 'submitted' }),
+        doc: page({ reviewState: 'scheduled', publishAt: '2026-11-10T13:00:00.000Z' }),
+      }),
+    )
+    expect(entry).toMatchObject({ action: 'schedule', actor: '3' })
+    expect(entry?.summary).toMatch(/^Goes live /)
+  })
+
+  it('a rescheduled post records nothing new until it changes state', () => {
+    const scheduled = page({ reviewState: 'scheduled', publishAt: '2026-11-10T13:00:00.000Z' })
+    expect(auditEntries(posts({ user: district, previous: scheduled, doc: scheduled }))).toEqual([])
+  })
+
+  it('going live at its time records a publish by the system', () => {
+    const [entry] = auditEntries(
+      posts({
+        user: null,
+        scheduledRun: 'publish',
+        previous: page({ reviewState: 'scheduled' }),
+        doc: page({ _status: 'published' }),
+      }),
+    )
+    expect(entry).toMatchObject({ action: 'publish', actorLabel: 'System' })
+    expect(entry?.summary).toBe('At its scheduled time')
+  })
+
+  it('an expiry records that it was taken off the website', () => {
+    const [entry] = auditEntries(
+      posts({
+        user: null,
+        scheduledRun: 'expire',
+        previous: page({ _status: 'published' }),
+        doc: page({ _status: 'draft' }),
+      }),
+    )
+    expect(entry).toMatchObject({ action: 'expire', actorLabel: 'System' })
+  })
+
   it('records a restore and a delete', () => {
     expect(auditEntries(posts({ restoring: true })).map((e) => e.action)).toEqual(['restore'])
     expect(auditEntries(posts({ operation: 'delete' })).map((e) => e.action)).toEqual(['delete'])

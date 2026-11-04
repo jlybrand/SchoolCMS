@@ -187,6 +187,17 @@ describe('activityRow — one line of the audit trail, content actions only', ()
     )
   })
 
+  it('says when a post was scheduled, and when one expired (Jason, 2026-11-04)', () => {
+    expect(activityRow({ ...base, action: 'schedule' }, NOW, TZ)?.sentence).toBe(
+      'Jane Doe scheduled the announcement “Lunch menu” to go live later',
+    )
+    const expired = activityRow({ ...base, actorLabel: 'System', action: 'expire' }, NOW, TZ)
+    expect(expired?.sentence).toBe(
+      'The announcement “Lunch menu” expired and was taken off the website',
+    )
+    expect(expired?.href).toBe('/admin/collections/posts/9')
+  })
+
   it('does not link to something deleted', () => {
     const row = activityRow({ ...base, action: 'delete' }, NOW, TZ)
     expect(row?.sentence).toBe('Jane Doe deleted the announcement “Lunch menu”')

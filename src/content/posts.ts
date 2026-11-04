@@ -1,4 +1,4 @@
-import { getPayload } from 'payload'
+import { getPayload, type Where } from 'payload'
 
 import config from '@payload-config'
 
@@ -106,19 +106,37 @@ export const listPosts = async (
   { limit = 10, ...filter }: { limit?: number } & FeedFilter = {},
 ): Promise<Post[]> => {
   const payload = await getPayload({ config })
+  const cap = Math.max(1, Math.min(limit, MAX_POSTS))
+  const reach = feedConstraint(ctx.tenant.id, filter)
+  const now = new Date().toISOString()
+  const read = async (only: Where, max: number) =>
+    max <= 0
+      ? []
+      : (
+          await payload.find({
+            collection: 'posts',
+            where: { and: [reach, only] },
+            // Newest first; the id breaks ties so two posts dated alike never swap between builds.
+            sort: ['-publishedDate', '-id'],
+            limit: max,
+            depth: 0,
+            overrideAccess: true,
+          })
+        ).docs
 
-  const { docs } = await payload.find({
-    collection: 'posts',
-    where: feedConstraint(ctx.tenant.id, filter),
-    // Newest first; the id breaks ties so two posts dated alike never swap between builds.
-    sort: ['-publishedDate', '-id'],
-    limit: Math.max(1, Math.min(limit, MAX_POSTS)),
-    depth: 0,
-    overrideAccess: true,
-  })
+  /**
+   * Featured until (Jason, 2026-11-04): featured posts first, then the rest — each newest first.
+   * Two reads rather than a sort, so a featured post is listed however old it is. The schedule
+   * job refreshes the sites when a post's time passes (`src/collections/endpoints/post-schedule.ts`).
+   */
+  const featured = await read({ featuredUntil: { greater_than: now } }, cap)
+  const rest = await read(
+    { or: [{ featuredUntil: { exists: false } }, { featuredUntil: { less_than_equal: now } }] },
+    cap - featured.length,
+  )
 
   return withHomes(
     payload,
-    docs.map((doc) => toPost(doc)).filter((post): post is Post => post !== null),
+    [...featured, ...rest].map((doc) => toPost(doc)).filter((post): post is Post => post !== null),
   )
 }

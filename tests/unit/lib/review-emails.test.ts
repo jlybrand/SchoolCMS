@@ -17,6 +17,17 @@ describe('reviewOutcome — which writes send an email', () => {
     expect(reviewOutcome(waiting, { reviewState: null, _status: 'published' })).toBe('approved')
   })
 
+  /** Post dates (Jason, 2026-11-04): told when approved for later, and again when it goes live. */
+  it('submitted → scheduled is an approval for later', () => {
+    expect(reviewOutcome(waiting, { reviewState: 'scheduled', _status: 'draft' })).toBe('scheduled')
+  })
+
+  it('scheduled → published at its time is the approval taking effect', () => {
+    expect(
+      reviewOutcome({ reviewState: 'scheduled' }, { reviewState: null, _status: 'published' }),
+    ).toBe('approved')
+  })
+
   it('submitted → changes-requested is a send-back', () => {
     expect(reviewOutcome(waiting, { reviewState: 'changes-requested', _status: 'draft' })).toBe(
       'changes-requested',
@@ -188,5 +199,25 @@ describe('outcomeEmail — an announcement', () => {
     const email = outcomeEmail({ outcome: 'changes-requested', note: 'Add the time.', ...post })
     expect(email.text).toContain('your announcement “Picture day”')
     expect(email.html).toContain(`href="${post.editUrl}"`)
+  })
+})
+
+describe('outcomeEmail — an announcement approved for later', () => {
+  it('says it is approved and when it goes live, and links nowhere yet', () => {
+    const email = outcomeEmail({
+      outcome: 'scheduled',
+      noun: 'announcement',
+      title: 'Picture day',
+      school: 'School A',
+      pageUrl: 'https://a.example/news/picture-day',
+      editUrl: 'https://admin.example/admin/collections/posts/9',
+      goesLive: '2026-11-10T13:00:00.000Z',
+    })
+    expect(email.subject).toBe('Your announcement is approved: Picture day')
+    expect(email.text).toContain(
+      'The district approved your announcement “Picture day” for School A’s website. It goes live on Nov 10, 2026, 8:00 AM.',
+    )
+    expect(email.text).not.toContain('https://a.example')
+    expect(email.html).toContain('It goes live on Nov 10, 2026, 8:00 AM.')
   })
 })

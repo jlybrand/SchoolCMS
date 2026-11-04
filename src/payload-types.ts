@@ -121,6 +121,7 @@ export interface Config {
   jobs: {
     tasks: {
       districtDigest: TaskDistrictDigest;
+      postSchedule: TaskPostSchedule;
       inline: {
         input: unknown;
         output: unknown;
@@ -615,6 +616,18 @@ export interface Post {
    * Filled in when the announcement is first published.
    */
   publishedDate?: string | null;
+  /**
+   * Optional. Goes live at this time instead of now.
+   */
+  publishAt?: string | null;
+  /**
+   * Optional. Taken off the website at this time — unpublished, not deleted.
+   */
+  expiresAt?: string | null;
+  /**
+   * Optional. Listed first in news lists and feeds until this time.
+   */
+  featuredUntil?: string | null;
   syndication?: {
     scope?: ('this-tenant' | 'district-wide' | 'selected') | null;
     /**
@@ -622,7 +635,7 @@ export interface Post {
      */
     syndicatedTo?: (number | Tenant)[] | null;
   };
-  reviewState?: ('editing' | 'submitted' | 'changes-requested') | null;
+  reviewState?: ('editing' | 'submitted' | 'changes-requested' | 'scheduled') | null;
   reviewNote?: string | null;
   submittedAt?: string | null;
   submittedBy?: (number | null) | User;
@@ -878,7 +891,7 @@ export interface PayloadJob {
     | {
         executedAt: string;
         completedAt: string;
-        taskSlug: 'inline' | 'districtDigest';
+        taskSlug: 'inline' | 'districtDigest' | 'postSchedule';
         taskID: string;
         input?:
           | {
@@ -911,7 +924,7 @@ export interface PayloadJob {
         id?: string | null;
       }[]
     | null;
-  taskSlug?: ('inline' | 'districtDigest') | null;
+  taskSlug?: ('inline' | 'districtDigest' | 'postSchedule') | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
@@ -1227,6 +1240,9 @@ export interface PostsSelect<T extends boolean = true> {
   body?: T;
   visibility?: T;
   publishedDate?: T;
+  publishAt?: T;
+  expiresAt?: T;
+  featuredUntil?: T;
   syndication?:
     | T
     | {
@@ -1490,6 +1506,14 @@ export interface CollectionsWidget {
  * via the `definition` "TaskDistrictDigest".
  */
 export interface TaskDistrictDigest {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskPostSchedule".
+ */
+export interface TaskPostSchedule {
   input?: unknown;
   output?: unknown;
 }

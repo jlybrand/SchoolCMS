@@ -5,7 +5,11 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useId, useRef, useState } from 'react'
 
+import { checkPostDates, type PostDateField } from '@/lib/post-dates'
+import { DISTRICT_TIME_ZONE } from '@/lib/queue-age'
+
 import { approvalAnchor } from './anchor'
+import { ApprovalDates, inputToIso, NO_DATES, type DateInputs } from './ApprovalDates'
 import { PageDiffView } from './PageDiffView'
 import type { QueueItem } from './queue-data'
 import { checkNote } from './request-changes'
@@ -41,6 +45,22 @@ export const ApprovalItem = ({ item }: { item: QueueItem }) => {
   const [outcome, setOutcome] = useState<string | null>(null)
   const [problem, setProblem] = useState<{ text: string; reload: boolean } | null>(null)
   const [noteError, setNoteError] = useState<string | null>(null)
+  // An announcement's dates (Jason, 2026-11-04); a page has none.
+  const [dates, setDates] = useState<DateInputs>(NO_DATES)
+  const [dateErrors, setDateErrors] = useState<Partial<Record<PostDateField, string>>>({})
+  const hasDates = item.collection === 'posts'
+  const isoDates = {
+    publishAt: inputToIso(dates.publishAt),
+    expiresAt: inputToIso(dates.expiresAt),
+    featuredUntil: inputToIso(dates.featuredUntil),
+  }
+  const dateCheck = hasDates ? checkPostDates(isoDates, new Date()) : null
+  /**
+   * Said on the button before it is pressed: a future Start schedules rather than publishes. From
+   * the Start alone, so a mistake in another date does not change what the button promises.
+   */
+  const schedules =
+    hasDates && isoDates.publishAt !== null && isoDates.publishAt > new Date().toISOString()
   const noteRef = useRef<HTMLTextAreaElement>(null)
   const outcomeRef = useRef<HTMLParagraphElement>(null)
   const problemRef = useRef<HTMLDivElement>(null)
@@ -70,6 +90,12 @@ export const ApprovalItem = ({ item }: { item: QueueItem }) => {
   }
 
   const approve = async () => {
+    // The same rules as the server's, so a wrong date is said here, beside the date.
+    if (dateCheck && !dateCheck.ok) {
+      setDateErrors(dateCheck.errors)
+      return
+    }
+    setDateErrors({})
     setPhase('busy')
     setProblem(null)
     try {
@@ -77,18 +103,22 @@ export const ApprovalItem = ({ item }: { item: QueueItem }) => {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item.token),
+        body: JSON.stringify(hasDates ? { ...item.token, ...isoDates } : item.token),
       })
       const body = (await res.json().catch(() => null)) as {
         error?: string
         reason?: string
+        errors?: Partial<Record<PostDateField, string>>
       } | null
       if (res.ok)
         return finish(
-          item.noun === 'announcement'
-            ? `Published. “${item.title}” is approved for ${item.school}.`
-            : `Published. “${item.title}” will be on ${item.school}’s site within a few seconds.`,
+          schedules && isoDates.publishAt
+            ? `Approved. “${item.title}” goes live ${goesLive(isoDates.publishAt)}.`
+            : item.noun === 'announcement'
+              ? `Published. “${item.title}” is approved for ${item.school}.`
+              : `Published. “${item.title}” will be on ${item.school}’s site within a few seconds.`,
         )
+      if (body?.errors) setDateErrors(body.errors)
       fail(
         body?.error ?? `The ${item.noun} could not be approved. Please try again.`,
         body?.reason === 'changed',
@@ -156,6 +186,10 @@ export const ApprovalItem = ({ item }: { item: QueueItem }) => {
 
       <PageDiffView diff={item.diff} titleId={titleId} />
 
+      {hasDates && phase !== 'done' && !noteOpen ? (
+        <ApprovalDates errors={dateErrors} onChange={setDates} values={dates} />
+      ) : null}
+
       {problem ? (
         <div className={styles.problem} ref={problemRef} role="alert" tabIndex={-1}>
           <p>{problem.text}</p>
@@ -221,7 +255,13 @@ export const ApprovalItem = ({ item }: { item: QueueItem }) => {
                 onClick={() => void approve()}
                 type="button"
               >
-                {phase === 'busy' ? 'Publishing…' : 'Approve and publish'}
+                {phase === 'busy'
+                  ? schedules
+                    ? 'Scheduling…'
+                    : 'Publishing…'
+                  : schedules
+                    ? 'Approve and schedule'
+                    : 'Approve and publish'}
               </button>
               <button
                 className={styles.secondary}
@@ -244,3 +284,11 @@ export const ApprovalItem = ({ item }: { item: QueueItem }) => {
     </article>
   )
 }
+
+/** "on Nov 10, 2026, 8:00 AM" — in the district's time. */
+const goesLive = (iso: string): string =>
+  `on ${new Intl.DateTimeFormat('en-US', {
+    timeZone: DISTRICT_TIME_ZONE,
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(iso))}`

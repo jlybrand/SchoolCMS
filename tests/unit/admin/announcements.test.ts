@@ -124,6 +124,13 @@ describe('announcementStatus — one word for where a post stands', () => {
     expect(announcementStatus({ reviewState: 'changes-requested' }, 'district')).toBe('Sent back')
   })
 
+  it('says a post approved for later is scheduled — in a school’s words, approved (Jason, 2026-11-04)', () => {
+    expect(announcementStatus({ reviewState: 'scheduled' }, 'district')).toBe('Scheduled')
+    expect(announcementStatus({ reviewState: 'scheduled' }, 'school')).toBe(
+      'Approved, goes live later',
+    )
+  })
+
   it('puts a waiting change ahead of a published version', () => {
     expect(announcementStatus({ _status: 'published', reviewState: 'submitted' }, 'district')).toBe(
       'Waiting for approval',

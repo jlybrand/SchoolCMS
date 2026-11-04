@@ -26,7 +26,7 @@ import type { AuthUser } from './types'
 
 const userOf = (req: { user?: unknown }): AuthUser | null => (req?.user as AuthUser) ?? null
 
-type IncomingData = { tenant?: unknown; _status?: unknown } | null
+type IncomingData = { tenant?: unknown; _status?: unknown; publishAt?: unknown } | null
 
 const dataOf = (args: { data?: unknown }): IncomingData => (args?.data as IncomingData) ?? null
 
@@ -35,8 +35,16 @@ export const PUBLIC_POST_CONSTRAINT: Where = {
   and: [{ _status: { equals: 'published' } }, { visibility: { equals: 'public' } }],
 }
 
-/** Posts have no `publishAt`; the one publishing write is the status. */
-const isPublishingWrite = (data: IncomingData): boolean => data?._status === 'published'
+/**
+ * Would this write publish something? The status, or a Start (`publishAt`, Jason 2026-11-04) —
+ * a scheduled publish defers the transition rather than cancelling it, so a school manager who
+ * could set one could publish by waiting. As on pages (`src/access/pages.ts`).
+ */
+const isPublishingWrite = (data: IncomingData): boolean => {
+  if (!data) return false
+  if (data._status === 'published') return true
+  return data.publishAt !== undefined && data.publishAt !== null && data.publishAt !== ''
+}
 
 export const postsReadAccess: Access = ({ req }) => {
   const user = userOf(req)

@@ -73,6 +73,10 @@ export const makeNotifyReviewOutcome =
               : deps.serverUrl,
         editUrl: `${deps.serverUrl.replace(/\/$/, '')}/admin/collections/${deps.collection}/${String(doc.id)}`,
         note: typeof doc.reviewNote === 'string' ? doc.reviewNote : null,
+        goesLive:
+          typeof doc.publishAt === 'string' || doc.publishAt instanceof Date
+            ? new Date(doc.publishAt as string).toISOString()
+            : null,
       })
       await deps.send({ to, ...email }, req)
     } catch (err) {

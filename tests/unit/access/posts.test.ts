@@ -136,7 +136,18 @@ describe('postsUpdateAccess', () => {
     )
   })
 
+  it('DENIES a school-manager a Start — a scheduled publish is a publish (Jason, 2026-11-04)', () => {
+    const start = { tenant: 'A', _status: 'draft', publishAt: '2030-01-01T08:00:00.000Z' }
+    expect(postsUpdateAccess(args(managerA, { data: start }))).toBe(false)
+    expect(postsCreateAccess(args(managerA, { data: start }))).toBe(false)
+  })
+
   it('still allows a school-manager to save a draft', () => {
+    expect(
+      postsUpdateAccess(args(managerA, { data: { _status: 'draft', publishAt: null } })),
+    ).toEqual({
+      tenant: { in: ['A'] },
+    })
     expect(postsUpdateAccess(args(managerA, { data: { _status: 'draft' } }))).toEqual({
       tenant: { in: ['A'] },
     })

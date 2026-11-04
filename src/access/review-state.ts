@@ -12,6 +12,8 @@ import type { AuthUser } from './types'
  *   `editing`            a school manager has saved without sending
  *   `submitted`          in the district's queue
  *   `changes-requested`  sent back, with a note, still editable
+ *   `scheduled`          approved with a future Start; goes live at its time (posts only —
+ *                        Jason, 2026-11-04). A school's save drops it: new words, unapproved.
  *
  * PURE, and the only place the transitions are decided. The `beforeChange` hook in
  * `src/collections/hooks/review-state.ts` applies the result and overwrites whatever the
@@ -24,12 +26,13 @@ import type { AuthUser } from './types'
  * what "approve" is.
  */
 
-export type ReviewState = 'editing' | 'submitted' | 'changes-requested'
+export type ReviewState = 'editing' | 'submitted' | 'changes-requested' | 'scheduled'
 
 export const REVIEW_STATES: readonly ReviewState[] = [
   'editing',
   'submitted',
   'changes-requested',
+  'scheduled',
 ] as const
 
 export type ReviewFields = {
@@ -55,6 +58,8 @@ export type ReviewInput = {
   note?: string | null | undefined
   /** Whether this write publishes — decided by the publish gate, not here. */
   publishing: boolean
+  /** Whether this write carries a future Start (`checkPostDates`) — what `scheduled` needs. */
+  schedules?: boolean
   /** ISO timestamp for `submittedAt`. Passed in so the function stays pure. */
   now: string
 }
@@ -122,6 +127,20 @@ const forSchoolManager = (
 
 const forDistrictAdmin = (current: ReviewFields, input: ReviewInput): ReviewResult => {
   if (input.publishing) return { ok: true, fields: NOTHING_PENDING }
+
+  /**
+   * Approve with a future Start (or schedule its own post): out of the queue until its time. The
+   * submitter stays, so they hear now and again when it goes live. Not from `changes-requested`:
+   * the school has not resent it, so there is nothing approved to schedule.
+   */
+  if (input.requested === 'scheduled') {
+    if (input.schedules !== true)
+      return refuse('Scheduling needs a time to go live.', 'reviewState')
+    if (current.reviewState === 'changes-requested') {
+      return refuse('This was sent back to the school. It needs resending first.', 'reviewState')
+    }
+    return { ok: true, fields: { ...current, reviewState: 'scheduled', reviewNote: null } }
+  }
 
   const asked = input.requested !== undefined && input.requested !== current.reviewState
   if (!asked) return { ok: true, fields: current }
