@@ -110,6 +110,18 @@ schoolTest.describe('school plane — whole screens', () => {
         await page.goto('/admin/new-post')
         await auditScreen(page, '#new-post')
       })
+      schoolTest(`@a11y pages list, with its task button — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/collections/pages')
+        await auditScreen(page, '#list-task', ...LIST_REPAIRED)
+      })
+      schoolTest(`@a11y news and announcements list — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/collections/posts')
+        await auditScreen(page, '#list-task', ...LIST_REPAIRED)
+      })
+      schoolTest(`@a11y their account — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/account')
+        await auditScreen(page, '#your-school')
+      })
       schoolTest(`@a11y the page form — ${colorScheme}`, async ({ page }) => {
         await page.goto(`/admin/collections/pages/${fixture.id}`)
         await auditScreen(page, '#action-send-for-approval', ...PAGE_FORM_REPAIRED)

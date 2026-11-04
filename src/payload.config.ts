@@ -67,6 +67,8 @@ export default buildConfig({
         '/admin/Grants/GrantsPanel#GrantsPanel',
       ],
       afterNavLinks: ['/admin/Approvals/ApprovalsNavLink#ApprovalsNavLink'],
+      /** A school manager's school, named where a tenant picker would be (Jason, 2026-11-04). */
+      beforeNavLinks: ['/admin/SchoolPlane/SchoolNameNav#SchoolNameNav'],
       /** Repairs Payload's own markup where it fails axe — a stopgap; see the component. */
       providers: ['/admin/A11yPatch/A11yPatch#A11yPatch'],
     },
@@ -118,6 +120,8 @@ export default buildConfig({
       tenantsSlug: 'tenants',
       // district-admin works across all 28 sites by design (`04` §3.2).
       userHasAccessToAllTenants: (user) => isDistrictAdmin(user),
+      /** Declared in src/collections/Users.ts instead, with the plugin's own builder — see there. */
+      tenantsArrayField: { includeDefaultField: false },
       collections: {
         /**
          * Registering here is what injects the `tenant` relationship field — which is why

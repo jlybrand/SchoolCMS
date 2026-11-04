@@ -75,6 +75,13 @@ export const Posts: CollectionConfig = {
     group: 'Content',
     /** The school plane's one button, as on pages (`04` §2.3). */
     components: {
+      /** A school manager's way to create from the list (Jason, 2026-11-04) — see the component. */
+      beforeListTable: [
+        {
+          path: '/admin/SchoolPlane/ListTaskButton#ListTaskButton',
+          clientProps: { collection: 'posts' },
+        },
+      ],
       edit: {
         PublishButton: '/admin/SendForApproval/SendForApprovalButton#SendForApprovalButton',
         SaveDraftButton: '/admin/SendForApproval/SchoolSaveDraftButton#SchoolSaveDraftButton',

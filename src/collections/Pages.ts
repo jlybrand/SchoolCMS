@@ -80,6 +80,13 @@ export const Pages: CollectionConfig = {
      * line is the `reviewStatus` field below.
      */
     components: {
+      /** A school manager's way to create from the list (Jason, 2026-11-04) — see the component. */
+      beforeListTable: [
+        {
+          path: '/admin/SchoolPlane/ListTaskButton#ListTaskButton',
+          clientProps: { collection: 'pages' },
+        },
+      ],
       edit: {
         PublishButton: '/admin/SendForApproval/SendForApprovalButton#SendForApprovalButton',
         SaveDraftButton: '/admin/SendForApproval/SchoolSaveDraftButton#SchoolSaveDraftButton',

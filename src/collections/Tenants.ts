@@ -17,6 +17,12 @@ export const Tenants: CollectionConfig = {
     useAsTitle: 'name',
     defaultColumns: ['name', 'hostname', 'type', 'status'],
     group: 'Administration',
+    /**
+     * Out of a school manager's navigation (Jason, 2026-11-04) — a list of their one school,
+     * which they cannot change. The menu names their school instead (`SchoolNameNav`). Read
+     * access is untouched: the admin still resolves their tenant through it.
+     */
+    hidden: ({ user }) => !isDistrictAdmin(user as AuthUser | null),
   },
   access: {
     /**

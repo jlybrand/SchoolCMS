@@ -33,6 +33,29 @@ export const SCHOOL_TASKS: readonly SchoolTask[] = [
   },
 ]
 
+export type ListTask = { label: string; href: string }
+
+/** Which landing-view task a list's create button stands for. */
+const LIST_TASK_HREFS: Readonly<Record<string, string>> = {
+  posts: '/admin/new-post',
+  pages: '/admin/new-page',
+}
+
+/**
+ * The create button a school manager gets on a list (Jason, 2026-11-04). Payload's own "Create
+ * New" never appears for them: create access needs a school to check against, and Payload asks
+ * with none. The task screens are their way to create anyway, so the list leads there — taken
+ * from `SCHOOL_TASKS`, so the button and the landing view say the same thing.
+ */
+export const listTaskFor = (collection: string): ListTask | null => {
+  const task = SCHOOL_TASKS.find((t) => t.href === LIST_TASK_HREFS[collection])
+  return task ? { label: task.label, href: task.href } : null
+}
+
+/** The school (or schools) shown in place of a tenant picker; null when there is none. */
+export const schoolNamesLabel = (names: readonly string[]): string | null =>
+  names.length === 0 ? null : names.join(', ')
+
 export type SchoolPageType = { value: string; label: string; description: string }
 
 /**
