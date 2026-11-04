@@ -94,12 +94,18 @@ Payload auth collection, backed by Entra ID (`02` §7).
   canonical is the district page; out of the school's sitemap; follows the district page's
   edits); a source that is not live makes the page 404.
 
-**`pageType` determines the editing shape:**
+**`pageType` determines the editing shape — two kinds since 2026-11-04 (Jason):**
 
-| `pageType`                                                       | Available to      | Content                         |
-| ---------------------------------------------------------------- | ----------------- | ------------------------------- |
-| `standard`, `about`, `contact`, `staff`, `calendar`, `documents` | School managers   | Fixed typed fields per type     |
-| `composed`                                                       | **District only** | `layout` — the block array (§3) |
+| `pageType`  | Available to      | Content                         |
+| ----------- | ----------------- | ------------------------------- |
+| `standard`  | School managers   | Title and words (rich text)     |
+| `composed`  | **District only** | `layout` — the block array (§3) |
+
+The five fixed types this table once listed (`about`, `contact`, `staff`, `calendar`,
+`documents`) were retired: none ever had fields of its own, a school manager does not create
+staff pages, contact details are written freely, and staff directories, calendars and documents
+are **components the district places** on a composed page (Calendar: grid / list / carousel;
+Directory from the people database). Stored rows convert with `scripts/collapse-page-types.sql`.
 
 Enforced by field-level access and admin conditions, not by UI convention. In v1
 `school-manager` cannot create or convert to `composed`. **This is a single access
@@ -247,7 +253,9 @@ Every block ships with:
 
 - An AA-conformant template with **block-owned heading levels** — a block cannot produce a
   heading-order violation regardless of placement. `baseLevel` is threaded as a prop; these
-  are server components and server components have no context.
+  are server components and server components have no context. **Nesting (`Columns`, Jason
+  2026-11-04) keeps this:** a column threads `baseLevel` one step below its nearest heading
+  (`columnLevels`), so a block inside a column is placed in the outline as it is on a page.
 - Required accessibility fields where applicable (alt text, accessible names, `title` on
   embeds).
 - **CSS logical properties only** — no `margin-left`, no `text-align: left`, anywhere. RTL
@@ -299,10 +307,10 @@ marked; a feed narrows, and each announcement's own sharing still decides reach.
 
 | Item                                                     | State                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Column layouts** (2/3/4-column, wide-left, wide-right) | Nesting containers: blocks holding blocks. Cost is real — `baseLevel` threading to arbitrary depth, column _order_ (not just spacing) flipping under RTL, and an implicit mobile stacking order the editor never chose. `ImageText` and `CardGrid` cover most real uses without nesting. Recommendation: skip the general case; add a constrained 2-column (rich text either side, no nesting) only if the district site demonstrably needs it |
+| **Column layouts** (2/3/4-column, wide-left, wide-right) | **Built 2026-11-04 (Jason) as `Columns`: two or three columns, each holding any other block — nesting one level deep (no columns in columns).** The costs named here are met: heading levels are derived from where a block sits (`columnLevels` — a column heading one below the set's, its blocks one below that), so the editor still cannot skip a level; grid fills from the inline-start edge, so RTL reverses column order as it should; columns stack in reading order on narrow screens (Jason: stack on mobile, contents included). Wide-left/right and 4-column are not built |
 | **`Tabs`**                                               | Same nesting cost, plus content hidden from in-page search, print, and site search. Leaning no                                                                                                                                                                                                                                                                                                                                                 |
 | **`SocialFeed`** (Facebook, Instagram)                   | In scope by `01` §5 — embeds _in_ are permitted. But `07` §6 makes third-party embeds DD2's accessibility obligation, and these widgets conform poorly and change without notice. Separately, they load third-party tracking onto pages visited by minors — **a district policy question, not a feature decision**. Low-cost alternative: a link-out card rather than a live feed. YouTube is unaffected; it goes through `Embed`              |
-| **`Container`** | Listed in Batch 1 on 2026-08-28 and **withdrawn the same day**: a section wrapper's whole purpose is to contain other blocks, and blocks do not nest (§3.2). Without nesting it is a styling field wearing a block's clothes, which §3.2 also rules out. It belongs with the column layouts above — resolve those first, and `Container` either follows or stays unnecessary |
+| **`Container`** | Listed in Batch 1 on 2026-08-28 and **withdrawn the same day**: a section wrapper's whole purpose is to contain other blocks, and blocks do not nest (§3.2). Without nesting it is a styling field wearing a block's clothes, which §3.2 also rules out. It belongs with the column layouts above — resolve those first, and `Container` either follows or stays unnecessary. _(2026-11-04: column layouts resolved as `Columns`; `Container` still not built.)_ |
 | **Widening the `Embed` allowlist** | YouTube only at launch (2026-08-28) — §3.4 folded `Video` into this block because YouTube is effectively DD2's only video source. Two candidates are held, and both are procurement steps rather than code changes, because `07` §6 requires a **current VPAT/ACR from the vendor before allowlisting**: (a) the **athletics schedule provider** `01` §5 says DD2 already embeds — nobody has named which one, so it is a template-census finding (`10` §2); (b) **Microsoft Forms**, below |
 | **Whether MS Forms embedding is deferred** | `01` §5 has DD2's ~4 existing forms served by embedded MS Forms and calls that in scope; §3.4 records the 2026-08-28 deferral of `FormBlock` as also deferring "MS Forms embedding". If that meant only the native form builder, `forms.office.com` belongs in the allowlist and §3.4's wording needs narrowing. If it meant embedded forms too, `01` §5 needs correcting and those four forms need a stated home at cutover. **Left open 2026-08-28** |
 | **Manual ordering for `ChildPageNav`** | The menu is alphabetical by title, which is the only deterministic order available — `pages` has no ordering field. Adding one is an authoring-model decision (a `sort` field every editor then has to maintain, and a second place the site's structure is expressed) rather than a block decision. Leave it until a real section reads wrong alphabetically |

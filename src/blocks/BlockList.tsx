@@ -7,6 +7,7 @@ import { Accordion } from './Accordion'
 import { CallToAction } from './CallToAction'
 import { CardGrid } from './CardGrid'
 import { ChildPageNav } from './ChildPageNav'
+import { Columns } from './Columns'
 import { Divider } from './Divider'
 import { Embed } from './Embed'
 import { NewsFeed } from './NewsFeed'
@@ -101,6 +102,17 @@ const Block = ({
     case 'feed':
       // Already resolved — its announcements arrived with it (`resolvePageBlocks`).
       return <NewsFeed baseLevel={baseLevel} block={block} />
+    case 'columns':
+      // Its columns hold blocks: this list renders them, one level in (`columnLevels`).
+      return (
+        <Columns
+          baseLevel={baseLevel}
+          block={block}
+          renderBlocks={(blocks, level) => (
+            <BlockList baseLevel={level} blocks={blocks} childPages={childPages} />
+          )}
+        />
+      )
     default: {
       /**
        * Unreachable while the switch is exhaustive. If a new block type makes this line fail

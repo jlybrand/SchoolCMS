@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 
 import type { SchoolOption } from './school-data'
-import { checkNewPage, explainCreateError, SCHOOL_PAGE_TYPES } from './school-plane'
+import { checkNewPage, explainCreateError } from './school-plane'
 import styles from './SchoolPlane.module.css'
 
-type Field = 'title' | 'pageType' | 'school'
+type Field = 'title' | 'school'
 type Errors = Partial<Record<Field, string>>
 
 /**
@@ -46,7 +46,6 @@ export const NewPageForm = ({ schools }: { schools: readonly SchoolOption[] }) =
     const form = new FormData(event.currentTarget)
     const check = checkNewPage({
       title: form.get('title'),
-      pageType: form.get('pageType') ?? undefined,
       school: form.get('school') ?? undefined,
       schools: schools.map((s) => s.id),
     })
@@ -54,7 +53,7 @@ export const NewPageForm = ({ schools }: { schools: readonly SchoolOption[] }) =
     setFailure(null)
     if (!check.ok) {
       setErrors(check.errors)
-      const first = (['title', 'pageType', 'school'] as const).find((f) => check.errors[f])
+      const first = (['title', 'school'] as const).find((f) => check.errors[f])
       if (first) document.getElementById(fieldId(first))?.focus()
       return
     }
@@ -68,7 +67,8 @@ export const NewPageForm = ({ schools }: { schools: readonly SchoolOption[] }) =
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: check.title,
-          pageType: form.get('pageType'),
+          // A school's page is a page (Jason, 2026-11-04): no kind to choose.
+          pageType: 'standard',
           tenant: check.school,
           _status: 'draft',
         }),
@@ -127,35 +127,6 @@ export const NewPageForm = ({ schools }: { schools: readonly SchoolOption[] }) =
           </p>
         ) : null}
       </div>
-
-      <fieldset className={styles.field} {...invalid('pageType')}>
-        <legend className={styles.label}>What kind of page is it?</legend>
-        {errors.pageType ? (
-          <p className={styles.error} id={errorId('pageType')}>
-            {errors.pageType}
-          </p>
-        ) : null}
-        {SCHOOL_PAGE_TYPES.map((type, index) => (
-          <div className={styles.choice} key={type.value}>
-            <input
-              id={index === 0 ? fieldId('pageType') : `${id}-pageType-${type.value}`}
-              name="pageType"
-              type="radio"
-              value={type.value}
-              aria-describedby={`${id}-pageType-${type.value}-description`}
-            />
-            <label htmlFor={index === 0 ? fieldId('pageType') : `${id}-pageType-${type.value}`}>
-              <span className={styles.choiceLabel}>{type.label}</span>
-              <span
-                className={styles.choiceDescription}
-                id={`${id}-pageType-${type.value}-description`}
-              >
-                {type.description}
-              </span>
-            </label>
-          </div>
-        ))}
-      </fieldset>
 
       {schools.length > 1 ? (
         <fieldset className={styles.field} {...invalid('school')}>

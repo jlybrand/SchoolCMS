@@ -74,6 +74,7 @@ const LIST_REPAIRED = ['tbody .select-row input[aria-label^="Select "]']
 let fixture: FixturePage
 let post: FixturePost
 let feedPage: number
+let columnsPage: number
 let linksPage: number
 
 /** The post form, once rendered and repaired — the page form's controls, less the page's own. */
@@ -167,6 +168,28 @@ adminTest.describe('district plane — whole screens', () => {
     })
     expect(made.ok(), await made.text()).toBe(true)
     feedPage = ((await made.json()).doc as { id: number }).id
+    /** Columns holding other blocks (Jason, 2026-11-04): Payload's nested block rows on screen. */
+    const cols = await fixture.admin.post('/api/pages?draft=true&depth=0', {
+      data: {
+        tenant: (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json()).tenant,
+        title: 'Axe columns page',
+        slug: `axe-columns-${Date.now()}`,
+        pageType: 'composed',
+        layout: [
+          {
+            blockType: 'columns',
+            heading: 'Ways to help',
+            columns: [
+              { heading: 'Volunteer', content: [{ blockType: 'divider' }] },
+              { heading: 'PTA', content: [{ blockType: 'childPageNav' }] },
+            ],
+          },
+        ],
+        _status: 'draft',
+      },
+    })
+    expect(cols.ok(), await cols.text()).toBe(true)
+    columnsPage = ((await cols.json()).doc as { id: number }).id
     /**
      * A composed page whose button and first card link to a PAGE and second card to an address
      * (Jason, 2026-10-29), so the page picker inside a block row is on screen with a page
@@ -202,6 +225,7 @@ adminTest.describe('district plane — whole screens', () => {
   })
   adminTest.afterAll(async () => {
     await fixture.admin.delete(`/api/pages/${feedPage}`)
+    await fixture.admin.delete(`/api/pages/${columnsPage}`)
     await fixture.admin.delete(`/api/pages/${linksPage}`)
     await dropPage(fixture)
     await dropPost(post)
@@ -261,6 +285,17 @@ adminTest.describe('district plane — whole screens', () => {
           '.collapsible__drag[aria-label="Reorder"]',
           '.array-actions__button[aria-label="Row actions"]',
           '.clipboard-action__popup .popup-button[aria-label="Copy or paste"]',
+        )
+      })
+      adminTest(`@a11y a page with columns holding blocks — ${colorScheme}`, async ({ page }) => {
+        await page.goto(`/admin/collections/pages/${columnsPage}`)
+        await auditScreen(
+          page,
+          '#field-title',
+          '#field-layout__0__heading',
+          '#field-layout__0__columns__1__heading',
+          '.collapsible__drag[aria-label="Reorder"]',
+          '.array-actions__button[aria-label="Row actions"]',
         )
       })
       adminTest(

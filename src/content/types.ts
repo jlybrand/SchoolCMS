@@ -44,23 +44,15 @@ export type ContentContext = {
 /**
  * PAGES (`03` §2).
  *
- * `pageType` decides the editing shape: the fixed types carry typed fields a school manager
- * fills in, `composed` carries the district-only block array (§3). One enum rather than two
- * collections, so enabling school composition later (`01` §4.1) is an access-predicate
- * change and nothing else.
+ * Two kinds (Jason, 2026-11-04): `standard`, a page of words a school manager writes, and
+ * `composed`, the district-only block array (§3) — where staff directories, calendars, columns
+ * and shared sections are placed as components. One enum rather than two collections, so enabling
+ * school composition later (`01` §4.1) is an access-predicate change and nothing else.
  */
-export type PageType =
-  'standard' | 'about' | 'contact' | 'staff' | 'calendar' | 'documents' | 'composed'
+export type PageType = 'standard' | 'composed'
 
-/** The fixed types a school manager may author. `composed` is district-only (`03` §2). */
-export const FIXED_PAGE_TYPES: readonly PageType[] = [
-  'standard',
-  'about',
-  'contact',
-  'staff',
-  'calendar',
-  'documents',
-] as const
+/** The kinds a school manager may author: one. `composed` is district-only (`03` §2). */
+export const FIXED_PAGE_TYPES: readonly PageType[] = ['standard'] as const
 
 /**
  * A page as another page refers to it: enough to render a link, and nothing else.
@@ -405,6 +397,24 @@ export type ResolvedFeedBlock = BlockBase & {
   moreHref: string
 }
 
+/**
+ * Two or three columns, each holding other blocks (Jason, 2026-11-04 — nesting allowed). Side by
+ * side on a wide screen, stacked with their contents on a narrow one. One level deep: a column
+ * holds any block but another set of columns.
+ */
+export type ColumnsBlock = BlockBase & {
+  kind: 'columns'
+  heading: string | null
+  columns: { heading: string | null; blocks: PageBlock[] }[]
+}
+
+/** Columns READY TO RENDER: each column's data blocks resolved, as a page's are. */
+export type ResolvedColumnsBlock = BlockBase & {
+  kind: 'columns'
+  heading: string | null
+  columns: { heading: string | null; blocks: ResolvedPageBlock[] }[]
+}
+
 export type PageBlock =
   | RichTextPageBlock
   | CallToActionBlock
@@ -414,6 +424,7 @@ export type PageBlock =
   | EmbedBlock
   | DividerBlock
   | FeedBlock
+  | ColumnsBlock
 
 /**
  * What `BlockList` renders: every block, with each DATA block resolved (Jason, 2026-10-28).
@@ -423,7 +434,8 @@ export type PageBlock =
  * the exhaustive switch gives a block with no renderer. StaffList, DocumentList and Gallery join
  * the same way.
  */
-export type ResolvedPageBlock = Exclude<PageBlock, FeedBlock> | ResolvedFeedBlock
+export type ResolvedPageBlock =
+  Exclude<PageBlock, FeedBlock | ColumnsBlock> | ResolvedFeedBlock | ResolvedColumnsBlock
 
 /**
  * RICH TEXT (`07` §4.4).

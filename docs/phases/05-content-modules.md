@@ -987,3 +987,36 @@ new Start is refused; a school's edit drops the schedule; a clone is never sched
 - `tests/unit/lib/review-emails.test.ts` — the page wording
 - `tests/e2e/post-dates.spec.ts` — Start in Page settings; none on a school's page form;
   `review-state-fields.spec.ts` counts four states
+
+## 21. Two page types, and Columns (Jason, 2026-11-04)
+
+Page types are `standard` ("Page", school-editable words) and `composed` (district blocks). The
+five fixed types are gone. Data arrives as components the district places: Columns now; Calendar
+and Directory with their modules; Shared content (COPE) next.
+
+| File                                                            | Holds                                                                                                                                                                                           |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/content/types.ts`                                          | `PageType = 'standard' \| 'composed'`; `FIXED_PAGE_TYPES = ['standard']`; `ColumnsBlock` / `ResolvedColumnsBlock`; `ResolvedPageBlock` excludes the stored `ColumnsBlock`                       |
+| `src/collections/Pages.ts`                                      | `pageType` options Page / Composed (district only)                                                                                                                                              |
+| `scripts/collapse-page-types.sql`                               | one-off: old types → `standard` on `pages` and `_pages_v`. Plain SQL — run with `psql` BEFORE Payload starts, which pushes the narrowed enum                                                    |
+| `src/admin/SchoolPlane/school-plane.ts`, `NewPageForm.tsx`      | no kind question: `checkNewPage` is title + school; the form creates `pageType: 'standard'`                                                                                                     |
+| `src/lib/dashboard.ts`, `src/admin/Dashboard/dashboard-data.ts` | key page = each site's top-level `home` only                                                                                                                                                    |
+| `src/admin/Approvals/page-diff.ts`                              | type labels Page / Composed                                                                                                                                                                     |
+| `src/collections/blocks/index.ts`                               | `columnsBlock`: optional `heading`; `columns` array 2–3 of { optional `heading`, `content`: blocks = the library minus columns }. Nested rows live in the same `pages_blocks_*` tables, by path |
+| `src/content/blocks.ts`                                         | `toColumns`: ≤3 columns, each `toPageBlocks(content)` without columns; an empty column kept; all empty → dropped                                                                                |
+| `src/content/resolve-blocks.ts`                                 | `columns`: each column's blocks resolved recursively (a feed in a column fills)                                                                                                                 |
+| `src/blocks/Columns/levels.ts`                                  | `columnLevels(base, { blockHeading, columnHeading })` → block / column / content levels, clamped at h6                                                                                          |
+| `src/blocks/Columns/Columns.tsx`, `.module.css`, `.stories.tsx` | grid: 1 column; ≥48rem 2 across; ≥64rem 3 across for three; `renderBlocks` prop = `BlockList` (no circular import)                                                                              |
+| `src/blocks/BlockList.tsx`                                      | `case 'columns'` → `Columns` with `renderBlocks={(blocks, level) => <BlockList …/>}`                                                                                                            |
+
+### Tests
+
+- `tests/unit/blocks.test.ts` — columns mapping; `tests/unit/components/columns-levels.test.ts`
+- `tests/unit/admin/school-plane.test.ts`, `tests/unit/lib/dashboard.test.ts`, `page-diff`,
+  `pages`, `publish-gate` — the two types
+- `tests/integration/content-layer.test.ts` — a feed inside a column resolves;
+  `tests/integration/dashboard.test.ts` — the front page is the key page
+- `tests/e2e/columns.spec.ts` — h2 / h3 per column / h4 inside; side by side at 1280, stacked in
+  reading order at 375 with no sideways scroll; axe. `admin-planes-axe` — the page form with
+  columns, both themes. `school-plane`, `phase-4-exit` — Add a page asks no kind
+- Storybook `Blocks/Columns` — four stories through `BlockList`, the component gate LTR + RTL

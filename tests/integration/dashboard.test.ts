@@ -77,27 +77,20 @@ describe('findLastPublished — when each site last went live', () => {
   })
 })
 
-describe('findKeyPages — home, contact and calendar, published', () => {
-  it('finds a top-level home and the contact and calendar pages by type', async () => {
+describe('findKeyPages — each site’s front page, published', () => {
+  it('finds a top-level home, and not a nested “home” or another page', async () => {
     const stamp = Date.now()
     const home = await mkPage(f.tenantA, { title: 'Home', slug: 'home', _status: 'published' })
-    const contact = await mkPage(f.tenantA, {
+    const other = await mkPage(f.tenantA, {
       title: 'Reach us',
       slug: `reach-${stamp}`,
-      pageType: 'contact',
       _status: 'published',
     })
     const nestedHome = await mkPage(f.tenantA, {
       title: 'Not the front page',
       slug: 'home',
-      parent: contact,
+      parent: other,
       _status: 'published',
-    })
-    const draftCalendar = await mkPage(f.tenantA, {
-      title: 'Dates',
-      slug: `dates-${stamp}`,
-      pageType: 'calendar',
-      _status: 'draft',
     })
 
     const pages = await findKeyPages(
@@ -106,13 +99,10 @@ describe('findKeyPages — home, contact and calendar, published', () => {
       new Map([[String(f.tenantA), 'School A']]),
     )
     const ids = pages.map((p) => p.id)
-    expect(ids).toEqual(expect.arrayContaining([home, contact]))
+    expect(ids).toContain(home)
+    expect(ids).not.toContain(other)
     expect(ids).not.toContain(nestedHome)
-    expect(ids).not.toContain(draftCalendar)
-    expect(pages.find((p) => p.id === contact)).toMatchObject({
-      site: 'School A',
-      kind: 'Contact page',
-    })
+    expect(pages.find((p) => p.id === home)).toMatchObject({ site: 'School A', kind: 'Home page' })
   })
 })
 

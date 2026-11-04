@@ -56,46 +56,6 @@ export const listTaskFor = (collection: string): ListTask | null => {
 export const schoolNamesLabel = (names: readonly string[]): string | null =>
   names.length === 0 ? null : names.join(', ')
 
-export type SchoolPageType = { value: string; label: string; description: string }
-
-/**
- * The page types a school may create, with what each is for (`04` §2.4: "a short list with
- * plain-language descriptions"). The fixed types from `03` §2 — never `composed`, which is the
- * district's block layout and is refused for schools at three layers already.
- */
-export const SCHOOL_PAGE_TYPES: readonly SchoolPageType[] = [
-  {
-    value: 'standard',
-    label: 'General page',
-    description: 'Words and links about one topic, like a club, a program or a school policy.',
-  },
-  {
-    value: 'about',
-    label: 'About the school',
-    description: 'Who the school is: its mission, history, principal’s welcome and facts.',
-  },
-  {
-    value: 'contact',
-    label: 'Contact details',
-    description: 'How to reach the school: address, phone numbers, office hours and directions.',
-  },
-  {
-    value: 'staff',
-    label: 'Staff list',
-    description: 'A page that lists the people who work at the school and how to reach them.',
-  },
-  {
-    value: 'calendar',
-    label: 'Calendar',
-    description: 'A page that shows the school’s upcoming dates and events.',
-  },
-  {
-    value: 'documents',
-    label: 'Forms and documents',
-    description: 'A page that lists files families can download, like forms and handbooks.',
-  },
-]
-
 /** Longer than this is not a heading; the slug and the menu label are both built from it. */
 const MAX_TITLE = 120
 
@@ -103,7 +63,6 @@ type SchoolId = number | string
 
 export type NewPageInput = {
   title?: unknown
-  pageType?: unknown
   /** The schools the user is assigned to. */
   schools: readonly SchoolId[]
   /** The school chosen in the form, when there was a choice. */
@@ -112,7 +71,7 @@ export type NewPageInput = {
 
 export type NewPageCheck =
   | { ok: true; title: string; school: SchoolId }
-  | { ok: false; errors: Partial<Record<'title' | 'pageType' | 'school', string>> }
+  | { ok: false; errors: Partial<Record<'title' | 'school', string>> }
 
 const NO_SCHOOL = 'Your account is not linked to a school yet. Ask the district web team to add it.'
 const CHOOSE_SCHOOL = 'Choose which school this page is for.'
@@ -147,14 +106,10 @@ const checkSchool = (
  * never makes someone fix one thing only to be told about the next.
  */
 export const checkNewPage = (input: NewPageInput): NewPageCheck => {
-  const errors: Partial<Record<'title' | 'pageType' | 'school', string>> = {}
+  const errors: Partial<Record<'title' | 'school', string>> = {}
 
   const title = checkTitle(input.title, 'Give the page a title.')
   if (title.error) errors.title = title.error
-
-  if (!SCHOOL_PAGE_TYPES.some((t) => t.value === input.pageType)) {
-    errors.pageType = 'Choose what kind of page this is.'
-  }
 
   const school = checkSchool(input, CHOOSE_SCHOOL)
   if (school.error) errors.school = school.error

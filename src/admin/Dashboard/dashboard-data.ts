@@ -100,7 +100,7 @@ export const findLastPublished = async (
   return last
 }
 
-/** The published key pages — home, contact, calendar — with their site's name. */
+/** The published key pages — each site's front page — with their site's name. */
 export const findKeyPages = async (
   payload: Payload,
   user: User,
@@ -113,19 +113,14 @@ export const findKeyPages = async (
     where: {
       and: [
         { _status: { equals: 'published' } },
-        {
-          or: [
-            { and: [{ slug: { equals: 'home' } }, { parent: { exists: false } }] },
-            { pageType: { in: ['contact', 'calendar'] } },
-          ],
-        },
+        { slug: { equals: 'home' } },
+        { parent: { exists: false } },
       ],
     },
     select: {
       title: true,
       slug: true,
       parent: true,
-      pageType: true,
       tenant: true,
       updatedAt: true,
     },

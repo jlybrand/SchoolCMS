@@ -51,6 +51,17 @@ export const resolvePageBlocks = async (
       switch (block.kind) {
         case 'feed':
           return resolveFeed(ctx, block, options)
+        case 'columns':
+          // A column's data blocks — a feed in a column — resolve as a page's do.
+          return {
+            ...block,
+            columns: await Promise.all(
+              block.columns.map(async (column) => ({
+                heading: column.heading,
+                blocks: await resolvePageBlocks(ctx, column.blocks, options),
+              })),
+            ),
+          }
         default:
           return block
       }

@@ -8,7 +8,6 @@ import {
   listTaskFor,
   schoolEditPath,
   schoolNamesLabel,
-  SCHOOL_PAGE_TYPES,
   SCHOOL_TASKS,
   submissionStatus,
 } from '@/admin/SchoolPlane/school-plane'
@@ -77,31 +76,14 @@ describe('schoolNamesLabel — which school the manager is working on', () => {
   })
 })
 
-describe('SCHOOL_PAGE_TYPES — a short list with plain descriptions (`04` §2.4)', () => {
-  it('is the fixed types, and never the district-only composed type', () => {
-    expect(SCHOOL_PAGE_TYPES.map((t) => t.value)).toEqual([
-      'standard',
-      'about',
-      'contact',
-      'staff',
-      'calendar',
-      'documents',
-    ])
-  })
-
-  it('describes every type in words a first-time user can act on', () => {
-    for (const type of SCHOOL_PAGE_TYPES) {
-      expect(type.label.length).toBeGreaterThan(0)
-      expect(type.description.length).toBeGreaterThan(20)
-      expect(type.description.toLowerCase()).not.toMatch(/collection|block|composed|slug/)
-    }
-  })
-})
-
 describe('checkNewPage — what a new page needs before it is created', () => {
-  const ok = { title: 'Field trip forms', pageType: 'standard', schools: [7], school: 7 }
+  const ok = { title: 'Field trip forms', schools: [7], school: 7 }
 
-  it('accepts a title, an allowed type and the only school', () => {
+  /**
+   * No "what kind of page" question (Jason, 2026-11-04): a school's page is a page — staff lists,
+   * calendars and documents are components the district places, not types a school picks.
+   */
+  it('accepts a title and the only school — and asks no page type', () => {
     expect(checkNewPage(ok)).toEqual({ ok: true, title: 'Field trip forms', school: 7 })
   })
 
@@ -126,17 +108,6 @@ describe('checkNewPage — what a new page needs before it is created', () => {
     const result = checkNewPage({ ...ok, title: 'x'.repeat(121) })
     expect(result.ok).toBe(false)
     expect(!result.ok && result.errors.title).toMatch(/shorter/)
-  })
-
-  it.each([
-    ['nothing chosen', undefined],
-    ['the district-only composed type', 'composed'],
-    ['an unknown type', 'landing'],
-  ])('asks for a page type when given %s', (_label, pageType) => {
-    expect(checkNewPage({ ...ok, pageType })).toEqual({
-      ok: false,
-      errors: { pageType: 'Choose what kind of page this is.' },
-    })
   })
 
   it('uses the only school without asking', () => {
@@ -176,14 +147,9 @@ describe('checkNewPage — what a new page needs before it is created', () => {
   })
 
   it('reports every problem at once', () => {
-    const result = checkNewPage({
-      title: '',
-      pageType: undefined,
-      schools: [7, 9],
-      school: undefined,
-    })
+    const result = checkNewPage({ title: '', schools: [7, 9], school: undefined })
     expect(result.ok).toBe(false)
-    expect(!result.ok && Object.keys(result.errors).sort()).toEqual(['pageType', 'school', 'title'])
+    expect(!result.ok && Object.keys(result.errors).sort()).toEqual(['school', 'title'])
   })
 })
 

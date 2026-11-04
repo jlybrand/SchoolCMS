@@ -126,13 +126,13 @@ const PAGES = [
   {
     slug: 'about',
     title: 'About Our School',
-    pageType: 'about' as const,
+    pageType: 'standard' as const,
     body: body([block('paragraph', 'A seeded top-level page, so path walking has a target.')]),
   },
   {
     slug: 'staff',
     title: 'Staff Directory',
-    pageType: 'staff' as const,
+    pageType: 'standard' as const,
     /**
      * Nested on purpose. `getPageByPath` walks segments rather than reading a stored path
      * (`03` §2), and a one-segment fixture would never exercise the walk — nor prove that a

@@ -88,24 +88,15 @@ export const staleSites = (
       }
     })
 
-export type KeyPageKind = 'Home page' | 'Contact page' | 'Calendar page'
+export type KeyPageKind = 'Home page'
 
 /**
- * The key pages `04` §3.1 names: the front page (a top-level page slugged "home" — see the
- * tenant-root decision), and the contact and calendar pages by their page type.
+ * The key page `04` §3.1 names that a page can be found by: the front page (a top-level page
+ * slugged "home" — see the tenant-root decision). Contact and calendar pages were page types until
+ * Jason, 2026-11-04; a calendar becomes a component, and pages carrying one join this check then.
  */
-export const keyPageKind = (page: {
-  slug?: unknown
-  parent?: unknown
-  pageType?: unknown
-}): KeyPageKind | null => {
-  if (page.slug === 'home' && (page.parent === null || page.parent === undefined)) {
-    return 'Home page'
-  }
-  if (page.pageType === 'contact') return 'Contact page'
-  if (page.pageType === 'calendar') return 'Calendar page'
-  return null
-}
+export const keyPageKind = (page: { slug?: unknown; parent?: unknown }): KeyPageKind | null =>
+  page.slug === 'home' && (page.parent === null || page.parent === undefined) ? 'Home page' : null
 
 export type KeyPage = {
   id: number | string

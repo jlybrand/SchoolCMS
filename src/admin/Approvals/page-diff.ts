@@ -37,14 +37,10 @@ export type PageDiff = { isNew: boolean; fields: FieldChange[]; body: BodyDiff |
 
 type Doc = Record<string, unknown>
 
+/** As the page form labels them (Jason, 2026-11-04: two kinds). */
 const PAGE_TYPES: Record<string, string> = {
-  standard: 'Standard',
-  about: 'About',
-  contact: 'Contact',
-  staff: 'Staff',
-  calendar: 'Calendar',
-  documents: 'Documents',
-  composed: 'Composed (district only)',
+  standard: 'Page',
+  composed: 'Composed',
 }
 
 const VISIBILITY: Record<string, string> = { public: 'Anyone', staff: 'Staff only' }

@@ -271,19 +271,20 @@ export const Pages: CollectionConfig = {
       required: true,
       defaultValue: 'standard',
       index: true,
+      /**
+       * Two kinds (Jason, 2026-11-04). The five fixed types (about, contact, staff, calendar,
+       * documents) went: none had fields of its own, and staff lists, calendars and documents are
+       * components the district places on a composed page. `scripts/collapse-page-types.sql` turns
+       * any stored old type into `standard`.
+       */
       options: [
-        { label: 'Standard', value: 'standard' },
-        { label: 'About', value: 'about' },
-        { label: 'Contact', value: 'contact' },
-        { label: 'Staff', value: 'staff' },
-        { label: 'Calendar', value: 'calendar' },
-        { label: 'Documents', value: 'documents' },
+        { label: 'Page', value: 'standard' },
         { label: 'Composed (district only)', value: 'composed' },
       ],
       admin: {
         className: SETTING_CLASS,
         description:
-          'Decides which fields this page offers. "Composed" is the district-only block layout (`03` §2).',
+          '"Page" is words a school can edit. "Composed" is built from components by the district.',
       },
     },
     {

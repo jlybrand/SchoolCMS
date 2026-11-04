@@ -176,10 +176,10 @@ describe('pagesCreateAccess', () => {
       ).toBe(false)
     })
 
-    it('allows a school-manager the fixed page types', () => {
-      for (const pageType of ['standard', 'about', 'contact', 'staff', 'calendar', 'documents']) {
-        expect(pagesCreateAccess(args(managerA, { data: { tenant: 'A', pageType } }))).toBe(true)
-      }
+    it('allows a school-manager a page — the one kind they write (Jason, 2026-11-04)', () => {
+      expect(
+        pagesCreateAccess(args(managerA, { data: { tenant: 'A', pageType: 'standard' } })),
+      ).toBe(true)
     })
 
     it('allows district-admin to create a composed page', () => {
@@ -258,8 +258,8 @@ describe('pagesUpdateAccess', () => {
       expect(pagesUpdateAccess(args(managerA, { data: { pageType: 'composed' } }))).toBe(false)
     })
 
-    it('allows a school-manager to change between fixed types', () => {
-      expect(pagesUpdateAccess(args(managerA, { data: { pageType: 'contact' } }))).toEqual({
+    it('allows a school-manager a write that keeps their page a page', () => {
+      expect(pagesUpdateAccess(args(managerA, { data: { pageType: 'standard' } }))).toEqual({
         tenant: { in: ['A'] },
       })
     })

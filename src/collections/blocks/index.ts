@@ -16,8 +16,9 @@ import { linkFields } from '@/collections/fields/link'
  * "this field exists" restates the schema. The behaviour is in the mapper and the renderers,
  * and both are.
  *
- * WHAT NO BLOCK HERE HAS: a heading level, a nesting slot, or a styling field. See
- * `src/content/types.ts` for why each absence is load-bearing rather than pending.
+ * WHAT NO BLOCK HERE HAS: a heading level or a styling field. See `src/content/types.ts` for why
+ * each absence is load-bearing rather than pending. Nesting arrived with `columnsBlock` (Jason,
+ * 2026-11-04), one level deep, with levels still worked out rather than chosen.
  */
 
 /**
@@ -332,6 +333,62 @@ export const feedBlock: Block = {
  * The library, in the order it is offered to an editor. Prose first — it is what most
  * sections are — then the block that interrupts prose to ask for something.
  */
+/**
+ * Columns (Jason, 2026-11-04): two or three, each holding other blocks — any block in the library
+ * but another set of columns, so nesting is one level deep. Side by side on a wide screen,
+ * stacked with their contents on a narrow one (`src/blocks/Columns/`). Heading levels inside are
+ * worked out from where each sits (`columnLevels`), so none is asked for here either. A nested
+ * block is stored in the same `pages_blocks_*` table as a top-level one, told apart by its path.
+ */
+export const columnsBlock: Block = {
+  slug: 'columns',
+  interfaceName: 'ColumnsBlock',
+  labels: { singular: 'Columns', plural: 'Columns' },
+  fields: [
+    {
+      name: 'heading',
+      type: 'text',
+      label: 'Heading',
+      admin: { description: 'Optional. A title over all the columns.' },
+    },
+    {
+      name: 'columns',
+      type: 'array',
+      required: true,
+      minRows: 2,
+      maxRows: 3,
+      label: 'Columns',
+      labels: { singular: 'Column', plural: 'Columns' },
+      admin: {
+        description: 'Two or three. They sit side by side on a wide screen and stack on a phone.',
+      },
+      fields: [
+        {
+          name: 'heading',
+          type: 'text',
+          label: 'Column heading',
+          admin: { description: 'Optional.' },
+        },
+        {
+          name: 'content',
+          type: 'blocks',
+          label: 'In this column',
+          blocks: [
+            richTextBlock,
+            callToActionBlock,
+            accordionBlock,
+            cardGridBlock,
+            childPageNavBlock,
+            embedBlock,
+            dividerBlock,
+            feedBlock,
+          ],
+        },
+      ],
+    },
+  ],
+}
+
 export const blockLibrary: Block[] = [
   richTextBlock,
   accordionBlock,
@@ -341,4 +398,5 @@ export const blockLibrary: Block[] = [
   feedBlock,
   embedBlock,
   dividerBlock,
+  columnsBlock,
 ]

@@ -1,0 +1,35 @@
+/**
+ * Logical properties only (CLAUDE.md rule 5). Grid fills from the inline-start edge, so in a
+ * right-to-left page the first column is on the right without a rule changing.
+ *
+ * STACKED BY DEFAULT, side by side from a width where each column still has room for a line of
+ * text (Jason, 2026-11-04: columns stack on mobile, contents included). Mobile-first, so 320px
+ * and 400% zoom — where WCAG 1.4.10 reflow is tested — get the single column.
+ */
+
+.columns {
+  display: grid;
+  gap: var(--space-xl);
+  grid-template-columns: minmax(0, 1fr);
+  margin-block-start: var(--space-md);
+}
+
+/* Two across from 48rem — three columns wait for 64rem, as two then one below until then. */
+@media (min-width: 48rem) {
+  .columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 64rem) {
+  .columns[data-count='3'] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-inline-size: 0;
+}
