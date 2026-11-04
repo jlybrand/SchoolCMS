@@ -7,6 +7,7 @@ import {
   makePage,
   uniqueTitle,
 } from './support/fixture-pages'
+import { followLink } from './support/follow-link'
 import { schoolTest as test } from './support/school-session'
 
 /**
@@ -210,6 +211,51 @@ test.describe('school plane — add a page', () => {
   }
 })
 
+/**
+ * Where a school manager's site is named, and how they create from a list (Jason, 2026-11-04).
+ * The seed names School A's tenant "School A".
+ */
+test.describe('school plane — their school, not a tenant picker', () => {
+  test.skip(credentials === null, SKIP)
+
+  test('@smoke the menu names their school and offers no Tenants or Users', async ({ page }) => {
+    await page.goto('/admin/collections/pages')
+    const nav = page.locator('aside.nav')
+    await expect(nav.locator('#nav-school')).toHaveText(/Your school\s*School A/, {
+      timeout: 20_000,
+    })
+    await expect(nav.getByRole('link', { name: 'News and announcements' })).toBeVisible()
+    await expect(nav.getByRole('link', { name: 'Tenants', exact: true })).toHaveCount(0)
+    await expect(nav.getByRole('link', { name: 'Users', exact: true })).toHaveCount(0)
+  })
+
+  test('their account names their school as words, with no tenant or role dropdown', async ({
+    page,
+  }) => {
+    await page.goto('/admin/account')
+    await expect(page.locator('#your-school')).toHaveText(/Your school\s*School A/, {
+      timeout: 20_000,
+    })
+    await expect(page.locator('[id^="field-tenants"]')).toHaveCount(0)
+    await expect(page.locator('#field-roles')).toHaveCount(0)
+  })
+
+  test('News and announcements leads to the announcement task', async ({ page }) => {
+    await page.goto('/admin/collections/posts')
+    const button = page.locator('#list-task')
+    await expect(button).toHaveText('Post an announcement', { timeout: 20_000 })
+    await followLink(page, button, /^\/admin\/new-post$/)
+    await expect(page.locator('#new-post')).toBeVisible({ timeout: 20_000 })
+  })
+
+  test('Pages leads to the new-page task', async ({ page }) => {
+    await page.goto('/admin/collections/pages')
+    const button = page.locator('#list-task')
+    await expect(button).toHaveText('Add a page', { timeout: 20_000 })
+    await followLink(page, button, /^\/admin\/new-page$/)
+  })
+})
+
 adminTest.describe('school plane — the district is unchanged', () => {
   adminTest.skip(credentials === null, SKIP)
 
@@ -218,6 +264,21 @@ adminTest.describe('school plane — the district is unchanged', () => {
     await expect(page.locator('.dashboard')).toBeVisible({ timeout: 20_000 })
     await expect(page.locator('#school-home')).toHaveCount(0)
   })
+
+  adminTest(
+    'the district keeps Tenants, Users and Payload’s Create New, with no task button',
+    async ({ page }) => {
+      await page.goto('/admin/collections/posts')
+      await expect(
+        page.locator('.list-header').getByRole('link', { name: /create new/i }),
+      ).toBeVisible({ timeout: 20_000 })
+      await expect(page.locator('#list-task')).toHaveCount(0)
+      await expect(page.locator('#nav-school')).toHaveCount(0)
+      const nav = page.locator('aside.nav')
+      await expect(nav.getByRole('link', { name: 'Tenants', exact: true })).toHaveCount(1)
+      await expect(nav.getByRole('link', { name: 'Users', exact: true })).toHaveCount(1)
+    },
+  )
 
   adminTest('the school task views send a district admin home', async ({ page }) => {
     for (const path of ['/admin/new-page', '/admin/update-page']) {

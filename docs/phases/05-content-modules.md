@@ -808,3 +808,32 @@ where the district publishes as usual.
 - `tests/e2e/boards-view.spec.ts` — board → headline → the post's form on that board, draft, no site
   question; `/admin/new-post` with no board → the boards screen
 - `tests/e2e/admin-planes-axe.spec.ts` — "post an announcement on a board", both themes
+
+## 16. A school manager's school, and creating from a list (Jason, 2026-11-04)
+
+A school manager sees their school named, never a tenant control, and gets a create button on the
+two lists they work in. The district's admin is unchanged.
+
+| File                                        | Holds                                                                                                                                                                                                     |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/admin/SchoolPlane/school-plane.ts`     | `listTaskFor(collection)` (pure): `posts` → "Post an announcement" `/admin/new-post`, `pages` → "Add a page" `/admin/new-page`, from `SCHOOL_TASKS`; else null. `schoolNamesLabel(names)`                 |
+| `src/admin/SchoolPlane/school-data.ts`      | `schoolsOf(payload, user)` — the user's tenants by name; `listMySchools(req)` delegates to it                                                                                                             |
+| `src/admin/SchoolPlane/SchoolNameNav.tsx`   | `admin.components.beforeNavLinks`: school manager → `#nav-school` "Your school {name}"; else nothing                                                                                                      |
+| `src/admin/SchoolPlane/YourSchoolField.tsx` | `users.yourSchool` (ui field, school manager only): `#your-school` "Your school {name}" on `/admin/account`                                                                                               |
+| `src/admin/SchoolPlane/ListTaskButton.tsx`  | `beforeListTable` on `posts` and `pages` (`clientProps.collection`): school manager → `#list-task` linking to `listTaskFor`; else nothing                                                                 |
+| `src/collections/Tenants.ts`, `Users.ts`    | `admin.hidden` unless district admin — out of the manager's menu; read access unchanged                                                                                                                   |
+| `src/collections/Users.ts`                  | `tenants` declared with the plugin's `tenantsArrayField` (`includeDefaultField: false` in `payload.config.ts`), schema unchanged; it and `roles` have `admin.condition` hiding them from a school manager |
+
+### Why a button and not Payload's Create New
+
+`postsCreateAccess` / `pagesCreateAccess` need the incoming `tenant`; Payload's permission check
+for Create New sends no data, so it is false for a school manager. The access functions are left
+as they are; the list leads to the task screen instead.
+
+### Tests
+
+- `tests/unit/admin/school-plane.test.ts` — `listTaskFor`, `schoolNamesLabel`
+- `tests/e2e/school-plane.spec.ts` — the menu names School A with no Tenants/Users; the account
+  page shows "Your school" with no tenants or roles field; each list's button reaches its task;
+  the district keeps Tenants, Users, Create New and no task button
+- `tests/e2e/admin-planes-axe.spec.ts` — the manager's pages list, posts list and account, both themes

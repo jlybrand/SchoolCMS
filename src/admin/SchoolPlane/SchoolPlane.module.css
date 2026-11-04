@@ -213,3 +213,40 @@
 .button:disabled {
   cursor: progress;
 }
+
+/** The manager's school, atop the side navigation, in place of a tenant picker. */
+.navSchool {
+  display: grid;
+  gap: 0.125rem;
+  margin-block: 0 1.5rem;
+  color: var(--theme-text);
+}
+
+.navSchoolLabel {
+  color: var(--theme-elevation-800);
+  font-size: 0.8125rem;
+}
+
+.navSchoolName {
+  font-weight: 600;
+}
+
+/** "Your school" on the account page — read-only text, not a disabled control. */
+.yourSchool {
+  margin-block-end: 1.5rem;
+  color: var(--theme-text);
+}
+
+.yourSchoolLabel {
+  margin-block: 0 0.25rem;
+}
+
+.yourSchoolName {
+  margin: 0;
+  font-weight: 600;
+}
+
+/** The list's create button for a school manager — the task, not Payload's Create New. */
+.listTask {
+  margin-block-end: 1.5rem;
+}

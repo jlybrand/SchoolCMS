@@ -1,3 +1,4 @@
+import { tenantsArrayField } from '@payloadcms/plugin-multi-tenant/fields'
 import { ValidationError, type CollectionConfig } from 'payload'
 
 import { validatePassword } from '@/auth/password-policy'
@@ -10,7 +11,9 @@ import {
   districtOnlyField,
   selfOrDistrictAdmin,
 } from '@/access/tenant-scoped'
-import { ROLES } from '@/access/types'
+import { isDistrictAdmin } from '@/access/predicates'
+import { ROLES, type AuthUser } from '@/access/types'
+import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 import { missingSchool } from '@/access/user-school'
 
 /**
@@ -29,7 +32,9 @@ import { missingSchool } from '@/access/user-school'
  * authorization answers *what you may touch*, and only the former changes. That separation
  * is why this deviation is affordable.
  *
- * The `tenants` array field is added by @payloadcms/plugin-multi-tenant.
+ * The `tenants` array is the multi-tenant plugin's own field, declared here rather than injected
+ * (`includeDefaultField: false` in src/payload.config.ts) so it can be hidden from a school
+ * manager — see the field.
  */
 export const Users: CollectionConfig = {
   slug: 'users',
@@ -108,6 +113,11 @@ export const Users: CollectionConfig = {
     useAsTitle: 'email',
     defaultColumns: ['email', 'name', 'roles', 'lastLoginAt'],
     group: 'Administration',
+    /**
+     * Out of a school manager's navigation (Jason, 2026-11-04): the list holds only themselves.
+     * Their own account stays one click away under the avatar, at /admin/account.
+     */
+    hidden: ({ user }) => !isDistrictAdmin(user as AuthUser | null),
   },
   access: {
     read: selfOrDistrictAdmin,
@@ -151,6 +161,13 @@ export const Users: CollectionConfig = {
       options: ROLES.map((value) => ({ label: value, value })),
       access: { update: districtOnlyField },
       admin: {
+        /**
+         * Not on a school manager's own account page (Jason, 2026-11-04, with the tenants array):
+         * they cannot change it, and Payload's select fails axe even read-only (an unnamed
+         * combobox and nested-interactive chips — see src/admin/Grants/GrantScopesField.tsx).
+         * The district still sees it.
+         */
+        condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
         description:
           'Refreshed from Entra group membership at login (`02` §7). system-sync is a non-human actor for the PowerSchool sync — never assign it to a person (`11` §8).',
       },
@@ -220,6 +237,29 @@ export const Users: CollectionConfig = {
       type: 'date',
       access: { update: denyAllField },
       admin: { readOnly: true },
+    },
+    {
+      /** A school manager's school, as words — they see this instead of `tenants` below. */
+      name: 'yourSchool',
+      type: 'ui',
+      admin: {
+        condition: (_data, _siblingData, { user }) => sendsForApproval(user as AuthUser | null),
+        components: { Field: '/admin/SchoolPlane/YourSchoolField#YourSchoolField' },
+      },
+    },
+    {
+      /**
+       * The plugin's field, unchanged (`tenantsArrayField` is its own builder), so the schema and
+       * the JWT are exactly what injection produced. Last, where injection put it.
+       *
+       * Hidden from a school manager (Jason, 2026-11-04): a greyed-out dropdown naming their
+       * school reads as a switcher, which `04` §2.1 rules out. Hiding is presentation only —
+       * `update` is district-only on this collection, so they could never change it anyway.
+       */
+      ...tenantsArrayField({}),
+      admin: {
+        condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
+      },
     },
   ],
 }

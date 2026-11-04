@@ -1,4 +1,4 @@
-import type { PayloadRequest } from 'payload'
+import type { Payload, PayloadRequest } from 'payload'
 
 import { relationshipIdOf, tenantIdsFor } from '@/access/predicates'
 import type { AuthUser } from '@/access/types'
@@ -95,13 +95,19 @@ export const listMySubmissions = async (req: PayloadRequest): Promise<SchoolPage
 
 export type SchoolOption = { id: number | string; name: string }
 
-/** The schools the user is assigned to, with their names, for the new-page form. */
-export const listMySchools = async (req: PayloadRequest): Promise<SchoolOption[]> => {
-  const ids = tenantIdsFor(req.user as AuthUser | null)
+/**
+ * The schools a user is assigned to, with their names — for the new-page form, and for the
+ * school name the menu and account page show in place of a tenant picker. Takes `payload` and
+ * the user rather than `req`, because admin slot components are handed those, not a request.
+ */
+export const schoolsOf = async (
+  payload: Payload,
+  user: AuthUser | null | undefined,
+): Promise<SchoolOption[]> => {
+  const ids = tenantIdsFor(user)
   if (ids.length === 0) return []
-  const result = await req.payload.find({
+  const result = await payload.find({
     collection: 'tenants',
-    req,
     overrideAccess: true,
     depth: 0,
     limit: ids.length,
@@ -114,6 +120,10 @@ export const listMySchools = async (req: PayloadRequest): Promise<SchoolOption[]
     name: typeof doc.name === 'string' ? doc.name : String(doc.id),
   }))
 }
+
+/** The schools the user is assigned to, with their names, for the new-page form. */
+export const listMySchools = (req: PayloadRequest): Promise<SchoolOption[]> =>
+  schoolsOf(req.payload, req.user as AuthUser | null)
 
 export type BoardOption = { id: number | string; tenant: number | string; label: string }
 

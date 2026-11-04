@@ -5,7 +5,9 @@ import {
   checkNewPost,
   explainCreateError,
   explainPostCreateError,
+  listTaskFor,
   schoolEditPath,
+  schoolNamesLabel,
   SCHOOL_PAGE_TYPES,
   SCHOOL_TASKS,
   submissionStatus,
@@ -40,6 +42,41 @@ describe('SCHOOL_TASKS — verbs, not collections (`04` §2.2)', () => {
   it('never says collection, draft or publish', () => {
     const text = SCHOOL_TASKS.map((t) => `${t.label} ${t.description}`).join(' ')
     expect(text.toLowerCase()).not.toMatch(/collection|draft|publish/)
+  })
+})
+
+describe('listTaskFor — the create button a school manager gets on a list (Jason, 2026-11-04)', () => {
+  it('offers the announcement task on News and announcements', () => {
+    expect(listTaskFor('posts')).toEqual({ label: 'Post an announcement', href: '/admin/new-post' })
+  })
+
+  it('offers the new-page task on Pages', () => {
+    expect(listTaskFor('pages')).toEqual({ label: 'Add a page', href: '/admin/new-page' })
+  })
+
+  it('is one of the landing view’s own tasks, so the two never drift apart', () => {
+    for (const slug of ['posts', 'pages'] as const) {
+      expect(SCHOOL_TASKS.map((t) => t.href)).toContain(listTaskFor(slug)?.href)
+    }
+  })
+
+  it('offers nothing on a list with no school task', () => {
+    expect(listTaskFor('tenants')).toBeNull()
+    expect(listTaskFor('users')).toBeNull()
+  })
+})
+
+describe('schoolNamesLabel — which school the manager is working on', () => {
+  it('names one school as it is', () => {
+    expect(schoolNamesLabel(['Summerville Middle School'])).toBe('Summerville Middle School')
+  })
+
+  it('joins several in the order given', () => {
+    expect(schoolNamesLabel(['School A', 'School B'])).toBe('School A, School B')
+  })
+
+  it('is null with no school, so nothing renders rather than an empty label', () => {
+    expect(schoolNamesLabel([])).toBeNull()
   })
 })
 
