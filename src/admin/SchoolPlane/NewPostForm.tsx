@@ -18,9 +18,17 @@ type Errors = Partial<Record<Field, string>>
  * plain HTML controls.
  *
  * The create is a draft through REST as the user, so the access functions and hooks decide;
- * then the announcement's own form opens, where the words are written and sent.
+ * then the announcement's own form opens, where the words are written and sent. Shown on the
+ * announcements screen when "Create post" is chosen on a board (Jason, 2026-11-04).
  */
-export const NewPostForm = ({ boards }: { boards: readonly BoardOption[] }) => {
+export const NewPostForm = ({
+  boards,
+  focusOnOpen = false,
+}: {
+  boards: readonly BoardOption[]
+  /** Put the cursor in the headline when the form appears — it was asked for ("Create post"). */
+  focusOnOpen?: boolean
+}) => {
   const {
     config: {
       routes: { api },
@@ -84,6 +92,12 @@ export const NewPostForm = ({ boards }: { boards: readonly BoardOption[] }) => {
   useEffect(() => {
     if (failure) failureRef.current?.focus()
   }, [failure])
+
+  useEffect(() => {
+    if (focusOnOpen) document.getElementById(fieldId('title'))?.focus()
+    // Once, on open: `fieldId` is stable for the life of the form.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusOnOpen])
 
   const invalid = (field: Field) =>
     errors[field] ? { 'aria-invalid': true, 'aria-describedby': errorId(field) } : {}

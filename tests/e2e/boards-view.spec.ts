@@ -42,7 +42,7 @@ test.describe('announcement boards, by folder', () => {
     await expect(page.locator('#field-name')).toHaveValue('News', { timeout: 20_000 })
   })
 
-  test('@smoke post an announcement from its board: headline only, then its form on that board', async ({
+  test('@smoke post an announcement from the boards screen: the board, its headline, its form', async ({
     page,
   }) => {
     // Board-first, as in Finalsite (Jason, 2026-10-29): the board is chosen here, not on the form.
@@ -59,13 +59,12 @@ test.describe('announcement boards, by folder', () => {
     await followLink(
       page,
       folder.getByRole('link', { name: 'New announcement on School A · School A → News' }),
-      /\/admin\/new-post$/,
+      /\/admin\/collections\/posts$/,
     )
+    // The announcements screen, on that board, with the headline showing (Jason, 2026-11-04).
+    await expect(page.locator('#board-heading')).toHaveText('School A → News', { timeout: 20_000 })
     const view = page.locator('#new-post')
-    await expect(view.getByRole('heading', { level: 1 })).toHaveText('Post an announcement', {
-      timeout: 20_000,
-    })
-    await expect(view.locator('#new-post-board')).toContainText('School A · School A → News')
+    await expect(view.getByRole('heading', { name: 'New announcement' })).toBeVisible()
     // The board is decided: no choice offered, and no site question from Payload.
     await expect(view.getByRole('radio')).toHaveCount(0)
 
@@ -98,12 +97,13 @@ test.describe('announcement boards, by folder', () => {
     }
   })
 
-  test('without a board, the new-announcement screen sends the district to choose one', async ({
+  test('without a board, the old new-announcement address asks the district to choose one', async ({
     page,
   }) => {
     await page.goto('/admin/new-post')
-    await expect(page).toHaveURL(/\/admin\/collections\/post-boards/, { timeout: 20_000 })
-    await expect(page.locator('#boards h1')).toHaveText('Announcement boards', { timeout: 20_000 })
+    await expect(page).toHaveURL(/\/admin\/collections\/posts\?new=1/, { timeout: 20_000 })
+    await expect(page.locator('#board-heading')).toHaveText('Choose a board', { timeout: 20_000 })
+    await expect(page.locator('#new-post')).toHaveCount(0)
   })
 
   test('a folder opens and closes from the keyboard', async ({ page }) => {

@@ -5,6 +5,7 @@ import type { ListViewServerProps } from 'payload'
 
 import { isDistrictAdmin } from '@/access/predicates'
 import type { AuthUser } from '@/access/types'
+import { createPostHref } from '@/admin/Announcements/announcements'
 
 import { boardTree } from './board-tree'
 import styles from './Boards.module.css'
@@ -87,7 +88,7 @@ export const BoardsListView = async ({ payload, user, newDocumentURL }: ListView
                           </Link>
                           {/* Board-first, as in Finalsite (Jason, 2026-10-29). Named in full for
                               a screen reader: every site has a "News". */}
-                          <Link href={`/admin/new-post?board=${encodeURIComponent(board.id)}`}>
+                          <Link href={createPostHref(board.id)}>
                             New announcement
                             <span className={styles.visuallyHidden}>
                               {' '}

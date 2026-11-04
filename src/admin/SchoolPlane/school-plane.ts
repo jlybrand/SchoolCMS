@@ -37,7 +37,7 @@ export type ListTask = { label: string; href: string }
 
 /** Which landing-view task a list's create button stands for. */
 const LIST_TASK_HREFS: Readonly<Record<string, string>> = {
-  posts: '/admin/new-post',
+  // Not `posts`: News and announcements is its own screen, with "Create post" on each board.
   pages: '/admin/new-page',
 }
 
