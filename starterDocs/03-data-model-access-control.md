@@ -107,8 +107,9 @@ staff pages, contact details are written freely, and staff directories, calendar
 are **components the district places** on a composed page (Calendar: grid / list / carousel;
 Directory from the people database). Stored rows convert with `scripts/collapse-page-types.sql`.
 
-Enforced by field-level access and admin conditions, not by UI convention. In v1
-`school-manager` cannot create or convert to `composed`. **This is a single access
+Enforced by field-level access and admin conditions, not by UI convention. **Since 2026-11-04
+(Jason) a `school-manager` composes too**, with the simple components only — see `01` §4.1 and
+`src/access/school-layout.ts`; all pages become composed. **This is a single access
 predicate** — enabling school-level composition later (`01` §4.1) changes that predicate
 and adds editor guardrails; it does not require new collections, blocks, or templates.
 

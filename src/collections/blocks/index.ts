@@ -1,5 +1,9 @@
 import type { Block } from 'payload'
 
+import { schoolPalette } from '@/access/school-layout'
+import type { AuthUser } from '@/access/types'
+import { sendsForApproval } from '@/admin/SendForApproval/review-status'
+
 import { toEmbedTarget } from '@/lib/embed-url'
 import { linkFields } from '@/collections/fields/link'
 
@@ -373,6 +377,11 @@ export const columnsBlock: Block = {
           name: 'content',
           type: 'blocks',
           label: 'In this column',
+          // As on the page: a school's picker offers the simple components (`schoolPalette`).
+          filterOptions: ({ siblingData, user }) =>
+            sendsForApproval(user as AuthUser | null)
+              ? schoolPalette((siblingData as { content?: unknown } | undefined)?.content)
+              : true,
           blocks: [
             richTextBlock,
             callToActionBlock,

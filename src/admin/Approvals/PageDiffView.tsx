@@ -10,7 +10,8 @@ import styles from './Approvals.module.css'
  * the queue's own outline, which is the reviewer's navigation.
  */
 export const PageDiffView = ({ diff, titleId }: { diff: PageDiff; titleId: string }) => {
-  const hasChanges = diff.fields.length > 0 || diff.body !== null
+  const hasChanges =
+    diff.fields.length > 0 || diff.body !== null || (diff.sections?.changes.length ?? 0) > 0
   if (!hasChanges) {
     return <p className={styles.muted}>No changes to what visitors see.</p>
   }
@@ -41,6 +42,45 @@ export const PageDiffView = ({ diff, titleId }: { diff: PageDiff; titleId: strin
             ))}
           </tbody>
         </table>
+      ) : null}
+
+      {diff.sections && diff.sections.changes.length > 0 ? (
+        <div className={styles.body}>
+          <p className={styles.caption}>
+            {diff.isNew ? 'The sections of the page' : 'Changes to the sections of the page'}
+            {diff.sections.unchanged > 0
+              ? ` (${diff.sections.unchanged} ${diff.sections.unchanged === 1 ? 'section' : 'sections'} unchanged)`
+              : ''}
+          </p>
+          <ul className={styles.changes}>
+            {diff.sections.changes.map((section, index) => (
+              <li
+                className={styles.change}
+                data-change={section.change === 'removed' ? 'removed' : 'added'}
+                key={index}
+              >
+                <span className={styles.changeLabel}>
+                  {SECTION_VERBS[section.change]} {section.kind}
+                  {section.where
+                    ? ` (${section.where.charAt(0).toLowerCase()}${section.where.slice(1)})`
+                    : ''}
+                  {section.summary ? ':' : ''}
+                </span>
+                {section.summary ? ` ${section.summary}` : null}
+                {section.words ? (
+                  <ul className={styles.listLines}>
+                    {section.words.changes.map((change, i) => (
+                      <li key={i}>
+                        {change.change === 'added' ? 'Added' : 'Removed'}:{' '}
+                        {change.lines.join(' · ')}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
 
       {diff.body ? (
@@ -83,3 +123,11 @@ export const PageDiffView = ({ diff, titleId }: { diff: PageDiff; titleId: strin
     </div>
   )
 }
+
+/** Said in words, never colour alone (1.4.1). */
+const SECTION_VERBS = {
+  added: 'Added',
+  removed: 'Removed',
+  changed: 'Changed',
+  moved: 'Moved',
+} as const

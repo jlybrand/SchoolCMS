@@ -59,17 +59,17 @@ describe('canPublish', () => {
   })
 })
 
-describe('canComposePages', () => {
+describe('canComposePages — who places ANY component', () => {
   /**
-   * `03` §2 calls this "a single access predicate" on purpose: enabling school-level
-   * composition later (`01` §4.1) changes this one function, and adds no collections,
-   * blocks, or templates.
+   * The single predicate `03` §2 kept for this day (Jason, 2026-11-04): schools now compose, but
+   * with the simple components only (`src/access/school-layout.ts`). Placing any component — a
+   * news feed, columns, an embed — stays the district's.
    */
   it('grants district-admin', () => {
     expect(canComposePages(districtAdmin)).toBe(true)
   })
 
-  it('denies a school-manager', () => {
+  it('denies a school-manager — they compose with the simple palette', () => {
     expect(canComposePages(managerA)).toBe(false)
   })
 })
@@ -169,10 +169,16 @@ describe('pagesCreateAccess', () => {
     })
   })
 
-  describe('the composed-page gate', () => {
-    it('DENIES a school-manager creating a composed page', () => {
+  describe('composed pages (schools compose since 2026-11-04)', () => {
+    it('allows a school-manager a composed page in their school — the palette is the hook’s', () => {
       expect(
         pagesCreateAccess(args(managerA, { data: { tenant: 'A', pageType: 'composed' } })),
+      ).toBe(true)
+    })
+
+    it('still DENIES one in another school', () => {
+      expect(
+        pagesCreateAccess(args(managerA, { data: { tenant: 'B', pageType: 'composed' } })),
       ).toBe(false)
     })
 
@@ -253,9 +259,11 @@ describe('pagesUpdateAccess', () => {
     })
   })
 
-  describe('the composed-page gate', () => {
-    it('DENIES a school-manager converting a page to composed', () => {
-      expect(pagesUpdateAccess(args(managerA, { data: { pageType: 'composed' } }))).toBe(false)
+  describe('composed pages (schools compose since 2026-11-04)', () => {
+    it('lets a school-manager make their page composed — as a constraint, never true', () => {
+      expect(pagesUpdateAccess(args(managerA, { data: { pageType: 'composed' } }))).toEqual({
+        tenant: { in: ['A'] },
+      })
     })
 
     it('allows a school-manager a write that keeps their page a page', () => {

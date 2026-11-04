@@ -75,7 +75,14 @@ called out below.
 
 ### 4.1 School-level page composition
 
-**Status: nearly free to enable.** Block-based composition is already built for the
+**Status: ENABLED 2026-11-04 (Jason), at "level B".** Schools edit, add, remove and reorder the
+simple components (Text, Button, Cards, Accordion, Divider); the district's components (Columns,
+News feed, Video, Section menu) stay the district's, and inside the district's columns a school
+writes by the same rules. All pages become composed. Enforced by `schoolLayoutGate` against the
+stored layout on every route; the approval queue lists section changes. The analysis below is
+kept as written.
+
+**Status as first written: nearly free to enable.** Block-based composition is already built for the
 district (`03` §3) — the block library, templates, accessibility tests, and rendering all
 exist. Enabling it for schools is a **field-level access change plus editor guardrails**,
 not a new subsystem.

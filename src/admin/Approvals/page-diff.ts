@@ -1,4 +1,5 @@
 import { toRichText } from '@/content/rich-text'
+import { sameComponent } from '@/access/school-layout'
 import { postPath } from '@/lib/post-url'
 import type { RichTextBlock, RichTextInline } from '@/content/types'
 
@@ -13,8 +14,9 @@ import type { RichTextBlock, RichTextInline } from '@/content/types'
  * `live` is the published page, or null if it has never been published; `proposed` is the
  * version waiting for approval. Pure and total: a malformed body reads as empty.
  *
- * District-only fields (`layout`, `publishAt`, `requiresTranslationReview`) are absent because
- * a school cannot write them; the queue diffs what a school can propose.
+ * District-only fields (`publishAt`, `requiresTranslationReview`) are absent because a school
+ * cannot write them; the queue diffs what a school can propose. A page's SECTIONS are diffed
+ * (`diffLayout`) since schools compose (Jason, 2026-11-04).
  */
 
 export type FieldChange = {
@@ -33,7 +35,13 @@ export type BlockChange = {
 
 export type BodyDiff = { changes: BlockChange[]; unchanged: number }
 
-export type PageDiff = { isNew: boolean; fields: FieldChange[]; body: BodyDiff | null }
+export type PageDiff = {
+  isNew: boolean
+  fields: FieldChange[]
+  body: BodyDiff | null
+  /** The page's sections (components) that changed — absent when none did. */
+  sections?: SectionsDiff
+}
 
 type Doc = Record<string, unknown>
 
@@ -278,8 +286,175 @@ const diffFields = (specs: FieldSpec[], live: Doc | null, proposed: Doc): PageDi
   }
 }
 
-export const diffPage = (live: Doc | null, proposed: Doc): PageDiff =>
-  diffFields(FIELDS, live, proposed)
+export const diffPage = (live: Doc | null, proposed: Doc): PageDiff => {
+  const diff = diffFields(FIELDS, live, proposed)
+  const sections = diffLayout(live === null ? [] : live.layout, proposed.layout)
+  return sections.changes.length === 0 ? diff : { ...diff, sections }
+}
+
+// ---------------------------------------------------------------------------------------------
+// A page's components (Jason, 2026-11-04: schools compose)
+// ---------------------------------------------------------------------------------------------
+
+export type SectionChange = {
+  change: 'added' | 'removed' | 'changed' | 'moved'
+  /** The kind of section, in the form's words: "Text", "Button", "Cards". */
+  kind: string
+  /** What it says — its words, heading or label — shortened. Empty for a divider. */
+  summary: string
+  /** Where it is when not on the page itself: "In column 2 of “Ways to help”". */
+  where: string | null
+  /** For changed Text: the lines that changed, as the body diff shows them. */
+  words: BodyDiff | null
+}
+
+export type SectionsDiff = { changes: SectionChange[]; unchanged: number }
+
+const KINDS: Record<string, string> = {
+  richText: 'Text',
+  callToAction: 'Button',
+  cardGrid: 'Cards',
+  accordion: 'Accordion',
+  divider: 'Divider',
+  columns: 'Columns',
+  feed: 'News feed',
+  embed: 'Video',
+  childPageNav: 'Section menu',
+}
+
+type Section = Record<string, unknown>
+
+const sectionsOf = (value: unknown): Section[] =>
+  Array.isArray(value)
+    ? value.filter((r): r is Section => typeof r === 'object' && r !== null && !Array.isArray(r))
+    : []
+
+const shorten = (text: string): string => (text.length > 80 ? `${text.slice(0, 80)}…` : text)
+
+/** What a section says, in one line. */
+const summaryOf = (section: Section): string => {
+  const items = (key: string, field: string) =>
+    sectionsOf(section[key])
+      .map((row) => textOf(row[field]))
+      .filter((t): t is string => t !== null)
+  switch (section.blockType) {
+    case 'richText':
+      return shorten(blocksOf(section.content)[0]?.change.lines[0] ?? '')
+    case 'callToAction':
+      return shorten(textOf(section.heading) ?? textOf(section.linkLabel) ?? '')
+    case 'cardGrid':
+      return shorten(textOf(section.heading) ?? items('cards', 'title').join(' · '))
+    case 'accordion':
+      return shorten(textOf(section.heading) ?? items('items', 'heading').join(' · '))
+    case 'embed':
+      return shorten(textOf(section.title) ?? '')
+    case 'columns':
+      return shorten(textOf(section.heading) ?? `${sectionsOf(section.columns).length} columns`)
+    case 'divider':
+      return ''
+    default:
+      return shorten(textOf(section.heading) ?? '')
+  }
+}
+
+const idOf = (section: Section): string | null =>
+  section.id === undefined || section.id === null ? null : String(section.id)
+
+/**
+ * The sections that MOVED: of those in both lists, the fewest whose moving explains the new
+ * order — everything outside the longest run still in its old relative order. So dragging one
+ * section reads as that one moving, not as every section it passed.
+ */
+const movedIds = (reference: string[], order: string[]): Set<string> => {
+  const common = order.filter((id) => reference.includes(id))
+  const positions = common.map((id) => reference.indexOf(id))
+  // Longest increasing run of old positions (patience sorting, keeping each tail as small as it
+  // can be — which keeps the earlier sections and marks the one dragged).
+  const tails: number[] = []
+  const tailAt: number[] = []
+  const previous: number[] = []
+  positions.forEach((position, i) => {
+    let lo = 0
+    let hi = tails.length
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      if (tails[mid]! < position) lo = mid + 1
+      else hi = mid
+    }
+    tails[lo] = position
+    tailAt[lo] = i
+    previous[i] = lo > 0 ? tailAt[lo - 1]! : -1
+  })
+  const kept = new Set<number>()
+  for (let i = tails.length > 0 ? tailAt[tails.length - 1]! : -1; i >= 0; i = previous[i]!)
+    kept.add(i)
+  return new Set(common.filter((_, i) => !kept.has(i)))
+}
+
+const diffSections = (before: unknown, after: unknown, where: string | null): SectionsDiff => {
+  const b = sectionsOf(before)
+  const a = sectionsOf(after)
+  const byId = new Map(b.flatMap((s) => (idOf(s) ? [[idOf(s)!, s] as const] : [])))
+  const afterIds = new Set(a.map(idOf).filter((id): id is string => id !== null))
+  const moved = movedIds(
+    b.map(idOf).filter((id): id is string => id !== null),
+    a.map(idOf).filter((id): id is string => id !== null),
+  )
+
+  const changes: SectionChange[] = []
+  let unchanged = 0
+  const line = (change: SectionChange['change'], section: Section, words: BodyDiff | null = null) =>
+    changes.push({
+      change,
+      kind: KINDS[String(section.blockType)] ?? 'Section',
+      summary: summaryOf(section),
+      where,
+      words,
+    })
+
+  for (const section of b) {
+    const id = idOf(section)
+    if (id === null || !afterIds.has(id)) line('removed', section)
+  }
+  for (const section of a) {
+    const id = idOf(section)
+    const was = id === null ? undefined : byId.get(id)
+    if (!was) {
+      line('added', section)
+      continue
+    }
+    if (section.blockType === 'columns' && was.blockType === 'columns') {
+      // The district's columns: what changed is inside them, column by column.
+      const label = textOf(section.heading)
+      const inner = sectionsOf(section.columns).map((column, i) =>
+        diffSections(
+          sectionsOf(was.columns)[i]?.content,
+          column.content,
+          `In column ${i + 1}${label ? ` of “${label}”` : ''}`,
+        ),
+      )
+      inner.forEach((d) => changes.push(...d.changes))
+      if (inner.every((d) => d.changes.length === 0) && !moved.has(id!)) unchanged += 1
+      else if (moved.has(id!)) line('moved', section)
+      continue
+    }
+    if (!sameComponent(was, section)) {
+      line(
+        'changed',
+        section,
+        section.blockType === 'richText'
+          ? diffBlocks(blocksOf(was.content), blocksOf(section.content))
+          : null,
+      )
+    } else if (moved.has(id!)) line('moved', section)
+    else unchanged += 1
+  }
+  return { changes, unchanged }
+}
+
+/** The sections a school changed, as the approval queue lists them. */
+export const diffLayout = (live: unknown, proposed: unknown): SectionsDiff =>
+  diffSections(live, proposed, null)
 
 /** The same diff over an announcement's fields; the district-only ones are absent, as on pages. */
 export const diffPost = (live: Doc | null, proposed: Doc): PageDiff =>

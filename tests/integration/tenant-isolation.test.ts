@@ -858,59 +858,149 @@ describe('page history is district-only (Jason, 2026-10-27)', () => {
   })
 })
 
-describe('composed pages are district-only (`03` §2–3)', () => {
-  it('a school-manager cannot create a composed page', async () => {
-    const denied = await isDenied(() =>
-      payload.create({
-        collection: 'pages',
-        data: {
-          tenant: f.tenantA,
-          title: 'Composed attempt',
-          slug: 'composed-attempt',
-          pageType: 'composed',
-          visibility: 'public',
-        },
-        user: f.managerA,
-        overrideAccess: false,
-      }),
-    )
-    expect(denied).toBe(true)
+/**
+ * Composed pages (Jason, 2026-11-04): schools compose with the SIMPLE components; the district's
+ * components — a news feed, columns, an embed — are theirs alone, on every route. Tenant scoping
+ * is unchanged: no school composes another's page.
+ */
+describe('schools compose with the simple components only (`src/access/school-layout.ts`)', () => {
+  const words = (value: string) => ({
+    blockType: 'richText',
+    content: {
+      root: {
+        type: 'root',
+        children: [{ type: 'paragraph', children: [{ type: 'text', text: value }] }],
+      },
+    },
   })
+  let seq = 0
+  const slug = () => `compose-${Date.now()}-${(seq += 1)}`
 
-  it('a school-manager cannot convert an existing page to composed', async () => {
-    await isDenied(() =>
-      payload.update({
-        collection: 'pages',
-        id: f.draftPageA,
-        data: { pageType: 'composed' },
-        user: f.managerA,
-        overrideAccess: false,
-      }),
-    )
-
-    const still = await payload.findByID({
-      collection: 'pages',
-      id: f.draftPageA,
-      draft: true,
-      overrideAccess: true,
-    })
-    expect(still.pageType).toBe('standard')
-  })
-
-  it('district-admin can create a composed page', async () => {
+  it('a school-manager creates a composed page from simple components', async () => {
     const page = await payload.create({
       collection: 'pages',
       data: {
         tenant: f.tenantA,
-        title: 'District composed',
-        slug: 'district-composed',
+        title: 'School composed',
+        slug: slug(),
         pageType: 'composed',
         visibility: 'public',
-      },
-      user: f.districtAdmin,
+        layout: [words('Hello'), { blockType: 'divider' }],
+      } as never,
+      draft: true,
+      user: f.managerA,
       overrideAccess: false,
     })
     expect(page.pageType).toBe('composed')
+  })
+
+  it('a school-manager cannot place a district component — a news feed, columns, an embed', async () => {
+    for (const block of [
+      { blockType: 'feed', boards: [f.boardA] },
+      { blockType: 'embed', url: 'https://youtu.be/dQw4w9WgXcQ', title: 'Video' },
+      { blockType: 'columns', columns: [{ content: [words('a')] }, { content: [words('b')] }] },
+    ]) {
+      expect(
+        await isDenied(() =>
+          payload.create({
+            collection: 'pages',
+            data: {
+              tenant: f.tenantA,
+              title: 'Attempt',
+              slug: slug(),
+              pageType: 'composed',
+              visibility: 'public',
+              layout: [block],
+            } as never,
+            draft: true,
+            user: f.managerA,
+            overrideAccess: false,
+          }),
+        ),
+        block.blockType,
+      ).toBe(true)
+    }
+  })
+
+  it('a school-manager cannot remove or change the district’s component on their own page', async () => {
+    const page = await payload.create({
+      collection: 'pages',
+      data: {
+        tenant: f.tenantA,
+        title: 'District layout',
+        slug: slug(),
+        pageType: 'composed',
+        visibility: 'public',
+        layout: [words('Intro'), { blockType: 'feed', heading: 'News', boards: [f.boardA] }],
+      } as never,
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+    const stored = (
+      await payload.findByID({
+        collection: 'pages',
+        id: page.id,
+        depth: 0,
+        draft: true,
+        overrideAccess: true,
+      })
+    ).layout as unknown as Record<string, unknown>[]
+
+    // Writing around it is fine.
+    await payload.update({
+      collection: 'pages',
+      id: page.id,
+      data: { layout: [words('New intro'), stored[1]] } as never,
+      draft: true,
+      user: f.managerA,
+      overrideAccess: false,
+    })
+    // Removing it, or changing its settings, is not.
+    expect(
+      await isDenied(() =>
+        payload.update({
+          collection: 'pages',
+          id: page.id,
+          data: { layout: [words('Only words')] } as never,
+          draft: true,
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      ),
+    ).toBe(true)
+    expect(
+      await isDenied(() =>
+        payload.update({
+          collection: 'pages',
+          id: page.id,
+          data: { layout: [stored[0], { ...stored[1], heading: 'Mine now' }] } as never,
+          draft: true,
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      ),
+    ).toBe(true)
+  })
+
+  it('a school-manager still cannot compose another school’s page', async () => {
+    expect(
+      await isDenied(() =>
+        payload.create({
+          collection: 'pages',
+          data: {
+            tenant: f.tenantB,
+            title: 'Cross-tenant',
+            slug: slug(),
+            pageType: 'composed',
+            visibility: 'public',
+            layout: [words('x')],
+          } as never,
+          draft: true,
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      ),
+    ).toBe(true)
   })
 })
 

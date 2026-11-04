@@ -1,8 +1,8 @@
-import { Forbidden } from 'payload'
+import { Forbidden, ValidationError } from 'payload'
 import { describe, expect, it } from 'vitest'
 
 import type { AuthUser } from '@/access/types'
-import { composedPagesAreDistrictOnly, publishGate } from '@/collections/hooks/publish-gate'
+import { publishGate, schoolLayoutGate } from '@/collections/hooks/publish-gate'
 
 /**
  * The hook half of the publish gate (CLAUDE.md rule 3, `03` §6.4 invariant 5).
@@ -125,50 +125,46 @@ describe('publishGate', () => {
   })
 })
 
-describe('composedPagesAreDistrictOnly', () => {
-  it('lets district-admin write a composed page', () => {
+describe('schoolLayoutGate — schools compose with the simple components (Jason, 2026-11-04)', () => {
+  const text = { id: 't', blockType: 'richText', content: { root: { children: [] } } }
+  const feed = { id: 'f', blockType: 'feed', heading: 'News', boards: [1], limit: 5 }
+
+  it('lets district-admin place any component', () => {
     expect(() =>
-      composedPagesAreDistrictOnly(hookArgs(districtAdmin, { pageType: 'composed' })),
+      schoolLayoutGate(hookArgs(districtAdmin, { pageType: 'composed', layout: [feed] })),
     ).not.toThrow()
   })
 
-  it('THROWS when a school-manager writes a composed page', () => {
+  it('lets a school-manager write a composed page from the simple components', () => {
+    const data = { pageType: 'composed', layout: [text] }
+    expect(schoolLayoutGate(hookArgs(managerA, data))).toEqual(data)
+  })
+
+  it('REFUSES a school-manager adding a district component, with words', () => {
     expect(() =>
-      composedPagesAreDistrictOnly(hookArgs(managerA, { pageType: 'composed' })),
-    ).toThrow(Forbidden)
+      schoolLayoutGate(hookArgs(managerA, { pageType: 'composed', layout: [text, feed] })),
+    ).toThrow(ValidationError)
   })
 
-  it('lets a school-manager write the fixed page types', () => {
-    for (const pageType of ['standard', 'about', 'contact', 'staff', 'calendar', 'documents']) {
-      expect(() => composedPagesAreDistrictOnly(hookArgs(managerA, { pageType }))).not.toThrow()
-    }
-  })
-
-  it('THROWS on a partial update that omits pageType but targets a composed page', () => {
-    /**
-     * The case the access function structurally cannot catch: `data` carries only `title`,
-     * so there is no `pageType` in the request to judge. Merging over `originalDoc` is the
-     * whole reason this hook exists.
-     */
+  it('REFUSES a school-manager removing the district’s component', () => {
     expect(() =>
-      composedPagesAreDistrictOnly(
-        hookArgs(managerA, { title: 'Edited' }, { pageType: 'composed' }),
-      ),
-    ).toThrow(Forbidden)
+      schoolLayoutGate(hookArgs(managerA, { layout: [text] }, { layout: [text, feed] })),
+    ).toThrow(ValidationError)
   })
 
-  it('THROWS when a school-manager sends a layout array on a fixed-type page', () => {
-    // Blocks are district-only whatever the pageType says (`03` §3).
+  it('judges a partial update by the stored layout — a write that never mentions it changes nothing', () => {
+    /** The case the access function structurally cannot see: only `title` is sent. */
     expect(() =>
-      composedPagesAreDistrictOnly(
-        hookArgs(managerA, { pageType: 'standard', layout: [{ blockType: 'Hero' }] }),
-      ),
-    ).toThrow(Forbidden)
+      schoolLayoutGate(hookArgs(managerA, { title: 'Edited' }, { layout: [text, feed] })),
+    ).not.toThrow()
   })
 
-  it('returns the data unchanged when it allows the write', () => {
-    const data = { title: 'About Us', pageType: 'standard' }
-    expect(composedPagesAreDistrictOnly(hookArgs(managerA, data))).toEqual(data)
+  it('lets trusted server code through — the schedule job publishing a composed page', () => {
+    expect(() => schoolLayoutGate(hookArgs(null, { layout: [feed] }))).not.toThrow()
+  })
+
+  it('refuses anyone else outright — a non-human actor composes nothing', () => {
+    expect(() => schoolLayoutGate(hookArgs(systemSync, { layout: [text] }))).toThrow(Forbidden)
   })
 })
 
