@@ -75,13 +75,11 @@ export const Posts: CollectionConfig = {
     group: 'Content',
     /** The school plane's one button, as on pages (`04` §2.3). */
     components: {
-      /** A school manager's way to create from the list (Jason, 2026-11-04) — see the component. */
-      beforeListTable: [
-        {
-          path: '/admin/SchoolPlane/ListTaskButton#ListTaskButton',
-          clientProps: { collection: 'posts' },
-        },
-      ],
+      /**
+       * Folders → boards → a board's posts, with "Create post" (Jason, 2026-11-04) — Finalsite's
+       * Posts module, for both planes. See src/admin/Announcements/.
+       */
+      views: { list: { Component: '/admin/Announcements/AnnouncementsView#AnnouncementsView' } },
       edit: {
         PublishButton: '/admin/SendForApproval/SendForApprovalButton#SendForApprovalButton',
         SaveDraftButton: '/admin/SendForApproval/SchoolSaveDraftButton#SchoolSaveDraftButton',

@@ -47,7 +47,11 @@ export const makePost = async (
     storageState: ADMIN_STORAGE_STATE,
   })
   const tenant = await tenantIdFor(admin, SCHOOL_HOSTNAME)
-  const board = await firstId(admin, `/api/post-boards?where[tenant][equals]=${tenant}`)
+  // News by name: a spec may briefly give School A a second board, and "first" would be a race.
+  const board = await firstId(
+    admin,
+    `/api/post-boards?where[tenant][equals]=${tenant}&where[name][equals]=News`,
+  )
   const tag = tagged ? await firstId(admin, '/api/post-tags?sort=name') : null
   const res = await admin.post('/api/posts?draft=true&depth=0', {
     data: {

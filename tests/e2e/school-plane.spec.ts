@@ -245,12 +245,16 @@ test.describe('school plane — their school, not a tenant picker', () => {
     await expect(page.locator('#field-name')).toBeVisible()
   })
 
-  test('News and announcements leads to the announcement task', async ({ page }) => {
-    await page.goto('/admin/collections/posts')
-    const button = page.locator('#list-task')
-    await expect(button).toHaveText('Post an announcement', { timeout: 20_000 })
-    await followLink(page, button, /^\/admin\/new-post$/)
+  test('News and announcements shows their board, with Create post', async ({ page }) => {
+    // Named, not assumed: another spec briefly gives School A a second board.
+    const res = await page.request.get('/api/post-boards?where[name][equals]=News&limit=1')
+    const [board] = (await res.json()).docs as { id: number }[]
+    await page.goto(`/admin/collections/posts?board=${board!.id}`)
+    await expect(page.locator('#board-heading')).toHaveText('School A → News', { timeout: 20_000 })
+    await expect(page.locator('#list-task')).toHaveCount(0)
+    await page.locator('#create-post').click()
     await expect(page.locator('#new-post')).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByLabel('What is the headline?')).toBeFocused()
   })
 
   test('Pages leads to the new-page task', async ({ page }) => {
@@ -273,7 +277,7 @@ adminTest.describe('school plane — the district is unchanged', () => {
   adminTest(
     'the district keeps Tenants, Users and Payload’s Create New, with no task button',
     async ({ page }) => {
-      await page.goto('/admin/collections/posts')
+      await page.goto('/admin/collections/pages')
       await expect(
         page.locator('.list-header').getByRole('link', { name: /create new/i }),
       ).toBeVisible({ timeout: 20_000 })

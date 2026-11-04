@@ -239,8 +239,8 @@ dropped). A post switched back to `this-tenant` keeps its `syndicatedTo` list in
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/collections/endpoints/approve.ts`  | (was `approve-page.ts`) `ReviewedCollection`, `latestVersion(payload, collection, id)`, `latestVersionToken`, `approveDocument(req, collection, id, seen)`, `makeApproveEndpoint(collection)`, `APPROVE_MESSAGES` |
 | `src/admin/Approvals/anchor.ts`         | `approvalAnchor(collection, id)` → `approval-{collection}-{id}`                                                                                                                                                   |
-| `src/admin/SchoolPlane/NewPostView.tsx` | `/admin/new-post` — routed by `newPostRoute` (§15)                                                                                                                                                                |
-| `src/admin/SchoolPlane/NewPostForm.tsx` | headline (+ school when several) → `POST /api/posts?draft=true` → the post form                                                                                                                                   |
+| `src/admin/SchoolPlane/NewPostView.tsx` | `/admin/new-post` — forwards to the announcements screen with the headline showing (§17)                                                                                                                          |
+| `src/admin/SchoolPlane/NewPostForm.tsx` | headline (+ board when several) → `POST /api/posts?draft=true` → the post form; shown on the announcements screen (§17)                                                                                           |
 | `tests/e2e/announcements.spec.ts`       | the task to the queue; new-post axe; an announcement approved from the queue                                                                                                                                      |
 
 Changed:
@@ -325,19 +325,19 @@ Digest lines: `{title} (announcement) — {school} — {wait}` for posts.
 
 Changed:
 
-| File                                                | Change                                                                                                                                                 |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `src/collections/Posts.ts`                          | `board` (relationship, required, `filterOptions` same tenant); `tags` (hasMany, not sortable); `boardIsThisSchools` last in beforeValidate             |
-| `src/collections/hooks/post-hooks.ts`               | `boardIsThisSchools`, `boardTitle`                                                                                                                     |
-| `src/content/syndication.ts`                        | `FeedFilter`, `feedConstraint(tenantId, { boards, tags })`                                                                                             |
-| `src/content/posts.ts`                              | `listPosts(ctx, { limit, boards, tags })` → `feedConstraint`                                                                                           |
-| `src/content/types.ts`, `post-mapper.ts`            | `Post.boardId`, `Post.tagIds`                                                                                                                          |
-| `src/admin/Approvals/page-diff.ts`, `queue-data.ts` | Board and Tags rows; names read from `post-boards.title` / `post-tags.name`                                                                            |
-| `src/admin/SchoolPlane/*`                           | `checkNewPost({ title, boards, board })`; `listMyBoards`; the form asks "Which board is this for?" when there are several and sends `tenant` + `board` |
-| `src/admin/A11yPatch/repairs.ts`                    | names Payload's list "someone is editing" lock from its tooltip                                                                                        |
-| `src/payload.config.ts`                             | the three collections; `post-folders` and `post-boards` in the multi-tenant plugin                                                                     |
-| `scripts/seed.ts`                                   | per site, when it has no boards: a folder named after it + a "News" board; tags Elementary, Middle, High when absent                                   |
-| `tests/helpers/payload.ts`                          | `Fixtures.boardDistrict/boardA/boardB`; `boardFor(f, tenant)`                                                                                          |
+| File                                                | Change                                                                                                                                     |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/collections/Posts.ts`                          | `board` (relationship, required, `filterOptions` same tenant); `tags` (hasMany, not sortable); `boardIsThisSchools` last in beforeValidate |
+| `src/collections/hooks/post-hooks.ts`               | `boardIsThisSchools`, `boardTitle`                                                                                                         |
+| `src/content/syndication.ts`                        | `FeedFilter`, `feedConstraint(tenantId, { boards, tags })`                                                                                 |
+| `src/content/posts.ts`                              | `listPosts(ctx, { limit, boards, tags })` → `feedConstraint`                                                                               |
+| `src/content/types.ts`, `post-mapper.ts`            | `Post.boardId`, `Post.tagIds`                                                                                                              |
+| `src/admin/Approvals/page-diff.ts`, `queue-data.ts` | Board and Tags rows; names read from `post-boards.title` / `post-tags.name`                                                                |
+| `src/admin/SchoolPlane/*`                           | `checkNewPost({ title, boards, board })`; the form asks "Which board is this for?" when there are several and sends `tenant` + `board`     |
+| `src/admin/A11yPatch/repairs.ts`                    | names Payload's list "someone is editing" lock from its tooltip                                                                            |
+| `src/payload.config.ts`                             | the three collections; `post-folders` and `post-boards` in the multi-tenant plugin                                                         |
+| `scripts/seed.ts`                                   | per site, when it has no boards: a folder named after it + a "News" board; tags Elementary, Middle, High when absent                       |
+| `tests/helpers/payload.ts`                          | `Fixtures.boardDistrict/boardA/boardB`; `boardFor(f, tenant)`                                                                              |
 
 ### Access
 
@@ -785,6 +785,10 @@ District picker only (`districtLinkTarget`); district-only, in Page settings (§
 
 ## 15. Board-first announcements for the district (Jason, 2026-10-29)
 
+> **Superseded by §17** (2026-11-04): the "New announcement" link now opens the announcements
+> screen on that board with the headline showing; `new-post-route.ts` is gone and `boardById`
+> takes `(payload, user, id)`. Kept below as the record of what shipped in #61.
+
 Finalsite is board-first: open a board, then create a post on it. The boards screen (§8) gives each
 board a "New announcement" link to `/admin/new-post?board=<id>`; the school's new-post screen (§3)
 serves the district with the board fixed.
@@ -816,11 +820,11 @@ two lists they work in. The district's admin is unchanged.
 
 | File                                        | Holds                                                                                                                                                                                                                                                                                                               |
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/admin/SchoolPlane/school-plane.ts`     | `listTaskFor(collection)` (pure): `posts` → "Post an announcement" `/admin/new-post`, `pages` → "Add a page" `/admin/new-page`, from `SCHOOL_TASKS`; else null. `schoolNamesLabel(names)`                                                                                                                           |
+| `src/admin/SchoolPlane/school-plane.ts`     | `listTaskFor(collection)` (pure): `pages` → "Add a page" `/admin/new-page`, from `SCHOOL_TASKS`; else null (`posts` has its own screen, §17). `schoolNamesLabel(names)`                                                                                                                                             |
 | `src/admin/SchoolPlane/school-data.ts`      | `schoolsOf(payload, user)` — the user's tenants by name; `listMySchools(req)` delegates to it                                                                                                                                                                                                                       |
 | `src/admin/SchoolPlane/SchoolNameNav.tsx`   | `admin.components.beforeNavLinks`: school manager → `#nav-school` "Your school {name}"; else nothing                                                                                                                                                                                                                |
 | `src/admin/SchoolPlane/YourSchoolField.tsx` | `users.yourSchool` (ui field, school manager only): `#your-school` "Your school {name}" on `/admin/account`                                                                                                                                                                                                         |
-| `src/admin/SchoolPlane/ListTaskButton.tsx`  | `beforeListTable` on `posts` and `pages` (`clientProps.collection`): school manager → `#list-task` linking to `listTaskFor`; else nothing                                                                                                                                                                           |
+| `src/admin/SchoolPlane/ListTaskButton.tsx`  | `beforeListTable` on `pages` (`clientProps.collection`): school manager → `#list-task` linking to `listTaskFor`; else nothing                                                                                                                                                                                       |
 | `src/collections/Tenants.ts`, `Users.ts`    | `admin.hidden` unless district admin — out of the manager's menu; read access unchanged                                                                                                                                                                                                                             |
 | `src/collections/Users.ts`                  | `tenants` declared with the plugin's `tenantsArrayField` (`includeDefaultField: false` in `payload.config.ts`), schema unchanged; it, `roles`, `entraObjectId`, `autoApprove`, `isBreakGlass` and `lastLoginAt` share `notForSchoolManagers` (`admin.condition`): a manager sees email, name, password, Your school |
 
@@ -837,3 +841,48 @@ as they are; the list leads to the task screen instead.
   page shows "Your school" with no tenants or roles field; each list's button reaches its task;
   the district keeps Tenants, Users, Create New and no task button
 - `tests/e2e/admin-planes-axe.spec.ts` — the manager's pages list, posts list and account, both themes
+
+## 17. The announcements screen (Jason, 2026-11-04)
+
+Finalsite's Posts module, at "News and announcements" (`/admin/collections/posts`), for both
+planes: each site's folders, a folder's boards, a board's posts newest first, and "Create post" at
+the top right. Payload's flat posts list is replaced (`views.list.Component`).
+
+| File                                               | Holds                                                                                                                                                                                                                                                                                                                |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/admin/Announcements/announcements.ts`         | pure: `boardFromQuery` (one numeric `board` or null), `boardHref` `…/posts?board=<id>`, `createPostHref` `…/posts?board=<id>&new=1`, `wantsNewPost` (`new=1`), `findBoard(tree, id)` → site/folder/board, `soleBoard(tree)`, `announcementStatus(doc, 'district' \| 'school')`                                       |
+| `src/admin/Announcements/AnnouncementsView.tsx`    | reads tenants, folders, boards and the board's posts AS THE VIEWER (`overrideAccess: false`; posts `draft: true`, 25 a page, `page`); `boardTree`; selected = `?board` or the viewer's sole board; `#board-heading`, `#create-post`; `new=1` → `#new-post` with `NewPostForm` on that board (`boardById`) and Cancel |
+| `src/admin/Announcements/Announcements.module.css` | tree beside the board ≥60rem, stacked below; Payload theme variables                                                                                                                                                                                                                                                 |
+| `src/admin/SchoolPlane/NewPostView.tsx`            | `/admin/new-post[?board]` → `createPostHref(board)` or `/admin/collections/posts?new=1`                                                                                                                                                                                                                              |
+| `src/admin/SchoolPlane/NewPostForm.tsx`            | `focusOnOpen` puts the cursor in the headline                                                                                                                                                                                                                                                                        |
+| `src/admin/SchoolPlane/school-data.ts`             | `boardById(payload, user, id)`; `listMyBoards` removed                                                                                                                                                                                                                                                               |
+| `src/admin/Boards/BoardsListView.tsx`              | "New announcement" → `createPostHref(board)`                                                                                                                                                                                                                                                                         |
+
+### Rules
+
+- The district sees every site, folders or not, and "Manage folders and boards"; a school manager
+  sees only sites they have folders on, and lands on their board when they have exactly one.
+- A board not in the viewer's tree (another school's, or removed) → "That board can't be opened":
+  no posts, no Create post, no headline.
+- Status words: district Published / Draft / Waiting for approval / Sent back; school On the
+  website / Not sent yet / Sent for approval / Needs changes. A waiting change outranks published.
+
+### Why the headline, not Payload's create form
+
+Payload's create view checks create access with no `tenant`, which `postsCreateAccess` refuses a
+school manager by design; and with `drafts.validate` it cannot autosave until the required `slug`
+exists. The headline creates the draft on the board as the user, so the words autosave from the
+first keystroke.
+
+### Tests
+
+- `tests/unit/admin/announcements.test.ts` — every pure function above
+- `tests/e2e/announcements.spec.ts` — district: sites, board chosen (`aria-current`), the post's row
+  and status, Create post focuses the headline, Cancel; school: their board in their words, no
+  School B; School B's board by address opens nothing; two boards → "Choose a board" → Athletics →
+  Scores → the post is filed there
+- `tests/e2e/boards-view.spec.ts`, `school-plane.spec.ts` — the boards screen and the school list
+  lead here
+- `tests/e2e/admin-planes-axe.spec.ts` — the screen with a board open and with none, district and
+  school, both themes
+- `tests/e2e/support/fixture-posts.ts` — fixtures file on School A's "News" by name

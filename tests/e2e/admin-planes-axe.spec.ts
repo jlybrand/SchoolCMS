@@ -116,7 +116,7 @@ schoolTest.describe('school plane — whole screens', () => {
       })
       schoolTest(`@a11y news and announcements list — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/collections/posts')
-        await auditScreen(page, '#list-task', ...LIST_REPAIRED)
+        await auditScreen(page, '#announcements #create-post')
       })
       schoolTest(`@a11y their account — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/account')
@@ -316,7 +316,7 @@ adminTest.describe('district plane — whole screens', () => {
         const boards = await page.request.get('/api/post-boards?limit=1&depth=0')
         const [board] = (await boards.json()).docs as { id: number }[]
         await page.goto(`/admin/new-post?board=${board!.id}`)
-        await auditScreen(page, '#new-post-board', '#new-post form')
+        await auditScreen(page, '#board-heading', '#new-post form')
       })
       adminTest(`@a11y announcement folders list — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/collections/post-folders')
@@ -326,10 +326,23 @@ adminTest.describe('district plane — whole screens', () => {
         await page.goto('/admin/collections/post-tags')
         await auditScreen(page, ...LIST_REPAIRED)
       })
-      adminTest(`@a11y posts list — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/collections/posts')
-        await auditScreen(page, ...LIST_REPAIRED)
+      adminTest(`@a11y news and announcements, a board open — ${colorScheme}`, async ({ page }) => {
+        const stored = await page.request.get(`/api/posts/${post.id}?draft=true&depth=0`)
+        const { board } = (await stored.json()) as { board: number }
+        await page.goto(`/admin/collections/posts?board=${board}`)
+        await auditScreen(
+          page,
+          '#announcements details[open] a[aria-current="page"]',
+          '#announcements tbody tr',
+        )
       })
+      adminTest(
+        `@a11y news and announcements, no board chosen — ${colorScheme}`,
+        async ({ page }) => {
+          await page.goto('/admin/collections/posts')
+          await auditScreen(page, '#announcements #board-heading')
+        },
+      )
       adminTest(
         `@a11y the post form, shared with chosen sites — ${colorScheme}`,
         async ({ page }) => {

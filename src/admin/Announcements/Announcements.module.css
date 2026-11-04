@@ -1,0 +1,151 @@
+/**
+ * The announcements screen. Payload's theme variables, not DD2 tokens — the tokens are not
+ * loaded in the admin and do not follow its dark theme (see `ReviewStatusField.module.css`).
+ * `tests/e2e/admin-planes-axe.spec.ts` runs axe over it in both themes, as both planes.
+ *
+ * Logical properties only (CLAUDE.md rule 5): the tree sits at the inline start, so it moves to
+ * the right in a right-to-left admin with no rule of its own.
+ */
+
+.view {
+  padding-block: 2rem 4rem;
+  color: var(--theme-text);
+  line-height: 1.5;
+}
+
+.title {
+  margin-block: 0 1.5rem;
+  font-size: 2rem;
+  line-height: 1.2;
+}
+
+/* Tree beside the board on a wide screen; the board below the tree on a narrow one. */
+.layout {
+  display: grid;
+  gap: 2rem;
+}
+
+@media (min-width: 60rem) {
+  .layout {
+    grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+/* Links, not Payload's button (a link too): it keeps its own colours, which pass in both themes. */
+.view a:not(:global(.btn)) {
+  color: var(--theme-text);
+  text-decoration: underline;
+}
+
+.muted {
+  margin-block: 0 1rem;
+  color: var(--theme-elevation-800);
+}
+
+.site {
+  margin-block-end: 1.5rem;
+}
+
+.siteName {
+  margin-block: 0 0.5rem;
+  font-size: 1.125rem;
+}
+
+.folder {
+  margin-block-end: 0.5rem;
+  padding-block: 0.5rem;
+  padding-inline: 0.75rem;
+  border: 1px solid var(--theme-elevation-400);
+  border-radius: 4px;
+  background: var(--theme-elevation-50);
+}
+
+.summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.summary:focus-visible {
+  outline: 2px solid var(--theme-text);
+  outline-offset: 2px;
+}
+
+.boards {
+  margin-block: 0.5rem 0;
+  padding-inline-start: 1rem;
+}
+
+/* The chosen board: bold and unmistakable, not colour alone (WCAG 1.4.1). */
+.boardLink[aria-current='page'] {
+  font-weight: 700;
+  text-decoration-thickness: 3px;
+}
+
+.manage {
+  margin-block: 1rem 0;
+}
+
+.boardHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-block-end: 1.5rem;
+}
+
+.where {
+  margin: 0;
+  color: var(--theme-elevation-800);
+}
+
+.boardName {
+  margin-block: 0 0.5rem;
+  font-size: 1.5rem;
+  line-height: 1.25;
+}
+
+/* "Create post": the headline, above the board's posts. */
+.newPost {
+  margin-block-end: 2rem;
+  padding-block: 1.25rem;
+  padding-inline: 1.25rem;
+  border: 1px solid var(--theme-elevation-400);
+  border-radius: 4px;
+  background: var(--theme-elevation-50);
+}
+
+.newPostHeading {
+  margin-block: 0 1rem;
+  font-size: 1.25rem;
+}
+
+.cancel {
+  margin-block: 1rem 0;
+}
+
+.posts {
+  inline-size: 100%;
+  border-collapse: collapse;
+}
+
+.posts th,
+.posts td {
+  padding-block: 0.625rem;
+  padding-inline: 0.5rem;
+  border-block-end: 1px solid var(--theme-elevation-150);
+  text-align: start;
+  vertical-align: top;
+}
+
+.posts th {
+  font-weight: 600;
+}
+
+.pages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-block: 1rem 0;
+}
