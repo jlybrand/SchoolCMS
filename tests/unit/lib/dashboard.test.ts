@@ -92,21 +92,14 @@ describe('staleSites — sites with no published change in 90 days (`04` §3.1 i
   })
 })
 
-describe('keyPageKind — which pages are key: home, contact, calendar', () => {
+describe('keyPageKind — the key page: the front page (Jason, 2026-11-04: no contact or calendar types)', () => {
   it('is the front page by its slug, at the top of the tree', () => {
-    expect(keyPageKind({ slug: 'home', parent: null, pageType: 'standard' })).toBe('Home page')
-    expect(keyPageKind({ slug: 'home', parent: 4, pageType: 'standard' })).toBeNull()
-  })
-
-  it('is contact and calendar by their page type', () => {
-    expect(keyPageKind({ slug: 'reach-us', parent: null, pageType: 'contact' })).toBe(
-      'Contact page',
-    )
-    expect(keyPageKind({ slug: 'dates', parent: 2, pageType: 'calendar' })).toBe('Calendar page')
+    expect(keyPageKind({ slug: 'home', parent: null })).toBe('Home page')
+    expect(keyPageKind({ slug: 'home', parent: 4 })).toBeNull()
   })
 
   it('is nothing else', () => {
-    expect(keyPageKind({ slug: 'about', parent: null, pageType: 'about' })).toBeNull()
+    expect(keyPageKind({ slug: 'contact-us', parent: null })).toBeNull()
   })
 })
 
@@ -115,29 +108,17 @@ describe('staleKeyPages — key pages unchanged in 90 days', () => {
     const rows = staleKeyPages(
       [
         { id: 1, site: 'School A', title: 'Home', kind: 'Home page', updatedAt: daysAgo(5) },
-        {
-          id: 2,
-          site: 'School A',
-          title: 'Contact us',
-          kind: 'Contact page',
-          updatedAt: daysAgo(100),
-        },
-        {
-          id: 3,
-          site: 'School B',
-          title: 'Calendar',
-          kind: 'Calendar page',
-          updatedAt: daysAgo(300),
-        },
+        { id: 2, site: 'School B', title: 'Home', kind: 'Home page', updatedAt: daysAgo(100) },
+        { id: 3, site: 'School C', title: 'Welcome', kind: 'Home page', updatedAt: daysAgo(300) },
       ],
       NOW,
       TZ,
     )
     expect(rows.map((r) => r.id)).toEqual([3, 2])
     expect(rows[0]).toMatchObject({
-      site: 'School B',
-      title: 'Calendar',
-      kind: 'Calendar page',
+      site: 'School C',
+      title: 'Welcome',
+      kind: 'Home page',
       href: '/admin/collections/pages/3',
       last: expect.stringMatching(/^Last changed /),
     })

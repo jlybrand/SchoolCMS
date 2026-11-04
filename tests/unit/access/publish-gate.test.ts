@@ -167,7 +167,7 @@ describe('composedPagesAreDistrictOnly', () => {
   })
 
   it('returns the data unchanged when it allows the write', () => {
-    const data = { title: 'About Us', pageType: 'about' }
+    const data = { title: 'About Us', pageType: 'standard' }
     expect(composedPagesAreDistrictOnly(hookArgs(managerA, data))).toEqual(data)
   })
 })

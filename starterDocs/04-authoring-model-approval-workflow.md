@@ -130,7 +130,8 @@ plugin's scoping is applied but not narrowed by default for this role.
 ### 3.3 Composition
 
 `pageType: composed` pages use the block array (`03` §3): a vertical list of blocks with
-reorder controls and a form per block. No canvas, no drag-and-drop, no nesting. At 1–2 pages
+reorder controls and a form per block. No canvas, no drag-and-drop. Nesting is one level deep,
+through `Columns` (Jason, 2026-11-04): a column holds blocks, never further columns. At 1–2 pages
 a month this is correct and does not warrant more.
 
 Preview is the page rendered on the preview host.

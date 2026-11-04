@@ -491,6 +491,72 @@ describe('toPageBlocks — feed', () => {
   })
 })
 
+/**
+ * Columns (Jason, 2026-11-04): two or three columns, each holding other blocks. Nesting is
+ * allowed; the heading levels inside follow from where the column sits (`columnLevels`), so the
+ * district cannot produce a skipped level by placing blocks.
+ */
+describe('toPageBlocks — columns', () => {
+  const text = (value: string) => ({ blockType: 'richText', content: lexical(paragraph(value)) })
+
+  it('maps each column’s heading and its blocks, in order', () => {
+    const [block] = toPageBlocks([
+      {
+        blockType: 'columns',
+        id: 'c1',
+        heading: 'Get involved',
+        columns: [
+          { id: 'a', heading: 'Volunteer', content: [text('Help in class')] },
+          { id: 'b', content: [text('Join the PTA'), { blockType: 'divider', id: 'd' }] },
+        ],
+      },
+    ])
+    expect(block).toMatchObject({ kind: 'columns', id: 'c1', heading: 'Get involved' })
+    expect(block?.kind === 'columns' && block.columns.map((c) => c.heading)).toEqual([
+      'Volunteer',
+      null,
+    ])
+    expect(
+      block?.kind === 'columns' && block.columns.map((c) => c.blocks.map((b) => b.kind)),
+    ).toEqual([['richText'], ['richText', 'divider']])
+  })
+
+  it('keeps an empty column, so the others stay where the district put them', () => {
+    const [block] = toPageBlocks([
+      { blockType: 'columns', id: 'c', columns: [{ content: [text('Only')] }, { content: [] }] },
+    ])
+    expect(block?.kind === 'columns' && block.columns.length).toBe(2)
+  })
+
+  it('drops columns with nothing in any of them', () => {
+    expect(
+      toPageBlocks([
+        { blockType: 'columns', id: 'c', columns: [{ content: [] }, { content: [] }] },
+      ]),
+    ).toEqual([])
+    expect(toPageBlocks([{ blockType: 'columns', id: 'c', columns: [] }])).toEqual([])
+  })
+
+  it('maps blocks inside a column as it maps them anywhere — an unknown one becomes nothing', () => {
+    const [block] = toPageBlocks([
+      {
+        blockType: 'columns',
+        id: 'c',
+        columns: [{ content: [text('Kept'), { blockType: 'retired', id: 'x' }] }, { content: [] }],
+      },
+    ])
+    expect(block?.kind === 'columns' && block.columns[0]?.blocks.map((b) => b.kind)).toEqual([
+      'richText',
+    ])
+  })
+
+  it('takes at most three columns', () => {
+    const many = Array.from({ length: 5 }, (_, i) => ({ content: [text(String(i))] }))
+    const [block] = toPageBlocks([{ blockType: 'columns', id: 'c', columns: many }])
+    expect(block?.kind === 'columns' && block.columns.length).toBe(3)
+  })
+})
+
 describe('the block library and the mapper agree', () => {
   it('renders a complete row for every block type in the schema', async () => {
     const { blockLibrary } = await import('@/collections/blocks')
@@ -505,6 +571,12 @@ describe('the block library and the mapper agree', () => {
       embed: { url: 'https://youtu.be/dQw4w9WgXcQ', title: 'A video' },
       divider: {},
       feed: { boards: [7] },
+      columns: {
+        columns: [
+          { content: [{ blockType: 'richText', content: lexical(paragraph('One')) }] },
+          { content: [{ blockType: 'richText', content: lexical(paragraph('Two')) }] },
+        ],
+      },
     }
 
     for (const block of blockLibrary) {

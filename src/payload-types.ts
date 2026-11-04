@@ -265,9 +265,9 @@ export interface Page {
     [k: string]: unknown;
   } | null;
   /**
-   * Decides which fields this page offers. "Composed" is the district-only block layout (`03` §2).
+   * "Page" is words a school can edit. "Composed" is built from components by the district.
    */
-  pageType: 'standard' | 'about' | 'contact' | 'staff' | 'calendar' | 'documents' | 'composed';
+  pageType: 'standard' | 'composed';
   /**
    * Sits this page underneath another one. Drives the URL and the menus.
    */
@@ -308,6 +308,7 @@ export interface Page {
         | FeedBlockRow
         | EmbedBlock
         | DividerBlock
+        | ColumnsBlock
       )[]
     | null;
   /**
@@ -562,6 +563,41 @@ export interface DividerBlock {
   id?: string | null;
   blockName?: string | null;
   blockType: 'divider';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ColumnsBlock".
+ */
+export interface ColumnsBlock {
+  /**
+   * Optional. A title over all the columns.
+   */
+  heading?: string | null;
+  /**
+   * Two or three. They sit side by side on a wide screen and stack on a phone.
+   */
+  columns: {
+    /**
+     * Optional.
+     */
+    heading?: string | null;
+    content?:
+      | (
+          | RichTextBlock
+          | CallToActionBlock
+          | AccordionBlock
+          | CardGridBlock
+          | ChildPageNavBlock
+          | EmbedBlock
+          | DividerBlock
+          | FeedBlockRow
+        )[]
+      | null;
+    id?: string | null;
+  }[];
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'columns';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1112,6 +1148,7 @@ export interface PagesSelect<T extends boolean = true> {
         feed?: T | FeedBlockRowSelect<T>;
         embed?: T | EmbedBlockSelect<T>;
         divider?: T | DividerBlockSelect<T>;
+        columns?: T | ColumnsBlockSelect<T>;
       };
   meta?:
     | T
@@ -1223,6 +1260,33 @@ export interface EmbedBlockSelect<T extends boolean = true> {
  * via the `definition` "DividerBlock_select".
  */
 export interface DividerBlockSelect<T extends boolean = true> {
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ColumnsBlock_select".
+ */
+export interface ColumnsBlockSelect<T extends boolean = true> {
+  heading?: T;
+  columns?:
+    | T
+    | {
+        heading?: T;
+        content?:
+          | T
+          | {
+              richText?: T | RichTextBlockSelect<T>;
+              callToAction?: T | CallToActionBlockSelect<T>;
+              accordion?: T | AccordionBlockSelect<T>;
+              cardGrid?: T | CardGridBlockSelect<T>;
+              childPageNav?: T | ChildPageNavBlockSelect<T>;
+              embed?: T | EmbedBlockSelect<T>;
+              divider?: T | DividerBlockSelect<T>;
+              feed?: T | FeedBlockRowSelect<T>;
+            };
+        id?: T;
+      };
   id?: T;
   blockName?: T;
 }

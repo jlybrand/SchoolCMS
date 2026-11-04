@@ -79,10 +79,6 @@ test.describe('Phase 4 exit — keyboard only, both planes', () => {
       await tabTo(page, titleField)
       await page.keyboard.type(title)
 
-      await tabTo(page, form.getByRole('radio', { name: /General page/ }))
-      await page.keyboard.press('Space')
-      await expect(form.getByRole('radio', { name: /General page/ })).toBeChecked()
-
       await tabTo(page, form.getByRole('button', { name: 'Create the page' }))
       await page.keyboard.press('Enter')
 

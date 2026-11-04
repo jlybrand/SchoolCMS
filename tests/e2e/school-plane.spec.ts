@@ -132,7 +132,7 @@ test.describe('school plane — update a page', () => {
 test.describe('school plane — add a page', () => {
   test.skip(credentials === null, SKIP)
 
-  test('@smoke asks for a title and a kind, creates the page, and opens it ready to edit', async ({
+  test('@smoke asks for a title, creates the page, and opens it ready to edit', async ({
     page,
     baseURL,
   }) => {
@@ -143,20 +143,20 @@ test.describe('school plane — add a page', () => {
       timeout: 20_000,
     })
 
-    // Nothing filled in: both problems, in words, and focus on the first.
+    // Nothing filled in: the problem in words, and focus on it. No kind of page is asked
+    // (Jason, 2026-11-04): a school's page is a page.
     const create = view.getByRole('button', { name: 'Create the page' })
     await expect(async () => {
       await create.click()
       await expect(view.getByText('Give the page a title.')).toBeVisible({ timeout: 1_000 })
     }).toPass({ timeout: 15_000 })
-    await expect(view.getByText('Choose what kind of page this is.')).toBeVisible()
+    await expect(view.getByRole('radio')).toHaveCount(0)
     const title = view.getByLabel('What is this page called?')
     await expect(title).toBeFocused()
     await expect(title).toHaveAttribute('aria-invalid', 'true')
 
     const pageTitle = uniqueTitle('Field trip forms')
     await title.fill(pageTitle)
-    await view.getByRole('radio', { name: /Forms and documents/ }).check()
     await create.click()
 
     await page.waitForURL(/\/admin\/collections\/pages\/\d+/, { timeout: 20_000 })
@@ -182,7 +182,6 @@ test.describe('school plane — add a page', () => {
       await expect(title).toBeEditable({ timeout: 20_000 })
       await expect(async () => {
         await title.fill(existing.title)
-        await view.getByRole('radio', { name: /General page/ }).check()
         await view.getByRole('button', { name: 'Create the page' }).click()
         await expect(view.getByRole('alert')).toHaveText(
           'There is already a page with this title. Try a different title.',

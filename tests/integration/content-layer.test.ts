@@ -755,6 +755,31 @@ describe('resolvePageBlocks', () => {
     expect(p.districtWidePost).toBeGreaterThan(0)
   })
 
+  /** Columns (Jason, 2026-11-04): a feed in a column is filled as one on the page is. */
+  it('fills a feed inside a column, and leaves the column’s other blocks as they are', async () => {
+    const [block] = await resolvePageBlocks(
+      await ctxFor('b.localhost'),
+      [
+        {
+          kind: 'columns',
+          id: 'cols-1',
+          heading: null,
+          columns: [
+            { heading: 'News', blocks: [feed([fixtures.boardDistrict])] },
+            { heading: null, blocks: [{ kind: 'divider', id: 'd' }] },
+          ],
+        },
+      ],
+      { serverUrl: 'http://localhost:3000' },
+    )
+    expect(block?.kind).toBe('columns')
+    const columns = block?.kind === 'columns' ? block.columns : []
+    const [inFeed] = columns[0]?.blocks ?? []
+    expect(inFeed?.kind).toBe('feed')
+    expect((inFeed as ResolvedFeedBlock).items.map((i) => i.title)).toContain('district wide post')
+    expect(columns[1]?.blocks).toEqual([{ kind: 'divider', id: 'd' }])
+  })
+
   it('honours the count', async () => {
     const [block] = await resolvePageBlocks(
       await ctxFor('b.localhost'),

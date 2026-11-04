@@ -234,6 +234,25 @@ const toFeed = (row: Row, index: number): FeedBlock | null => {
   }
 }
 
+/** At most this many columns are rendered; the schema allows no more. */
+const MAX_COLUMNS = 3
+
+/**
+ * Columns (Jason, 2026-11-04). Each column's blocks map exactly as a page's do — an unknown block
+ * inside one becomes nothing. An empty column is KEPT, so the others stay where they were put;
+ * columns with nothing in any of them are dropped, like any other empty block.
+ */
+const toColumns = (row: Row, index: number, paths: PagePaths): PageBlock | null => {
+  const rows = Array.isArray(row.columns) ? row.columns.filter(isRow).slice(0, MAX_COLUMNS) : []
+  const columns = rows.map((column) => ({
+    heading: str(column.heading),
+    // Not `toPageBlocks` on columns-in-columns: the schema offers none, and this keeps it so.
+    blocks: toPageBlocks(column.content, paths).filter((block) => block.kind !== 'columns'),
+  }))
+  if (columns.every((column) => column.blocks.length === 0)) return null
+  return { kind: 'columns', id: idOf(row, index), heading: str(row.heading), columns }
+}
+
 /**
  * One entry per block in the register (`03` §3.1). A `blockType` absent from this table is
  * dropped — which is the forward-compatibility property, not an oversight.
@@ -247,6 +266,7 @@ const MAPPERS: Record<string, (row: Row, index: number, paths: PagePaths) => Pag
   embed: toEmbed,
   divider: toDivider,
   feed: toFeed,
+  columns: toColumns,
 }
 
 /**
