@@ -62,9 +62,14 @@ export default buildConfig({
           path: '/approvals',
         },
       },
+      /**
+       * The district dashboard (`04` §3.1; Jason, 2026-11-04): approvals, freshness and activity,
+       * then the auto-approval panel, then Payload's cards under "Everything else".
+       */
       beforeDashboard: [
-        '/admin/Approvals/WaitingBanner#WaitingBanner',
+        '/admin/Dashboard/DistrictDashboard#DistrictDashboard',
         '/admin/Grants/GrantsPanel#GrantsPanel',
+        '/admin/Dashboard/DistrictDashboard#EverythingElseHeading',
       ],
       afterNavLinks: ['/admin/Approvals/ApprovalsNavLink#ApprovalsNavLink'],
       /** A school manager's school, named where a tenant picker would be (Jason, 2026-11-04). */

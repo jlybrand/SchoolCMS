@@ -254,7 +254,7 @@ Changed:
 | `src/lib/review-emails.ts`                                                       | `OutcomeEmailInput.noun` (`page` default / `announcement`); `pageUrl: string \| null`                                                                                                                                                                         |
 | `src/lib/district-digest.ts`, `src/jobs/district-digest.ts`                      | `WaitingPage.kind`; both collections read and merged by `submittedAt`; counts say "submission(s)"                                                                                                                                                             |
 | `src/admin/Approvals/page-diff.ts`                                               | `diffPost`; shared `diffFields`                                                                                                                                                                                                                               |
-| `src/admin/Approvals/queue-data.ts`                                              | `QueueItem.collection`, `.noun`; `countWaiting` and `loadQueue` over pages + posts                                                                                                                                                                            |
+| `src/admin/Approvals/queue-data.ts`                                              | `QueueItem.collection`, `.noun`; `loadQueue` over pages + posts (`countWaiting` removed, §18)                                                                                                                                                                 |
 | `src/admin/Approvals/ApprovalItem.tsx`, `ApprovalsView.tsx`, `WaitingBanner.tsx` | URLs per collection; "New announcement" / "Announcement" badge; "Open the announcement"; "submission(s)"                                                                                                                                                      |
 | `src/admin/SendForApproval/review-status.ts`                                     | `NEEDS_WORDS`, `sendRefusal(collection, body)`                                                                                                                                                                                                                |
 | `src/admin/SendForApproval/SendForApprovalButton.tsx`                            | queue link uses `approvalAnchor`; `sendRefusal` checked before submit (`toast.error`)                                                                                                                                                                         |
@@ -886,3 +886,36 @@ first keystroke.
 - `tests/e2e/admin-planes-axe.spec.ts` — the screen with a board open and with none, district and
   school, both themes
 - `tests/e2e/support/fixture-posts.ts` — fixtures file on School A's "News" by name
+
+## 18. The district dashboard (Jason, 2026-11-04)
+
+`04` §3.1, laid out as Jason chose: ① Approvals ② Needs freshening ③ Recent activity, then the
+auto-approval panel, then Payload's cards under "Everything else". Sync status, live alerts and
+the work queues join as their modules land.
+
+| File                                        | Holds                                                                                                                                                                                                                                                                                                      |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/dashboard.ts`                      | pure: `approvalSummary(waiting, now, tz)` (count, oldest via `describeWait`, overdue); `STALE_DAYS` 90; `staleSites(sites, last, now, tz)` (none published first, then oldest); `keyPageKind` (top-level `home`, `contact`, `calendar`); `staleKeyPages`; `CONTENT_ACTIONS`; `activityRow(event, now, tz)` |
+| `src/admin/Dashboard/dashboard-data.ts`     | reads AS THE USER: `findWaiting`, `findSites`, `findLastPublished` (one windowed read per collection, then newest per quiet site), `findKeyPages`, `findRecentActivity` (content actions, newest 10)                                                                                                       |
+| `src/admin/Dashboard/DistrictDashboard.tsx` | `beforeDashboard`, district only: `#district-dashboard` h1, `#approvals-panel`, `#freshness-panel`, `#activity-panel`; `EverythingElseHeading` `#everything-else`                                                                                                                                          |
+| `src/lib/queue-age.ts`                      | `localDay`, `DAY` now exported                                                                                                                                                                                                                                                                             |
+| `src/payload.config.ts`                     | `beforeDashboard`: `DistrictDashboard`, `GrantsPanel`, `EverythingElseHeading`                                                                                                                                                                                                                             |
+
+`WaitingBanner.tsx` and `countWaiting` are removed: the Approvals panel replaces them.
+
+### Rules
+
+- "Published" = the main row with `_status: published`; its `updatedAt` is when it last went live.
+- Stale = older than 90 days (exactly 90 is not). A site with nothing published is listed first.
+- Activity: submit, request-changes, approve, auto-approve, publish, restore, delete. No sign-ins
+  or account changes (Jason, 2026-11-04). A deleted item has no link.
+
+### Tests
+
+- `tests/unit/lib/dashboard.test.ts` — every pure function
+- `tests/integration/dashboard.test.ts` — the reads in Postgres: top-level home only, drafts
+  ignored, content actions only; a school manager sees their own site, no activity, no other
+  site's last change
+- `tests/e2e/district-dashboard.spec.ts` — panel order, a sent page counted and in the activity
+  with its link, no sign-ins; `approval-queue.spec.ts` — the panel links to the queue;
+  `admin-planes-axe.spec.ts` — the whole dashboard, both themes

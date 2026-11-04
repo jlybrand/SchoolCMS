@@ -206,10 +206,10 @@ test.describe('approval queue — district admin', () => {
     page,
   }) => {
     await page.goto('/admin')
-    const banner = page.locator('#waiting-banner')
-    await expect(banner).toContainText(/waiting for approval/, { timeout: 20_000 })
+    const panel = page.locator('#approvals-panel')
+    await expect(panel).toContainText(/waiting/, { timeout: 20_000 })
     await expect(page.getByRole('link', { name: 'Approvals' })).toBeVisible()
-    await banner.getByRole('link', { name: 'Open the approval queue' }).click()
+    await panel.getByRole('link', { name: 'Open the approval queue' }).click()
     await expect(page).toHaveURL(/\/admin\/approvals/)
   })
 
@@ -231,8 +231,8 @@ test.describe('approval queue — district admin', () => {
         await expectNoBlockingViolations(page, '#approvals')
 
         await page.goto('/admin')
-        await expect(page.locator('#waiting-banner')).toBeVisible({ timeout: 20_000 })
-        await expectNoBlockingViolations(page, '#waiting-banner')
+        await expect(page.locator('#approvals-panel')).toBeVisible({ timeout: 20_000 })
+        await expectNoBlockingViolations(page, '#district-dashboard')
       } finally {
         await drop(sent)
       }

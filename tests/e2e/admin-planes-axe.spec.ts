@@ -229,8 +229,11 @@ adminTest.describe('district plane — whole screens', () => {
         await page.goto('/admin')
         await auditScreen(
           page,
-          '#waiting-banner',
+          '#approvals-panel',
+          '#freshness-panel',
+          '#activity-panel',
           '#grants-panel',
+          '#everything-else',
           '.dashboard-breadcrumb-select input[aria-label="Choose a view"]',
         )
       })

@@ -16,7 +16,7 @@ export const OVERDUE_BUSINESS_DAYS = 3
 export const DISTRICT_TIME_ZONE = 'America/New_York'
 
 /** The calendar date in `timeZone`, as a UTC-midnight timestamp so days subtract cleanly. */
-const localDay = (date: Date, timeZone: string): number => {
+export const localDay = (date: Date, timeZone: string): number => {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone,
     year: 'numeric',
@@ -27,7 +27,7 @@ const localDay = (date: Date, timeZone: string): number => {
   return Date.UTC(get('year'), get('month') - 1, get('day'))
 }
 
-const DAY = 24 * 60 * 60 * 1000
+export const DAY = 24 * 60 * 60 * 1000
 
 /** Weekdays after `from`'s date, up to and including `to`'s date. Holidays are not modelled. */
 export const businessDaysBetween = (from: Date, to: Date, timeZone: string): number => {

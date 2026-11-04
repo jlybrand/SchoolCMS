@@ -93,24 +93,6 @@ const withBoardAndTags = (
   }
 }
 
-/** How many submissions wait, counted as `user` — only a district admin sees every school. */
-export const countWaiting = async (
-  payload: Payload,
-  user: PayloadRequest['user'],
-): Promise<number> => {
-  const counts = await Promise.all(
-    REVIEWED.map((collection) =>
-      payload.count({
-        collection,
-        where: { reviewState: { equals: 'submitted' } },
-        overrideAccess: false,
-        user,
-      }),
-    ),
-  )
-  return counts.reduce((sum, { totalDocs }) => sum + totalDocs, 0)
-}
-
 export const loadQueue = async (req: PayloadRequest, now = new Date()): Promise<QueueItem[]> => {
   const waitingIn = async (collection: ReviewedCollection) =>
     (
