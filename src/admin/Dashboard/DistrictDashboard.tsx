@@ -82,11 +82,10 @@ export const DistrictDashboard = async ({
                 {approvals.overdue} overdue — waiting more than 3 school days.
               </p>
             ) : null}
-            {approvals.count > 0 ? (
-              <p className={styles.action}>
-                <Link href="/admin/approvals">Open the approval queue</Link>
-              </p>
-            ) : null}
+            {/* Always, as the banner it replaces did: the queue is the way in even when empty. */}
+            <p className={styles.action}>
+              <Link href="/admin/approvals">Open the approval queue</Link>
+            </p>
           </section>
 
           <section

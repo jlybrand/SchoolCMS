@@ -34,6 +34,10 @@ adminTest.describe('the district dashboard', () => {
       'Auto-approval grants',
       'Everything else',
     ])
+    // The way into the queue is there whether or not anything waits.
+    await expect(
+      page.locator('#approvals-panel').getByRole('link', { name: 'Open the approval queue' }),
+    ).toBeVisible()
     // Payload's cards are kept, below (Jason, 2026-11-04).
     await expect(page.getByRole('link', { name: /Pages/ }).first()).toBeVisible()
   })
