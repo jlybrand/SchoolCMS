@@ -3,6 +3,7 @@ import { Forbidden, type CollectionBeforeChangeHook } from 'payload'
 import { canComposePages, canPublish } from '@/access/pages'
 import type { AuthUser } from '@/access/types'
 import { autoApprovalOf } from '@/collections/hooks/auto-approve'
+import { scheduledRunOf } from '@/collections/hooks/post-dates'
 
 /**
  * The hook half of two release-blocking gates (CLAUDE.md rules 3 and `03` §6.4 invariant 5).
@@ -26,6 +27,16 @@ import { autoApprovalOf } from '@/collections/hooks/auto-approve'
 
 const userOf = (req: { user?: unknown }): AuthUser | null => (req?.user as AuthUser) ?? null
 
+const instant = (value: unknown): string | null => {
+  if (value === undefined || value === null || value === '') return null
+  const at = new Date(value instanceof Date ? value : String(value))
+  return Number.isNaN(at.getTime()) ? String(value) : at.toISOString()
+}
+
+/** Whether `incoming` is a Start that the stored document did not already have. */
+const setsStart = (incoming: unknown, stored: unknown): boolean =>
+  instant(incoming) !== null && instant(incoming) !== instant(stored)
+
 /**
  * Blocks the draft -> published transition for anyone who may not publish.
  *
@@ -42,12 +53,17 @@ const userOf = (req: { user?: unknown }): AuthUser | null => (req?.user as AuthU
  * `publishAt` counts as publishing. It defers the transition rather than cancelling it, so
  * a gate that ignored it would let a school-manager publish by waiting.
  */
-export const publishGate: CollectionBeforeChangeHook = ({ data, req }) => {
+export const publishGate: CollectionBeforeChangeHook = ({ data, originalDoc, req }) => {
   const user = userOf(req)
 
   const assertsPublished = data?._status === 'published'
-  const schedulesPublish =
-    data?.publishAt !== undefined && data?.publishAt !== null && data?.publishAt !== ''
+  /**
+   * A Start this write SETS or CHANGES. Payload merges the stored document into every write, so a
+   * school's save on something the district scheduled carries the stored Start unchanged — that
+   * is an edit, not a school scheduling a publish, and it is allowed (it drops the approval;
+   * `src/access/review-state.ts`). Any Start the write differs on still counts as publishing.
+   */
+  const schedulesPublish = setsStart(data?.publishAt, originalDoc?.publishAt)
 
   /**
    * The one exception: the auto-approval hook's own publish, under a district grant
@@ -55,6 +71,13 @@ export const publishGate: CollectionBeforeChangeHook = ({ data, req }) => {
    * can set; the same body sent by a person has no mark and is refused below.
    */
   if (assertsPublished && !schedulesPublish && autoApprovalOf(req)) return data
+
+  /**
+   * And the schedule job's own publish of a post the district approved for later
+   * (`src/jobs/post-schedule.ts`) — marked the same way, by server code only. Its stored Start
+   * has passed by then, which is why `schedulesPublish` does not stop it.
+   */
+  if (assertsPublished && scheduledRunOf(req) === 'publish') return data
 
   if ((assertsPublished || schedulesPublish) && !canPublish(user)) {
     throw new Forbidden()

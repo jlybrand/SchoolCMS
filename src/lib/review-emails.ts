@@ -1,3 +1,5 @@
+import { DISTRICT_TIME_ZONE } from '@/lib/queue-age'
+
 /**
  * The submitter's email when the district decides (`04` §4.5: "Submitter → email on approve or
  * changes-requested").
@@ -12,7 +14,7 @@
  * "tenant". The reader is a school manager who last logged in months ago.
  */
 
-export type ReviewOutcome = 'approved' | 'changes-requested'
+export type ReviewOutcome = 'approved' | 'changes-requested' | 'scheduled'
 
 type ReviewSnapshot = { reviewState?: unknown; _status?: unknown } | null | undefined
 
@@ -24,9 +26,14 @@ export const reviewOutcome = (
   before: ReviewSnapshot,
   after: ReviewSnapshot,
 ): ReviewOutcome | null => {
+  const cleared = after?.reviewState === null || after?.reviewState === undefined
+  // Approved for later going live at its Start (Jason, 2026-11-04): told again, now it is up.
+  if (before?.reviewState === 'scheduled') {
+    return after?._status === 'published' && cleared ? 'approved' : null
+  }
   if (before?.reviewState !== 'submitted') return null
   if (after?.reviewState === 'changes-requested') return 'changes-requested'
-  const cleared = after?.reviewState === null || after?.reviewState === undefined
+  if (after?.reviewState === 'scheduled') return 'scheduled'
   if (after?._status === 'published' && cleared) return 'approved'
   return null
 }
@@ -75,6 +82,8 @@ export type OutcomeEmailInput = {
   /** The page form — used when changes are requested. */
   editUrl: string
   note?: string | null
+  /** When an announcement approved for later goes live — with `scheduled`. */
+  goesLive?: string | null
 }
 
 export type Email = { subject: string; text: string; html: string }
@@ -99,6 +108,27 @@ export const emailDocument = (heading: string, body: string): string =>
 export const outcomeEmail = (input: OutcomeEmailInput): Email => {
   const title = oneLine(input.title)
   const school = oneLine(input.school)
+
+  /**
+   * Approved with a future Start: nothing to link to yet. A second email, the plain approval
+   * below, follows when it goes live.
+   */
+  if (input.outcome === 'scheduled') {
+    const heading = 'Your announcement is approved'
+    const when = input.goesLive
+      ? ` It goes live on ${new Intl.DateTimeFormat('en-US', {
+          timeZone: DISTRICT_TIME_ZONE,
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        }).format(new Date(input.goesLive))}.`
+      : ' It goes live at the time the district set.'
+    const sentence = `The district approved your announcement “${title}” for ${school}’s website.${when}`
+    return {
+      subject: `${heading}: ${title}`,
+      text: [sentence, '', SIGN_OFF].join('\n'),
+      html: emailDocument(heading, `<p>${escapeHtml(sentence)}</p>`),
+    }
+  }
 
   if (input.outcome === 'approved' && input.noun === 'announcement') {
     const heading = 'Your announcement is approved'

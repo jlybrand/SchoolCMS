@@ -1,4 +1,4 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, Field } from 'payload'
 
 import {
   postsCreateAccess,
@@ -11,6 +11,7 @@ import { districtOnlyField } from '@/access/tenant-scoped'
 import type { AuthUser } from '@/access/types'
 import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 import { makeApproveEndpoint } from '@/collections/endpoints/approve'
+import { postScheduleEndpoint } from '@/collections/endpoints/post-schedule'
 import { auditChange, auditDelete } from '@/collections/hooks/audit'
 import { autoApprovePost } from '@/collections/hooks/auto-approve'
 import {
@@ -19,13 +20,7 @@ import {
   sendWithPayload,
   userEmail,
 } from '@/collections/hooks/notify-review-outcome'
-import {
-  allTenantIds,
-  liveStillPublished,
-  makeRevalidateOnPublish,
-  syndicationTargets,
-  tenantHostname,
-} from '@/collections/hooks/revalidate-on-publish'
+import { revalidatePost } from '@/collections/hooks/revalidate-on-publish'
 import { postPath } from '@/lib/post-url'
 import { restoreIsDistrictOnly } from '@/collections/hooks/page-history'
 import { deriveSlugFromTitle } from '@/collections/hooks/page-slug'
@@ -35,6 +30,7 @@ import {
   stampPublishedDateHook,
   uniquePostSlug,
 } from '@/collections/hooks/post-hooks'
+import { postDatesHook } from '@/collections/hooks/post-dates'
 import { publishGate } from '@/collections/hooks/publish-gate'
 import { applyReviewState } from '@/collections/hooks/review-state'
 import { SYNDICATION_SCOPES } from '@/content/syndication'
@@ -64,6 +60,25 @@ import { slugify } from '@/lib/slug'
  * Field declarations are not test-first (CLAUDE.md's exception table); the access functions
  * and hooks attached to them are.
  */
+/**
+ * One of the announcement's dates: day and time, in the sidebar. District only for READ as well,
+ * like `syndication`: a school's form then never holds a date, so a school's save never carries
+ * one back — which post access would refuse as publishing (`isPublishingWrite`).
+ */
+const dateField = (name: string, label: string, description: string): Field => ({
+  name,
+  type: 'date',
+  label,
+  index: true,
+  access: { read: districtOnlyField, create: districtOnlyField, update: districtOnlyField },
+  admin: {
+    description,
+    position: 'sidebar',
+    date: { pickerAppearance: 'dayAndTime' },
+    condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
+  },
+})
+
 export const Posts: CollectionConfig = {
   slug: 'posts',
   labels: { singular: 'Announcement', plural: 'News and announcements' },
@@ -110,7 +125,14 @@ export const Posts: CollectionConfig = {
      * `postNeedsWordsHook` reads the REQUESTED review state, so it runs before
      * `applyReviewState` replaces it with the resolved one.
      */
-    beforeChange: [publishGate, postNeedsWordsHook, stampPublishedDateHook, applyReviewState],
+    /** The dates FIRST: a publish with a future Start becomes a schedule before the gate sees it. */
+    beforeChange: [
+      postDatesHook,
+      publishGate,
+      postNeedsWordsHook,
+      stampPublishedDateHook,
+      applyReviewState,
+    ],
     afterChange: [
       /** FIRST, as on pages: the entry is in the change's transaction. */
       auditChange('posts'),
@@ -118,17 +140,7 @@ export const Posts: CollectionConfig = {
        * Live in seconds on EVERY site that lists it — its own and each it is shared with, before
        * and after this write (`syndicationTargets`), so a site it was taken off stops listing it.
        */
-      makeRevalidateOnPublish({
-        revalidate: async (path, type) => {
-          const { revalidatePath } = await import('next/cache')
-          revalidatePath(path, type)
-        },
-        hostnameFor: tenantHostname,
-        targetsFor: async (doc, previousDoc, req) =>
-          syndicationTargets(doc, previousDoc, await allTenantIds(req)),
-        // An unpublished announcement leaves every site that lists it now, not in an hour.
-        stillLive: liveStillPublished('posts'),
-      }),
+      revalidatePost,
       /** The submitter's email on approve or request changes (`04` §4.5). */
       makeNotifyReviewOutcome({
         collection: 'posts',
@@ -148,7 +160,8 @@ export const Posts: CollectionConfig = {
   },
 
   /** The queue's one click, as on pages. */
-  endpoints: [makeApproveEndpoint('posts')],
+  /** Approve (with optional dates) and the schedule's sweep (`src/collections/endpoints/`). */
+  endpoints: [makeApproveEndpoint('posts'), postScheduleEndpoint],
 
   fields: [
     {
@@ -269,6 +282,23 @@ export const Posts: CollectionConfig = {
         condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
       },
     },
+    /**
+     * The announcement's dates (Jason, 2026-11-04) — rules in `src/lib/post-dates.ts`, applied by
+     * `postDatesHook`, run by `src/jobs/post-schedule.ts`. District only at FIELD level, and out of
+     * a school's sight: a Start would let a school publish by waiting (`isPublishingWrite`). The
+     * district usually sets them when approving, in the queue.
+     */
+    dateField('publishAt', 'Start', 'Optional. Goes live at this time instead of now.'),
+    dateField(
+      'expiresAt',
+      'Expires',
+      'Optional. Taken off the website at this time — unpublished, not deleted.',
+    ),
+    dateField(
+      'featuredUntil',
+      'Featured until',
+      'Optional. Listed first in news lists and feeds until this time.',
+    ),
     {
       /**
        * COPE syndication (`02` §6) — which other sites show this post. District-only at FIELD
@@ -321,6 +351,7 @@ export const Posts: CollectionConfig = {
         { label: 'Being edited', value: 'editing' },
         { label: 'Waiting for approval', value: 'submitted' },
         { label: 'Changes requested', value: 'changes-requested' },
+        { label: 'Approved, goes live at its Start', value: 'scheduled' },
       ],
       admin: { readOnly: true, position: 'sidebar' },
     },

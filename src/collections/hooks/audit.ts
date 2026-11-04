@@ -6,6 +6,7 @@ import type {
 } from 'payload'
 
 import { autoApprovalOf } from '@/collections/hooks/auto-approve'
+import { scheduledRunOf } from '@/collections/hooks/post-dates'
 import { auditEntries, type AuditInput } from '@/lib/audit'
 
 /**
@@ -86,6 +87,7 @@ export const auditChange =
       user: userOf(req),
       restoring: req.context?.isRestoringVersion === true,
       autoApproval: autoApprovalOf(req) ?? undefined,
+      scheduledRun: scheduledRunOf(req) ?? undefined,
     })
     return doc
   }

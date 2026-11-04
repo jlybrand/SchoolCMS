@@ -57,6 +57,36 @@ describe('publishGate', () => {
     ).toThrow(Forbidden)
   })
 
+  it('throws when a school-manager CHANGES a Start the district set', () => {
+    expect(() =>
+      publishGate(
+        hookArgs(
+          managerA,
+          { _status: 'draft', publishAt: '2026-12-01T00:00:00.000Z' },
+          { publishAt: '2026-11-10T13:00:00.000Z' },
+        ),
+      ),
+    ).toThrow(Forbidden)
+  })
+
+  /**
+   * Payload merges the stored document into every write, so a school's save on a post the
+   * district approved for later CARRIES the stored Start. That is not the school scheduling
+   * anything — it is the edit `04` §5 allows, and it drops the approval (Jason, 2026-11-04).
+   */
+  it('lets a school-manager edit a post that carries the district’s Start unchanged', () => {
+    const start = '2026-11-10T13:00:00.000Z'
+    expect(() =>
+      publishGate(hookArgs(managerA, { _status: 'draft', publishAt: start }, { publishAt: start })),
+    ).not.toThrow()
+    // As Payload hands it back: a Date on one side, a string on the other.
+    expect(() =>
+      publishGate(
+        hookArgs(managerA, { _status: 'draft', publishAt: new Date(start) }, { publishAt: start }),
+      ),
+    ).not.toThrow()
+  })
+
   it('throws for system-sync — a non-human actor publishes nothing', () => {
     expect(() => publishGate(hookArgs(systemSync, { _status: 'published' }))).toThrow(Forbidden)
   })

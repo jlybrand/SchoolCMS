@@ -350,6 +350,9 @@ adminTest.describe('district plane — whole screens', () => {
         `@a11y the post form, shared with chosen sites — ${colorScheme}`,
         async ({ page }) => {
           await page.goto(`/admin/collections/posts/${post.id}`)
+          // Payload renders a field only once it scrolls into view, and the dates (Jason,
+          // 2026-11-04) put the sharing settings below the fold at this window size.
+          await page.locator('#field-syndication').scrollIntoViewIfNeeded({ timeout: 20_000 })
           await auditScreen(
             page,
             ...POST_FORM_REPAIRED,

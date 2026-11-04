@@ -240,6 +240,10 @@ describe('submissionStatus — the plain status in "Your recent submissions"', (
   ] as const)('%s → %s', (state, expected) => {
     expect(submissionStatus(state)).toBe(expected)
   })
+
+  it('says an announcement approved for later is approved, not yet live (Jason, 2026-11-04)', () => {
+    expect(submissionStatus('scheduled')).toBe('Approved, goes live later')
+  })
 })
 
 describe('checkNewPost — what a new announcement needs before it is created', () => {

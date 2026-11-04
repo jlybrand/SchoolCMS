@@ -4,6 +4,7 @@ import { relationshipIdOf } from '@/access/predicates'
 import { resolveReview, type ReviewFields, type ReviewState } from '@/access/review-state'
 import type { AuthUser } from '@/access/types'
 import { autoApprovalOf } from '@/collections/hooks/auto-approve'
+import { scheduledRunOf } from '@/collections/hooks/post-dates'
 
 /**
  * Applies the review-state machine to a `pages` write (`04` §4.1).
@@ -25,6 +26,12 @@ import { autoApprovalOf } from '@/collections/hooks/auto-approve'
 const userOf = (req: { user?: unknown }): AuthUser | null => (req?.user as AuthUser) ?? null
 
 const str = (value: unknown): string | null => (typeof value === 'string' ? value : null)
+
+const isFuture = (value: unknown): boolean => {
+  if (value === undefined || value === null || value === '') return false
+  const at = new Date(value instanceof Date ? value : String(value)).getTime()
+  return !Number.isNaN(at) && at > Date.now()
+}
 
 const storedFields = (doc: Record<string, unknown> | undefined): ReviewFields | null => {
   if (!doc) return null
@@ -76,6 +83,16 @@ export const applyReviewState: CollectionBeforeChangeHook = ({
     return { ...data, reviewState: null, reviewNote: null, submittedAt: null, submittedBy: null }
   }
 
+  /**
+   * The schedule job (`src/jobs/post-schedule.ts`): its publish is the approval taking effect, so
+   * the review fields clear; its expiry takes the post down and changes nothing about review.
+   */
+  const run = scheduledRunOf(req)
+  if (run === 'publish' && data?._status === 'published') {
+    return { ...data, reviewState: null, reviewNote: null, submittedAt: null, submittedBy: null }
+  }
+  if (run === 'expire') return data
+
   const restoring = req.context?.isRestoringVersion === true
   /**
    * A restore carries the restored version's `_status`; it publishes only when it is not
@@ -90,6 +107,8 @@ export const applyReviewState: CollectionBeforeChangeHook = ({
     requested: restoring ? undefined : (data?.reviewState as ReviewState | null | undefined),
     note: restoring ? undefined : (data?.reviewNote as string | null | undefined),
     publishing,
+    // A Start still to come: what lets the district ask for `scheduled` (posts only).
+    schedules: isFuture(data?.publishAt !== undefined ? data.publishAt : originalDoc?.publishAt),
     now: new Date().toISOString(),
   })
 

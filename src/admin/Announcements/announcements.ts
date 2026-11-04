@@ -67,6 +67,7 @@ export const announcementStatus = (
   const school = audience === 'school'
   if (doc.reviewState === 'submitted') return school ? 'Sent for approval' : 'Waiting for approval'
   if (doc.reviewState === 'changes-requested') return school ? 'Needs changes' : 'Sent back'
+  if (doc.reviewState === 'scheduled') return school ? 'Approved, goes live later' : 'Scheduled'
   if (doc._status === 'published') return school ? 'On the website' : 'Published'
   return school ? 'Not sent yet' : 'Draft'
 }

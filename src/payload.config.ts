@@ -21,6 +21,7 @@ import { Tenants } from './collections/Tenants'
 import { Theme } from './collections/Theme'
 import { Users } from './collections/Users'
 import { districtDigestTask } from './jobs/district-digest'
+import { postScheduleTask } from './collections/endpoints/post-schedule'
 import { constrainedEditor } from './lib/editor'
 import { validationResponse } from './lib/validation-errors'
 
@@ -194,7 +195,8 @@ export default buildConfig({
    * Proven in tests/integration/tenant-isolation.test.ts.
    */
   jobs: {
-    tasks: [districtDigestTask],
+    /** The digest, and the announcements' Start / Expires / Featured-until sweep. */
+    tasks: [districtDigestTask, postScheduleTask],
     autoRun: [{ cron: '*/5 * * * *', queue: 'default' }],
     access: {
       run: ({ req }) => isDistrictAdmin(req.user as AuthUser | null),

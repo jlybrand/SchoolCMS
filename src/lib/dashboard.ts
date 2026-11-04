@@ -142,6 +142,8 @@ export const CONTENT_ACTIONS = [
   'approve',
   'auto-approve',
   'publish',
+  'schedule',
+  'expire',
   'restore',
   'delete',
 ] as const
@@ -215,6 +217,8 @@ export const activityRow = (
     approve: `${who} approved ${thing}`,
     'auto-approve': `The ${noun} “${title}” by ${who} was published by auto-approval`,
     publish: `${who} published ${thing}`,
+    schedule: `${who} scheduled ${thing} to go live later`,
+    expire: `The ${noun} “${title}” expired and was taken off the website`,
     restore: `${who} restored an earlier version of ${thing}`,
     delete: `${who} deleted ${thing}`,
   }

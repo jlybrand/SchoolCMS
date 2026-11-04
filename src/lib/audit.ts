@@ -1,5 +1,6 @@
 import { GRANT_SCOPES } from '@/access/auto-approval'
 import { relationshipIdOf, tenantIdOf } from '@/access/predicates'
+import { DISTRICT_TIME_ZONE } from '@/lib/queue-age'
 
 /**
  * Which audit entries a write produces (`04` §8, `03` §7, `09` §6). Pure; the hooks in
@@ -25,6 +26,8 @@ export type AuditAction =
   | 'approve'
   | 'auto-approve'
   | 'publish'
+  | 'schedule'
+  | 'expire'
   | 'restore'
   | 'delete'
   | 'login'
@@ -59,6 +62,8 @@ export type AuditInput = {
   restoring?: boolean
   /** Set by `src/collections/hooks/auto-approve.ts` on the publish it makes for a sender. */
   autoApproval?: { scope: string } | undefined
+  /** Set by the post schedule job (`src/collections/hooks/post-dates.ts`) on its own writes. */
+  scheduledRun?: 'publish' | 'expire' | undefined
 }
 
 const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '')
@@ -92,6 +97,7 @@ const reviewAction = (input: AuditInput): AuditAction | null => {
   const after = input.doc ?? {}
   if (input.operation === 'delete') return 'delete'
   if (input.restoring) return 'restore'
+  if (input.scheduledRun === 'expire') return 'expire'
   if (after._status === 'published' && input.autoApproval) return 'auto-approve'
   if (after._status === 'published') {
     return before.reviewState === 'submitted' ? 'approve' : 'publish'
@@ -100,7 +106,20 @@ const reviewAction = (input: AuditInput): AuditAction | null => {
     return 'request-changes'
   }
   if (after.reviewState === 'submitted' && before.reviewState !== 'submitted') return 'submit'
+  // Approved, or scheduled by the district, for a future Start (Jason, 2026-11-04).
+  if (after.reviewState === 'scheduled' && before.reviewState !== 'scheduled') return 'schedule'
   return null
+}
+
+/** A Start as the trail says it: the district's own clock, to the minute. */
+const goesLive = (value: unknown): string => {
+  const at = typeof value === 'string' ? new Date(value) : value instanceof Date ? value : null
+  if (!at || Number.isNaN(at.getTime())) return 'at its scheduled time'
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: DISTRICT_TIME_ZONE,
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(at)
 }
 
 const forReviewed = (input: AuditInput, noun: string): AuditEntry[] => {
@@ -117,7 +136,11 @@ const forReviewed = (input: AuditInput, noun: string): AuditEntry[] => {
           ? text(doc.reviewNote)
           : action === 'auto-approve'
             ? `Under the grant “${GRANT_LABELS.get(input.autoApproval?.scope ?? '') ?? input.autoApproval?.scope ?? ''}”`
-            : '',
+            : action === 'schedule'
+              ? `Goes live ${goesLive(doc.publishAt)}`
+              : action === 'publish' && input.scheduledRun === 'publish'
+                ? 'At its scheduled time'
+                : '',
     }),
   ]
 }

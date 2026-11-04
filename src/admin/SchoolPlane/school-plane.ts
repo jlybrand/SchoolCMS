@@ -263,5 +263,7 @@ export const schoolEditPath = (collection: 'pages' | 'posts', id: number | strin
 export const submissionStatus = (reviewState: unknown): string | null => {
   if (reviewState === 'submitted') return 'Sent for approval'
   if (reviewState === 'changes-requested') return 'Needs changes'
+  // Approved with a Start still to come (Jason, 2026-11-04).
+  if (reviewState === 'scheduled') return 'Approved, goes live later'
   return null
 }

@@ -260,3 +260,69 @@ describe('resolveReview — an unknown stored state', () => {
     expect(fields.reviewState).toBe('submitted')
   })
 })
+
+/**
+ * `scheduled` (Jason, 2026-11-04): approved with a future Start, not live yet. Out of the queue;
+ * the scheduled-publish job puts it live at its time. The submitter stays recorded, so they hear
+ * when it is approved and again when it goes live.
+ */
+describe('resolveReview — scheduled', () => {
+  const scheduled: ReviewFields = { ...submitted, reviewState: 'scheduled' }
+
+  it('the district approves with a future Start: scheduled, submitter kept', () => {
+    expect(
+      fieldsOf(
+        run({ user: districtAdmin, current: submitted, requested: 'scheduled', schedules: true }),
+      ),
+    ).toEqual({
+      reviewState: 'scheduled',
+      reviewNote: null,
+      submittedAt: EARLIER,
+      submittedBy: 'm1',
+    })
+  })
+
+  it('the district schedules its own post, or reschedules', () => {
+    for (const current of [null, editing, scheduled]) {
+      expect(
+        fieldsOf(run({ user: districtAdmin, current, requested: 'scheduled', schedules: true }))
+          .reviewState,
+      ).toBe('scheduled')
+    }
+  })
+
+  it('nobody asks for scheduled without a Start to schedule', () => {
+    expect(run({ user: districtAdmin, current: submitted, requested: 'scheduled' }).ok).toBe(false)
+  })
+
+  it('a sent-back post is not scheduled: the school has not resent it', () => {
+    expect(
+      run({
+        user: districtAdmin,
+        current: changesRequested,
+        requested: 'scheduled',
+        schedules: true,
+      }).ok,
+    ).toBe(false)
+  })
+
+  it('a school manager cannot schedule', () => {
+    expect(
+      run({ user: managerA, current: submitted, requested: 'scheduled', schedules: true }).ok,
+    ).toBe(false)
+  })
+
+  it('a school’s save on a scheduled post drops the approval — its new words were not approved', () => {
+    expect(fieldsOf(run({ user: managerA, current: scheduled })).reviewState).toBe('editing')
+    expect(
+      fieldsOf(run({ user: managerA, current: scheduled, requested: 'submitted' })).reviewState,
+    ).toBe('submitted')
+  })
+
+  it('a district save keeps the schedule; publishing now clears it', () => {
+    expect(fieldsOf(run({ user: districtAdmin, current: scheduled }))).toEqual(scheduled)
+    expect(fieldsOf(run({ user: districtAdmin, current: scheduled, publishing: true }))).toEqual(
+      nothingPending,
+    )
+  })
+})

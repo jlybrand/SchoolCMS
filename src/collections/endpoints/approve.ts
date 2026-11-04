@@ -3,6 +3,7 @@ import type { Endpoint, Payload, PayloadRequest } from 'payload'
 import { checkApproval, type ApprovalRefusal, type VersionToken } from '@/access/approval'
 import { isDistrictAdmin } from '@/access/predicates'
 import type { AuthUser } from '@/access/types'
+import { checkPostDates, type PostDates, type PostDatesInput } from '@/lib/post-dates'
 
 /**
  * `POST /api/pages/:id/approve` and `POST /api/posts/:id/approve` — the queue's one click
@@ -61,7 +62,7 @@ export const latestVersionToken = async (
 ): Promise<VersionToken | null> => (await latestVersion(payload, collection, id))?.token ?? null
 
 /** A version's content, without the fields Payload owns. */
-const publishable = (version: Record<string, unknown>): Record<string, unknown> => {
+export const publishable = (version: Record<string, unknown>): Record<string, unknown> => {
   const { id: _id, createdAt: _c, updatedAt: _u, _status: _s, ...content } = version
   return content
 }
@@ -71,6 +72,12 @@ export const approveDocument = async (
   collection: ReviewedCollection,
   id: number | string,
   seen: VersionToken | null | undefined,
+  /**
+   * An announcement's dates, set as it is approved (Jason, 2026-11-04) — already checked
+   * (`checkPostDates`). A future Start SCHEDULES instead of publishing: the approved version is
+   * saved as a draft marked `scheduled`, so anything already live stays live until its time.
+   */
+  dates?: { dates: PostDates; schedules: boolean },
 ): Promise<ApproveResult> => {
   const user = req.user as AuthUser | null
   // Before any read, so a refusal reveals nothing about the page.
@@ -87,10 +94,23 @@ export const approveDocument = async (
   })
   if (!check.ok) return check
 
+  const content = { ...publishable(latest.version), ...(dates?.dates ?? {}) }
+  if (dates?.schedules) {
+    await req.payload.update({
+      collection,
+      id,
+      data: { ...content, _status: 'draft', reviewState: 'scheduled' } as never,
+      draft: true,
+      req,
+      overrideAccess: false,
+    })
+    return { ok: true }
+  }
+
   await req.payload.update({
     collection,
     id,
-    data: { ...publishable(latest.version), _status: 'published' },
+    data: { ...content, _status: 'published' },
     draft: false,
     req,
     overrideAccess: false,
@@ -133,7 +153,19 @@ export const makeApproveEndpoint = (collection: ReviewedCollection): Endpoint =>
       return Response.json({ error: APPROVE_MESSAGES['not-found'] }, { status: 404 })
     }
     const body: unknown = await req.json?.().catch(() => null)
-    const result = await approveDocument(req, collection, id, tokenFrom(body))
+    // Posts may carry dates (Jason, 2026-11-04); refused in words before anything is written.
+    let dates: { dates: PostDates; schedules: boolean } | undefined
+    if (collection === 'posts') {
+      const check = checkPostDates((body ?? {}) as PostDatesInput, new Date())
+      if (!check.ok) {
+        return Response.json(
+          { error: Object.values(check.errors)[0], errors: check.errors, reason: 'dates' },
+          { status: 400 },
+        )
+      }
+      dates = check
+    }
+    const result = await approveDocument(req, collection, id, tokenFrom(body), dates)
     if (result.ok) return Response.json({ ok: true })
     return Response.json(
       { error: APPROVE_MESSAGES[result.reason], reason: result.reason },

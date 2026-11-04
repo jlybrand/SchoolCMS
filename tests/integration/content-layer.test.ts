@@ -630,6 +630,50 @@ describe('posts on the public site', () => {
     expect(posts.find((x) => x.id === String(p.publishedPostB))?.homeHostname).toBe('b.localhost')
   })
 
+  /** Featured until (Jason, 2026-11-04): first in lists until then, whatever its date. */
+  it('listPosts puts a featured post first, and back in date order once its time passes', async () => {
+    const ctx = await ctxFor('a.localhost')
+    const hour = 60 * 60 * 1000
+    // Straight to the live row: a time already past is not something the form would accept.
+    const feature = (id: number, until: string) =>
+      payload.db.updateOne({
+        collection: 'posts',
+        where: { id: { equals: id } },
+        data: { featuredUntil: until },
+      })
+    const older = await payload.create({
+      collection: 'posts',
+      data: {
+        tenant: fixtures.tenantA,
+        board: fixtures.boardA,
+        title: 'Older but featured',
+        body: {
+          root: {
+            type: 'root',
+            children: [{ type: 'paragraph', children: [{ type: 'text', text: 'Featured.' }] }],
+          },
+        },
+        slug: `older-featured-${Date.now()}`,
+        visibility: 'public',
+        publishedDate: new Date(Date.now() - 400 * 24 * hour).toISOString(),
+        _status: 'published',
+      } as never,
+      user: fixtures.districtAdmin,
+      overrideAccess: true,
+    })
+    try {
+      await feature(older.id as number, new Date(Date.now() + 24 * hour).toISOString())
+      expect((await listPosts(ctx, { limit: 3 }))[0]?.id).toBe(String(older.id))
+
+      await feature(older.id as number, new Date(Date.now() - hour).toISOString())
+      const ids = (await listPosts(ctx, { limit: 100 })).map((post) => post.id)
+      expect(ids[0]).not.toBe(String(older.id))
+      expect(ids).toContain(String(older.id))
+    } finally {
+      await payload.delete({ collection: 'posts', id: older.id, overrideAccess: true })
+    }
+  })
+
   it('listPostPaths is the site’s OWN published, public posts — what its sitemap names', async () => {
     const paths = await listPostPaths(await ctxFor('a.localhost'))
     expect(paths).toContain('/news/published-post-a')
