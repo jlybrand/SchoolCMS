@@ -279,11 +279,11 @@ A school with one assignment is never asked for; with several, a radio group ask
 | `src/admin/Approvals/page-diff.ts`               | `diffPage` (pure)                                                         |
 | `src/lib/queue-age.ts`                           | `describeWait`, `businessDaysBetween`, `OVERDUE_BUSINESS_DAYS = 3`        |
 | `src/admin/Approvals/request-changes.ts`         | `checkNote` (pure)                                                        |
-| `src/admin/Approvals/queue-data.ts`              | `loadQueue`, `countWaiting`                                               |
+| `src/admin/Approvals/queue-data.ts`              | `loadQueue` (`countWaiting` removed — `docs/phases/05` §18)               |
 | `src/admin/Approvals/ApprovalsView.tsx`          | `views.approvals` at `/admin/approvals`                                   |
 | `src/admin/Approvals/ApprovalItem.tsx`           | One item: diff, approve, request changes                                  |
 | `src/admin/Approvals/PageDiffView.tsx`           | Renders a `PageDiff`                                                      |
-| `src/admin/Approvals/WaitingBanner.tsx`          | `beforeDashboard` — count + link, district only                           |
+| ~~`src/admin/Approvals/WaitingBanner.tsx`~~      | replaced by the dashboard's Approvals panel (`docs/phases/05` §18)        |
 | `src/admin/Approvals/ApprovalsNavLink.tsx`       | `afterNavLinks` — "Approvals", district only                              |
 
 Tests: `tests/unit/access/approval.test.ts`, `tests/unit/admin/{page-diff,request-changes}.test.ts`, `tests/unit/lib/queue-age.test.ts`,

@@ -28,8 +28,9 @@ import { AnnouncementsView as AnnouncementsView_424d1d2ce7b62f2a20ccd2961f5c622f
 import { BoardsListView as BoardsListView_a022c7e66bfcc000431bd70c768a08d6 } from '../../../admin/Boards/BoardsListView'
 import { GlobalViewRedirect as GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
 import { ApprovalsNavLink as ApprovalsNavLink_50736d5f53ca3024920ebd70347f12c2 } from '../../../admin/Approvals/ApprovalsNavLink'
-import { WaitingBanner as WaitingBanner_e51af2c63d800fe378f9f84cfaf25672 } from '../../../admin/Approvals/WaitingBanner'
+import { DistrictDashboard as DistrictDashboard_edc4519ec276aaac7e06cda8a41f999e } from '../../../admin/Dashboard/DistrictDashboard'
 import { GrantsPanel as GrantsPanel_186d64a3916edf6aa31629c5b61e084c } from '../../../admin/Grants/GrantsPanel'
+import { EverythingElseHeading as EverythingElseHeading_edc4519ec276aaac7e06cda8a41f999e } from '../../../admin/Dashboard/DistrictDashboard'
 import { TenantSelector as TenantSelector_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
 import { SchoolNameNav as SchoolNameNav_b0a332a2ac8ea8004fb5781337ffc4fc } from '../../../admin/SchoolPlane/SchoolNameNav'
 import { A11yPatch as A11yPatch_f47d732b0bfe7e156f459bc74057afca } from '../../../admin/A11yPatch/A11yPatch'
@@ -73,8 +74,9 @@ export const importMap = {
   "/admin/Boards/BoardsListView#BoardsListView": BoardsListView_a022c7e66bfcc000431bd70c768a08d6,
   "@payloadcms/plugin-multi-tenant/rsc#GlobalViewRedirect": GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62,
   "/admin/Approvals/ApprovalsNavLink#ApprovalsNavLink": ApprovalsNavLink_50736d5f53ca3024920ebd70347f12c2,
-  "/admin/Approvals/WaitingBanner#WaitingBanner": WaitingBanner_e51af2c63d800fe378f9f84cfaf25672,
+  "/admin/Dashboard/DistrictDashboard#DistrictDashboard": DistrictDashboard_edc4519ec276aaac7e06cda8a41f999e,
   "/admin/Grants/GrantsPanel#GrantsPanel": GrantsPanel_186d64a3916edf6aa31629c5b61e084c,
+  "/admin/Dashboard/DistrictDashboard#EverythingElseHeading": EverythingElseHeading_edc4519ec276aaac7e06cda8a41f999e,
   "@payloadcms/plugin-multi-tenant/rsc#TenantSelector": TenantSelector_d6d5f193a167989e2ee7d14202901e62,
   "/admin/SchoolPlane/SchoolNameNav#SchoolNameNav": SchoolNameNav_b0a332a2ac8ea8004fb5781337ffc4fc,
   "/admin/A11yPatch/A11yPatch#A11yPatch": A11yPatch_f47d732b0bfe7e156f459bc74057afca,

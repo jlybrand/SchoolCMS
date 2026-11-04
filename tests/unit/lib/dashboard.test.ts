@@ -1,0 +1,209 @@
+import { describe, expect, it } from 'vitest'
+
+import {
+  activityRow,
+  approvalSummary,
+  CONTENT_ACTIONS,
+  keyPageKind,
+  STALE_DAYS,
+  staleKeyPages,
+  staleSites,
+} from '@/lib/dashboard'
+
+/**
+ * The district dashboard (`04` §3.1; layout decided by Jason, 2026-11-04): approvals, what needs
+ * freshening, recent activity. The pure decisions under it. The panels are custom admin React,
+ * locked by `tests/e2e/district-dashboard.spec.ts` per CLAUDE.md's exception table.
+ */
+
+const TZ = 'America/New_York'
+// A Wednesday, mid-afternoon in New York.
+const NOW = new Date('2026-11-04T19:00:00Z')
+const daysAgo = (n: number) => new Date(NOW.getTime() - n * 24 * 60 * 60 * 1000).toISOString()
+
+describe('approvalSummary — the queue in one line (`04` §3.1 item 1)', () => {
+  it('says nothing is waiting when nothing is', () => {
+    expect(approvalSummary([], NOW, TZ)).toEqual({
+      count: 0,
+      text: 'Nothing is waiting for approval.',
+      overdue: 0,
+    })
+  })
+
+  it('counts, names the oldest wait, and counts the overdue', () => {
+    const summary = approvalSummary(
+      [{ submittedAt: daysAgo(1) }, { submittedAt: daysAgo(7) }, { submittedAt: daysAgo(0) }],
+      NOW,
+      TZ,
+    )
+    expect(summary.count).toBe(3)
+    expect(summary.overdue).toBe(1)
+    expect(summary.text).toBe('3 submissions are waiting. The oldest was sent 7 days ago.')
+  })
+
+  it('reads in the singular for one', () => {
+    expect(approvalSummary([{ submittedAt: daysAgo(0) }], NOW, TZ).text).toBe(
+      '1 submission is waiting. It was sent today.',
+    )
+  })
+
+  it('does not let an unknown send time hide a known oldest', () => {
+    const summary = approvalSummary([{ submittedAt: null }, { submittedAt: daysAgo(2) }], NOW, TZ)
+    expect(summary.text).toBe('2 submissions are waiting. The oldest was sent 2 days ago.')
+  })
+})
+
+describe('staleSites — sites with no published change in 90 days (`04` §3.1 item 2)', () => {
+  const sites = [
+    { id: '1', name: 'School A' },
+    { id: '2', name: 'School B' },
+    { id: '3', name: 'School C' },
+  ]
+
+  it('is 90 days, from the spec', () => {
+    expect(STALE_DAYS).toBe(90)
+  })
+
+  it('lists only sites past the line, longest-unchanged first', () => {
+    const last = new Map([
+      ['1', daysAgo(10)],
+      ['2', daysAgo(200)],
+      ['3', daysAgo(120)],
+    ])
+    expect(staleSites(sites, last, NOW, TZ)).toEqual([
+      { id: '2', name: 'School B', last: expect.stringMatching(/^Last changed /) },
+      { id: '3', name: 'School C', last: expect.stringMatching(/^Last changed /) },
+    ])
+  })
+
+  it('lists a site with nothing published at all, first', () => {
+    const last = new Map([
+      ['1', daysAgo(10)],
+      ['2', daysAgo(10)],
+    ])
+    expect(staleSites(sites, last, NOW, TZ)).toEqual([
+      { id: '3', name: 'School C', last: 'Nothing published yet' },
+    ])
+  })
+
+  it('treats exactly 90 days as not yet stale', () => {
+    expect(staleSites([sites[0]!], new Map([['1', daysAgo(90)]]), NOW, TZ)).toEqual([])
+    expect(staleSites([sites[0]!], new Map([['1', daysAgo(91)]]), NOW, TZ)).toHaveLength(1)
+  })
+})
+
+describe('keyPageKind — which pages are key: home, contact, calendar', () => {
+  it('is the front page by its slug, at the top of the tree', () => {
+    expect(keyPageKind({ slug: 'home', parent: null, pageType: 'standard' })).toBe('Home page')
+    expect(keyPageKind({ slug: 'home', parent: 4, pageType: 'standard' })).toBeNull()
+  })
+
+  it('is contact and calendar by their page type', () => {
+    expect(keyPageKind({ slug: 'reach-us', parent: null, pageType: 'contact' })).toBe(
+      'Contact page',
+    )
+    expect(keyPageKind({ slug: 'dates', parent: 2, pageType: 'calendar' })).toBe('Calendar page')
+  })
+
+  it('is nothing else', () => {
+    expect(keyPageKind({ slug: 'about', parent: null, pageType: 'about' })).toBeNull()
+  })
+})
+
+describe('staleKeyPages — key pages unchanged in 90 days', () => {
+  it('lists the stale ones, oldest first, with their site and kind', () => {
+    const rows = staleKeyPages(
+      [
+        { id: 1, site: 'School A', title: 'Home', kind: 'Home page', updatedAt: daysAgo(5) },
+        {
+          id: 2,
+          site: 'School A',
+          title: 'Contact us',
+          kind: 'Contact page',
+          updatedAt: daysAgo(100),
+        },
+        {
+          id: 3,
+          site: 'School B',
+          title: 'Calendar',
+          kind: 'Calendar page',
+          updatedAt: daysAgo(300),
+        },
+      ],
+      NOW,
+      TZ,
+    )
+    expect(rows.map((r) => r.id)).toEqual([3, 2])
+    expect(rows[0]).toMatchObject({
+      site: 'School B',
+      title: 'Calendar',
+      kind: 'Calendar page',
+      href: '/admin/collections/pages/3',
+      last: expect.stringMatching(/^Last changed /),
+    })
+  })
+})
+
+describe('activityRow — one line of the audit trail, content actions only', () => {
+  const base = {
+    contentType: 'posts',
+    documentId: '9',
+    documentTitle: 'Lunch menu',
+    actorLabel: 'Jane Doe',
+    school: 'School A',
+    createdAt: daysAgo(0),
+    autoApproved: false,
+  }
+
+  it('excludes sign-ins and account changes (Jason, 2026-11-04)', () => {
+    expect(CONTENT_ACTIONS).not.toContain('login')
+    for (const action of ['user-create', 'user-change', 'user-delete', 'grant-change']) {
+      expect(CONTENT_ACTIONS).not.toContain(action)
+    }
+    expect(activityRow({ ...base, action: 'login' }, NOW, TZ)).toBeNull()
+  })
+
+  it('says what happened in words, and links to the item', () => {
+    expect(activityRow({ ...base, action: 'submit' }, NOW, TZ)).toEqual({
+      school: 'School A',
+      sentence: 'Jane Doe sent the announcement “Lunch menu” for approval',
+      href: '/admin/collections/posts/9',
+      when: expect.any(String),
+    })
+    expect(
+      activityRow({ ...base, contentType: 'pages', action: 'approve' }, NOW, TZ)?.sentence,
+    ).toBe('Jane Doe approved the page “Lunch menu”')
+    expect(activityRow({ ...base, action: 'request-changes' }, NOW, TZ)?.sentence).toBe(
+      'Jane Doe sent the announcement “Lunch menu” back for changes',
+    )
+    expect(activityRow({ ...base, action: 'publish' }, NOW, TZ)?.sentence).toBe(
+      'Jane Doe published the announcement “Lunch menu”',
+    )
+    expect(activityRow({ ...base, action: 'auto-approve' }, NOW, TZ)?.sentence).toBe(
+      'The announcement “Lunch menu” by Jane Doe was published by auto-approval',
+    )
+    expect(activityRow({ ...base, action: 'restore' }, NOW, TZ)?.sentence).toBe(
+      'Jane Doe restored an earlier version of the announcement “Lunch menu”',
+    )
+  })
+
+  it('does not link to something deleted', () => {
+    const row = activityRow({ ...base, action: 'delete' }, NOW, TZ)
+    expect(row?.sentence).toBe('Jane Doe deleted the announcement “Lunch menu”')
+    expect(row?.href).toBeNull()
+  })
+
+  it('names the district when there is no school', () => {
+    expect(activityRow({ ...base, school: null, action: 'publish' }, NOW, TZ)?.school).toBe(
+      'District',
+    )
+  })
+
+  it('says when, briefly', () => {
+    const at = (iso: string) => activityRow({ ...base, action: 'publish', createdAt: iso }, NOW, TZ)
+    expect(at(new Date(NOW.getTime() - 5 * 60 * 1000).toISOString())?.when).toBe('5 min ago')
+    expect(at(new Date(NOW.getTime() - 3 * 60 * 60 * 1000).toISOString())?.when).toBe('3 h ago')
+    expect(at(daysAgo(1))?.when).toBe('Yesterday')
+    expect(at(daysAgo(20))?.when).toBe('Oct 15')
+  })
+})
