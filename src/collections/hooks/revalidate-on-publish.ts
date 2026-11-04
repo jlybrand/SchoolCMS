@@ -224,7 +224,7 @@ export const liveStillPublished =
  * The announcements' revalidation, as `posts` registers it: live in seconds on EVERY site that
  * lists it — its own and each it is shared with, before and after the write
  * (`syndicationTargets`), so a site it was taken off stops listing it. Named so the schedule job
- * (`src/collections/endpoints/post-schedule.ts`) can re-run it when a post stops being featured,
+ * (`sr./collections/endpoints/schedule.ts`) can re-run it when a post stops being featured,
  * which is not a write.
  */
 export const revalidatePost = makeRevalidateOnPublish({

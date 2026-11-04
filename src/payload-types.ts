@@ -121,7 +121,7 @@ export interface Config {
   jobs: {
     tasks: {
       districtDigest: TaskDistrictDigest;
-      postSchedule: TaskPostSchedule;
+      publishSchedule: TaskPublishSchedule;
       inline: {
         input: unknown;
         output: unknown;
@@ -292,7 +292,7 @@ export interface Page {
    */
   hideFromSearchEngines?: boolean | null;
   /**
-   * Optional. Goes live at this time instead of immediately.
+   * Optional. Publishing with a time still to come schedules the page: it goes live then.
    */
   publishAt?: string | null;
   /**
@@ -323,7 +323,7 @@ export interface Page {
      */
     description?: string | null;
   };
-  reviewState?: ('editing' | 'submitted' | 'changes-requested') | null;
+  reviewState?: ('editing' | 'submitted' | 'changes-requested' | 'scheduled') | null;
   reviewNote?: string | null;
   submittedAt?: string | null;
   submittedBy?: (number | null) | User;
@@ -891,7 +891,7 @@ export interface PayloadJob {
     | {
         executedAt: string;
         completedAt: string;
-        taskSlug: 'inline' | 'districtDigest' | 'postSchedule';
+        taskSlug: 'inline' | 'districtDigest' | 'publishSchedule';
         taskID: string;
         input?:
           | {
@@ -924,7 +924,7 @@ export interface PayloadJob {
         id?: string | null;
       }[]
     | null;
-  taskSlug?: ('inline' | 'districtDigest' | 'postSchedule') | null;
+  taskSlug?: ('inline' | 'districtDigest' | 'publishSchedule') | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
@@ -1511,9 +1511,9 @@ export interface TaskDistrictDigest {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "TaskPostSchedule".
+ * via the `definition` "TaskPublishSchedule".
  */
-export interface TaskPostSchedule {
+export interface TaskPublishSchedule {
   input?: unknown;
   output?: unknown;
 }

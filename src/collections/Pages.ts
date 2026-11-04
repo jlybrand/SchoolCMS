@@ -21,6 +21,7 @@ import { auditChange, auditDelete } from '@/collections/hooks/audit'
 import { validateLinkMode } from '@/collections/hooks/linked-page'
 import { restoreIsDistrictOnly } from '@/collections/hooks/page-history'
 import { composedPagesAreDistrictOnly, publishGate } from '@/collections/hooks/publish-gate'
+import { pageDatesHook } from '@/collections/hooks/scheduled-dates'
 import { makeApproveEndpoint } from '@/collections/endpoints/approve'
 import { applyReviewState } from '@/collections/hooks/review-state'
 import {
@@ -142,7 +143,8 @@ export const Pages: CollectionConfig = {
      * `applyReviewState` runs LAST: by then a school manager's publishing write has already
      * been refused, so the only publish it ever sees is a district admin's approve.
      */
-    beforeChange: [publishGate, composedPagesAreDistrictOnly, applyReviewState],
+    /** The Start FIRST: a publish with one still to come becomes a schedule before the gate. */
+    beforeChange: [pageDatesHook, publishGate, composedPagesAreDistrictOnly, applyReviewState],
     /**
      * A publish goes live in seconds, not at the next hourly ISR (`05` Phase 4 exit). Next's
      * `revalidatePath` is imported lazily: this config also loads outside Next (the seed, the
@@ -462,16 +464,24 @@ export const Pages: CollectionConfig = {
       type: 'date',
       // A clone is not scheduled: going live at the original's time is a surprise nobody chose.
       hooks: { beforeDuplicate: [() => null] },
+      label: 'Start',
       /**
        * District-only at FIELD level, on top of the access functions and the publish-gate
        * hook. A scheduled publish is a publish (CLAUDE.md rule 3) — leaving this open would
-       * let a school-manager publish by waiting.
+       * let a school-manager publish by waiting. READ too (Jason, 2026-11-04): a school's form that
+       * held the Start would send it back on save, which page access refuses as publishing.
+       *
+       * Acted on since 2026-11-04: publishing with a Start still to come schedules the page
+       * (`pageDatesHook`), and the schedule job puts it live (`src/collections/endpoints/schedule.ts`).
        */
-      access: { create: districtOnlyField, update: districtOnlyField },
+      access: { read: districtOnlyField, create: districtOnlyField, update: districtOnlyField },
       admin: {
         className: SETTING_CLASS,
-        description: 'Optional. Goes live at this time instead of immediately.',
+        description:
+          'Optional. Publishing with a time still to come schedules the page: it goes live then.',
         position: 'sidebar',
+        date: { pickerAppearance: 'dayAndTime' },
+        condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
       },
     },
     {
@@ -600,7 +610,10 @@ export const Pages: CollectionConfig = {
         { label: 'Being edited', value: 'editing' },
         { label: 'Waiting for approval', value: 'submitted' },
         { label: 'Changes requested', value: 'changes-requested' },
+        { label: 'Scheduled, goes live at its Start', value: 'scheduled' },
       ],
+      // A clone starts fresh: it has not been sent, approved or scheduled (its Start is cleared too).
+      hooks: { beforeDuplicate: [() => null] },
       admin: { readOnly: true, position: 'sidebar' },
     },
     {

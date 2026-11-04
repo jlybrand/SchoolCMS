@@ -4,7 +4,7 @@ import { relationshipIdOf } from '@/access/predicates'
 import { resolveReview, type ReviewFields, type ReviewState } from '@/access/review-state'
 import type { AuthUser } from '@/access/types'
 import { autoApprovalOf } from '@/collections/hooks/auto-approve'
-import { scheduledRunOf } from '@/collections/hooks/post-dates'
+import { scheduledRunOf } from '@/collections/hooks/scheduled-dates'
 
 /**
  * Applies the review-state machine to a `pages` write (`04` §4.1).

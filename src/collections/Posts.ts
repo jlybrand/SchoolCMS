@@ -11,7 +11,6 @@ import { districtOnlyField } from '@/access/tenant-scoped'
 import type { AuthUser } from '@/access/types'
 import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 import { makeApproveEndpoint } from '@/collections/endpoints/approve'
-import { postScheduleEndpoint } from '@/collections/endpoints/post-schedule'
 import { auditChange, auditDelete } from '@/collections/hooks/audit'
 import { autoApprovePost } from '@/collections/hooks/auto-approve'
 import {
@@ -30,7 +29,7 @@ import {
   stampPublishedDateHook,
   uniquePostSlug,
 } from '@/collections/hooks/post-hooks'
-import { postDatesHook } from '@/collections/hooks/post-dates'
+import { postDatesHook } from '@/collections/hooks/scheduled-dates'
 import { publishGate } from '@/collections/hooks/publish-gate'
 import { applyReviewState } from '@/collections/hooks/review-state'
 import { SYNDICATION_SCOPES } from '@/content/syndication'
@@ -160,8 +159,8 @@ export const Posts: CollectionConfig = {
   },
 
   /** The queue's one click, as on pages. */
-  /** Approve (with optional dates) and the schedule's sweep (`src/collections/endpoints/`). */
-  endpoints: [makeApproveEndpoint('posts'), postScheduleEndpoint],
+  /** Approve, with optional dates (`src/collections/endpoints/approve.ts`). */
+  endpoints: [makeApproveEndpoint('posts')],
 
   fields: [
     {
@@ -353,6 +352,8 @@ export const Posts: CollectionConfig = {
         { label: 'Changes requested', value: 'changes-requested' },
         { label: 'Approved, goes live at its Start', value: 'scheduled' },
       ],
+      // A clone starts fresh: it has not been sent, approved or scheduled (its Start is cleared too).
+      hooks: { beforeDuplicate: [() => null] },
       admin: { readOnly: true, position: 'sidebar' },
     },
     {

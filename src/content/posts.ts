@@ -127,7 +127,7 @@ export const listPosts = async (
   /**
    * Featured until (Jason, 2026-11-04): featured posts first, then the rest — each newest first.
    * Two reads rather than a sort, so a featured post is listed however old it is. The schedule
-   * job refreshes the sites when a post's time passes (`src/collections/endpoints/post-schedule.ts`).
+   * job refreshes the sites when a post's time passes (`sr./collections/endpoints/schedule.ts`).
    */
   const featured = await read({ featuredUntil: { greater_than: now } }, cap)
   const rest = await read(

@@ -221,3 +221,21 @@ describe('outcomeEmail — an announcement approved for later', () => {
     expect(email.html).toContain('It goes live on Nov 10, 2026, 8:00 AM.')
   })
 })
+
+describe('outcomeEmail — a page approved for later', () => {
+  it('speaks of the changes, and when they go live', () => {
+    const email = outcomeEmail({
+      outcome: 'scheduled',
+      noun: 'page',
+      title: 'Bus routes',
+      school: 'School A',
+      pageUrl: 'https://a.example/bus-routes',
+      editUrl: 'https://admin.example/admin/collections/pages/4',
+      goesLive: '2026-11-10T13:00:00.000Z',
+    })
+    expect(email.subject).toBe('Your changes are approved: Bus routes')
+    expect(email.text).toContain(
+      'The district approved your changes to “Bus routes” on School A’s website. They go live on Nov 10, 2026, 8:00 AM.',
+    )
+  })
+})

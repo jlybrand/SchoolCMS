@@ -114,15 +114,18 @@ export const outcomeEmail = (input: OutcomeEmailInput): Email => {
    * below, follows when it goes live.
    */
   if (input.outcome === 'scheduled') {
-    const heading = 'Your announcement is approved'
-    const when = input.goesLive
-      ? ` It goes live on ${new Intl.DateTimeFormat('en-US', {
+    const page = input.noun !== 'announcement'
+    const heading = page ? 'Your changes are approved' : 'Your announcement is approved'
+    const at = input.goesLive
+      ? `on ${new Intl.DateTimeFormat('en-US', {
           timeZone: DISTRICT_TIME_ZONE,
           dateStyle: 'medium',
           timeStyle: 'short',
-        }).format(new Date(input.goesLive))}.`
-      : ' It goes live at the time the district set.'
-    const sentence = `The district approved your announcement “${title}” for ${school}’s website.${when}`
+        }).format(new Date(input.goesLive))}`
+      : 'at the time the district set'
+    const sentence = page
+      ? `The district approved your changes to “${title}” on ${school}’s website. They go live ${at}.`
+      : `The district approved your announcement “${title}” for ${school}’s website. It goes live ${at}.`
     return {
       subject: `${heading}: ${title}`,
       text: [sentence, '', SIGN_OFF].join('\n'),

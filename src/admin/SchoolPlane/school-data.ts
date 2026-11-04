@@ -82,16 +82,8 @@ export const listMySubmissions = async (req: PayloadRequest): Promise<SchoolPage
       where: {
         and: [
           { submittedBy: { equals: req.user!.id } },
-          // Posts also show one approved for later (Jason, 2026-11-04). Pages have no such state,
-          // and naming one their column does not hold would be a database error.
-          {
-            reviewState: {
-              in:
-                collection === 'posts'
-                  ? ['submitted', 'changes-requested', 'scheduled']
-                  : ['submitted', 'changes-requested'],
-            },
-          },
+          // And one approved for later (Jason, 2026-11-04).
+          { reviewState: { in: ['submitted', 'changes-requested', 'scheduled'] } },
         ],
       },
       select: { title: true, reviewState: true, updatedAt: true },
