@@ -36,6 +36,18 @@ import { missingSchool } from '@/access/user-school'
  * (`includeDefaultField: false` in src/payload.config.ts) so it can be hidden from a school
  * manager — see the field.
  */
+/**
+ * Keeps a field off a school manager's own account page (Jason, 2026-11-04). Everything on this
+ * collection is a permission or system state they cannot change, so to them it is noise — and
+ * Payload's selects fail axe even read-only. They see their email, name, password and
+ * "Your school". Presentation only: `update` is district-only regardless.
+ */
+const notForSchoolManagers = (
+  _data: unknown,
+  _siblingData: unknown,
+  { user }: { user: unknown },
+): boolean => !sendsForApproval(user as AuthUser | null)
+
 export const Users: CollectionConfig = {
   slug: 'users',
   auth: {
@@ -147,6 +159,7 @@ export const Users: CollectionConfig = {
         update: denyAllField,
       },
       admin: {
+        condition: notForSchoolManagers,
         readOnly: true,
         description:
           'Durable Entra identity (`03` §2). UNUSED under interim local auth — kept as the seam so existing accounts can be linked to Entra objects at switchover rather than recreated.',
@@ -161,13 +174,7 @@ export const Users: CollectionConfig = {
       options: ROLES.map((value) => ({ label: value, value })),
       access: { update: districtOnlyField },
       admin: {
-        /**
-         * Not on a school manager's own account page (Jason, 2026-11-04, with the tenants array):
-         * they cannot change it, and Payload's select fails axe even read-only (an unnamed
-         * combobox and nested-interactive chips — see src/admin/Grants/GrantScopesField.tsx).
-         * The district still sees it.
-         */
-        condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
+        condition: notForSchoolManagers,
         description:
           'Refreshed from Entra group membership at login (`02` §7). system-sync is a non-human actor for the PowerSchool sync — never assign it to a person (`11` §8).',
       },
@@ -195,6 +202,7 @@ export const Users: CollectionConfig = {
       options: GRANT_SCOPES.map(({ label, value }) => ({ label, value })),
       access: { update: districtOnlyField },
       admin: {
+        condition: notForSchoolManagers,
         components: { Field: '/admin/Grants/GrantScopesField#GrantScopesField' },
         description:
           'OFF BY DEFAULT. Granted per named person by a district-admin, deliberately, and revocable at any time. Changes are audited and surfaced on the district dashboard.',
@@ -227,6 +235,7 @@ export const Users: CollectionConfig = {
       defaultValue: false,
       access: { update: denyAllField },
       admin: {
+        condition: notForSchoolManagers,
         readOnly: true,
         description:
           'The single local admin for initial setup and Entra misconfiguration recovery (`02` §7). MFA-protected, audited, excluded from normal login paths. Rotate the credential after any use.',
@@ -236,7 +245,7 @@ export const Users: CollectionConfig = {
       name: 'lastLoginAt',
       type: 'date',
       access: { update: denyAllField },
-      admin: { readOnly: true },
+      admin: { condition: notForSchoolManagers, readOnly: true },
     },
     {
       /** A school manager's school, as words — they see this instead of `tenants` below. */
@@ -252,13 +261,12 @@ export const Users: CollectionConfig = {
        * The plugin's field, unchanged (`tenantsArrayField` is its own builder), so the schema and
        * the JWT are exactly what injection produced. Last, where injection put it.
        *
-       * Hidden from a school manager (Jason, 2026-11-04): a greyed-out dropdown naming their
-       * school reads as a switcher, which `04` §2.1 rules out. Hiding is presentation only —
-       * `update` is district-only on this collection, so they could never change it anyway.
+       * Hidden from a school manager: a greyed-out dropdown naming their school reads as a
+       * switcher, which `04` §2.1 rules out.
        */
       ...tenantsArrayField({}),
       admin: {
-        condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
+        condition: notForSchoolManagers,
       },
     },
   ],

@@ -229,7 +229,7 @@ test.describe('school plane — their school, not a tenant picker', () => {
     await expect(nav.getByRole('link', { name: 'Users', exact: true })).toHaveCount(0)
   })
 
-  test('their account names their school as words, with no tenant or role dropdown', async ({
+  test('their account shows only what is theirs: email, name, password and their school', async ({
     page,
   }) => {
     await page.goto('/admin/account')
@@ -237,7 +237,12 @@ test.describe('school plane — their school, not a tenant picker', () => {
       timeout: 20_000,
     })
     await expect(page.locator('[id^="field-tenants"]')).toHaveCount(0)
-    await expect(page.locator('#field-roles')).toHaveCount(0)
+    // Only what is theirs: email, name, password, school (Jason, 2026-11-04).
+    for (const field of ['roles', 'entraObjectId', 'autoApprove', 'isBreakGlass', 'lastLoginAt']) {
+      await expect(page.locator(`#field-${field}, [id^="field-${field}"]`)).toHaveCount(0)
+    }
+    await expect(page.locator('#field-email')).toBeVisible()
+    await expect(page.locator('#field-name')).toBeVisible()
   })
 
   test('News and announcements leads to the announcement task', async ({ page }) => {
