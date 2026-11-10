@@ -1135,3 +1135,34 @@ Lost on purpose: the words of page VERSIONS saved before §23, which only lived 
 - `tests/unit/seo.test.ts` — a page describes itself from its first Text section
 - `tests/integration/content-layer.test.ts` — page links and reuse rehoming inside a Text section
 - e2e — `linked-pages.spec.ts` reuses a district page whose words are a Text section
+
+## 25. Live Preview (Jason, 2026-11-10)
+
+The page as it will look, beside its form, following the editor's typing on each autosave.
+Payload's built-in Live Preview panel frames a DD2 route; the route reads the draft as the person
+signed in. Chosen over a drag-and-drop canvas after Puck failed axe and keyboard use (spike,
+2026-11-10).
+
+| File                                                  | Holds                                                                                                                                                                                                                                                                                     |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/collections/Pages.ts`                            | `admin.livePreview`: `url` → `/admin-preview/pages/<id>` (null until saved); breakpoints Phone 375×667, Tablet 768×1024, Desktop 1280×800                                                                                                                                                 |
+| `src/content/preview.ts`                              | `getPreviewer(headers)` → opaque `Previewer` (`payload.auth` on the session cookie) or null; `getPagePreview(id, previewer)` → `{ hostname, title, layout }` from `findByID(draft: true, depth: 1, user, overrideAccess: false)`, or null (no user, non-numeric id, no access, no tenant) |
+| `src/app/(preview)/admin-preview/layout.tsx`          | own root layout: `lang="en"`, `dir="ltr"`, skip link, `globals.css`; metadata title "Page preview", robots noindex/nofollow                                                                                                                                                               |
+| `src/app/(preview)/admin-preview/pages/[id]/page.tsx` | `force-dynamic`. previewer → preview → `resolveSite({ hostname, locale: 'en' })` → `getTheme` tokens on a wrapper → `resolvePageBlocks` → `SiteFrame` + title `h1` + `BlockList`; anything missing → `notFound()`                                                                         |
+| `src/admin/LivePreview/RefreshOnSave.tsx`             | client: Payload's `RefreshRouteOnSave` → `router.refresh()` on every save message. The one Payload import the preview needs, on the admin side                                                                                                                                            |
+| `eslint.config.mjs`                                   | the content boundary covers `src/app/(preview)/**`                                                                                                                                                                                                                                        |
+| `src/admin/A11yPatch/repairs.ts`, `A11yPatch.tsx`     | `#live-preview-iframe` title "Page preview"; size inputs "Preview width"/"Preview height"; `button.live-preview-toggler` `aria-pressed` FOLLOWS its `--active` class. The observer also watches `class` attributes (never ones the repairs set)                                           |
+
+`/admin-preview` stays on the admin host: the proxy's general matcher skips paths starting
+`admin`, so the session cookie reaches it. Package: `@payloadcms/live-preview-react` 3.87.0,
+pinned with Payload.
+
+### Tests
+
+- `tests/integration/page-preview.test.ts` — the draft, not the live version; a manager's own
+  school; another school's page → null; nobody → null; unknown or malformed id → null
+- `tests/unit/admin/a11y-patch.test.ts` — frame title, size labels, toggle state both ways
+- `tests/unit/proxy.test.ts` — `/admin-preview/…` is not matched; `/about/admin-preview` is
+- `tests/e2e/live-preview.spec.ts` — a school manager opens it by keyboard (`aria-pressed`), sees
+  the page in School A's header with its words, types and sees the preview follow; whole-screen
+  axe with it open, both themes; another school's preview and no sign-in → 404, the district → 200

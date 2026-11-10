@@ -194,6 +194,38 @@ describe('the document tabs list', () => {
   })
 })
 
+/**
+ * Live Preview (Jason, 2026-11-10). Its frame has no title and its size boxes no label — both
+ * found by axe on the page form with the preview open, sampled from Payload 3.87.
+ */
+describe('Live Preview', () => {
+  it('titles the preview frame', () => {
+    render('<iframe class="iframe-loader__iframe" id="live-preview-iframe" src="/x"></iframe>')
+    expect($('#live-preview-iframe').getAttribute('title')).toBe('Page preview')
+  })
+
+  it('names the width and height boxes', () => {
+    render(
+      '<input class="toolbar-input" type="number" value="795" name="live-preview-width" /><input class="toolbar-input" type="number" value="909" name="live-preview-height" />',
+    )
+    expect($('[name="live-preview-width"]').getAttribute('aria-label')).toBe('Preview width')
+    expect($('[name="live-preview-height"]').getAttribute('aria-label')).toBe('Preview height')
+  })
+
+  it('says whether the toggle is on — a two-state button with no state is 4.1.2', () => {
+    render('<button class="live-preview-toggler" type="button" aria-label="Live Preview"></button>')
+    expect($('.live-preview-toggler').getAttribute('aria-pressed')).toBe('false')
+    $('.live-preview-toggler').classList.add('live-preview-toggler--active')
+    repairAdminA11y(document)
+    expect($('.live-preview-toggler').getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('keeps a title Payload gives the frame', () => {
+    render('<iframe id="live-preview-iframe" title="Theirs"></iframe>')
+    expect($('#live-preview-iframe').getAttribute('title')).toBe('Theirs')
+  })
+})
+
 describe('idempotent', () => {
   it('a second pass changes nothing', () => {
     document.body.innerHTML =

@@ -227,6 +227,8 @@ src/
                         boundary rule. No DD2 rendering logic goes here.
       sites/[hostname]/robots|sitemap   per-tenant /robots.txt and /sitemap.xml (proxy maps them)
     (payload)/admin-overrides.css   WCAG contrast corrections to Payload's chrome — not a theme
+    (preview)/admin-preview/pages/[id]   Live Preview's page: a draft in its site's chrome, on the
+                        admin host. Under the content boundary like (frontend).
   proxy.ts              edge tenant + locale routing (Next 16's middleware convention)
   access/               role/tenant predicates + Payload access functions
   admin/                admin-plane React: paste prompt, school plane (SchoolPlane/,

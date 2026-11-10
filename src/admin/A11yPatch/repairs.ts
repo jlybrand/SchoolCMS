@@ -97,6 +97,21 @@ export const repairAdminA11y = (root: ParentNode): void => {
     if (indicator.getAttribute('tabindex') !== '-1') indicator.setAttribute('tabindex', '-1')
   }
 
+  // 4.1.2 — Live Preview (Jason, 2026-11-10): the frame has no title, the size boxes no label.
+  for (const frame of all(root, 'iframe#live-preview-iframe')) {
+    if (!frame.getAttribute('title')?.trim()) frame.setAttribute('title', 'Page preview')
+  }
+  // The toggle is a two-state button that never says which state it is in. Its state is its
+  // class, so this one repair FOLLOWS the class rather than setting once (`A11yPatch` re-runs on
+  // class changes for it); it never changes a class, so it cannot retrigger itself.
+  for (const button of all(root, 'button.live-preview-toggler')) {
+    const pressed = String(button.classList.contains('live-preview-toggler--active'))
+    if (button.getAttribute('aria-pressed') !== pressed)
+      button.setAttribute('aria-pressed', pressed)
+  }
+  for (const input of all(root, 'input[name="live-preview-width"]')) name(input, 'Preview width')
+  for (const input of all(root, 'input[name="live-preview-height"]')) name(input, 'Preview height')
+
   // 1.3.1 — the document tabs are a `ul` of `div`s and `a`s. Not a list to a screen reader.
   for (const list of all(root, 'ul.doc-tabs__tabs')) {
     const notItems = Array.from(list.children).some((child) => child.tagName !== 'LI')
