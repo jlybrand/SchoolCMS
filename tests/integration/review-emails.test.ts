@@ -37,7 +37,6 @@ const sentPage = async () => {
       tenant: f.tenantA,
       title: `Field trip ${seq}`,
       slug: `emails-${Date.now()}-${seq}`,
-      pageType: 'standard',
       visibility: 'public',
       reviewState: 'submitted',
     },

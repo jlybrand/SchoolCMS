@@ -62,7 +62,6 @@ const pageWithFeed = async (
       tenant,
       title: uniqueTitle('Our news'),
       slug,
-      pageType: 'composed',
       visibility: 'public',
       // Ten, the most: specs running alongside publish district announcements too.
       layout: [{ blockType: 'feed', heading: feed.heading, boards: feed.boards, limit: 10 }],

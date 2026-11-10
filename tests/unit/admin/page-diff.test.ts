@@ -25,9 +25,13 @@ const body = (...children: unknown[]) => ({ root: { type: 'root', children } })
 const live = {
   title: 'Bus routes',
   slug: 'bus-routes',
-  pageType: 'standard',
   visibility: 'public',
   meta: { title: null, description: null },
+}
+
+/** The body diff is an announcement's: a page has no body, its words are Text sections. */
+const words = {
+  ...live,
   body: body(para(text('Buses leave at 3:15.')), para(text('Route 4 is cancelled.'))),
 }
 
@@ -48,10 +52,6 @@ describe('diffPage — typed fields', () => {
     expect(diff.fields).toEqual([
       { field: 'visibility', label: 'Who can see it', before: 'Anyone', after: 'Staff only' },
     ])
-  })
-
-  it('says nothing about the page type — every page is composed, there is no choice to review', () => {
-    expect(diffPage(live, { ...live, pageType: 'composed' }).fields).toEqual([])
   })
 
   it('shows the address as the path it will have', () => {
@@ -103,9 +103,9 @@ describe('diffPage — typed fields', () => {
   })
 })
 
-describe('diffPage — the body, block by block', () => {
+describe('diffPost — the words, block by block', () => {
   it('a reworded paragraph reads as one removed and one added, the rest unchanged', () => {
-    const diff = diffPage(live, {
+    const diff = diffPost(words, {
       ...live,
       body: body(para(text('Buses leave at 3:15.')), para(text('Route 4 runs as normal.'))),
     })
@@ -119,7 +119,7 @@ describe('diffPage — the body, block by block', () => {
   })
 
   it('an inserted block is only an addition', () => {
-    const diff = diffPage(live, {
+    const diff = diffPost(words, {
       ...live,
       body: body(
         para(text('Buses leave at 3:15.')),
@@ -134,9 +134,9 @@ describe('diffPage — the body, block by block', () => {
   })
 
   it('a list is shown item by item', () => {
-    const diff = diffPage(
-      { ...live, body: body() },
-      { ...live, body: body(list('Route 1', 'Route 2')) },
+    const diff = diffPost(
+      { ...words, body: body() },
+      { ...words, body: body(list('Route 1', 'Route 2')) },
     )
     expect(diff.body).toEqual({
       unchanged: 0,
@@ -150,9 +150,9 @@ describe('diffPage — the body, block by block', () => {
       fields: { url: 'https://example.org/forms' },
       children: [text('the form')],
     }
-    const diff = diffPage(
-      { ...live, body: body() },
-      { ...live, body: body(para(text('Fill in '), link)) },
+    const diff = diffPost(
+      { ...words, body: body() },
+      { ...words, body: body(para(text('Fill in '), link)) },
     )
     expect(diff.body?.changes).toEqual([
       {
@@ -164,7 +164,7 @@ describe('diffPage — the body, block by block', () => {
   })
 
   it('formatting-only changes are not hidden — bold text counts as different', () => {
-    const diff = diffPage(live, {
+    const diff = diffPost(words, {
       ...live,
       body: body(para(text('Buses leave at 3:15.', 1)), para(text('Route 4 is cancelled.'))),
     })
@@ -172,12 +172,12 @@ describe('diffPage — the body, block by block', () => {
   })
 
   it('an empty body on both sides is no body change', () => {
-    expect(diffPage({ ...live, body: null }, { ...live, body: body() }).body).toBeNull()
+    expect(diffPost({ ...words, body: null }, { ...words, body: body() }).body).toBeNull()
   })
 
   it('a malformed body never throws — it reads as empty', () => {
     expect(() =>
-      diffPage({ ...live, body: 'nonsense' }, { ...live, body: { root: 7 } }),
+      diffPost({ ...words, body: 'nonsense' }, { ...words, body: { root: 7 } }),
     ).not.toThrow()
   })
 })
@@ -192,8 +192,7 @@ describe('diffPage — a page that has never been published', () => {
       { field: 'visibility', label: 'Who can see it', before: null, after: 'Anyone' },
       { field: 'parent', label: 'Placed under', before: null, after: 'Top of the site' },
     ])
-    expect(diff.body?.changes.every((c) => c.change === 'added')).toBe(true)
-    expect(diff.body?.unchanged).toBe(0)
+    expect(diff.body).toBeNull()
   })
 })
 

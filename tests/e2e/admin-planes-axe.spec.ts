@@ -154,7 +154,6 @@ adminTest.describe('district plane — whole screens', () => {
         tenant: (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json()).tenant,
         title: 'Axe feed page',
         slug: `axe-feed-${Date.now()}`,
-        pageType: 'composed',
         layout: [
           {
             blockType: 'feed',
@@ -174,7 +173,6 @@ adminTest.describe('district plane — whole screens', () => {
         tenant: (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json()).tenant,
         title: 'Axe columns page',
         slug: `axe-columns-${Date.now()}`,
-        pageType: 'composed',
         layout: [
           {
             blockType: 'columns',
@@ -200,7 +198,6 @@ adminTest.describe('district plane — whole screens', () => {
         tenant: (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json()).tenant,
         title: 'Axe links page',
         slug: `axe-links-${Date.now()}`,
-        pageType: 'composed',
         layout: [
           {
             blockType: 'callToAction',

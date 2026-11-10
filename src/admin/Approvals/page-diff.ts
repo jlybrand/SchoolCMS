@@ -15,8 +15,9 @@ import type { RichTextBlock, RichTextInline } from '@/content/types'
  * version waiting for approval. Pure and total: a malformed body reads as empty.
  *
  * District-only fields (`publishAt`, `requiresTranslationReview`) are absent because a school
- * cannot write them; the queue diffs what a school can propose. A page's SECTIONS are diffed
- * (`diffLayout`) since schools compose (Jason, 2026-11-04).
+ * cannot write them; the queue diffs what a school can propose. A page has no body: its words
+ * are Text sections, diffed with the rest of its SECTIONS (`diffLayout`) — the body diff is an
+ * announcement's.
  */
 
 export type FieldChange = {

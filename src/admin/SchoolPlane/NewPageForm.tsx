@@ -67,8 +67,7 @@ export const NewPageForm = ({ schools }: { schools: readonly SchoolOption[] }) =
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: check.title,
-          // Every page is composed (Jason, 2026-11-04): it opens on its sections, none yet.
-          pageType: 'composed',
+          // No sections yet: the page opens on its Sections (every page composed, Jason 2026-11-04).
           tenant: check.school,
           _status: 'draft',
         }),

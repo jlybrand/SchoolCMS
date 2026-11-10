@@ -95,7 +95,8 @@ export type PageMetadataInput = {
   readonly page: {
     readonly title: string
     readonly path: string
-    readonly body: RichText
+    /** An announcement's words. A page has none: its words are Text sections, below. */
+    readonly body?: RichText
     /**
      * The page's sections, for a composed page's description (Jason, 2026-11-04): its first
      * TOP-LEVEL Text section's first paragraph. Structural, so any `PageBlock[]` fits.
@@ -165,7 +166,7 @@ export const buildPageMetadata = (input: PageMetadataInput): PageMetadata => {
    */
   const description =
     clean(page.seo.description) ??
-    excerptOf(page.body) ??
+    (page.body ? excerptOf(page.body) : null) ??
     sectionsExcerpt(page.layout) ??
     clean(input.defaultDescription)
   const url = absoluteUrl(origin, page.path, locale)

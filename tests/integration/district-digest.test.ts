@@ -61,7 +61,6 @@ const sendPage = async (title: string) => {
       tenant: f.tenantA,
       title,
       slug: `digest-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      pageType: 'standard',
       visibility: 'public',
       reviewState: 'submitted',
     },

@@ -36,7 +36,7 @@ Across all 28 sites, record:
   consequences that entails.
 
 The district apex tenant is expected to be the exception; one non-uniform site out of 28 is
-what `pageType: composed` exists for.
+what the district's components exist for.
 
 ## 3. Inventory & assessment (per tenant)
 
@@ -73,8 +73,8 @@ Before migrating a tenant, produce an inventory:
 Per-module **migration mappers**, built during their phase (`05`), convert Finalsite content
 to the target schema (`03` §8):
 
-- **Composer page → `pages`** with the appropriate fixed `pageType` (school) or `composed`
-  with blocks (district).
+- **Composer page → `pages`**: its words as Text sections, plus the district's components where
+  the page needs them. Every page is composed (2026-11-04).
 - **Rich text → re-normalized through the paste pipeline** (`07` §4). Legacy `<span>` soup,
   bold-as-heading, and manual bullet lists are converted to clean semantic markup rather than
   carried across. **This is where migration actively improves accessibility instead of

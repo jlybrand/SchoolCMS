@@ -35,7 +35,7 @@ const mkPage = async (tenant: number, data: Record<string, unknown>) =>
     await payload.create({
       collection: 'pages',
       // Shaped per call (title, slug, type, status, parent) — typed loosely for that.
-      data: { tenant, visibility: 'public', pageType: 'standard', ...data } as never,
+      data: { tenant, visibility: 'public', ...data } as never,
       user: f.districtAdmin,
       overrideAccess: true,
     })

@@ -57,7 +57,6 @@ export const makePage = async (
       ...(slug === null ? {} : { slug }),
       tenant,
       // Every page is composed (Jason, 2026-11-04): its words are a Text section.
-      pageType: 'composed',
       layout: [wordsSection('Forms are due Friday.')],
       _status: 'draft',
     },

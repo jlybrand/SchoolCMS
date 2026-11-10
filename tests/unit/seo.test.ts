@@ -150,7 +150,7 @@ describe('buildPageMetadata', () => {
       { id: 't2', kind: 'richText', content: [paragraph('Story time is on Fridays.')] },
     ]
     expect(build({ body: [], layout: sections }).description).toBe('Story time is on Fridays.')
-    // Words still in `body` (a page not yet converted) come first, as they render first.
+    // An announcement's own words come first; a page has none.
     expect(build({ layout: sections }).description).toBe(
       'We are a K–5 school of 480 students in Summerville.',
     )

@@ -1,4 +1,3 @@
-import { composingPagesOf } from '@/lib/compose-existing-pages'
 import type { CollectionAfterChangeHook, PayloadRequest } from 'payload'
 
 import { relationshipIdOf } from '@/access/predicates'
@@ -46,8 +45,6 @@ export const makeNotifyReviewOutcome =
     // Auto-approved under a grant: the sender published it, and nobody approved anything to tell
     // them about. The audit trail and the district's 30-day list still show it (`04` §4.3).
     if (autoApprovalOf(req)) return doc
-    // The every-page-composed conversion republishes; nothing was decided, nobody is told.
-    if (composingPagesOf(req)) return doc
 
     try {
       const submitter = relationshipIdOf((previousDoc?.submittedBy ?? null) as never)

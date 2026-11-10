@@ -37,7 +37,6 @@ test.describe('page options', () => {
         tenant: await tenantIdFor(admin, 'b.localhost'),
         title: uniqueTitle('Hidden from search'),
         slug,
-        pageType: 'composed',
         visibility: 'public',
         hideFromSearchEngines: true,
         _status: 'published',

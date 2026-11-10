@@ -35,7 +35,6 @@ describe('the loop — send, send back, resend, approve', () => {
         tenant: f.tenantA,
         title: 'Bus routes',
         slug: 'bus-routes',
-        pageType: 'standard',
         visibility: 'public',
         reviewState: 'submitted',
       },

@@ -44,7 +44,6 @@ const mkPage = async (
       tenant: await tenantIdFor(admin, hostname),
       title: uniqueTitle('Permalink'),
       slug,
-      pageType: 'composed',
       visibility: 'public',
       _status: 'published',
       ...data,
@@ -169,7 +168,6 @@ test.describe('page permalinks', () => {
         },
       }
       const linking = await mkPage(admin, 'b.localhost', {
-        pageType: 'composed',
         layout: [
           { blockType: 'richText', content: words },
           {

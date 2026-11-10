@@ -131,7 +131,6 @@ describe('getPageByPath', () => {
       await payload.create({
         collection: 'pages',
         data: {
-          pageType: 'standard',
           visibility: 'public',
           _status: 'published',
           ...data,
@@ -691,7 +690,6 @@ describe('/news belongs to announcements', () => {
         tenant: fixtures.tenantA,
         title: slug,
         slug,
-        pageType: 'standard',
         visibility: 'public',
         ...(parent === undefined ? {} : { parent }),
       },
@@ -831,7 +829,6 @@ describe('getPagePathById', () => {
         tenant: fixtures.tenantA,
         title: 'Moved under',
         slug: 'moved-under',
-        pageType: 'standard',
         visibility: 'public',
         _status: 'published',
       },
@@ -844,7 +841,6 @@ describe('getPagePathById', () => {
         tenant: fixtures.tenantA,
         title: 'Wanders',
         slug: 'wanders',
-        pageType: 'standard',
         visibility: 'public',
         _status: 'published',
       },
@@ -977,10 +973,9 @@ describe('links to a page in the words and the blocks', () => {
         tenant: fixtures.tenantA,
         title: 'Links out',
         slug: 'links-out',
-        pageType: 'composed',
         visibility: 'public',
-        body: wordsLinkingTo(fixtures.publishedPageA) as never,
         layout: [
+          { blockType: 'richText', content: wordsLinkingTo(fixtures.publishedPageA) as never },
           {
             blockType: 'callToAction',
             heading: 'Go',
@@ -1030,7 +1025,6 @@ describe('links to a page in the words and the blocks', () => {
           tenant: fixtures.tenantA,
           title: 'Links away',
           slug: 'links-away',
-          pageType: 'composed',
           visibility: 'public',
           layout: [
             {
@@ -1086,7 +1080,7 @@ describe('linked pages — internal redirect', () => {
   const mk = async (data: Record<string, unknown>) => {
     const doc = await payload.create({
       collection: 'pages',
-      data: { pageType: 'standard', visibility: 'public', _status: 'published', ...data } as never,
+      data: { visibility: 'public', _status: 'published', ...data } as never,
       user: fixtures.districtAdmin,
       overrideAccess: true,
     })
@@ -1185,7 +1179,6 @@ describe('linked pages — internal redirect', () => {
             tenant: fixtures.tenantA,
             title: 'Refused',
             slug: `linked-refused-${Math.floor(Math.random() * 1e9)}`,
-            pageType: 'standard',
             visibility: 'public',
             linkMode: 'redirect',
             _status: 'draft',
@@ -1266,7 +1259,7 @@ describe('linked pages — reuse content', () => {
   const mk = async (data: Record<string, unknown>) => {
     const doc = await payload.create({
       collection: 'pages',
-      data: { pageType: 'standard', visibility: 'public', _status: 'published', ...data } as never,
+      data: { visibility: 'public', _status: 'published', ...data } as never,
       user: fixtures.districtAdmin,
       overrideAccess: true,
     })
@@ -1305,7 +1298,15 @@ describe('linked pages — reuse content', () => {
       tenant: fixtures.districtTenant,
       title: 'District supply list',
       slug: 'reuse-supplies',
-      body: wordsLinking({ linkType: 'internal', doc: { relationTo: 'pages', value: enroll } }),
+      layout: [
+        {
+          blockType: 'richText',
+          content: wordsLinking({
+            linkType: 'internal',
+            doc: { relationTo: 'pages', value: enroll },
+          }),
+        },
+      ],
       meta: { title: 'Supplies for every school', description: null },
     })
     draftSource = await mk({
@@ -1388,7 +1389,6 @@ describe('linked pages — reuse content', () => {
           tenant: fixtures.tenantA,
           title: 'Refused reuse',
           slug: 'reuse-refused',
-          pageType: 'standard',
           visibility: 'public',
           linkMode: 'reuse',
           districtLinkTarget: fixtures.publishedPageA,

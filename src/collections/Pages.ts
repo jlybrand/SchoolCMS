@@ -20,7 +20,6 @@ import {
 } from '@/collections/hooks/page-slug'
 import { blockLibrary } from '@/collections/blocks'
 import { auditChange, auditDelete } from '@/collections/hooks/audit'
-import { composeBodyOnWrite } from '@/collections/hooks/compose-body'
 import { validateLinkMode } from '@/collections/hooks/linked-page'
 import { restoreIsDistrictOnly } from '@/collections/hooks/page-history'
 import { publishGate, schoolLayoutGate } from '@/collections/hooks/publish-gate'
@@ -75,7 +74,7 @@ export const Pages: CollectionConfig = {
   slug: 'pages',
   admin: {
     useAsTitle: 'title',
-    defaultColumns: ['title', 'linkMode', 'slug', 'pageType', 'visibility', '_status'],
+    defaultColumns: ['title', 'linkMode', 'slug', 'visibility', '_status'],
     /**
      * `04` §2.1 rules out collection-oriented navigation for school users, and the word
      * "collection" with it. This group label is the district plane's; the school plane gets
@@ -142,15 +141,9 @@ export const Pages: CollectionConfig = {
     /**
      * Order matters: derive the slug, then check the DERIVED value for collisions. The
      * parent guard is independent of both and runs last, so a page with two problems reports
-     * the slug one first — the field the author was most likely editing. Words still in
-     * `body` become a Text section first (`composeBodyOnWrite`), so they are validated as one.
+     * the slug one first — the field the author was most likely editing.
      */
-    beforeValidate: [
-      composeBodyOnWrite,
-      deriveSlugFromTitle,
-      uniqueSlugWithinParent,
-      rootPageCannotBeParent,
-    ],
+    beforeValidate: [deriveSlugFromTitle, uniqueSlugWithinParent, rootPageCannotBeParent],
     /**
      * The hook half of two release-blocking gates. The access functions above are the other
      * half; see src/collections/hooks/publish-gate.ts for why one layer is not enough.
@@ -267,44 +260,6 @@ export const Pages: CollectionConfig = {
       },
     },
     {
-      name: 'body',
-      type: 'richText',
-      /**
-       * Uses the global constrained editor (`07` §4.4) — no per-field override, so the
-       * allowlist cannot be widened here without widening it everywhere, visibly.
-       *
-       * RETIRING (Jason, 2026-11-04 — every page composed). A page's words are a Text section
-       * now. Off the form, and never written: `composeBodyOnWrite` moves any words a write
-       * leaves here into a Text section, and `pnpm run compose:pages` converts the pages
-       * nobody edits. Read by the renderer until the contract step drops the column.
-       */
-      admin: { hidden: true },
-    },
-    {
-      name: 'pageType',
-      // A radio, not a select: Payload's select input fails axe (`docs/phases/04` §17).
-      type: 'radio',
-      required: true,
-      defaultValue: 'composed',
-      index: true,
-      /**
-       * Two kinds (Jason, 2026-11-04). The five fixed types (about, contact, staff, calendar,
-       * documents) went: none had fields of its own, and staff lists, calendars and documents are
-       * components the district places on a composed page. `scripts/collapse-page-types.sql` turns
-       * any stored old type into `standard`.
-       */
-      options: [
-        { label: 'Page', value: 'standard' },
-        { label: 'Composed', value: 'composed' },
-      ],
-      /**
-       * RETIRING with `body`: every page is composed (Jason, 2026-11-04), and
-       * `composeBodyOnWrite` sets it on every write. `standard` stays a stored value until the
-       * contract step narrows the enum; there is nothing left to choose.
-       */
-      admin: { hidden: true },
-    },
-    {
       name: 'parent',
       type: 'relationship',
       relationTo: 'pages',
@@ -326,7 +281,7 @@ export const Pages: CollectionConfig = {
     },
     {
       name: 'visibility',
-      // A radio, not a select — same reason as `pageType`.
+      // A radio, not a select: Payload's select input fails axe (`docs/phases/04` §17).
       type: 'radio',
       required: true,
       defaultValue: 'public',

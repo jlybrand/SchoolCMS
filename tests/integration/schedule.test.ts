@@ -266,7 +266,6 @@ describe('a page’s Start', () => {
         tenant: f.tenantA,
         title: `Scheduled page ${Date.now()}-${(seq += 1)}`,
         slug: `scheduled-page-${Date.now()}-${seq}`,
-        pageType: 'standard',
         visibility: 'public',
         ...data,
       } as never,

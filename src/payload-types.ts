@@ -246,22 +246,6 @@ export interface Page {
    * The page's address, filled in from the title. Links chosen as pages, menus and the permanent link follow a change; addresses typed by hand and links from other websites do not.
    */
   slug: string;
-  body?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
-  pageType: 'standard' | 'composed';
   /**
    * Sits this page underneath another one. Drives the URL and the menus.
    */
@@ -1120,8 +1104,6 @@ export interface PagesSelect<T extends boolean = true> {
   tenant?: T;
   title?: T;
   slug?: T;
-  body?: T;
-  pageType?: T;
   parent?: T;
   visibility?: T;
   linkMode?: T;

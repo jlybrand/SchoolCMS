@@ -494,7 +494,6 @@ describe('invariant 5 — a school-manager cannot PUBLISH by any route', () => {
           tenant: f.tenantA,
           title: 'Sneaky',
           slug: 'sneaky',
-          pageType: 'standard',
           visibility: 'public',
           _status: 'published',
         },
@@ -689,7 +688,6 @@ describe('page history is district-only (Jason, 2026-10-27)', () => {
         tenant: f.tenantA,
         title: 'History v1',
         slug: 'history-page',
-        pageType: 'standard',
         visibility: 'public',
         _status: 'published',
       },
@@ -883,7 +881,6 @@ describe('schools compose with the simple components only (`src/access/school-la
         tenant: f.tenantA,
         title: 'School composed',
         slug: slug(),
-        pageType: 'composed',
         visibility: 'public',
         layout: [words('Hello'), { blockType: 'divider' }],
       } as never,
@@ -891,7 +888,7 @@ describe('schools compose with the simple components only (`src/access/school-la
       user: f.managerA,
       overrideAccess: false,
     })
-    expect(page.pageType).toBe('composed')
+    expect(page.layout).toHaveLength(2)
   })
 
   it('a school-manager cannot place a district component — a news feed, columns, an embed', async () => {
@@ -908,7 +905,6 @@ describe('schools compose with the simple components only (`src/access/school-la
               tenant: f.tenantA,
               title: 'Attempt',
               slug: slug(),
-              pageType: 'composed',
               visibility: 'public',
               layout: [block],
             } as never,
@@ -929,7 +925,6 @@ describe('schools compose with the simple components only (`src/access/school-la
         tenant: f.tenantA,
         title: 'District layout',
         slug: slug(),
-        pageType: 'composed',
         visibility: 'public',
         layout: [words('Intro'), { blockType: 'feed', heading: 'News', boards: [f.boardA] }],
       } as never,
@@ -991,7 +986,6 @@ describe('schools compose with the simple components only (`src/access/school-la
             tenant: f.tenantB,
             title: 'Cross-tenant',
             slug: slug(),
-            pageType: 'composed',
             visibility: 'public',
             layout: [words('x')],
           } as never,
@@ -1472,7 +1466,6 @@ describe('sibling slugs stay unique within a parent', () => {
           tenant: f.tenantA,
           title: 'Duplicate',
           slug: 'published-page-a',
-          pageType: 'standard',
           visibility: 'public',
         },
         overrideAccess: true,
@@ -1490,7 +1483,6 @@ describe('sibling slugs stay unique within a parent', () => {
         tenant: f.tenantB,
         title: 'Published page a',
         slug: 'published-page-a',
-        pageType: 'standard',
         visibility: 'public',
       },
       overrideAccess: true,
@@ -2238,7 +2230,6 @@ describe('announcement folders, boards and tags', () => {
         tenant: f.tenantB,
         title: 'Feed page',
         slug: `feed-page-${Date.now()}`,
-        pageType: 'composed',
         visibility: 'public',
         layout: [{ blockType: 'feed', boards: [f.boardDistrict], limit: 5 }],
       },
