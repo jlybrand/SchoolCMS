@@ -1064,6 +1064,8 @@ the kind does not let a school add one — the hook refuses that.
 
 ## 23. Every page composed — the expand step (Jason, 2026-11-04)
 
+**Superseded by §24:** the contract step deleted every file below that exists only for the switch.
+
 A page's words are a Text section now, on every page. This is the EXPAND half of retiring `body`
 and the `standard` page type: nothing new is written to either, existing pages are converted
 once, and the renderer still reads both. The CONTRACT half — dropping the `body` column and the
@@ -1103,3 +1105,33 @@ Order on an existing database: `pnpm run compose:pages`, then anything else (see
   section
 - e2e — `support/fixture-pages.ts` `wordsSection()`; fixture, toolbar and linked pages carry one;
   `paste-normalizer.spec.ts` adds a Text section to a new page before pasting
+
+## 24. Every page composed — the contract step (Jason, 2026-11-04)
+
+Pages have no `body` and no `pageType`. A page is its `layout`: its words are Text sections among
+its components. Announcements keep their `body`. §23's switch is gone: `compose-page.ts`,
+`compose-existing-pages.ts`, `composeBodyOnWrite`, `scripts/compose-pages.ts` and the
+`composingPages` mark in `publishGate`, `applyReviewState` and `notify-review-outcome`.
+
+| File                                                                    | Holds                                                                                                                                                                                 |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/retire-page-body.sql`                                          | one-off, plain SQL, idempotent: drops `pages.body`, `pages.page_type`, `_pages_v.version_body`, `_pages_v.version_page_type`, their indexes and enum types. Run BEFORE Payload starts |
+| `src/collections/Pages.ts`                                              | no `body`, no `pageType` field; `beforeValidate: [deriveSlugFromTitle, uniqueSlugWithinParent, rootPageCannotBeParent]`                                                               |
+| `src/content/types.ts`, `src/content/pages.ts`, `src/content/index.ts`  | `Page` has no `body` / `pageType`; `PageType` gone; the mapper reads `layout` only (rehomed for reuse)                                                                                |
+| `src/app/(frontend)/sites/[hostname]/[locale]/[[...segments]]/page.tsx` | title, then `BlockList` — no `RichText` body                                                                                                                                          |
+| `src/lib/seo.ts`                                                        | `PageMetadataInput.page.body` optional (an announcement's); description: SEO → body (announcements) → first top-level Text section → the site's                                       |
+| `src/admin/Approvals/page-diff.ts`                                      | `diffPage`: fields + sections; its `body` is always null. The block-by-block body diff is `diffPost`'s                                                                                |
+| `src/access/auto-approval.ts`                                           | pages `neverFields`: `layout`, `parent`, `visibility`, `meta`                                                                                                                         |
+| `src/access/pages.ts`                                                   | `IncomingData` without `pageType`                                                                                                                                                     |
+
+Lost on purpose: the words of page VERSIONS saved before §23, which only lived in
+`version_body`. A restore of one brings back its title, settings and sections, not those words.
+
+### Tests
+
+- `tests/unit/access/pages.test.ts` — create / update access without a page type
+- `tests/unit/admin/page-diff.test.ts` — a page diff has no body; the block-by-block tests are
+  `diffPost`'s
+- `tests/unit/seo.test.ts` — a page describes itself from its first Text section
+- `tests/integration/content-layer.test.ts` — page links and reuse rehoming inside a Text section
+- e2e — `linked-pages.spec.ts` reuses a district page whose words are a Text section

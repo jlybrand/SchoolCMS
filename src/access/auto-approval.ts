@@ -43,7 +43,7 @@ export type ScopeRule = {
 export type CollectionRules = {
   /**
    * Fields whose change is never auto-approvable, regardless of grant: rich text, uploads,
-   * visibility, SEO, navigation placement, syndication, page type (`04` §4.3).
+   * visibility, SEO, navigation placement, syndication (`04` §4.3).
    */
   neverFields: readonly string[]
   /** Whether creating a document can ever be auto-approved. */
@@ -55,13 +55,13 @@ export type AutoApprovalRules = Readonly<Record<string, CollectionRules>>
 
 export const AUTO_APPROVAL_RULES: AutoApprovalRules = {
   /**
-   * No scope covers a page. `body` and `layout` are content (rich text, blocks); `parent`
-   * places the page in the site's navigation; `pageType`, `visibility` and `meta` (SEO) are
-   * named by the spec. `tests/unit/access/auto-approval.test.ts` fails if a rich-text, upload
+   * No scope covers a page. `layout` is its content (its sections, words included); `parent`
+   * places the page in the site's navigation; `visibility` and `meta` (SEO) are named by the
+   * spec. `tests/unit/access/auto-approval.test.ts` fails if a rich-text, upload
    * or block field is added to pages without joining this list.
    */
   pages: {
-    neverFields: ['body', 'layout', 'pageType', 'parent', 'visibility', 'meta'],
+    neverFields: ['layout', 'parent', 'visibility', 'meta'],
     createAllowed: false,
     scopes: [],
   },

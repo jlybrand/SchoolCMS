@@ -45,11 +45,9 @@ export type ContentContext = {
  * PAGES (`03` §2).
  *
  * Every page is composed (Jason, 2026-11-04): its words are Text sections among its other
- * components, and schools compose with the simple ones (`src/access/school-layout.ts`).
- * `standard` — a page whose words sat in `body` — is still a stored value until the contract
- * step retires it; `pnpm run compose:pages` converts those pages, and the renderer reads both.
+ * components, and schools compose with the simple ones (`src/access/school-layout.ts`). There is
+ * no page type and no body.
  */
-export type PageType = 'standard' | 'composed'
 
 /**
  * A page as another page refers to it: enough to render a link, and nothing else.
@@ -160,8 +158,7 @@ export type PageSeo = {
 /**
  * A page as the rendering layer sees it.
  *
- * SCOPE: identity, hierarchy, type, visibility, body prose, and — for `composed` pages —
- * the district-only block array (`03` §3).
+ * SCOPE: identity, hierarchy, visibility, and its sections (`03` §3).
  */
 export type Page = {
   id: string
@@ -171,14 +168,11 @@ export type Page = {
   slug: string
   /** Full path from the site root, e.g. `/about/staff`. Assembled from the parent chain. */
   path: string
-  pageType: PageType
   visibility: Visibility
   /** Parent page id, or null at the top level. Drives hierarchy and navigation. */
   parentId: string | null
   /** Gates locale publication for high-stakes content (`08` §7.1). */
   requiresTranslationReview: boolean
-  /** Body prose. Empty is legitimate — see `RichText` below. */
-  body: RichText
   /**
    * What an editor wrote for search engines and link previews, or null where they wrote
    * nothing — which is the usual case, and not an error. The fallbacks (the page title, the
@@ -200,9 +194,8 @@ export type Page = {
    */
   reusedFrom: PageRedirect | null
   /**
-   * The block array, for `composed` pages only (`03` §3). Empty on every fixed type, which
-   * is not a special case: a fixed-type page has no layout to render and the template does
-   * not ask for one.
+   * The page's sections, top to bottom (`03` §3) — its words among them, as Text sections.
+   * Empty is legitimate: a new page has none yet.
    */
   layout: PageBlock[]
   /**

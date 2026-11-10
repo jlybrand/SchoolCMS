@@ -169,29 +169,19 @@ describe('pagesCreateAccess', () => {
     })
   })
 
-  describe('composed pages (schools compose since 2026-11-04)', () => {
-    it('allows a school-manager a composed page in their school — the palette is the hook’s', () => {
-      expect(
-        pagesCreateAccess(args(managerA, { data: { tenant: 'A', pageType: 'composed' } })),
-      ).toBe(true)
+  describe('every page is composed (Jason, 2026-11-04) — which sections is the hook’s', () => {
+    it('allows a school-manager a page in their school', () => {
+      expect(pagesCreateAccess(args(managerA, { data: { tenant: 'A', layout: [] } }))).toBe(true)
     })
 
     it('still DENIES one in another school', () => {
-      expect(
-        pagesCreateAccess(args(managerA, { data: { tenant: 'B', pageType: 'composed' } })),
-      ).toBe(false)
+      expect(pagesCreateAccess(args(managerA, { data: { tenant: 'B', layout: [] } }))).toBe(false)
     })
 
-    it('allows a school-manager a page — the one kind they write (Jason, 2026-11-04)', () => {
-      expect(
-        pagesCreateAccess(args(managerA, { data: { tenant: 'A', pageType: 'standard' } })),
-      ).toBe(true)
-    })
-
-    it('allows district-admin to create a composed page', () => {
-      expect(
-        pagesCreateAccess(args(districtAdmin, { data: { tenant: 'A', pageType: 'composed' } })),
-      ).toBe(true)
+    it('allows district-admin', () => {
+      expect(pagesCreateAccess(args(districtAdmin, { data: { tenant: 'A', layout: [] } }))).toBe(
+        true,
+      )
     })
   })
 })
@@ -259,17 +249,9 @@ describe('pagesUpdateAccess', () => {
     })
   })
 
-  describe('composed pages (schools compose since 2026-11-04)', () => {
-    it('lets a school-manager make their page composed — as a constraint, never true', () => {
-      expect(pagesUpdateAccess(args(managerA, { data: { pageType: 'composed' } }))).toEqual({
-        tenant: { in: ['A'] },
-      })
-    })
-
-    it('allows a school-manager a write that keeps their page a page', () => {
-      expect(pagesUpdateAccess(args(managerA, { data: { pageType: 'standard' } }))).toEqual({
-        tenant: { in: ['A'] },
-      })
+  it('lets a school-manager write sections — as a constraint, never true', () => {
+    expect(pagesUpdateAccess(args(managerA, { data: { layout: [] } }))).toEqual({
+      tenant: { in: ['A'] },
     })
   })
 })

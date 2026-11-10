@@ -54,7 +54,6 @@ describe('holding every grant, a page still queues', () => {
         tenant: f.tenantA,
         title: 'Granted but queued',
         slug: 'granted-but-queued',
-        pageType: 'standard',
         visibility: 'public',
         reviewState: 'submitted',
       },

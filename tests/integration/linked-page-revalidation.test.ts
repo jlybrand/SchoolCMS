@@ -21,7 +21,7 @@ const made: (string | number)[] = []
 const mk = async (data: Record<string, unknown>) => {
   const doc = await payload.create({
     collection: 'pages',
-    data: { pageType: 'standard', visibility: 'public', _status: 'published', ...data } as never,
+    data: { visibility: 'public', _status: 'published', ...data } as never,
     user: f.districtAdmin,
     overrideAccess: true,
   })

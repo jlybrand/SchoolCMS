@@ -1,4 +1,3 @@
-import { composingPagesOf } from '@/lib/compose-existing-pages'
 import { Forbidden, ValidationError, type CollectionBeforeChangeHook } from 'payload'
 
 import { relationshipIdOf } from '@/access/predicates'
@@ -88,12 +87,6 @@ export const applyReviewState: CollectionBeforeChangeHook = ({
    * The schedule job (`src/jobs/post-schedule.ts`): its publish is the approval taking effect, so
    * the review fields clear; its expiry takes the post down and changes nothing about review.
    */
-  /**
-   * The every-page-composed conversion (`src/lib/compose-existing-pages.ts`) restates a page as it
-   * was, review fields included: a school's change waiting for approval stays waiting.
-   */
-  if (composingPagesOf(req)) return data
-
   const run = scheduledRunOf(req)
   if (run === 'publish' && data?._status === 'published') {
     return { ...data, reviewState: null, reviewNote: null, submittedAt: null, submittedBy: null }

@@ -42,7 +42,6 @@ const mkPage = async (admin: APIRequestContext, hostname: string, status = 'publ
       tenant: await tenantIdFor(admin, hostname),
       title,
       slug,
-      pageType: 'composed',
       layout: [wordsSection('Words on the page.')],
       visibility: 'public',
       _status: status,

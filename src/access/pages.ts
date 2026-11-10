@@ -33,7 +33,6 @@ const userOf = (req: { user?: unknown }): AuthUser | null => (req?.user as AuthU
 /** The incoming payload on a create or update. Absent on reads and deletes. */
 type IncomingData = {
   tenant?: unknown
-  pageType?: unknown
   publishAt?: unknown
   _status?: unknown
 } | null

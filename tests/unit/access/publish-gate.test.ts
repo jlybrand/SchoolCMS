@@ -130,20 +130,18 @@ describe('schoolLayoutGate — schools compose with the simple components (Jason
   const feed = { id: 'f', blockType: 'feed', heading: 'News', boards: [1], limit: 5 }
 
   it('lets district-admin place any component', () => {
-    expect(() =>
-      schoolLayoutGate(hookArgs(districtAdmin, { pageType: 'composed', layout: [feed] })),
-    ).not.toThrow()
+    expect(() => schoolLayoutGate(hookArgs(districtAdmin, { layout: [feed] }))).not.toThrow()
   })
 
   it('lets a school-manager write a composed page from the simple components', () => {
-    const data = { pageType: 'composed', layout: [text] }
+    const data = { layout: [text] }
     expect(schoolLayoutGate(hookArgs(managerA, data))).toEqual(data)
   })
 
   it('REFUSES a school-manager adding a district component, with words', () => {
-    expect(() =>
-      schoolLayoutGate(hookArgs(managerA, { pageType: 'composed', layout: [text, feed] })),
-    ).toThrow(ValidationError)
+    expect(() => schoolLayoutGate(hookArgs(managerA, { layout: [text, feed] }))).toThrow(
+      ValidationError,
+    )
   })
 
   it('REFUSES a school-manager removing the district’s component', () => {
@@ -189,27 +187,5 @@ describe('publishGate — the auto-approval publish', () => {
   it('refuses it without the server-set mark — even with the mark in the data', () => {
     expect(() => run({})).toThrow()
     expect(() => run({}, { autoApproval: { scope: 'posts.routine' } })).toThrow()
-  })
-})
-
-/**
- * The every-page-composed conversion (`src/lib/compose-existing-pages.ts`) republishes live pages
- * as server code: NO user, and a `composingPages` mark only server code can set. The mark opens
- * nothing for a person — a school manager carrying it is still refused.
- */
-describe('publishGate — the conversion’s republish', () => {
-  const run = (user: AuthUser | null, context: Record<string, unknown>) =>
-    publishGate({ req: { user, context }, data: { _status: 'published' } } as never)
-
-  it('lets the marked, user-less republish through', () => {
-    expect(() => run(null, { composingPages: true })).not.toThrow()
-  })
-
-  it('refuses a user-less publish without the mark', () => {
-    expect(() => run(null, {})).toThrow(Forbidden)
-  })
-
-  it('refuses a school manager carrying the mark', () => {
-    expect(() => run(managerA, { composingPages: true })).toThrow(Forbidden)
   })
 })

@@ -39,7 +39,6 @@ const submittedPage = async (title = 'Bus routes') => {
       tenant: f.tenantA,
       title: `${title} ${seq}`,
       slug: `approve-${Date.now()}-${seq}`,
-      pageType: 'standard',
       visibility: 'public',
       reviewState: 'submitted',
     },

@@ -5,7 +5,6 @@ import { checkSchoolLayout } from '@/access/school-layout'
 import type { AuthUser } from '@/access/types'
 import { autoApprovalOf } from '@/collections/hooks/auto-approve'
 import { scheduledRunOf } from '@/collections/hooks/scheduled-dates'
-import { composingPagesOf } from '@/lib/compose-existing-pages'
 import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 
 /**
@@ -19,10 +18,10 @@ import { sendsForApproval } from '@/admin/SendForApproval/review-status'
  * WHY BOTH LAYERS. The access function judges the request: it sees the incoming `data` and
  * refuses early and cheaply. This hook runs after Payload merges that data over the stored
  * document, so it judges the RESULT of the write. That difference is not academic — a
- * partial update carrying only `{ title }` gives the access function no `pageType` and no
+ * partial update carrying only `{ title }` gives the access function no `layout` and no
  * `_status` to look at, and a bulk operation's per-document shape is not what the caller
  * sent. Whatever the request looked like, a write that ends up published, or ends up
- * touching a composed page, passes through here.
+ * changing a page's sections, passes through here.
  *
  * Neither layer is decoration. If you are tempted to delete one, the question to answer
  * first is which routes the other one cannot see.
@@ -81,13 +80,6 @@ export const publishGate: CollectionBeforeChangeHook = ({ data, originalDoc, req
    * has passed by then, which is why `schedulesPublish` does not stop it.
    */
   if (assertsPublished && scheduledRunOf(req) === 'publish') return data
-
-  /**
-   * And the every-page-composed conversion republishing what is already live
-   * (`src/lib/compose-existing-pages.ts`): server code, marked the same way, with NO user — a
-   * person carrying the mark is judged as themselves below.
-   */
-  if (assertsPublished && !user && composingPagesOf(req)) return data
 
   if ((assertsPublished || schedulesPublish) && !canPublish(user)) {
     throw new Forbidden()

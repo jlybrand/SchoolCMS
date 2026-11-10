@@ -6,10 +6,9 @@ import { siteOrigin } from '@/lib/seo'
 import { ROOT_SLUG, buildPagePath, splitPagePath } from '@/lib/slug'
 import { toPageBlocks } from './blocks'
 import { pathIndex, segmentsFor, type PagePaths, type TreeRow } from './page-tree'
-import { rehomeBlocks, rehomeRichText } from './rehome-links'
-import { toRichText } from './rich-text'
+import { rehomeBlocks } from './rehome-links'
 import { listActiveTenants } from './tenants'
-import type { ContentContext, Page, PageLink, PageRedirect, PageType, Visibility } from './types'
+import type { ContentContext, Page, PageLink, PageRedirect, Visibility } from './types'
 
 /**
  * Page lookups (`02` §11, ADR-5).
@@ -36,7 +35,6 @@ type PayloadPage = {
   tenant: string | number | { id: string | number }
   title: string
   slug: string
-  pageType: PageType
   visibility: Visibility
   parent?: string | number | { id: string | number } | null
   requiresTranslationReview?: boolean | null
@@ -46,8 +44,6 @@ type PayloadPage = {
   linkTo?: 'site' | 'district' | null
   linkTarget?: string | number | { id: string | number } | null
   districtLinkTarget?: string | number | { id: string | number } | null
-  /** Lexical editor state. Deliberately `unknown` — see `toRichText`. */
-  body?: unknown
   /** Block rows. Deliberately `unknown` — see `toPageBlocks`. */
   layout?: unknown
   /** The SEO group. `meta` here — see src/collections/Pages.ts — and `seo` in the domain. */
@@ -107,7 +103,6 @@ const toDomain = (
   const content = reuse ? reuse.source : doc
   const contentPaths = reuse ? reuse.paths : paths
   const origin = reuse ? siteOrigin(reuse.from.hostname) : null
-  const body = toRichText(content.body, contentPaths)
   const layout = toPageBlocks(content.layout, contentPaths)
 
   return {
@@ -116,12 +111,9 @@ const toDomain = (
     title: content.title,
     slug: doc.slug,
     path,
-    pageType: content.pageType,
     visibility: doc.visibility,
     parentId: idOf(doc.parent ?? null),
     requiresTranslationReview: doc.requiresTranslationReview === true,
-    // The single point where Lexical becomes DD2 nodes. Nothing downstream sees editor state.
-    body: origin ? rehomeRichText(body, origin) : body,
     seo: {
       title: textOrNull(content.meta?.title),
       description: textOrNull(content.meta?.description),
@@ -129,7 +121,8 @@ const toDomain = (
     hideFromSearchEngines: doc.hideFromSearchEngines === true,
     redirect: link?.kind === 'redirect' ? link.target : null,
     reusedFrom: reuse ? reuse.from : null,
-    // Likewise for blocks: nothing downstream sees a `blockType` discriminator (`03` §3).
+    // The single point where stored blocks become DD2 ones: nothing downstream sees a
+    // `blockType` discriminator or Lexical state (`03` §3).
     layout: origin ? rehomeBlocks(layout, origin) : layout,
     /**
      * The page's own position in the tree, resolved HERE rather than by the block that renders

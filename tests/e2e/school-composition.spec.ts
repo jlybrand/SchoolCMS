@@ -47,7 +47,6 @@ const districtPage = async (admin: APIRequestContext, title: string) => {
       tenant,
       title,
       slug: `composed-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
-      pageType: 'composed',
       visibility: 'public',
       layout: [
         words('Welcome to the library.'),

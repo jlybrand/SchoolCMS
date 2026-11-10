@@ -228,7 +228,7 @@ describe('the real rule table', () => {
     }
   })
 
-  it.each(['visibility', 'meta', 'pageType', 'parent'])(
+  it.each(['visibility', 'meta', 'parent'])(
     'the page field %s is a never field (`04` §4.3)',
     (name) => {
       expect(AUTO_APPROVAL_RULES.pages?.neverFields).toContain(name)

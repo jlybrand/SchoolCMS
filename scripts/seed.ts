@@ -239,12 +239,6 @@ const run = async () => {
         ...page,
         ...(parent === undefined ? {} : { parent }),
         tenant: tenantId,
-        pageType: 'composed' as const,
-        /**
-         * Emptied outright: on a database `compose:pages` has not reached, the stored words would
-         * otherwise go on top of the seeded section (`composeBodyOnWrite`) and say it twice.
-         */
-        body: null,
         visibility: 'public' as const,
         _status: 'published' as const,
       }

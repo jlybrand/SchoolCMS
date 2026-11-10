@@ -89,7 +89,7 @@ not a new subsystem.
 
 | To enable | Work |
 |---|---|
-| Allow `pageType: composed` for `school-manager` | Access-function change |
+| Allow `school-manager` to compose (adopted 2026-11-04) | Access-function change |
 | Restrict which blocks schools may use | Block-level access filter |
 | Editor guardrails and guidance | Admin UX work — the real cost |
 | Approval queue handling for block changes | Already covered — diffs are content-agnostic |

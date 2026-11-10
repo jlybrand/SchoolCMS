@@ -32,7 +32,6 @@ describe('cloning a page', () => {
         tenant: f.tenantB,
         title: 'Supply list',
         slug: 'clone-supply-list',
-        pageType: 'standard',
         visibility: 'public',
         publishAt: '2030-01-01T00:00:00.000Z',
         _status: 'published',

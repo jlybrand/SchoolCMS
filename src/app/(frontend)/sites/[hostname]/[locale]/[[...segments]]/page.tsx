@@ -5,10 +5,9 @@ import { notFound, redirect } from 'next/navigation'
 import { BlockList } from '@/blocks'
 import { Container } from '@/components/Container'
 import { Heading, PAGE_TITLE_LEVEL } from '@/components/Heading'
-import { RichText } from '@/components/RichText'
 import { Stack } from '@/components/Stack'
 import { getPageByPath } from '@/content/pages'
-import { mapBlockLinks, mapRichTextLinks } from '@/content/rehome-links'
+import { mapBlockLinks } from '@/content/rehome-links'
 import { resolvePageBlocks } from '@/content/resolve-blocks'
 import type { Page } from '@/content/types'
 import { documentTag, tenantTag } from '@/lib/cache-tags'
@@ -32,8 +31,7 @@ const pathOf = (segments: string[] | undefined) => `/${(segments ?? []).join('/'
  * returns DD2 domain types (`02` §11, ADR-5). The renderer never learns what a Lexical node
  * is — `src/content/rich-text.ts` already turned those into DD2 nodes.
  *
- * The `composed` layout renders through `BlockList`, which slots in beside `RichText`
- * without changing the routing or caching shape (`03` §3).
+ * A page's sections render through `BlockList`; its words are Text sections among them (`03` §3).
  */
 export const revalidate = 3600
 
@@ -147,7 +145,6 @@ export default async function SitePage({ params }: { params: Promise<Params> }) 
     : null
   const rewrite =
     port && page.reusedFrom ? withLocalPort(siteOrigin(page.reusedFrom.hostname), port) : null
-  const body = rewrite ? mapRichTextLinks(page.body, rewrite) : page.body
   const layout = rewrite ? mapBlockLinks(page.layout, rewrite) : page.layout
 
   const blocks = await resolvePageBlocks(resolved.ctx, layout, {
@@ -169,25 +166,17 @@ export default async function SitePage({ params }: { params: Promise<Params> }) 
       <Container>
         <Stack space="lg">
           {/*
-            The page title is the page's only `h1`, owned here rather than by the body, which
-            is why `RichText` clamps an author's headings to `h2` and below. An editor cannot
+            The page title is the page's only `h1`, owned here rather than by a Text section,
+            which is why `RichText` clamps an author's headings to `h2` and below. An editor cannot
             reach the element and therefore cannot produce a heading-order violation
             (`03` §3, `07` §3).
           */}
           <Heading level={PAGE_TITLE_LEVEL}>{page.title}</Heading>
 
-          <RichText content={body} />
-
           {/*
-            NO BRANCH ON `pageType`. Both renderers return null when they have nothing:
-            `RichText` for an empty body, `BlockList` for an empty layout — and the mapper
-            already dropped blocks that would have rendered empty. A fixed-type page
-            therefore renders prose and no layout, and a composed page renders its layout,
-            without this template knowing which it is holding.
-
-            That matters beyond tidiness: when school-level composition stops being a
-            deferred add-on (`01` §4.1), it is an access-predicate change and nothing here
-            moves (`03` §2).
+            Every page is composed (Jason, 2026-11-04): its words are Text sections among its
+            components. `BlockList` renders nothing for an empty layout, and the mapper already
+            dropped sections that would have rendered empty.
           */}
           <BlockList blocks={blocks} childPages={page.children} />
         </Stack>

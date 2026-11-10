@@ -35,7 +35,6 @@ export type {
   Page,
   PageBlock,
   PageSeo,
-  PageType,
   Post,
   RichText,
   RichTextBlock,

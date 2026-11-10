@@ -61,7 +61,7 @@ Payload auth collection, backed by Entra ID (`02` §7).
 
 ### `pages`
 
-- `tenant`, `title`, `slug`, `pageType`, `parent` (self-relation for hierarchy/nav),
+- `tenant`, `title`, `slug`, `layout` (its sections), `parent` (self-relation for hierarchy/nav),
   `visibility` (`public` | `staff`), `seo` (group — stored as `meta`, see below),
   `publishAt`, plus drafts/versions.
 - The SEO group is `meta.title` and `meta.description`: optional, plain fields, surfaced to
@@ -96,15 +96,9 @@ Payload auth collection, backed by Entra ID (`02` §7).
 
 **Every page is composed (Jason, 2026-11-04).** A page's words are Text sections in `layout`
 (§3) among its other components; a school manager composes with the simple components, the
-district with all of them. `pageType` and `body` are RETIRING (expand/contract): the form shows
-neither, every write leaves any words in `body` as a Text section on top and the page
-`composed` (`composeBodyOnWrite`), and `pnpm run compose:pages` converts existing pages once. A
-later contract step drops `body` and the `standard` value.
-
-| `pageType` (retiring) | Was                                                                           |
-| --------------------- | ----------------------------------------------------------------------------- |
-| `standard`            | Title and words in `body` — stored value only, converted by `compose:pages`   |
-| `composed`            | `layout` — the block array (§3). Every page, since 2026-11-04                 |
+district with all of them. There is no page type and no `body` field: both were retired by
+expand/contract (PR #69 converted every page, PR #70's `scripts/retire-page-body.sql` dropped
+the columns).
 
 The five fixed types this table once listed (`about`, `contact`, `staff`, `calendar`,
 `documents`) were retired: none ever had fields of its own, a school manager does not create
@@ -360,7 +354,7 @@ them:
 | Add-on                  | Collections it would add                           | Attachment point in v1                                                                                                                      |
 | ----------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | Native forms            | `forms`, `submissions` (via `plugin-form-builder`) | Pages embed a form by URL today; a `FormBlock` slots into the existing block library. Retention/redaction policy is the genuinely new work. |
-| School page composition | _(none)_                                           | Access predicate on `pageType: composed` and the `layout` field (§2, `pages`).                                                              |
+| School page composition | _(none)_                                           | **Adopted 2026-11-04** at level B: `src/access/school-layout.ts`, applied to `layout` by `schoolLayoutGate` (§2, `pages`).                   |
 | Athletics module        | `teams`                                            | `events.category = 'athletics'` and `events.team` (nullable relation) already model the join.                                               |
 | Portal audiences        | `portalUsers`, audience groups                     | `visibility: staff` on `pages` and `documents`.                                                                                             |
 | PDF/UA batch validation | _(none)_                                           | `documents.remediationStatus` already records the field a validator would set.                                                              |
@@ -454,8 +448,8 @@ export const access = {
 - **Publish gate:** the draft → published transition is permitted for `district-admin`
   only. `school-manager` submissions become change requests (`04` §5).
 - **Field-level:** PowerSchool source-owned fields are read-only for
-  `source: powerschool` records; `pageType: composed` and the `layout` field are
-  district-only.
+  `source: powerschool` records; in `layout`, the district's components are district-only
+  and schools compose with the simple ones (`src/access/school-layout.ts`).
 
 ### 6.3 Localization access
 
@@ -494,7 +488,7 @@ guarantee, not a secondary check.
 | Finalsite concept                       | Target                                                                                                   |
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | Composer page (school)                  | `pages` (composed): words as Text sections, plus the simple components                                   |
-| Composer page (district, complex)       | `pages` with `pageType: composed` + blocks                                                               |
+| Composer page (district, complex)       | `pages`: Text sections plus the district's components                                                    |
 | News post                               | `posts`                                                                                                  |
 | Calendar event                          | `events`                                                                                                 |
 | Meeting agenda (pasted content element) | `events.agendaBody` — **re-normalized through the paste pipeline, not carried over as markup** (`07` §4) |

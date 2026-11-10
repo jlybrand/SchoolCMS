@@ -47,7 +47,6 @@ const columnsPage = async (admin: APIRequestContext) => {
       tenant,
       title: uniqueTitle('Get involved'),
       slug,
-      pageType: 'composed',
       visibility: 'public',
       layout: [
         {

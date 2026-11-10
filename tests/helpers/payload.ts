@@ -168,7 +168,6 @@ export async function seed(payload: Payload): Promise<Fixtures> {
           tenant,
           title: slug.replace(/-/g, ' '),
           slug,
-          pageType: 'standard',
           visibility,
           _status: status,
         },

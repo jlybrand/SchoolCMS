@@ -43,7 +43,6 @@ const mkPage = async (
       tenant: await tenantIdFor(admin, hostname),
       title: uniqueTitle('Redirect'),
       slug,
-      pageType: 'composed',
       layout: [wordsSection('Words on the page.')],
       visibility: 'public',
       _status: 'published',
@@ -184,33 +183,38 @@ test.describe('linked pages — reuse content', () => {
       const sourceTitle = uniqueTitle('District supplies')
       const source = await mkPage(admin, 'localhost', {
         title: sourceTitle,
-        body: {
-          root: {
-            type: 'root',
-            version: 1,
-            direction: null,
-            format: '',
-            indent: 0,
-            children: [
-              {
-                type: 'paragraph',
+        layout: [
+          {
+            blockType: 'richText',
+            content: {
+              root: {
+                type: 'root',
                 version: 1,
+                direction: null,
+                format: '',
+                indent: 0,
                 children: [
                   {
-                    type: 'link',
-                    version: 3,
-                    fields: {
-                      linkType: 'internal',
-                      doc: { relationTo: 'pages', value: enroll.id },
-                      newTab: false,
-                    },
-                    children: [{ type: 'text', text: 'Enroll here', version: 1 }],
+                    type: 'paragraph',
+                    version: 1,
+                    children: [
+                      {
+                        type: 'link',
+                        version: 3,
+                        fields: {
+                          linkType: 'internal',
+                          doc: { relationTo: 'pages', value: enroll.id },
+                          newTab: false,
+                        },
+                        children: [{ type: 'text', text: 'Enroll here', version: 1 }],
+                      },
+                    ],
                   },
                 ],
               },
-            ],
+            },
           },
-        },
+        ],
       })
       made.push(source.id)
       const reuse = await mkPage(admin, 'b.localhost', {
