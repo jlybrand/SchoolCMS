@@ -1061,3 +1061,45 @@ the kind does not let a school add one — the hook refuses that.
   `richText, feed, richText`; the page form axe, both themes; the queue reads "Added Text: …" and
   "(2 sections unchanged)". `tests/e2e/support/fixture-pages.ts` `deletePage` releases Payload's
   document lock (`payload-locked-documents`) before deleting, since an open edit form leaves one
+
+## 23. Every page composed — the expand step (Jason, 2026-11-04)
+
+A page's words are a Text section now, on every page. This is the EXPAND half of retiring `body`
+and the `standard` page type: nothing new is written to either, existing pages are converted
+once, and the renderer still reads both. The CONTRACT half — dropping the `body` column and the
+`standard` value — is a later PR, after `compose:pages` has run on every database.
+
+| File                                     | Holds                                                                                                                                                                                                                                                                                                       |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/compose-page.ts`                | PURE. `hasWords(body)` — any non-blank text, or a placed leaf (not a line break); `composeBody(body, layout)` → `{ changed, layout }`: a Text section (`richText`, no id) holding the body, ON TOP of the sections; no words → unchanged                                                                    |
+| `src/collections/hooks/compose-body.ts`  | `composeBodyOnWrite`, FIRST `beforeValidate` on pages: words sent in `body`, else the stored ones, become a Text section on top of the sections sent (else stored); `body` → null; `pageType` → `composed` on every write. `body: null` sent = emptied, nothing moves. Catches restores, clones, API writes |
+| `src/lib/compose-existing-pages.ts`      | `composeExistingPages(payload, { ids? })` → `{ converted }`. Lists the MAIN table (a versions `find` reads `id` as the version's). Per page: live and needing it → republished converted; then a newer draft (waiting, or never published) → written again converted, on top. A converted page is skipped   |
+|                                          | `COMPOSING_PAGES` / `composingPagesOf(req)`: the mark on those writes (no user). `publishGate` lets a marked user-less publish through; `applyReviewState` keeps the review fields the write carries; `notify-review-outcome` sends nothing. Audit records them as System                                   |
+| `scripts/compose-pages.ts`               | `pnpm run compose:pages` — runs it over every page; logs the ids                                                                                                                                                                                                                                            |
+| `src/collections/Pages.ts`               | `body` and `pageType` `admin.hidden`; `pageType` default `composed`; `layout` shown on every page (no condition), labelled "Add Section"; Columns' `content` too                                                                                                                                            |
+| `src/admin/SchoolPlane/NewPageForm.tsx`  | creates `pageType: 'composed'`, no sections (an empty Text would fail its required Words)                                                                                                                                                                                                                   |
+| `src/admin/PageToolbar/page-settings.ts` | `pageType` out of the settings                                                                                                                                                                                                                                                                              |
+| `src/admin/Approvals/page-diff.ts`       | no "Page type" row                                                                                                                                                                                                                                                                                          |
+| `src/lib/seo.ts`                         | description fallback: SEO description → `body`'s first paragraph → the first TOP-LEVEL Text section's first paragraph → the site's                                                                                                                                                                          |
+| `scripts/seed.ts`                        | seeded pages are one Text section, `body: null` sent (so an unconverted database does not get the words twice)                                                                                                                                                                                              |
+
+Order on an existing database: `pnpm run compose:pages`, then anything else (seed, deploy).
+
+### Tests
+
+- `tests/unit/lib/compose-page.test.ts` — on top, ids and order kept, empty bodies, headings,
+  malformed layout
+- `tests/unit/access/compose-body-hook.test.ts` — sent words, stored words, sent layout wins,
+  emptied body, converted page untouched
+- `tests/unit/access/publish-gate.test.ts` — the mark: user-less passes, unmarked refused, a school
+  manager with the mark refused
+- `tests/unit/seo.test.ts` — the first Text section; `body` first; not inside columns
+- `tests/unit/admin/page-diff.test.ts` — no page-type row
+- `tests/integration/compose-existing-pages.test.ts` — over real drafts and versions, legacy rows
+  written through `payload.db` under the hooks: live stays live; a school's waiting change keeps
+  its words, state and submitter and emails nobody; never-published stays a draft; words above
+  existing sections; no words → only the type; a second run changes nothing
+- `tests/integration/content-layer.test.ts` — page links and reuse rehoming read from the Text
+  section
+- e2e — `support/fixture-pages.ts` `wordsSection()`; fixture, toolbar and linked pages carry one;
+  `paste-normalizer.spec.ts` adds a Text section to a new page before pasting

@@ -1008,9 +1008,11 @@ describe('links to a page in the words and the blocks', () => {
       const built = (await listPagePaths(ctx)).find(({ path }) => path === '/links-out')?.page
 
       for (const page of [byPath, built]) {
-        expect(JSON.stringify(page?.body)).toContain('"href":"/published-page-a"')
+        // The words are a Text section now (every page composed, Jason 2026-11-04), on top.
+        expect(JSON.stringify(page?.layout[0])).toContain('"href":"/published-page-a"')
         // The draft's button goes nowhere, so it is not on the page at all.
         expect(page?.layout.map((b) => (b.kind === 'callToAction' ? b.href : b.kind))).toEqual([
+          'richText',
           '/published-page-a',
         ])
       }
@@ -1335,12 +1337,12 @@ describe('linked pages — reuse content', () => {
     expect(page?.reusedFrom).toEqual({ path: '/reuse-supplies', hostname: 'localhost' })
     expect(page?.seo.title).toBe('Supplies for every school')
     // The district page's link leads to the district site, not to the school's /reuse-enroll.
-    expect(JSON.stringify(page?.body)).toContain('"href":"http://localhost/reuse-enroll"')
+    expect(JSON.stringify(page?.layout)).toContain('"href":"http://localhost/reuse-enroll"')
 
     // The build list says the same.
     const built = (await listPagePaths(ctx)).find(({ path }) => path === '/reuse-our-supplies')
     expect(built?.page.title).toBe('District supply list')
-    expect(JSON.stringify(built?.page.body)).toContain('"href":"http://localhost/reuse-enroll"')
+    expect(JSON.stringify(built?.page.layout)).toContain('"href":"http://localhost/reuse-enroll"')
   })
 
   it("names it by the district page's title in the school's menus", async () => {

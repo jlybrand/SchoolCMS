@@ -1,6 +1,7 @@
 import { getPayload, type PayloadRequest } from 'payload'
 
 import config from '../src/payload.config'
+import type { Page } from '../src/payload-types'
 import { ROOT_SLUG } from '../src/lib/slug'
 
 /**
@@ -55,7 +56,7 @@ const block = (type: 'paragraph' | 'heading', value: string, tag?: 'h2' | 'h3') 
   version: 1,
 })
 
-const body = (blocks: ReturnType<typeof block>[]) => ({
+const lexical = (blocks: ReturnType<typeof block>[]) => ({
   root: {
     type: 'root',
     children: blocks,
@@ -65,6 +66,10 @@ const body = (blocks: ReturnType<typeof block>[]) => ({
     version: 1,
   },
 })
+
+/** A page's words, as every page holds them now (Jason, 2026-11-04): one Text section. */
+const words = (blocks: ReturnType<typeof block>[]) =>
+  [{ blockType: 'richText', content: lexical(blocks) }] as unknown as NonNullable<Page['layout']>
 
 const TENANTS = [
   { name: 'DD2 District', slug: 'district', hostname: 'localhost', type: 'district' as const },
@@ -116,8 +121,7 @@ const PAGES = [
   {
     slug: ROOT_SLUG,
     title: 'Home',
-    pageType: 'standard' as const,
-    body: body([
+    layout: words([
       block('paragraph', 'Welcome. This is the seeded front page for local development.'),
       block('heading', 'What is on this site', 'h2'),
       block('paragraph', 'Announcements, calendars, staff directories and school documents.'),
@@ -126,20 +130,18 @@ const PAGES = [
   {
     slug: 'about',
     title: 'About Our School',
-    pageType: 'standard' as const,
-    body: body([block('paragraph', 'A seeded top-level page, so path walking has a target.')]),
+    layout: words([block('paragraph', 'A seeded top-level page, so path walking has a target.')]),
   },
   {
     slug: 'staff',
     title: 'Staff Directory',
-    pageType: 'standard' as const,
     /**
      * Nested on purpose. `getPageByPath` walks segments rather than reading a stored path
      * (`03` §2), and a one-segment fixture would never exercise the walk — nor prove that a
      * leading `about` is read as a path segment rather than mistaken for a locale prefix.
      */
     parentSlug: 'about',
-    body: body([block('paragraph', 'A seeded child page, reached through its parent.')]),
+    layout: words([block('paragraph', 'A seeded child page, reached through its parent.')]),
   },
 ]
 
@@ -237,6 +239,12 @@ const run = async () => {
         ...page,
         ...(parent === undefined ? {} : { parent }),
         tenant: tenantId,
+        pageType: 'composed' as const,
+        /**
+         * Emptied outright: on a database `compose:pages` has not reached, the stored words would
+         * otherwise go on top of the seeded section (`composeBodyOnWrite`) and say it twice.
+         */
+        body: null,
         visibility: 'public' as const,
         _status: 'published' as const,
       }

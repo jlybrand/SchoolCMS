@@ -35,6 +35,7 @@
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
     "seed": "payload run scripts/seed.ts",
+    "compose:pages": "payload run scripts/compose-pages.ts",
     "payload": "payload",
     "generate:types": "payload generate:types",
     "generate:importmap": "payload generate:importmap",

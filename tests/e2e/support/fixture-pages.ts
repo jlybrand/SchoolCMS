@@ -15,6 +15,24 @@ import { SCHOOL_HOSTNAME, SCHOOL_STORAGE_STATE, tenantIdFor } from './school-ses
  * next, and every school has the same seeded titles.
  */
 
+/**
+ * A Text section holding one paragraph — how a page holds its words now (Jason, 2026-11-04), so a
+ * fixture page's form opens on an editor the way a real page's does.
+ */
+export const wordsSection = (text: string) => ({
+  blockType: 'richText',
+  content: {
+    root: {
+      type: 'root',
+      direction: null,
+      format: '',
+      indent: 0,
+      version: 1,
+      children: [{ type: 'paragraph', version: 1, children: [{ type: 'text', text, version: 1 }] }],
+    },
+  },
+})
+
 export type FixturePage = { id: number; slug: string; title: string; admin: APIRequestContext }
 
 const unique = () => `${Date.now()}-${Math.floor(Math.random() * 1e6)}`
@@ -38,7 +56,9 @@ export const makePage = async (
       title,
       ...(slug === null ? {} : { slug }),
       tenant,
-      pageType: 'standard',
+      // Every page is composed (Jason, 2026-11-04): its words are a Text section.
+      pageType: 'composed',
+      layout: [wordsSection('Forms are due Friday.')],
       _status: 'draft',
     },
   })

@@ -57,4 +57,3 @@ export type {
   TenantType,
   Visibility,
 } from './types'
-export { FIXED_PAGE_TYPES } from './types'

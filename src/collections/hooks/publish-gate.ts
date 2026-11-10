@@ -5,6 +5,7 @@ import { checkSchoolLayout } from '@/access/school-layout'
 import type { AuthUser } from '@/access/types'
 import { autoApprovalOf } from '@/collections/hooks/auto-approve'
 import { scheduledRunOf } from '@/collections/hooks/scheduled-dates'
+import { composingPagesOf } from '@/lib/compose-existing-pages'
 import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 
 /**
@@ -80,6 +81,13 @@ export const publishGate: CollectionBeforeChangeHook = ({ data, originalDoc, req
    * has passed by then, which is why `schedulesPublish` does not stop it.
    */
   if (assertsPublished && scheduledRunOf(req) === 'publish') return data
+
+  /**
+   * And the every-page-composed conversion republishing what is already live
+   * (`src/lib/compose-existing-pages.ts`): server code, marked the same way, with NO user — a
+   * person carrying the mark is judged as themselves below.
+   */
+  if (assertsPublished && !user && composingPagesOf(req)) return data
 
   if ((assertsPublished || schedulesPublish) && !canPublish(user)) {
     throw new Forbidden()
