@@ -107,9 +107,16 @@ and **not adopted** (2026-09-21): its admin fields fail the axe gate with hardco
 colours. The SEO fields are a plain `meta` group that keeps the plugin's stored shape — see
 `src/collections/Pages.ts` before proposing it again.
 
-**Never introduce:** MongoDB, drag-and-drop composition for school users, per-field manual
-localization as the primary mechanism, `localStorage` for application state, or a bespoke
-reimplementation of anything Payload already provides.
+**Never introduce:** MongoDB, per-field manual localization as the primary mechanism,
+`localStorage` for application state, or a bespoke reimplementation of anything Payload already
+provides.
+
+_(School composition was on this list. **Jason decided on 2026-11-04 that all pages are composed
+and schools compose at "level B"**: they edit, add, remove and reorder the SIMPLE components —
+Text, Button, Cards, Accordion, Divider — and cannot touch the district's components (Columns, News
+feed, Video, Section menu, and anything added later until named). The rule is
+`src/access/school-layout.ts`, enforced on every route by `schoolLayoutGate`; the approval queue
+diffs sections (`diffLayout`). Do not widen the palette or loosen the gate without a decision.)_
 
 _(Local password auth was on this list and is temporarily in use — as a recorded, dated
 deviation with a switch trigger, not as a reversal. See "Authentication" below. Do not read
@@ -394,3 +401,13 @@ Do not resolve these in code; flag them:
 - **Document remediation ownership** and the legacy backlog policy (`07` §5).
 - **The identical-school-layouts assumption** (`01` §8) — falsified or confirmed by the
   template census (`10` §2), which should start during Phase 3, not at migration.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

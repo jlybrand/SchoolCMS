@@ -17,8 +17,8 @@ import type { AuthUser } from './types'
  *   2. **The publish gate.** A `school-manager` cannot transition a page to published by
  *      any route (CLAUDE.md rule 3, `03` §6.4 invariant 5).
  *
- *   3. **The composed-page gate.** `pageType: composed` and its block array are
- *      district-only (`03` §2–3).
+ *   3. **The component gate** (`schoolLayoutGate`, a hook): schools compose with the simple
+ *      components; the district's components are the district's (Jason, 2026-11-04).
  *
  *   4. **Anonymous read is a real, narrow grant** — published and public only — because
  *      that is the website (`03` §6.2). The generic function denies anonymous flatly.
@@ -57,11 +57,11 @@ export const canUsePageHistory = (user: AuthUser | null | undefined): boolean =>
   isDistrictAdmin(user)
 
 /**
- * Who may author `composed` pages and their block array (`03` §2–3).
+ * Who may place ANY component (`03` §2–3).
  *
- * Deliberately a single predicate. `01` §4.1 lists school-level composition as a possible
- * add-on; enabling it changes this function and adds editor guardrails, and requires no new
- * collections, blocks, or templates. Keeping the seam this small is the whole point.
+ * The seam `01` §4.1 kept for school composition, now used (Jason, 2026-11-04): schools compose,
+ * but with the simple components only (`src/access/school-layout.ts`, applied by
+ * `schoolLayoutGate`). Placing a news feed, columns or an embed — or changing one — stays here.
  */
 export const canComposePages = (user: AuthUser | null | undefined): boolean => isDistrictAdmin(user)
 
@@ -92,8 +92,6 @@ const isPublishingWrite = (data: IncomingData): boolean => {
   if (data._status === 'published') return true
   return data.publishAt !== undefined && data.publishAt !== null && data.publishAt !== ''
 }
-
-const isComposedWrite = (data: IncomingData): boolean => data?.pageType === 'composed'
 
 /**
  * READ.
@@ -138,7 +136,6 @@ export const pagesCreateAccess: Access = ({ req, data }) => {
   const incoming = dataOf({ data })
 
   if (isPublishingWrite(incoming) && !canPublish(user)) return false
-  if (isComposedWrite(incoming) && !canComposePages(user)) return false
 
   if (isDistrictAdmin(user)) return true
 
@@ -160,8 +157,9 @@ export const pagesCreateAccess: Access = ({ req, data }) => {
  * update that omits `tenant`. A constraint makes the database the arbiter — a scoped user
  * reaches only rows already inside their tenants, whatever the payload claims.
  *
- * The publish and composed gates are checked BEFORE the constraint is returned, so they
- * apply to a user's own tenant too. "It is their page" is not permission to publish it.
+ * The publish gate is checked BEFORE the constraint is returned, so it applies to a user's own
+ * tenant too. "It is their page" is not permission to publish it. Which COMPONENTS a school may
+ * change is the hook's (`schoolLayoutGate`): it needs the stored layout, which access never sees.
  */
 export const pagesUpdateAccess: Access = ({ req, data }) => {
   const user = userOf(req)
@@ -171,7 +169,6 @@ export const pagesUpdateAccess: Access = ({ req, data }) => {
   const incoming = dataOf({ data })
 
   if (isPublishingWrite(incoming) && !canPublish(user)) return false
-  if (isComposedWrite(incoming) && !canComposePages(user)) return false
 
   if (isDistrictAdmin(user)) return true
 

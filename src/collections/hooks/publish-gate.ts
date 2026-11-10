@@ -1,9 +1,11 @@
-import { Forbidden, type CollectionBeforeChangeHook } from 'payload'
+import { Forbidden, ValidationError, type CollectionBeforeChangeHook } from 'payload'
 
 import { canComposePages, canPublish } from '@/access/pages'
+import { checkSchoolLayout } from '@/access/school-layout'
 import type { AuthUser } from '@/access/types'
 import { autoApprovalOf } from '@/collections/hooks/auto-approve'
 import { scheduledRunOf } from '@/collections/hooks/scheduled-dates'
+import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 
 /**
  * The hook half of two release-blocking gates (CLAUDE.md rules 3 and `03` §6.4 invariant 5).
@@ -87,27 +89,32 @@ export const publishGate: CollectionBeforeChangeHook = ({ data, originalDoc, req
 }
 
 /**
- * Keeps `composed` pages and the block array district-only (`03` §2–3).
+ * Which components a write may change (Jason, 2026-11-04 — schools compose, "level B").
  *
- * Reads `pageType` from the write merged over the stored document, which is what catches
- * the partial update that edits a composed page without mentioning `pageType`. A `layout`
- * array in the payload is refused on its own terms too, whatever `pageType` claims —
- * blocks are district-only regardless of the page they arrive on.
+ * The district places and changes anything. A school manager composes with the simple
+ * components and leaves the district's exactly as they are — the rule is `checkSchoolLayout`,
+ * judged against the STORED layout, which is why this is a hook and not access: access never sees
+ * the stored document. A write that does not send `layout` is judged against the stored one, so
+ * it changes nothing. Any other signed-in user — a non-human actor — composes nothing.
+ *
+ * A refusal is a ValidationError on `layout`, so the school sees why, in words, on the form.
  */
-export const composedPagesAreDistrictOnly: CollectionBeforeChangeHook = ({
-  data,
-  originalDoc,
-  req,
-}) => {
+export const schoolLayoutGate: CollectionBeforeChangeHook = ({ data, originalDoc, req }) => {
   const user = userOf(req)
-  if (canComposePages(user)) return data
+  /**
+   * No user at all is trusted server code — the seed, the schedule job publishing a composed page,
+   * an import — as `resolveReview` reads it. An anonymous API request never gets here: access
+   * refuses it first.
+   */
+  if (!user || canComposePages(user)) return data
 
-  const resultingType = data?.pageType ?? originalDoc?.pageType
-  const sendsBlocks = Array.isArray(data?.layout) && data.layout.length > 0
-
-  if (resultingType === 'composed' || sendsBlocks) {
-    throw new Forbidden()
+  const sends = data?.layout !== undefined
+  if (!sendsForApproval(user)) {
+    if (sends && Array.isArray(data?.layout) && data.layout.length > 0) throw new Forbidden()
+    return data
   }
 
+  const check = checkSchoolLayout(originalDoc?.layout, sends ? data?.layout : originalDoc?.layout)
+  if (!check.ok) throw new ValidationError({ errors: [{ path: 'layout', message: check.reason }] })
   return data
 }

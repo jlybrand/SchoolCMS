@@ -74,7 +74,9 @@ layout choices, no page-type conversion.
 - The page does not enter navigation until the district places it during approval —
   preventing orphaned pages nobody links to and nobody remembers.
 
-*(School-level block composition is a deferred add-on — `01` §4.1.)*
+*(School-level composition: **enabled 2026-11-04 (Jason), level B** — schools compose with the
+simple components around the district's — `01` §4.1. Every change still goes through approval, and
+the queue lists section changes: added, removed, changed, moved.)*
 
 ### 2.5 Uploads
 

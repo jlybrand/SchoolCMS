@@ -7,6 +7,8 @@ import {
   pagesReadVersionsAccess,
   pagesUpdateAccess,
 } from '@/access/pages'
+import { isDistrictAdmin, isSchoolManager } from '@/access/predicates'
+import { schoolPalette } from '@/access/school-layout'
 import { districtOnlyField } from '@/access/tenant-scoped'
 import type { AuthUser } from '@/access/types'
 import { sendsForApproval } from '@/admin/SendForApproval/review-status'
@@ -20,7 +22,7 @@ import { blockLibrary } from '@/collections/blocks'
 import { auditChange, auditDelete } from '@/collections/hooks/audit'
 import { validateLinkMode } from '@/collections/hooks/linked-page'
 import { restoreIsDistrictOnly } from '@/collections/hooks/page-history'
-import { composedPagesAreDistrictOnly, publishGate } from '@/collections/hooks/publish-gate'
+import { publishGate, schoolLayoutGate } from '@/collections/hooks/publish-gate'
 import { pageDatesHook } from '@/collections/hooks/scheduled-dates'
 import { makeApproveEndpoint } from '@/collections/endpoints/approve'
 import { applyReviewState } from '@/collections/hooks/review-state'
@@ -62,6 +64,12 @@ import { isReservedSlug, isReservedTopLevelSlug, slugify } from '@/lib/slug'
  * functions, hooks, validators) is test-first, and is in `src/access/pages.ts` and
  * `src/collections/hooks/`.
  */
+/** Who may write a page's components at all: the district, and school managers (Jason, 2026-11-04). */
+const composesField = ({ req }: { req: { user?: unknown } }): boolean => {
+  const user = (req.user as AuthUser | null) ?? null
+  return isDistrictAdmin(user) || isSchoolManager(user)
+}
+
 export const Pages: CollectionConfig = {
   slug: 'pages',
   admin: {
@@ -144,7 +152,7 @@ export const Pages: CollectionConfig = {
      * been refused, so the only publish it ever sees is a district admin's approve.
      */
     /** The Start FIRST: a publish with one still to come becomes a schedule before the gate. */
-    beforeChange: [pageDatesHook, publishGate, composedPagesAreDistrictOnly, applyReviewState],
+    beforeChange: [pageDatesHook, publishGate, schoolLayoutGate, applyReviewState],
     /**
      * A publish goes live in seconds, not at the next hourly ISR (`05` Phase 4 exit). Next's
      * `revalidatePath` is imported lazily: this config also loads outside Next (the seed, the
@@ -501,16 +509,20 @@ export const Pages: CollectionConfig = {
       blocks: blockLibrary,
       label: 'Sections',
       /**
-       * The district-only block array (`03` §3). THREE layers gate it and none is
-       * decoration:
-       *   - this field-level access, which refuses the write;
-       *   - `composedPagesAreDistrictOnly`, which refuses a `layout` payload however it
-       *     arrives — including on a partial update that never mentions `pageType`;
-       *   - `pagesUpdateAccess`, which refuses the request before either runs.
-       * v1 has no school composition (`01` §4.1); enabling it later changes these
-       * predicates and nothing else — no new collection, no new block, no new template.
+       * The page's components (`03` §3). Schools compose too since 2026-11-04 (Jason, "level
+       * B"): with the simple components, around the district's, which they cannot change. The
+       * layers, none decoration:
+       *   - this field's access: district and school managers only — never a non-human actor;
+       *   - `filterOptions`: a school's picker offers the simple components (`schoolPalette`);
+       *   - `schoolLayoutGate`, which judges every write against the STORED layout, however it
+       *     arrives (admin, REST, GraphQL) — the rule itself is `checkSchoolLayout`;
+       *   - `pagesUpdateAccess`, tenant-scoped, before any of it runs.
        */
-      access: { create: districtOnlyField, update: districtOnlyField },
+      access: { create: composesField, update: composesField },
+      filterOptions: ({ siblingData, user }) =>
+        sendsForApproval(user as AuthUser | null)
+          ? schoolPalette((siblingData as { layout?: unknown } | undefined)?.layout)
+          : true,
       admin: {
         /**
          * Hidden on every fixed type. A school manager never reaches this field, but a

@@ -47,8 +47,21 @@ export const makePage = async (
   return { id: doc.id, slug: doc.slug, title, admin }
 }
 
+/**
+ * Delete a page a browser had open. Payload locks a document while its edit form is open and
+ * refuses the delete (423) until the lock goes — and the lock outlives the test's page. A
+ * leftover published page then shows up in another spec's sitemap count, so release it first.
+ */
+export const deletePage = async (admin: APIRequestContext, id: number) => {
+  await admin.delete(
+    `/api/payload-locked-documents?where[document.relationTo][equals]=pages&where[document.value][equals]=${id}`,
+  )
+  const res = await admin.delete(`/api/pages/${id}`)
+  expect(res.ok(), `delete fixture page ${id}: ${res.status()} ${await res.text()}`).toBe(true)
+}
+
 export const dropPage = async ({ id, admin }: FixturePage) => {
-  await admin.delete(`/api/pages/${id}`)
+  await deletePage(admin, id)
   await admin.dispose()
 }
 
