@@ -212,6 +212,7 @@ pnpm build-storybook    # static build
 
 pnpm db:up              # Postgres 18 on :5433 (needs docker/podman compose)
 pnpm generate:types     # regenerate src/payload-types.ts from the schema
+pnpm compose:pages      # one-off: every page's body words -> a Text section (idempotent)
 pnpm migrate:create     # generate a reversible migration
 ```
 

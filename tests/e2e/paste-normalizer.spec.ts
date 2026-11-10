@@ -41,7 +41,23 @@ const BLOCKING_IMPACTS = ['critical', 'serious']
 const pastePrompt = (page: Page): Locator => page.getByRole('dialog', { name: /pasted/i })
 
 /**
- * The body field's editor.
+ * A new page opens with no sections (every page composed, Jason 2026-11-04): add a Text section,
+ * as an editor would, through the section picker.
+ */
+const addTextSection = async (page: Page) => {
+  const add = page.locator('#field-layout').getByRole('button', { name: /^Add / }).last()
+  await expect(add).toBeVisible({ timeout: 20_000 })
+  await add.click()
+  await page
+    .getByRole('dialog')
+    .last()
+    .getByRole('button', { name: /^Text$/ })
+    .first()
+    .click()
+}
+
+/**
+ * The Text section's editor.
  *
  * Asserted to be the only one on the page rather than taken with `.first()`: if a second
  * rich-text field is added later, this should fail and be pointed at the right one, not
@@ -91,6 +107,7 @@ test.describe('pasting into the rich text editor', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/collections/pages/create')
     await assignTenant(page, 'DD2 District')
+    await addTextSection(page)
   })
 
   test('@smoke a Word agenda opens one prompt naming what was removed', async ({ page }) => {

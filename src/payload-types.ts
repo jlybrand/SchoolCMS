@@ -246,9 +246,6 @@ export interface Page {
    * The page's address, filled in from the title. Links chosen as pages, menus and the permanent link follow a change; addresses typed by hand and links from other websites do not.
    */
   slug: string;
-  /**
-   * The words on the page.
-   */
   body?: {
     root: {
       type: string;
@@ -264,9 +261,6 @@ export interface Page {
     };
     [k: string]: unknown;
   } | null;
-  /**
-   * "Page" is words a school can edit. "Composed" is built from components by the district.
-   */
   pageType: 'standard' | 'composed';
   /**
    * Sits this page underneath another one. Drives the URL and the menus.

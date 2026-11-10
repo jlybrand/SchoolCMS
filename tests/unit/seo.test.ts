@@ -143,6 +143,28 @@ describe('buildPageMetadata', () => {
     expect(build({ body: [] }).description).toBeUndefined()
   })
 
+  it('a composed page: the first paragraph of its first Text section (Jason, 2026-11-04)', () => {
+    const sections = [
+      { id: 'd', kind: 'divider' },
+      { id: 't1', kind: 'richText', content: [paragraph('')] },
+      { id: 't2', kind: 'richText', content: [paragraph('Story time is on Fridays.')] },
+    ]
+    expect(build({ body: [], layout: sections }).description).toBe('Story time is on Fridays.')
+    // Words still in `body` (a page not yet converted) come first, as they render first.
+    expect(build({ layout: sections }).description).toBe(
+      'We are a K–5 school of 480 students in Summerville.',
+    )
+    // Only top-level Text: a column's words describe the column, not the page.
+    const inColumns = [
+      {
+        id: 'c',
+        kind: 'columns',
+        columns: [{ blocks: [{ id: 't', kind: 'richText', content: [paragraph('Inside.')] }] }],
+      },
+    ]
+    expect(build({ body: [], layout: inColumns }).description).toBeUndefined()
+  })
+
   it('falls back to the site description LAST — a page describes itself before its site does', () => {
     const withDefault = (overrides: Record<string, unknown> = {}) =>
       buildPageMetadata({

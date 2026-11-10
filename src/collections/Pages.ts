@@ -20,6 +20,7 @@ import {
 } from '@/collections/hooks/page-slug'
 import { blockLibrary } from '@/collections/blocks'
 import { auditChange, auditDelete } from '@/collections/hooks/audit'
+import { composeBodyOnWrite } from '@/collections/hooks/compose-body'
 import { validateLinkMode } from '@/collections/hooks/linked-page'
 import { restoreIsDistrictOnly } from '@/collections/hooks/page-history'
 import { publishGate, schoolLayoutGate } from '@/collections/hooks/publish-gate'
@@ -141,9 +142,15 @@ export const Pages: CollectionConfig = {
     /**
      * Order matters: derive the slug, then check the DERIVED value for collisions. The
      * parent guard is independent of both and runs last, so a page with two problems reports
-     * the slug one first — the field the author was most likely editing.
+     * the slug one first — the field the author was most likely editing. Words still in
+     * `body` become a Text section first (`composeBodyOnWrite`), so they are validated as one.
      */
-    beforeValidate: [deriveSlugFromTitle, uniqueSlugWithinParent, rootPageCannotBeParent],
+    beforeValidate: [
+      composeBodyOnWrite,
+      deriveSlugFromTitle,
+      uniqueSlugWithinParent,
+      rootPageCannotBeParent,
+    ],
     /**
      * The hook half of two release-blocking gates. The access functions above are the other
      * half; see src/collections/hooks/publish-gate.ts for why one layer is not enough.
@@ -266,18 +273,19 @@ export const Pages: CollectionConfig = {
        * Uses the global constrained editor (`07` §4.4) — no per-field override, so the
        * allowlist cannot be widened here without widening it everywhere, visibly.
        *
-       * Not required: a `calendar` or `documents` page is a typed listing whose content
-       * comes from its module, and forcing prose onto it would invite the "paragraph
-       * describing the thing next to the thing" pattern `07` §4.5 exists to reduce.
+       * RETIRING (Jason, 2026-11-04 — every page composed). A page's words are a Text section
+       * now. Off the form, and never written: `composeBodyOnWrite` moves any words a write
+       * leaves here into a Text section, and `pnpm run compose:pages` converts the pages
+       * nobody edits. Read by the renderer until the contract step drops the column.
        */
-      admin: { description: 'The words on the page.' },
+      admin: { hidden: true },
     },
     {
       name: 'pageType',
       // A radio, not a select: Payload's select input fails axe (`docs/phases/04` §17).
       type: 'radio',
       required: true,
-      defaultValue: 'standard',
+      defaultValue: 'composed',
       index: true,
       /**
        * Two kinds (Jason, 2026-11-04). The five fixed types (about, contact, staff, calendar,
@@ -287,13 +295,14 @@ export const Pages: CollectionConfig = {
        */
       options: [
         { label: 'Page', value: 'standard' },
-        { label: 'Composed (district only)', value: 'composed' },
+        { label: 'Composed', value: 'composed' },
       ],
-      admin: {
-        className: SETTING_CLASS,
-        description:
-          '"Page" is words a school can edit. "Composed" is built from components by the district.',
-      },
+      /**
+       * RETIRING with `body`: every page is composed (Jason, 2026-11-04), and
+       * `composeBodyOnWrite` sets it on every write. `standard` stays a stored value until the
+       * contract step narrows the enum; there is nothing left to choose.
+       */
+      admin: { hidden: true },
     },
     {
       name: 'parent',
@@ -508,6 +517,8 @@ export const Pages: CollectionConfig = {
       type: 'blocks',
       blocks: blockLibrary,
       label: 'Sections',
+      // "Add Section", not Payload's "Add Layout" from the field's name.
+      labels: { singular: 'Section', plural: 'Sections' },
       /**
        * The page's components (`03` §3). Schools compose too since 2026-11-04 (Jason, "level
        * B"): with the simple components, around the district's, which they cannot change. The
@@ -524,12 +535,6 @@ export const Pages: CollectionConfig = {
           ? schoolPalette((siblingData as { layout?: unknown } | undefined)?.layout)
           : true,
       admin: {
-        /**
-         * Hidden on every fixed type. A school manager never reaches this field, but a
-         * district admin editing an `about` page should not see an empty block builder
-         * below the fields that page actually uses.
-         */
-        condition: (data: { pageType?: unknown } | undefined) => data?.pageType === 'composed',
         description: 'The sections of this page, top to bottom. Drag to reorder.',
       },
     },

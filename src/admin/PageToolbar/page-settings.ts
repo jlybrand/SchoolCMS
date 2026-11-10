@@ -1,6 +1,6 @@
 /**
  * The district's Page settings (Jason, 2026-10-29) — the fields its gear opens, as Finalsite's
- * page-settings modal holds them: title, address, place, type, who can see it, search and
+ * page-settings modal holds them: title, address, place, who can see it, search and
  * sharing, scheduled publish, the permanent link, the linked-page choice and the hide options.
  *
  * Each such field carries `SETTING_CLASS`. For the district the toolbar turns the form into
@@ -14,7 +14,6 @@ export const SETTING_CLASS = 'dd2-page-setting'
 export const SETTING_PATHS: readonly string[] = [
   'title',
   'slug',
-  'pageType',
   'parent',
   'visibility',
   'meta.title',

@@ -7,7 +7,7 @@ import {
 } from '@playwright/test'
 
 import { ADMIN_STORAGE_STATE, adminCredentials } from './support/admin-session'
-import { uniqueTitle } from './support/fixture-pages'
+import { uniqueTitle, wordsSection } from './support/fixture-pages'
 import { SCHOOL_HOSTNAME, schoolTest, tenantIdFor } from './support/school-session'
 import { openPageSettings } from './support/page-settings'
 import { siteUrl } from './support/site-url'
@@ -43,7 +43,8 @@ const mkPage = async (
       tenant: await tenantIdFor(admin, hostname),
       title: uniqueTitle('Redirect'),
       slug,
-      pageType: 'standard',
+      pageType: 'composed',
+      layout: [wordsSection('Words on the page.')],
       visibility: 'public',
       _status: 'published',
       ...data,

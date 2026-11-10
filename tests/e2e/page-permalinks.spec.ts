@@ -44,7 +44,7 @@ const mkPage = async (
       tenant: await tenantIdFor(admin, hostname),
       title: uniqueTitle('Permalink'),
       slug,
-      pageType: 'standard',
+      pageType: 'composed',
       visibility: 'public',
       _status: 'published',
       ...data,

@@ -191,3 +191,25 @@ describe('publishGate — the auto-approval publish', () => {
     expect(() => run({}, { autoApproval: { scope: 'posts.routine' } })).toThrow()
   })
 })
+
+/**
+ * The every-page-composed conversion (`src/lib/compose-existing-pages.ts`) republishes live pages
+ * as server code: NO user, and a `composingPages` mark only server code can set. The mark opens
+ * nothing for a person — a school manager carrying it is still refused.
+ */
+describe('publishGate — the conversion’s republish', () => {
+  const run = (user: AuthUser | null, context: Record<string, unknown>) =>
+    publishGate({ req: { user, context }, data: { _status: 'published' } } as never)
+
+  it('lets the marked, user-less republish through', () => {
+    expect(() => run(null, { composingPages: true })).not.toThrow()
+  })
+
+  it('refuses a user-less publish without the mark', () => {
+    expect(() => run(null, {})).toThrow(Forbidden)
+  })
+
+  it('refuses a school manager carrying the mark', () => {
+    expect(() => run(managerA, { composingPages: true })).toThrow(Forbidden)
+  })
+})

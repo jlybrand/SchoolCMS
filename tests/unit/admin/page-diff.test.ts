@@ -43,12 +43,15 @@ describe('diffPage — typed fields', () => {
     ])
   })
 
-  it('names the page type and visibility in words, not stored values', () => {
-    const diff = diffPage(live, { ...live, pageType: 'composed', visibility: 'staff' })
+  it('names visibility in words, not stored values', () => {
+    const diff = diffPage(live, { ...live, visibility: 'staff' })
     expect(diff.fields).toEqual([
-      { field: 'pageType', label: 'Page type', before: 'Page', after: 'Composed' },
       { field: 'visibility', label: 'Who can see it', before: 'Anyone', after: 'Staff only' },
     ])
+  })
+
+  it('says nothing about the page type — every page is composed, there is no choice to review', () => {
+    expect(diffPage(live, { ...live, pageType: 'composed' }).fields).toEqual([])
   })
 
   it('shows the address as the path it will have', () => {
@@ -186,7 +189,6 @@ describe('diffPage — a page that has never been published', () => {
     expect(diff.fields).toEqual([
       { field: 'title', label: 'Title', before: null, after: 'Bus routes' },
       { field: 'slug', label: 'Address', before: null, after: '/bus-routes' },
-      { field: 'pageType', label: 'Page type', before: null, after: 'Page' },
       { field: 'visibility', label: 'Who can see it', before: null, after: 'Anyone' },
       { field: 'parent', label: 'Placed under', before: null, after: 'Top of the site' },
     ])

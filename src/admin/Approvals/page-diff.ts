@@ -45,12 +45,6 @@ export type PageDiff = {
 
 type Doc = Record<string, unknown>
 
-/** As the page form labels them (Jason, 2026-11-04: two kinds). */
-const PAGE_TYPES: Record<string, string> = {
-  standard: 'Page',
-  composed: 'Composed',
-}
-
 const VISIBILITY: Record<string, string> = { public: 'Anyone', staff: 'Staff only' }
 
 const TOP = 'Top of the site'
@@ -91,13 +85,6 @@ const FIELDS: FieldSpec[] = [
     label: 'Address',
     key: (d) => textOf(d.slug),
     show: (d) => (textOf(d.slug) ? `/${textOf(d.slug)}` : null),
-    always: true,
-  },
-  {
-    field: 'pageType',
-    label: 'Page type',
-    key: (d) => textOf(d.pageType),
-    show: (d) => PAGE_TYPES[String(d.pageType)] ?? textOf(d.pageType),
     always: true,
   },
   {

@@ -75,6 +75,16 @@ export const excerptOf = (body: RichText, max: number = DESCRIPTION_LENGTH): str
   return null
 }
 
+/** The first words among a page's top-level Text sections — what a reader meets first. */
+const sectionsExcerpt = (layout: PageMetadataInput['page']['layout']): string | null => {
+  for (const section of layout ?? []) {
+    if (section.kind !== 'richText' || !section.content) continue
+    const text = excerptOf(section.content)
+    if (text !== null) return text
+  }
+  return null
+}
+
 const clean = (value: string | null | undefined): string | null => {
   const trimmed = value?.trim() ?? ''
   return trimmed === '' ? null : trimmed
@@ -86,6 +96,11 @@ export type PageMetadataInput = {
     readonly title: string
     readonly path: string
     readonly body: RichText
+    /**
+     * The page's sections, for a composed page's description (Jason, 2026-11-04): its first
+     * TOP-LEVEL Text section's first paragraph. Structural, so any `PageBlock[]` fits.
+     */
+    readonly layout?: readonly { readonly kind: string; readonly content?: RichText }[]
     readonly seo: { readonly title: string | null; readonly description: string | null }
     /** Absent is false — a page is listed unless someone chose otherwise. */
     readonly hideFromSearchEngines?: boolean
@@ -149,7 +164,10 @@ export const buildPageMetadata = (input: PageMetadataInput): PageMetadata => {
    * it is left for the page with nothing of its own to say.
    */
   const description =
-    clean(page.seo.description) ?? excerptOf(page.body) ?? clean(input.defaultDescription)
+    clean(page.seo.description) ??
+    excerptOf(page.body) ??
+    sectionsExcerpt(page.layout) ??
+    clean(input.defaultDescription)
   const url = absoluteUrl(origin, page.path, locale)
   /**
    * The canonical and the language alternates name the ORIGINAL: for a reuse page that is the

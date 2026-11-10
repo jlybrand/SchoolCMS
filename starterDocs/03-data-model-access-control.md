@@ -66,7 +66,7 @@ Payload auth collection, backed by Entra ID (`02` §7).
   `publishAt`, plus drafts/versions.
 - The SEO group is `meta.title` and `meta.description`: optional, plain fields, surfaced to
   the rendering layer as `Page.seo`. Both fall back at render — the title to the page's, the
-  description to the first paragraph of the body — so a page nobody wrote them for is still
+  description to the first paragraph of its first Text section — so a page nobody wrote them for is still
   described. A share image joins with `media` (Phase 6). `plugin-seo` was evaluated and not
   adopted (`02` §2); the group keeps its name and shape.
 - `requiresTranslationReview` (bool) — gates locale publication for high-stakes content
@@ -94,12 +94,17 @@ Payload auth collection, backed by Entra ID (`02` §7).
   canonical is the district page; out of the school's sitemap; follows the district page's
   edits); a source that is not live makes the page 404.
 
-**`pageType` determines the editing shape — two kinds since 2026-11-04 (Jason):**
+**Every page is composed (Jason, 2026-11-04).** A page's words are Text sections in `layout`
+(§3) among its other components; a school manager composes with the simple components, the
+district with all of them. `pageType` and `body` are RETIRING (expand/contract): the form shows
+neither, every write leaves any words in `body` as a Text section on top and the page
+`composed` (`composeBodyOnWrite`), and `pnpm run compose:pages` converts existing pages once. A
+later contract step drops `body` and the `standard` value.
 
-| `pageType`  | Available to      | Content                         |
-| ----------- | ----------------- | ------------------------------- |
-| `standard`  | School managers   | Title and words (rich text)     |
-| `composed`  | **District only** | `layout` — the block array (§3) |
+| `pageType` (retiring) | Was                                                                           |
+| --------------------- | ----------------------------------------------------------------------------- |
+| `standard`            | Title and words in `body` — stored value only, converted by `compose:pages`   |
+| `composed`            | `layout` — the block array (§3). Every page, since 2026-11-04                 |
 
 The five fixed types this table once listed (`about`, `contact`, `staff`, `calendar`,
 `documents`) were retired: none ever had fields of its own, a school manager does not create
@@ -488,7 +493,7 @@ guarantee, not a secondary check.
 
 | Finalsite concept                       | Target                                                                                                   |
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Composer page (school)                  | `pages` with a fixed `pageType`                                                                          |
+| Composer page (school)                  | `pages` (composed): words as Text sections, plus the simple components                                   |
 | Composer page (district, complex)       | `pages` with `pageType: composed` + blocks                                                               |
 | News post                               | `posts`                                                                                                  |
 | Calendar event                          | `events`                                                                                                 |

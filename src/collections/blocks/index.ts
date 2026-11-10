@@ -377,6 +377,7 @@ export const columnsBlock: Block = {
           name: 'content',
           type: 'blocks',
           label: 'In this column',
+          labels: { singular: 'Section', plural: 'Sections' },
           // As on the page: a school's picker offers the simple components (`schoolPalette`).
           filterOptions: ({ siblingData, user }) =>
             sendsForApproval(user as AuthUser | null)

@@ -44,15 +44,12 @@ export type ContentContext = {
 /**
  * PAGES (`03` §2).
  *
- * Two kinds (Jason, 2026-11-04): `standard`, a page of words a school manager writes, and
- * `composed`, the district-only block array (§3) — where staff directories, calendars, columns
- * and shared sections are placed as components. One enum rather than two collections, so enabling
- * school composition later (`01` §4.1) is an access-predicate change and nothing else.
+ * Every page is composed (Jason, 2026-11-04): its words are Text sections among its other
+ * components, and schools compose with the simple ones (`src/access/school-layout.ts`).
+ * `standard` — a page whose words sat in `body` — is still a stored value until the contract
+ * step retires it; `pnpm run compose:pages` converts those pages, and the renderer reads both.
  */
 export type PageType = 'standard' | 'composed'
-
-/** The kinds a school manager may author: one. `composed` is district-only (`03` §2). */
-export const FIXED_PAGE_TYPES: readonly PageType[] = ['standard'] as const
 
 /**
  * A page as another page refers to it: enough to render a link, and nothing else.
