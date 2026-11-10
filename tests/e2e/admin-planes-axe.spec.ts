@@ -399,3 +399,41 @@ adminTest.describe('district plane — whole screens', () => {
     })
   }
 })
+
+/**
+ * The sidebar, OPEN, on a wide screen — 1.4.3 Contrast (Minimum). Found 2026-11-10: Payload
+ * shows the sidebar by default only at wide widths, so every audit above (at Playwright's
+ * 1280px) ran with it closed and never saw its group labels ("Content", "Administration"),
+ * drawn #9a9a9a on white at 2.81:1. A district admin on a desktop monitor sees them every day.
+ */
+const auditOpenSidebar = async (page: Page, colorScheme: 'light' | 'dark') => {
+  await page.setViewportSize({ width: 1600, height: 1000 })
+  await page.emulateMedia({ colorScheme })
+  await page.goto('/admin')
+  await expect(page.locator('.nav-group__label').first()).toBeVisible({ timeout: 20_000 })
+  const results = await new AxeBuilder({ page })
+    .include('.nav')
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze()
+  const blocking = results.violations.filter((v) => BLOCKING_IMPACTS.includes(v.impact ?? ''))
+  expect(
+    blocking.map((v) => `${v.id}: ${v.nodes.map((n) => n.any[0]?.message).join(' | ')}`),
+  ).toEqual([])
+}
+
+for (const colorScheme of ['light', 'dark'] as const) {
+  adminTest(
+    `@a11y the open sidebar on a wide screen, district — ${colorScheme}`,
+    async ({ page }) => {
+      adminTest.skip(credentials === null, SKIP)
+      await auditOpenSidebar(page, colorScheme)
+    },
+  )
+  schoolTest(
+    `@a11y the open sidebar on a wide screen, school — ${colorScheme}`,
+    async ({ page }) => {
+      schoolTest.skip(credentials === null, SKIP)
+      await auditOpenSidebar(page, colorScheme)
+    },
+  )
+}

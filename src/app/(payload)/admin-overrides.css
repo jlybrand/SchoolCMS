@@ -65,3 +65,16 @@
 .blocks-field__drawer-toggler:not(:disabled) .btn {
   color: var(--theme-elevation-800);
 }
+
+/**
+ * The sidebar's group labels ("Content", "Administration") — 1.4.3 Contrast (Minimum).
+ *
+ * Payload draws them `--theme-elevation-400`, the same 2.81:1 grey as the help text above. They
+ * are the headings a person scans to find where to go, and they were the least legible words in
+ * the sidebar. Missed for weeks because Payload opens the sidebar by default only on wide
+ * screens and every audit ran at 1280px with it closed. Found 2026-11-10; pinned by
+ * tests/e2e/admin-planes-axe.spec.ts ("the open sidebar on a wide screen").
+ */
+.nav-group__label {
+  color: var(--theme-elevation-800);
+}
