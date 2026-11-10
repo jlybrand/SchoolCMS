@@ -73,6 +73,20 @@ const composesField = ({ req }: { req: { user?: unknown } }): boolean => {
 export const Pages: CollectionConfig = {
   slug: 'pages',
   admin: {
+    /**
+     * Live Preview (Jason, 2026-11-10): the page as it will look, beside the form, following the
+     * editor's typing on each autosave. The route reads the draft as the signed-in person —
+     * see `src/app/(preview)/admin-preview/pages/[id]/page.tsx`. A page not yet saved has no id
+     * and so no preview.
+     */
+    livePreview: {
+      url: ({ data }) => (data?.id ? `/admin-preview/pages/${String(data.id)}` : null),
+      breakpoints: [
+        { label: 'Phone', name: 'phone', width: 375, height: 667 },
+        { label: 'Tablet', name: 'tablet', width: 768, height: 1024 },
+        { label: 'Desktop', name: 'desktop', width: 1280, height: 800 },
+      ],
+    },
     useAsTitle: 'title',
     defaultColumns: ['title', 'linkMode', 'slug', 'visibility', '_status'],
     /**

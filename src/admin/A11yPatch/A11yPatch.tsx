@@ -10,7 +10,8 @@ import { repairAdminA11y } from './repairs'
  *
  * Payload renders and re-renders after hydration — drawers, list pages, the rich-text toolbar —
  * so one pass on load is not enough. A MutationObserver re-runs it, at most once per frame.
- * It watches child lists only, never attributes, so its own repairs cannot retrigger it.
+ * It watches child lists and `class` attributes — the Live Preview toggle's state is its class —
+ * and never the attributes the repairs set, so its own repairs cannot retrigger it.
  */
 export const A11yPatch = ({ children }: { children?: ReactNode }) => {
   useEffect(() => {
@@ -23,7 +24,12 @@ export const A11yPatch = ({ children }: { children?: ReactNode }) => {
     const observer = new MutationObserver(() => {
       if (frame === 0) frame = requestAnimationFrame(run)
     })
-    observer.observe(document.body, { childList: true, subtree: true })
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class'],
+    })
     return () => {
       observer.disconnect()
       if (frame !== 0) cancelAnimationFrame(frame)

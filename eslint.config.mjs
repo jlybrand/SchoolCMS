@@ -51,6 +51,8 @@ const config = [
   {
     files: [
       'src/app/(frontend)/**/*.{ts,tsx}',
+      // Live Preview's page: rendering, so on the public side of the boundary.
+      'src/app/(preview)/**/*.{ts,tsx}',
       'src/components/**/*.{ts,tsx}',
       'src/blocks/**/*.{ts,tsx}',
     ],

@@ -71,3 +71,20 @@ describe('proxy — pages, unchanged', () => {
     expect(rewriteOf(`http://a.localhost${path}`, 'a.localhost')).toBe(expected)
   })
 })
+
+/**
+ * Live Preview (Jason, 2026-11-10) frames `/admin-preview/pages/<id>` from the admin. It must stay
+ * on the ADMIN host, unrewritten: rewritten into a tenant site it would be another origin, the
+ * admin's session cookie would not reach it, and it would show nothing.
+ */
+describe('proxy — the admin’s page preview is left alone', () => {
+  const general = new RegExp(`^${config.matcher[0]}$`)
+
+  it('the general pattern does not match /admin-preview', () => {
+    expect(general.test('/admin-preview/pages/5')).toBe(false)
+  })
+
+  it('…while it still matches a page whose address merely contains the word', () => {
+    expect(general.test('/about/admin-preview')).toBe(true)
+  })
+})
