@@ -1,7 +1,7 @@
 import { expect, request as playwrightRequest, type APIRequestContext } from '@playwright/test'
 
 import { ADMIN_STORAGE_STATE, adminCredentials, adminTest } from './support/admin-session'
-import { expectNoBlockingViolations, uniqueTitle } from './support/fixture-pages'
+import { deletePage, expectNoBlockingViolations, uniqueTitle } from './support/fixture-pages'
 import { SCHOOL_HOSTNAME, schoolTest, tenantIdFor } from './support/school-session'
 
 /**
@@ -76,6 +76,11 @@ schoolTest.describe('a school composes its page', () => {
         // The picker: the simple components — not the district's.
         const add = page.locator('#field-layout').getByRole('button', { name: /^Add / }).last()
         await expect(add).toBeVisible({ timeout: 20_000 })
+        // The page already holds a Text section: count the editors now, so the new one is the
+        // one past them — `.last()` alone resolves to the old editor before the new one mounts.
+        const editors = page.locator('#field-layout .ContentEditable__root')
+        await expect(editors.first()).toBeVisible({ timeout: 20_000 })
+        const before = await editors.count()
         await add.click()
         const picker = page.getByRole('dialog').last()
         await expect(picker).toContainText('Text', { timeout: 10_000 })
@@ -87,7 +92,8 @@ schoolTest.describe('a school composes its page', () => {
           .first()
           .click()
 
-        const editor = page.locator('#field-layout .ContentEditable__root').last()
+        await expect(editors).toHaveCount(before + 1, { timeout: 10_000 })
+        const editor = editors.nth(before)
         await expect(editor).toBeVisible({ timeout: 10_000 })
         await editor.click()
         await page.keyboard.type('Story time is on Fridays.')
@@ -109,7 +115,7 @@ schoolTest.describe('a school composes its page', () => {
         expect(doc.reviewState).toBe('submitted')
         expect(doc.layout.map((b) => b.blockType)).toEqual(['richText', 'feed', 'richText'])
       } finally {
-        await admin.delete(`/api/pages/${id}`)
+        await deletePage(admin, id)
         await admin.dispose()
       }
     },
@@ -130,9 +136,16 @@ schoolTest.describe('a school composes its page', () => {
           ).toBeAttached({
             timeout: 20_000,
           })
+          // The news feed's chosen board: its clear button is taken out of the tab order by the
+          // patch (`A11yPatch`). Axe before that lands reports aria-hidden-focus.
+          await expect(
+            page.locator(
+              '#field-layout__1__boards .clear-indicator[aria-hidden="true"][tabindex="-1"]',
+            ),
+          ).toBeAttached({ timeout: 20_000 })
           await expectNoBlockingViolations(page, '#field-layout')
         } finally {
-          await admin.delete(`/api/pages/${id}`)
+          await deletePage(admin, id)
           await admin.dispose()
         }
       },
@@ -170,7 +183,7 @@ adminTest.describe('the district sees a school’s sections in the queue', () =>
       await expectNoBlockingViolations(page, '#approvals')
     } finally {
       await school.dispose()
-      await admin.delete(`/api/pages/${id}`)
+      await deletePage(admin, id)
       await admin.dispose()
     }
   })

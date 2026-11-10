@@ -1020,3 +1020,44 @@ and Directory with their modules; Shared content (COPE) next.
   reading order at 375 with no sideways scroll; axe. `admin-planes-axe` — the page form with
   columns, both themes. `school-plane`, `phase-4-exit` — Add a page asks no kind
 - Storybook `Blocks/Columns` — four stories through `BlockList`, the component gate LTR + RTL
+
+## 22. Schools compose with the simple components (Jason, 2026-11-04 — "level B")
+
+A school manager edits, adds, removes and reorders the SIMPLE components — Text, Button, Cards,
+Accordion, Divider — on their own school's pages, around the district's components, and sends the
+change for approval. The district's components (Columns, News feed, Embed, Section menu, and any
+block added later until it is named) stay exactly as the district set them. Inside the district's
+Columns the same rules apply again: a school writes in a column; the columns themselves do not
+change. Converting every page to composed is the next PR.
+
+| File                                    | Holds                                                                                                                                                                                                                                                                                                                                                                  |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/access/school-layout.ts`           | PURE. `SCHOOL_BLOCKS`; `checkSchoolLayout(stored, incoming)` → `{ ok }` or `{ ok: false, reason }` — the district's components, by `id`, same order, unchanged (`sameComponent`, key-order and null-insensitive); Columns: frame unchanged, each column's `content` recursively. Unknown block = district's. `schoolPalette(current)` = simple + kinds already present |
+| `src/collections/hooks/publish-gate.ts` | `schoolLayoutGate` (replaces `composedPagesAreDistrictOnly`): no user → trusted server code, passes; district → passes; school manager → `checkSchoolLayout(originalDoc.layout, data.layout ?? originalDoc.layout)`, refusal = `ValidationError` on `layout` with the reason; any other user → `Forbidden` if it sends a non-empty `layout`                            |
+| `src/access/pages.ts`                   | the `isComposedWrite` check gone from create and update access; `canComposePages` (district) now means "may place any component"                                                                                                                                                                                                                                       |
+| `src/collections/Pages.ts`              | `beforeChange: [pageDatesHook, publishGate, schoolLayoutGate, applyReviewState]`; `layout` field access `composesField` (district or school manager); `filterOptions` → `schoolPalette(siblingData.layout)` for a user who `sendsForApproval`                                                                                                                          |
+| `src/collections/blocks/index.ts`       | `columnsBlock.columns[].content` `filterOptions` → `schoolPalette(siblingData.content)` for the same users                                                                                                                                                                                                                                                             |
+| `src/admin/Approvals/page-diff.ts`      | `diffLayout(live, proposed)` → `{ changes: SectionChange[], unchanged }`; a change is added / removed / changed / moved, with `kind` (form words), `summary` (shortened), `where` ("In column 2 of …"), and line `words` for changed Text. Moved = outside the longest run kept in order. `diffPage` sets `sections` when any changed                                  |
+| `src/admin/Approvals/PageDiffView.tsx`  | "Changes to the sections of the page (N sections unchanged)": one line per change, e.g. "Added Text: …"                                                                                                                                                                                                                                                                |
+
+Why `filterOptions` includes the kinds already present: Payload refuses to save a block its picker
+does not allow, so without them a school could not save a page that carries a news feed. Offering
+the kind does not let a school add one — the hook refuses that.
+
+### Tests
+
+- `tests/unit/access/school-layout.test.ts` — add / edit / remove / reorder simple components
+  pass; adding, removing, editing or moving a district component is refused; Columns frame vs
+  column contents; unknown block types deny; `schoolPalette`
+- `tests/unit/access/publish-gate.test.ts`, `tests/unit/access/pages.test.ts` — the gate per role;
+  composed writes no longer refused by access
+- `tests/unit/admin/layout-diff.test.ts` — `diffLayout`: added, removed, changed Text as lines,
+  changed other, one moved section only, changes inside columns, shortening, malformed input
+- `tests/integration/tenant-isolation.test.ts` — over the real API: a school creates a composed page
+  from simple components; cannot place a news feed, columns or an embed; cannot remove or change
+  the district's component on its own page; still cannot compose another school's page
+- `tests/e2e/school-composition.spec.ts` — a school's picker offers Text and not Columns / Video /
+  Section menu; adds a Text section and sends it; the stored draft is `submitted` with
+  `richText, feed, richText`; the page form axe, both themes; the queue reads "Added Text: …" and
+  "(2 sections unchanged)". `tests/e2e/support/fixture-pages.ts` `deletePage` releases Payload's
+  document lock (`payload-locked-documents`) before deleting, since an open edit form leaves one
