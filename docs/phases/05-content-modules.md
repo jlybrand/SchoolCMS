@@ -1191,7 +1191,7 @@ block that shows them as a list or a month grid. Clicking an event reveals its n
 | `src/blocks/Calendar/MonthSwitcher.tsx`, `EventDialogButton.tsx` | the public site's first client components: month index state; `showModal()` on click                                                                                                                                                                     |
 | `src/collections/hooks/revalidate-on-publish.ts`                 | `revalidateEvent`: every tenant, `stillLive` for unpublish                                                                                                                                                                                               |
 | `src/admin/A11yPatch/repairs.ts`                                 | a date's clear button → "Clear <field label>"                                                                                                                                                                                                            |
-| `scripts/seed.ts`                                                | a main calendar for a site made before calendars                                                                                                                                                                                                         |
+| `scripts/main-calendars.ts`, `scripts/seed.ts`                   | `ensureMainCalendars` for sites made before calendars: `pnpm calendars:backfill` (dd2_dev; production once, at the deploy that brings events) and the seed                                                                                               |
 
 `ReviewedCollection` includes `events` (approve endpoint, `NOUN`), and the audit trail records
 them (`REVIEWED.events = 'Event'`). The queue does not list them yet (`queue-data.ts` `REVIEWED`).
@@ -1208,7 +1208,8 @@ the `events.schedule` auto-approval scope.
   `month-grid.test.ts`, `calendar-view.test.ts`; `tests/unit/event-mapper.test.ts`;
   `tests/unit/access/events.test.ts`; `tests/unit/blocks.test.ts` (calendar mapper);
   `tests/unit/admin/a11y-patch.test.ts` (date clear button)
-- `tests/integration/events.test.ts` — main calendar made, labelled, undeletable, not claimable;
+- `tests/integration/events.test.ts` — main calendar made, labelled, undeletable, not claimable,
+  backfilled once;
   no calendar → the site's own; date refusals; the trail; the resolve pass (list from today,
   empty list dropped, 12-month grid, empty grid kept)
 - `tests/integration/tenant-isolation.test.ts` — events and calendars across invariants 1–5

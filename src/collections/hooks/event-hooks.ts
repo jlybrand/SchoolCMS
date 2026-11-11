@@ -1,5 +1,6 @@
 import {
   ValidationError,
+  type Payload,
   type CollectionAfterChangeHook,
   type CollectionBeforeChangeHook,
   type CollectionBeforeDeleteHook,
@@ -57,6 +58,35 @@ export const makeMainCalendar: CollectionAfterChangeHook = async ({ doc, operati
     req,
   })
   return doc
+}
+
+/**
+ * Gives every site that has none its own calendar — for sites made before calendars existed
+ * (`pnpm calendars:backfill`, and the seed). Returns the slugs it made one for. Idempotent.
+ */
+export const ensureMainCalendars = async (payload: Payload): Promise<string[]> => {
+  const { docs: sites } = await payload.find({
+    collection: 'tenants',
+    pagination: false,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const made: string[] = []
+  for (const site of sites) {
+    const { totalDocs } = await payload.count({
+      collection: 'calendars',
+      where: { and: [{ tenant: { equals: site.id } }, { isMain: { equals: true } }] },
+      overrideAccess: true,
+    })
+    if (totalDocs > 0) continue
+    await payload.create({
+      collection: 'calendars',
+      data: { tenant: site.id, name: String(site.name ?? 'Calendar'), isMain: true },
+      overrideAccess: true,
+    })
+    made.push(String(site.slug))
+  }
+  return made
 }
 
 /**

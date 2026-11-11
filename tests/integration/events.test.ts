@@ -1,6 +1,7 @@
 import type { Payload } from 'payload'
 import { beforeAll, describe, expect, it } from 'vitest'
 
+import { ensureMainCalendars } from '@/collections/hooks/event-hooks'
 import { resolvePageBlocks } from '@/content/resolve-blocks'
 import type { CalendarBlock, ContentContext, ResolvedCalendarBlock } from '@/content/types'
 
@@ -64,6 +65,19 @@ describe('each site’s own calendar', () => {
       overrideAccess: false,
     })
     expect(calendar.isMain).toBe(false)
+  })
+
+  it('the backfill gives a site made before calendars its own, once', async () => {
+    const main = await mainCalendarFor(payload, f.tenantA)
+    await payload.db.deleteOne({ collection: 'calendars', where: { id: { equals: main } } })
+    expect(await ensureMainCalendars(payload)).toEqual(['school-a'])
+    expect(await ensureMainCalendars(payload)).toEqual([])
+    const again = await payload.findByID({
+      collection: 'calendars',
+      id: await mainCalendarFor(payload, f.tenantA),
+      overrideAccess: true,
+    })
+    expect(again).toMatchObject({ name: 'School A', isMain: true })
   })
 
   it('cannot be deleted; another calendar can', async () => {

@@ -2,6 +2,7 @@ import { getPayload, type PayloadRequest } from 'payload'
 
 import config from '../src/payload.config'
 import type { Page } from '../src/payload-types'
+import { ensureMainCalendars } from '../src/collections/hooks/event-hooks'
 import { ROOT_SLUG } from '../src/lib/slug'
 
 /**
@@ -197,6 +198,11 @@ const run = async () => {
     }
   }
 
+  /** Each site's own calendar, for a site made before calendars (Jason, 2026-10-28). */
+  for (const slug of await ensureMainCalendars(payload)) {
+    payload.logger.info(`created the calendar for ${slug}`)
+  }
+
   /**
    * A front page per tenant, plus a top-level page and a child of it.
    *
@@ -285,24 +291,6 @@ const run = async () => {
         overrideAccess: true,
       })
       payload.logger.info(`created the News board for ${tenant.slug}`)
-    }
-
-    /**
-     * The site's own calendar (Jason, 2026-10-28). A new site gets it from `makeMainCalendar`;
-     * a site made before calendars existed gets it here, once.
-     */
-    const { totalDocs: mainCalendars } = await payload.count({
-      collection: 'calendars',
-      where: { and: [{ tenant: { equals: tenantId } }, { isMain: { equals: true } }] },
-      overrideAccess: true,
-    })
-    if (mainCalendars === 0) {
-      await payload.create({
-        collection: 'calendars',
-        data: { tenant: tenantId, name: tenant.name, isMain: true },
-        overrideAccess: true,
-      })
-      payload.logger.info(`created the calendar for ${tenant.slug}`)
     }
 
     /**
