@@ -12,16 +12,16 @@ import type { AuthUser } from './types'
  * the spec's: the never-auto-approvable list is checked before any scope, and a scope must
  * permit the WHOLE change, so a mixed submission queues in full. A rule that throws queues.
  *
- * `posts.routine` is the first scope that acts (Jason, 2026-10-28) — the publish on the sender's
- * behalf is `src/collections/hooks/auto-approve.ts`. `events.schedule` arrives with events;
- * `pages` has no scope, and page creation is never auto-approvable.
+ * `posts.routine` is the one scope (Jason, 2026-10-28) — the publish on the sender's behalf is
+ * `src/collections/hooks/auto-approve.ts`. `pages` has no scope, and page creation is never
+ * auto-approvable. `events.schedule` was removed (Jason, 2026-11-11): events do not go through
+ * approval at all (`src/access/events.ts`), so there is nothing for it to skip.
  */
 
-export type GrantScope = 'events.schedule' | 'posts.routine'
+export type GrantScope = 'posts.routine'
 
 /** The grantable scopes, with the label the users form shows. `users.autoApprove` reads this. */
 export const GRANT_SCOPES: readonly { value: GrantScope; label: string }[] = [
-  { value: 'events.schedule', label: 'Events: schedule-only changes' },
   { value: 'posts.routine', label: 'Posts: routine posts' },
 ] as const
 

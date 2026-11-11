@@ -1234,8 +1234,8 @@ Lifts CLAUDE.md rules 3 and 8 for events only (recorded there).
 | `scripts/drop-event-review-fields.sql`                       | drops the review columns, indexes and enums #73 gave events. Run on dd2_dev before Payload next starts                                                                                                                                                                                                     |
 
 The audit trail records a school's save as `publish` and a removal as `delete`, with the manager
-as the actor — which is what the dashboard's activity feed shows. `users.autoApprove` still offers
-`events.schedule`; it does nothing now (`04` §4.3).
+as the actor — which is what the dashboard's activity feed shows. `users.autoApprove` no longer offers
+`events.schedule` (removed; `scripts/drop-events-schedule-grant.sql` for an existing database).
 
 ### Tests
 

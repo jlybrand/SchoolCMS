@@ -51,7 +51,7 @@ Payload auth collection, backed by Entra ID (`02` §7).
   _No `defaultTenant` (removed 2026-10-23):_ nothing read it, and beside `tenants` it read as the
   school assignment — a district admin set it, left `tenants` unchanged, and the manager kept
   their old school. `tenants` is the only school assignment.
-- **`autoApprove`** — array of granted scopes (`events.schedule`, `posts.routine`), **empty
+- **`autoApprove`** — array of granted scopes (`posts.routine`; `events.schedule` removed 2026-11-11 — events skip approval), **empty
   by default**. Set only by a `district-admin`, per user, deliberately (`04` §4.3). Never
   defaulted by role, tenant, or collection. Changes to this field are audited.
 - **No password is stored** for Entra-authenticated users. Roles and tenant assignments

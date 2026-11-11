@@ -215,14 +215,14 @@ and is not declared here.
 auth: { tokenExpiration: 60 * 60 * 8, maxLoginAttempts: 5, lockTime: 10 * 60 * 1000 }
 ```
 
-| Field           | Type                        | Field-level `update` access | Notes                                                        |
-| --------------- | --------------------------- | --------------------------- | ------------------------------------------------------------ |
-| `name`          | `text`                      | —                           |                                                              |
-| `entraObjectId` | `text`, unique, indexed     | `denyAllField`              | `readOnly`. Unused under local auth; the Entra linking seam. |
-| `roles`         | `select`, hasMany, required | `districtOnlyField`         | Options from `ROLES`; default `[]`                           |
-| `autoApprove`   | `select`, hasMany           | `districtOnlyField`         | Default `[]`. Options: `events.schedule`, `posts.routine`    |
-| `isBreakGlass`  | `checkbox`                  | `denyAllField`              | `readOnly`, default `false`                                  |
-| `lastLoginAt`   | `date`                      | `denyAllField`              | `readOnly`                                                   |
+| Field           | Type                        | Field-level `update` access | Notes                                                                         |
+| --------------- | --------------------------- | --------------------------- | ----------------------------------------------------------------------------- |
+| `name`          | `text`                      | —                           |                                                                               |
+| `entraObjectId` | `text`, unique, indexed     | `denyAllField`              | `readOnly`. Unused under local auth; the Entra linking seam.                  |
+| `roles`         | `select`, hasMany, required | `districtOnlyField`         | Options from `ROLES`; default `[]`                                            |
+| `autoApprove`   | `select`, hasMany           | `districtOnlyField`         | Default `[]`. Options: `posts.routine` (`events.schedule` removed 2026-11-11) |
+| `isBreakGlass`  | `checkbox`                  | `denyAllField`              | `readOnly`, default `false`                                                   |
+| `lastLoginAt`   | `date`                      | `denyAllField`              | `readOnly`                                                                    |
 
 Collection access: `read: selfOrDistrictAdmin`; `create`, `update`, `delete`, `unlock` all
 `districtOnly`. Update being district-only is what makes every field above unreachable to a

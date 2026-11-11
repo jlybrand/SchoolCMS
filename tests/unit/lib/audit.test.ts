@@ -329,7 +329,7 @@ describe('users', () => {
   it('a grant and a role changed together make two entries', () => {
     expect(
       auditEntries(
-        users({ doc: person({ roles: ['district-admin'], autoApprove: ['events.schedule'] }) }),
+        users({ doc: person({ roles: ['district-admin'], autoApprove: ['posts.routine'] }) }),
       ).map((e) => e.action),
     ).toEqual(['user-change', 'grant-change'])
   })

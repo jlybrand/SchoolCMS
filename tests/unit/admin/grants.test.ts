@@ -16,13 +16,13 @@ describe('grantRows', () => {
     expect(
       grantRows([
         manager('7', ['posts.routine'], { name: 'Zoe Park' }),
-        manager('4', ['events.schedule', 'posts.routine'], { name: 'Ana Ruiz' }),
+        manager('4', ['posts.routine'], { name: 'Ana Ruiz' }),
       ]),
     ).toEqual([
       {
         userId: '4',
         person: 'Ana Ruiz',
-        grants: ['Events: schedule-only changes', 'Posts: routine posts'],
+        grants: ['Posts: routine posts'],
       },
       { userId: '7', person: 'Zoe Park', grants: ['Posts: routine posts'] },
     ])
