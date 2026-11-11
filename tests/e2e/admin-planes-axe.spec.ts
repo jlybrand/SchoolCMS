@@ -77,6 +77,8 @@ let feedPage: number
 let columnsPage: number
 let linksPage: number
 let event: number
+/** School A's own event, for the school plane's screens. */
+let schoolEvent: number
 
 /** The post form, once rendered and repaired — the page form's controls, less the page's own. */
 const POST_FORM_REPAIRED = PAGE_FORM_REPAIRED
@@ -86,8 +88,19 @@ schoolTest.describe('school plane — whole screens', () => {
   schoolTest.beforeAll(async ({ baseURL }) => {
     fixture = await makePage(baseURL, { title: 'Axe page' })
     post = await makePost(baseURL)
+    const made = await fixture.admin.post('/api/events?draft=true&depth=0', {
+      data: {
+        tenant: (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json()).tenant,
+        title: 'Axe school event',
+        start: '2030-12-04T23:30:00.000Z',
+        _status: 'draft',
+      },
+    })
+    expect(made.ok(), await made.text()).toBe(true)
+    schoolEvent = ((await made.json()).doc as { id: number }).id
   })
   schoolTest.afterAll(async () => {
+    await fixture.admin.delete(`/api/events/${schoolEvent}`)
     await dropPage(fixture)
     await dropPost(post)
   })
@@ -119,6 +132,24 @@ schoolTest.describe('school plane — whole screens', () => {
       schoolTest(`@a11y news and announcements list — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/collections/posts')
         await auditScreen(page, '#announcements #create-post')
+      })
+      schoolTest(`@a11y add an event — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/new-event')
+        await auditScreen(page, '#new-event')
+      })
+      schoolTest(`@a11y events list, with its task button — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/collections/events')
+        await auditScreen(page, '#list-task', ...LIST_REPAIRED)
+      })
+      schoolTest(`@a11y the event form — ${colorScheme}`, async ({ page }) => {
+        await page.goto(`/admin/collections/events/${schoolEvent}`)
+        await auditScreen(
+          page,
+          '#action-save',
+          '#field-title',
+          '#field-calendar input[aria-label="Calendar"]',
+          '#field-start .date-time-picker__clear-button[aria-label="Clear Starts"]',
+        )
       })
       schoolTest(`@a11y their account — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/account')

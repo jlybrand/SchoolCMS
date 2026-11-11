@@ -1,3 +1,6 @@
+import { DISTRICT_TIME_ZONE } from '@/lib/queue-age'
+import { zonedTime } from '@/lib/recurrence'
+
 /**
  * The pure decisions under the school plane's landing view and new-page form (`04` §2.2,
  * §2.4). The views in this directory render these; they decide nothing themselves.
@@ -22,6 +25,12 @@ export const SCHOOL_TASKS: readonly SchoolTask[] = [
     href: '/admin/new-post',
   },
   {
+    // `04` §2.2's "Add a meeting date", in Jason's words (2026-11-11).
+    label: 'Add an event',
+    description: 'Put a date on your school’s calendar.',
+    href: '/admin/new-event',
+  },
+  {
     label: 'Update a page',
     description: 'Change the words on a page of your school’s website.',
     href: '/admin/update-page',
@@ -39,6 +48,7 @@ export type ListTask = { label: string; href: string }
 const LIST_TASK_HREFS: Readonly<Record<string, string>> = {
   // Not `posts`: News and announcements is its own screen, with "Create post" on each board.
   pages: '/admin/new-page',
+  events: '/admin/new-event',
 }
 
 /**
@@ -210,9 +220,113 @@ export const explainPostCreateError = (body: unknown): string => {
   return POST_GENERIC
 }
 
+/** A calendar the user may add to, and the school it belongs to. */
+export type CalendarChoice = { id: number | string; tenant: SchoolId }
+
+export type NewEventInput = {
+  title?: unknown
+  /** `YYYY-MM-DD`, from `<input type="date">`. */
+  date?: unknown
+  /** `HH:MM`, from `<input type="time">`; empty for an all-day event. */
+  time?: unknown
+  /** Every calendar of the user's schools. */
+  calendars: readonly CalendarChoice[]
+  /** The calendar chosen in the form, when there was a choice. */
+  calendar?: unknown
+}
+
+export type NewEventCheck =
+  | {
+      ok: true
+      title: string
+      /** ISO instant: the day and time in the district's time zone. */
+      start: string
+      allDay: boolean
+      calendar: number | string
+      school: SchoolId
+    }
+  | { ok: false; errors: Partial<Record<'title' | 'date' | 'time' | 'calendar', string>> }
+
+const NO_CALENDAR = 'Your school has no calendar yet. Ask the district web team to set one up.'
+
+const realDate = (value: unknown): string | null => {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
+  const at = new Date(`${value}T12:00:00.000Z`)
+  return !Number.isNaN(at.getTime()) && at.toISOString().slice(0, 10) === value ? value : null
+}
+
+const clockTime = (value: string): { hour: number; minute: number } | null => {
+  const match = /^(\d{2}):(\d{2})$/.exec(value)
+  if (!match) return null
+  const hour = Number(match[1])
+  const minute = Number(match[2])
+  return hour < 24 && minute < 60 ? { hour, minute } : null
+}
+
+/**
+ * What a new event needs before it is created (Jason, 2026-11-11): a name, the day, and — unless
+ * it lasts all day — the time it starts. The calendar is asked only when the school has more than
+ * one; the school follows from it. Everything else (the end, the place, repeats, notes) is on the
+ * next screen, where autosave covers it.
+ *
+ * The day and time are the district's, whatever the browser's time zone.
+ */
+export const checkNewEvent = (input: NewEventInput): NewEventCheck => {
+  const errors: Partial<Record<'title' | 'date' | 'time' | 'calendar', string>> = {}
+  const title = checkTitle(input.title, 'Give the event a name.')
+  if (title.error) errors.title = title.error
+
+  const date = realDate(input.date)
+  if (date === null) errors.date = 'Choose the day it happens.'
+
+  const rawTime = typeof input.time === 'string' ? input.time.trim() : ''
+  const time = rawTime === '' ? null : clockTime(rawTime)
+  if (rawTime !== '' && time === null) errors.time = 'Enter a time, like 6:30 PM.'
+
+  let calendar: CalendarChoice | undefined
+  if (input.calendars.length === 0) errors.calendar = NO_CALENDAR
+  else if (
+    input.calendars.length === 1 &&
+    (input.calendar === undefined || input.calendar === '')
+  ) {
+    calendar = input.calendars[0]
+  } else {
+    calendar = input.calendars.find((c) => String(c.id) === String(input.calendar))
+    if (!calendar) errors.calendar = 'Choose which calendar this goes on.'
+  }
+
+  if (Object.keys(errors).length > 0 || !calendar || date === null) return { ok: false, errors }
+  return {
+    ok: true,
+    title: title.title,
+    start: zonedTime(date, time?.hour ?? 0, time?.minute ?? 0, DISTRICT_TIME_ZONE),
+    allDay: time === null,
+    calendar: calendar.id,
+    school: calendar.tenant,
+  }
+}
+
+const EVENT_NOT_ALLOWED =
+  'Your account cannot add events for this school. Ask the district web team for help.'
+const EVENT_GENERIC = 'The event could not be created. Please try again in a moment.'
+
+/** A refused event create, explained. */
+export const explainEventCreateError = (body: unknown): string => {
+  const errors = (body as { errors?: unknown } | null)?.errors
+  if (!Array.isArray(errors)) return EVENT_GENERIC
+  for (const error of errors as { message?: unknown }[]) {
+    if (typeof error?.message === 'string' && /not allowed/i.test(error.message)) {
+      return EVENT_NOT_ALLOWED
+    }
+  }
+  return EVENT_GENERIC
+}
+
 /** Where a submission opens: its own form. */
-export const schoolEditPath = (collection: 'pages' | 'posts', id: number | string): string =>
-  `/admin/collections/${collection}/${String(id)}`
+export const schoolEditPath = (
+  collection: 'pages' | 'posts' | 'events',
+  id: number | string,
+): string => `/admin/collections/${collection}/${String(id)}`
 
 /** The plain status beside a submission on the landing view, or null when nothing is pending. */
 export const submissionStatus = (reviewState: unknown): string | null => {

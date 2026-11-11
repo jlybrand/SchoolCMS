@@ -1198,9 +1198,8 @@ them (`REVIEWED.events = 'Event'`). The queue does not list them yet (`queue-dat
 
 ### Not here yet
 
-The school's "Add an event" task, events in the approval queue and the outcome emails; an event's
-own page and a calendar's iCal subscribe link (`toRRule` is ready); feed calendars (iCal / Google);
-the `events.schedule` auto-approval scope.
+(The school's task: §27 — events skip approval.) An event's own page and a calendar's iCal
+subscribe link (`toRRule` is ready); feed calendars (iCal / Google).
 
 ### Tests
 
@@ -1216,3 +1215,36 @@ the `events.schedule` auto-approval scope.
 - `tests/e2e/calendar.spec.ts` — list reveals notes; grid opens a dialog, Escape returns focus;
   axe with notes and dialog open, both themes
 - `tests/e2e/admin-planes-axe.spec.ts` — calendars list, events list, a repeating event's form
+
+## 27. "Add an event" — no approval (Jason, 2026-11-11)
+
+Events do not go through approval. A school manager adds an event, finishes it on its form and
+puts it on the calendar with one button; they change and remove their own school's events the
+same way. The district sees each in the activity log — no queue, no email, not in the digest.
+Lifts CLAUDE.md rules 3 and 8 for events only (recorded there).
+
+| File                                                         | Holds                                                                                                                                                                                                                                                                                                      |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/access/events.ts`                                       | read / update / delete: district `true`, school manager `{ tenant: { in: their schools } }`, sync and no-school `false`; create: the target school must be theirs; publishing is not special. `readVersions` district only                                                                                 |
+| `src/collections/Events.ts`                                  | not hidden from managers; `ListTaskButton` before the list; `PublishButton` → `EventSaveButton`; `SchoolSaveDraftButton`; beforeChange `[eventDatesHook]` only — no `publishGate`, no `applyReviewState`, no review fields, no approve endpoint, no outcome email. `auditChange` / `auditDelete` stay      |
+| `src/admin/Events/EventSaveButton.tsx`                       | Payload's `PublishButton`, labelled "Save to the calendar" for a school manager                                                                                                                                                                                                                            |
+| `src/admin/SchoolPlane/school-plane.ts`                      | `SCHOOL_TASKS` gains "Add an event" → `/admin/new-event` (second); `listTaskFor('events')`; `checkNewEvent` (name, `YYYY-MM-DD` day, optional `HH:MM` → district instant via `zonedTime`; no time = all day; calendar asked only when several); `explainEventCreateError`; `schoolEditPath` takes `events` |
+| `src/admin/SchoolPlane/NewEventView.tsx`, `NewEventForm.tsx` | `/admin/new-event` (`newEvent` view): school plane only (the district goes to Payload's create). Native `type="date"` / `type="time"`; creates a draft as the user via REST, then opens the event's form                                                                                                   |
+| `src/admin/SchoolPlane/school-data.ts`                       | `listMyCalendars(req)` — as the user; "Site · Calendar" label only with several schools                                                                                                                                                                                                                    |
+| `scripts/drop-event-review-fields.sql`                       | drops the review columns, indexes and enums #73 gave events. Run on dd2_dev before Payload next starts                                                                                                                                                                                                     |
+
+The audit trail records a school's save as `publish` and a removal as `delete`, with the manager
+as the actor — which is what the dashboard's activity feed shows. `users.autoApprove` still offers
+`events.schedule`; it does nothing now (`04` §4.3).
+
+### Tests
+
+- `tests/unit/access/events.test.ts` — managers publish and delete within their schools only
+- `tests/unit/admin/school-plane.test.ts` — task list, `listTaskFor`, `checkNewEvent`, `explainEventCreateError`
+- `tests/integration/tenant-isolation.test.ts` — "events skip approval": own school by create and
+  update; never another school, singly or in bulk; delete own, never another's; publish and delete
+  on the trail as the manager; a page is still refused
+- `tests/integration/events.test.ts` — `listMyCalendars`
+- `tests/e2e/events-school.spec.ts` — task → form → "Save to the calendar" → published; all day;
+  list button; delete; axe on the new-event screen with errors
+- `tests/e2e/admin-planes-axe.spec.ts` — school plane: add an event, events list, event form

@@ -143,7 +143,11 @@ type ContentAction = (typeof CONTENT_ACTIONS)[number]
 const isContentAction = (action: unknown): action is ContentAction =>
   (CONTENT_ACTIONS as readonly unknown[]).includes(action)
 
-const NOUNS: Readonly<Record<string, string>> = { pages: 'page', posts: 'announcement' }
+const NOUNS: Readonly<Record<string, string>> = {
+  pages: 'page',
+  posts: 'announcement',
+  events: 'event',
+}
 
 export type ActivityInput = {
   action: unknown

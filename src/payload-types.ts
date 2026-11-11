@@ -756,10 +756,6 @@ export interface Event {
     };
     [k: string]: unknown;
   } | null;
-  reviewState?: ('editing' | 'submitted' | 'changes-requested') | null;
-  reviewNote?: string | null;
-  submittedAt?: string | null;
-  submittedBy?: (number | null) | User;
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -1482,10 +1478,6 @@ export interface EventsSelect<T extends boolean = true> {
   repeat?: T;
   repeatUntil?: T;
   notes?: T;
-  reviewState?: T;
-  reviewNote?: T;
-  submittedAt?: T;
-  submittedBy?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;

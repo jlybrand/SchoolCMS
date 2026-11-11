@@ -26,6 +26,7 @@ import { SendForApprovalButton as SendForApprovalButton_04ce333b331daae73b75fc62
 import { SchoolSaveDraftButton as SchoolSaveDraftButton_cc7b83310c556ae98b1d66c9fab1fdc1 } from '../../../admin/SendForApproval/SchoolSaveDraftButton'
 import { AnnouncementsView as AnnouncementsView_424d1d2ce7b62f2a20ccd2961f5c622f } from '../../../admin/Announcements/AnnouncementsView'
 import { BoardsListView as BoardsListView_a022c7e66bfcc000431bd70c768a08d6 } from '../../../admin/Boards/BoardsListView'
+import { EventSaveButton as EventSaveButton_9d8ff44ca1c1d15e1c244354a4498e4a } from '../../../admin/Events/EventSaveButton'
 import { GlobalViewRedirect as GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
 import { ApprovalsNavLink as ApprovalsNavLink_50736d5f53ca3024920ebd70347f12c2 } from '../../../admin/Approvals/ApprovalsNavLink'
 import { DistrictDashboard as DistrictDashboard_edc4519ec276aaac7e06cda8a41f999e } from '../../../admin/Dashboard/DistrictDashboard'
@@ -39,6 +40,7 @@ import { SchoolHome as SchoolHome_3f48be60e82e2641c0b863afd982fe58 } from '../..
 import { UpdatePageView as UpdatePageView_0f1d98940f2489de43ebc550e3e4a561 } from '../../../admin/SchoolPlane/UpdatePageView'
 import { NewPageView as NewPageView_75d5b0676850069cc52fd8659e0483db } from '../../../admin/SchoolPlane/NewPageView'
 import { NewPostView as NewPostView_77e93fa34962fc9debb861b64f9a1c69 } from '../../../admin/SchoolPlane/NewPostView'
+import { NewEventView as NewEventView_2bf2c031e47ebf55ba21b803e08fdd96 } from '../../../admin/SchoolPlane/NewEventView'
 import { ApprovalsView as ApprovalsView_24670674c7de4661a804a1c4ad51ba6b } from '../../../admin/Approvals/ApprovalsView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
@@ -72,6 +74,7 @@ export const importMap = {
   "/admin/SendForApproval/SchoolSaveDraftButton#SchoolSaveDraftButton": SchoolSaveDraftButton_cc7b83310c556ae98b1d66c9fab1fdc1,
   "/admin/Announcements/AnnouncementsView#AnnouncementsView": AnnouncementsView_424d1d2ce7b62f2a20ccd2961f5c622f,
   "/admin/Boards/BoardsListView#BoardsListView": BoardsListView_a022c7e66bfcc000431bd70c768a08d6,
+  "/admin/Events/EventSaveButton#EventSaveButton": EventSaveButton_9d8ff44ca1c1d15e1c244354a4498e4a,
   "@payloadcms/plugin-multi-tenant/rsc#GlobalViewRedirect": GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62,
   "/admin/Approvals/ApprovalsNavLink#ApprovalsNavLink": ApprovalsNavLink_50736d5f53ca3024920ebd70347f12c2,
   "/admin/Dashboard/DistrictDashboard#DistrictDashboard": DistrictDashboard_edc4519ec276aaac7e06cda8a41f999e,
@@ -85,6 +88,7 @@ export const importMap = {
   "/admin/SchoolPlane/UpdatePageView#UpdatePageView": UpdatePageView_0f1d98940f2489de43ebc550e3e4a561,
   "/admin/SchoolPlane/NewPageView#NewPageView": NewPageView_75d5b0676850069cc52fd8659e0483db,
   "/admin/SchoolPlane/NewPostView#NewPostView": NewPostView_77e93fa34962fc9debb861b64f9a1c69,
+  "/admin/SchoolPlane/NewEventView#NewEventView": NewEventView_2bf2c031e47ebf55ba21b803e08fdd96,
   "/admin/Approvals/ApprovalsView#ApprovalsView": ApprovalsView_24670674c7de4661a804a1c4ad51ba6b,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }

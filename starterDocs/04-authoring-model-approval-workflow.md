@@ -37,7 +37,7 @@ help that lives in a manual, and any screen where the primary action is ambiguou
 
 On login a school manager sees a short list of **tasks**, not a data model:
 
-- **Add a meeting date**
+- **Add a meeting date** — built as **"Add an event"** (2026-11-11); events skip approval (§4.3)
 - **Post an announcement**
 - **Update a page**
 - **Upload a document**
@@ -207,7 +207,7 @@ more scopes:
 
 | Scope | Permits without review |
 |---|---|
-| `events.schedule` | Creating or editing an event where only `title`, `start`, `end`, `location` changed |
+| `events.schedule` | **Superseded 2026-11-11:** events do not go through approval at all (Jason) — every school manager publishes and removes their own school's events, and the district sees them in the activity log. The grant option remains in the schema but does nothing |
 | `posts.routine` | Publishing a post with no upload and no page-structure change — **its body included** (see below) |
 | *(none — the default)* | Nothing. All submissions queue. |
 

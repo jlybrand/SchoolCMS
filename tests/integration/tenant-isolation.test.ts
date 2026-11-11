@@ -2485,17 +2485,30 @@ describe('events and calendars (Jason, 2026-10-28 and 2026-11-11)', () => {
       ).toBe(true)
     })
 
-    it('a school manager cannot delete an event — taking one down is the district’s', async () => {
+    it('a school manager cannot delete another school’s event', async () => {
       expect(
         await isDenied(() =>
           payload.delete({
             collection: 'events',
-            id: e.draftEventA,
+            id: e.publishedEventB,
             user: f.managerA,
             overrideAccess: false,
           }),
         ),
       ).toBe(true)
+      await payload.delete({
+        collection: 'events',
+        where: { id: { equals: e.publishedEventB } },
+        user: f.managerA,
+        overrideAccess: false,
+      })
+      expect(
+        await payload.findByID({
+          collection: 'events',
+          id: e.publishedEventB,
+          overrideAccess: true,
+        }),
+      ).toBeTruthy()
     })
   })
 
@@ -2559,103 +2572,107 @@ describe('events and calendars (Jason, 2026-10-28 and 2026-11-11)', () => {
     })
   })
 
-  describe('invariant 5 — a school-manager cannot PUBLISH an event by any route', () => {
-    it('cannot create an event already marked published, and nothing lands', async () => {
+  /**
+   * EVENTS SKIP APPROVAL (Jason, 2026-11-11): invariant 5 is lifted for events, by his decision —
+   * a school manager publishes and removes their OWN school's events. These prove the lift is
+   * exactly that wide: their own school, nobody else's, and on the district's activity log.
+   */
+  describe('events skip approval — a school manager publishes their own school’s, and only theirs', () => {
+    it('publishes an event straight onto their own school’s calendar', async () => {
+      const made = await payload.create({
+        collection: 'events',
+        data: event(f.tenantA, e.calendarA, 'Straight on', { _status: 'published' }),
+        user: f.managerA,
+        overrideAccess: false,
+      })
+      expect(made._status).toBe('published')
+    })
+
+    it('puts their own draft on the calendar', async () => {
+      const published = await payload.update({
+        collection: 'events',
+        id: e.draftEventA,
+        data: { _status: 'published' },
+        user: f.managerA,
+        overrideAccess: false,
+      })
+      expect(published._status).toBe('published')
+    })
+
+    it('can NOT publish into another school, by create or update, singly or in bulk', async () => {
       expect(
         await isDenied(() =>
           payload.create({
             collection: 'events',
-            data: event(f.tenantA, e.calendarA, 'Sneaky event', { _status: 'published' }),
+            data: event(f.tenantB, e.calendarB, 'Into B, live', { _status: 'published' }),
             user: f.managerA,
             overrideAccess: false,
           }),
         ),
       ).toBe(true)
-      const { docs } = await payload.find({
-        collection: 'events',
-        where: { title: { equals: 'Sneaky event' } },
-        draft: true,
-        overrideAccess: true,
-      })
-      expect(docs).toHaveLength(0)
-    })
-
-    it('cannot update their own draft to published, singly or in bulk', async () => {
       await isDenied(() =>
         payload.update({
           collection: 'events',
-          id: e.draftEventA,
-          data: { _status: 'published' },
+          id: e.publishedEventB,
+          data: { title: 'Hijacked live', _status: 'published' },
           user: f.managerA,
           overrideAccess: false,
         }),
       )
-      await isDenied(() =>
-        payload.update({
-          collection: 'events',
-          where: { id: { equals: e.draftEventA } },
-          data: { _status: 'published' },
-          user: f.managerA,
-          overrideAccess: false,
-        }),
-      )
-      const still = await payload.findByID({
+      await payload.update({
         collection: 'events',
-        id: e.draftEventA,
-        draft: true,
-        overrideAccess: true,
-      })
-      expect(still._status).toBe('draft')
-    })
-
-    it('the HOOK layer refuses too — with access skipped, a school manager still cannot publish', async () => {
-      expect(
-        await isDenied(() =>
-          payload.update({
-            collection: 'events',
-            id: e.draftEventA,
-            data: { _status: 'published' },
-            user: f.managerA,
-            overrideAccess: true,
-          }),
-        ),
-      ).toBe(true)
-    })
-
-    it('CAN save a draft and send it — and the district approves it, on the trail', async () => {
-      const sent = await payload.update({
-        collection: 'events',
-        id: e.draftEventA,
-        data: { title: 'draft event a, edited', reviewState: 'submitted' },
-        draft: true,
+        where: { id: { equals: e.publishedEventB } },
+        data: { title: 'Hijacked live', _status: 'published' },
         user: f.managerA,
         overrideAccess: false,
       })
-      expect(sent.reviewState).toBe('submitted')
-      expect(sent._status).toBe('draft')
-
-      const approved = await payload.update({
+      const still = await payload.findByID({
         collection: 'events',
-        id: e.draftEventA,
-        data: { _status: 'published' },
-        user: f.districtAdmin,
+        id: e.publishedEventB,
+        overrideAccess: true,
+      })
+      expect(still.title).toBe('published event b')
+    })
+
+    it('removes their own school’s event — and the district sees both on the activity log', async () => {
+      const made = await payload.create({
+        collection: 'events',
+        data: event(f.tenantA, e.calendarA, 'Cancelled game', { _status: 'published' }),
+        user: f.managerA,
         overrideAccess: false,
       })
-      expect(approved._status).toBe('published')
-      expect(approved.reviewState).toBeNull()
-
+      await payload.delete({
+        collection: 'events',
+        id: made.id,
+        user: f.managerA,
+        overrideAccess: false,
+      })
       const { docs } = await payload.find({
         collection: 'audit-events',
         where: {
-          and: [
-            { contentType: { equals: 'events' } },
-            { documentId: { equals: String(e.draftEventA) } },
-          ],
+          and: [{ contentType: { equals: 'events' } }, { documentId: { equals: String(made.id) } }],
         },
         sort: 'createdAt',
         overrideAccess: true,
       })
-      expect(docs.map((d) => d.action)).toEqual(['submit', 'approve'])
+      expect(docs.map((d) => [d.action, d.actorLabel])).toEqual([
+        ['publish', f.managerA.email],
+        ['delete', f.managerA.email],
+      ])
+    })
+
+    it('pages and announcements are untouched: the same manager still cannot publish a page', async () => {
+      expect(
+        await isDenied(() =>
+          payload.update({
+            collection: 'pages',
+            id: f.draftPageA,
+            data: { _status: 'published' },
+            user: f.managerA,
+            overrideAccess: false,
+          }),
+        ),
+      ).toBe(true)
     })
   })
 })

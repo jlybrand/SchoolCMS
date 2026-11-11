@@ -59,6 +59,11 @@ export default buildConfig({
           Component: '/admin/SchoolPlane/NewPostView#NewPostView',
           path: '/new-post',
         },
+        /** "Add an event" (Jason, 2026-11-11). */
+        newEvent: {
+          Component: '/admin/SchoolPlane/NewEventView#NewEventView',
+          path: '/new-event',
+        },
         /** The district's approval queue (`04` §4.2). See src/admin/Approvals/. */
         approvals: {
           Component: '/admin/Approvals/ApprovalsView#ApprovalsView',
