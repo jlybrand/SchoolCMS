@@ -77,6 +77,8 @@ let feedPage: number
 let columnsPage: number
 let linksPage: number
 let event: number
+/** A calendar copied from an outside address (Jason, 2026-11-11). */
+let feedCalendar: number
 /** School A's own event, for the school plane's screens. */
 let schoolEvent: number
 
@@ -266,8 +268,20 @@ adminTest.describe('district plane — whole screens', () => {
     })
     expect(madeEvent.ok(), await madeEvent.text()).toBe(true)
     event = ((await madeEvent.json()).doc as { id: number }).id
+    // `.invalid` never resolves: if the job runner copies it, the form shows the problem in words.
+    const madeFeed = await fixture.admin.post('/api/calendars?depth=0', {
+      data: {
+        tenant: (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json()).tenant,
+        name: 'Axe feed calendar',
+        source: 'feed',
+        feedUrl: 'https://example.invalid/athletics.ics',
+      },
+    })
+    expect(madeFeed.ok(), await madeFeed.text()).toBe(true)
+    feedCalendar = ((await madeFeed.json()).doc as { id: number }).id
   })
   adminTest.afterAll(async () => {
+    await fixture.admin.delete(`/api/calendars/${feedCalendar}`)
     await fixture.admin.delete(`/api/events/${event}`)
     await fixture.admin.delete(`/api/pages/${feedPage}`)
     await fixture.admin.delete(`/api/pages/${columnsPage}`)
@@ -404,6 +418,10 @@ adminTest.describe('district plane — whole screens', () => {
       adminTest(`@a11y calendars list — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/collections/calendars')
         await auditScreen(page, ...LIST_REPAIRED)
+      })
+      adminTest(`@a11y a feed calendar’s form — ${colorScheme}`, async ({ page }) => {
+        await page.goto(`/admin/collections/calendars/${feedCalendar}`)
+        await auditScreen(page, '#field-name', '#field-source', '#field-feedUrl')
       })
       adminTest(`@a11y events list — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/collections/events')
