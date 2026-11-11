@@ -84,6 +84,7 @@ const list = (overrides: Partial<ResolvedCalendarBlock> = {}): ResolvedCalendarB
     kind: 'calendar',
     id: 'calendar',
     heading: 'Upcoming events',
+    subscribe: [{ name: 'School A', href: 'webcal://a.dd2.org/calendars/1.ics' }],
     display: 'list',
     events: occurrences('en').slice(0, 5),
     ...overrides,
@@ -93,6 +94,10 @@ const grid = (events = occurrences('en')): ResolvedCalendarBlock => ({
   kind: 'calendar',
   id: 'calendar',
   heading: 'District calendar',
+  subscribe: [
+    { name: 'District', href: 'webcal://dd2.org/calendars/2.ics' },
+    { name: 'District HS', href: 'webcal://dd2.org/calendars/3.ics' },
+  ],
   display: 'grid',
   weekdays: weekdayNames('en'),
   months: toGridMonths(events, {

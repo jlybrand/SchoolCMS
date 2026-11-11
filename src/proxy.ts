@@ -36,6 +36,14 @@ const TENANT_FILES: ReadonlyMap<string, string> = new Map([
   ['/sitemap.xml', 'sitemap'],
 ])
 
+/**
+ * A calendar's iCal feed (Jason, 2026-11-11): `/calendars/<id>.ics` on the calendar's own site.
+ * Beside `[locale]`, like the two files above — a feed is not translated — and digits only, so a
+ * near miss is an ordinary page path that 404s as one. The route checks the calendar is this
+ * site's.
+ */
+const CALENDAR_FEED = /^\/calendars\/(\d+)\.ics$/
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -58,6 +66,13 @@ export function proxy(request: NextRequest) {
   if (tenantFile !== undefined) {
     const url = request.nextUrl.clone()
     url.pathname = `/sites/${encodeURIComponent(hostname)}/${tenantFile}`
+    return NextResponse.rewrite(url)
+  }
+
+  const feed = CALENDAR_FEED.exec(pathname)
+  if (feed) {
+    const url = request.nextUrl.clone()
+    url.pathname = `/sites/${encodeURIComponent(hostname)}/calendar-feed/${feed[1]}`
     return NextResponse.rewrite(url)
   }
 

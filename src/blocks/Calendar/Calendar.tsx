@@ -1,5 +1,6 @@
 import { Heading, nextHeadingLevel } from '@/components/Heading'
 import type { HeadingLevel } from '@/components/Heading'
+import { Link } from '@/components/Link'
 import { RichText } from '@/components/RichText'
 import { Section } from '@/components/Section'
 import type { CalendarMonth, EventOccurrence, ResolvedCalendarBlock } from '@/content/types'
@@ -208,8 +209,30 @@ const MonthPanel = ({
 export const Calendar = ({ block, baseLevel }: CalendarProps) => {
   if (block.display === 'list' && block.events.length === 0) return null
 
+  /**
+   * "Subscribe to School A" for each calendar shown (Jason, 2026-11-11): a `webcal:` link, so a
+   * click opens the reader's calendar app to subscribe. The calendar's name is in the link's own
+   * words, so each link makes sense read alone.
+   */
+  const subscribe =
+    block.subscribe.length === 0 ? null : (
+      <ul className={styles.subscribe}>
+        {block.subscribe.map((calendar) => (
+          <li key={calendar.href}>
+            <Link href={calendar.href}>Subscribe to {calendar.name}</Link>
+          </li>
+        ))}
+      </ul>
+    )
+
   const body = (level: HeadingLevel) => {
-    if (block.display === 'list') return <EventList events={block.events} level={level} />
+    if (block.display === 'list')
+      return (
+        <>
+          <EventList events={block.events} level={level} />
+          {subscribe}
+        </>
+      )
     const byKey = new Map(block.events.map((o) => [o.key, o]))
     const labelId = `${block.id}-month`
     return (
@@ -237,6 +260,7 @@ export const Calendar = ({ block, baseLevel }: CalendarProps) => {
             occurrence={occurrence}
           />
         ))}
+        {subscribe}
       </div>
     )
   }

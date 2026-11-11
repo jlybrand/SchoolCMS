@@ -194,6 +194,17 @@
   }
 }
 
+/* ---- Subscribe ------------------------------------------------------------------------- */
+
+.subscribe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-md);
+  list-style: none;
+  margin-block: var(--space-md) 0;
+  padding-inline-start: 0;
+}
+
 /* ---- Dialog ----------------------------------------------------------------------------- */
 
 .dialog {

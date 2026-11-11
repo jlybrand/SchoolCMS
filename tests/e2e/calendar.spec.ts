@@ -49,7 +49,13 @@ const mainCalendarOf = async (admin: APIRequestContext, tenant: number) => {
   return ((await res.json()).docs as { id: number }[])[0]!.id
 }
 
-type Fixture = { admin: APIRequestContext; page: number; event: number; slug: string }
+type Fixture = {
+  admin: APIRequestContext
+  page: number
+  event: number
+  slug: string
+  calendar: number
+}
 
 /** A published event tomorrow on School B's calendar, and a page showing it both ways. */
 const setUp = async (
@@ -91,6 +97,7 @@ const setUp = async (
   expect(page.ok(), await page.text()).toBe(true)
   return {
     admin,
+    calendar,
     page: ((await page.json()).doc as { id: number }).id,
     event: ((await made.json()).doc as { id: number }).id,
     slug,
@@ -165,6 +172,43 @@ test.describe('a calendar on a page', () => {
       await page.keyboard.press('Escape')
       await expect(dialog).toBeHidden()
       await expect(button).toBeFocused()
+    } finally {
+      await tearDown(f)
+    }
+  })
+
+  test('each calendar has a subscribe link, and its iCal feed is served on its own site only', async ({
+    page,
+    baseURL,
+    request,
+  }) => {
+    const title = uniqueTitle('Choir concert')
+    const f = await setUp(baseURL, title, 'In the gym.')
+    try {
+      await open(page, baseURL, f.slug)
+      const link = page
+        .getByRole('region', { name: 'Upcoming events' })
+        .getByRole('link', { name: /^Subscribe to / })
+      await expect(link).toHaveAttribute(
+        'href',
+        new RegExp(`^webcal://b\\.localhost(:\\d+)?/calendars/${f.calendar}\\.ics$`),
+      )
+
+      const feedUrl = siteUrl(baseURL, 'b.localhost', `/calendars/${f.calendar}.ics`)
+      await expect(async () => {
+        const res = await request.get(feedUrl)
+        expect(res.status()).toBe(200)
+        expect(res.headers()['content-type']).toContain('text/calendar')
+        const body = await res.text()
+        expect(body.startsWith('BEGIN:VCALENDAR\r\n')).toBe(true)
+        expect(body.replace(/\r\n /g, '')).toContain(`SUMMARY:${title}`)
+      }).toPass({ timeout: 15_000 })
+
+      // Another site does not serve School B's calendar.
+      const elsewhere = await request.get(
+        siteUrl(baseURL, 'a.localhost', `/calendars/${f.calendar}.ics`),
+      )
+      expect(elsewhere.status()).toBe(404)
     } finally {
       await tearDown(f)
     }
