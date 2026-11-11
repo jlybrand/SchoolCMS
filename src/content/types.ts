@@ -15,6 +15,7 @@
 
 /** Locale tiers per `08` §2. `en` is the only authored language. */
 import type { NewsItem } from '@/lib/post-url'
+import type { EventTiming } from '@/lib/recurrence'
 
 export type Locale = string
 
@@ -517,4 +518,48 @@ export type Post = {
    * links there. Null where it is not known.
    */
   homeHostname: string | null
+}
+
+/**
+ * EVENTS (`03` §2; Jason, 2026-11-11 — the fields of a Finalsite calendar event).
+ *
+ * A calendar event as the rendering layer sees it. Only published events become one — the
+ * content layer filters, so a renderer cannot show a draft by forgetting to check (`03` §6.4).
+ * When it happens is `timing`, which `src/lib/recurrence.ts` turns into occurrences.
+ */
+export type CalendarEvent = {
+  id: string
+  /** The site that owns it. A calendar block may show another site's calendar. */
+  tenantId: string
+  /** The one calendar it is on (Jason, 2026-10-28). */
+  calendarId: string
+  title: string
+  location: string | null
+  /** Shown when the event is clicked (Jason, 2026-11-11). Empty when there are none. */
+  notes: RichText
+  timing: EventTiming
+}
+
+/**
+ * One time an event happens, ready to render: an event that repeats weekly is many of these.
+ * Everything decided — dates and times already written out in the reader's language.
+ */
+export type EventOccurrence = {
+  /** Unique within a calendar block: the event id and the local date it starts on. */
+  key: string
+  eventId: string
+  title: string
+  location: string | null
+  notes: RichText
+  allDay: boolean
+  /** ISO instant (timed) or `YYYY-MM-DD` (all day) — for `<time dateTime>`. */
+  start: string
+  end: string | null
+  /** Local dates, for placing it on a month grid. */
+  startDate: string
+  endDate: string
+  /** E.g. "Friday, December 4, 2026". */
+  dateLabel: string
+  /** E.g. "6:00 PM – 8:00 PM", "All day", or for a multi-day event "Dec 21 – Dec 25". Null for none. */
+  timeLabel: string | null
 }

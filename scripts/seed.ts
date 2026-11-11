@@ -288,6 +288,24 @@ const run = async () => {
     }
 
     /**
+     * The site's own calendar (Jason, 2026-10-28). A new site gets it from `makeMainCalendar`;
+     * a site made before calendars existed gets it here, once.
+     */
+    const { totalDocs: mainCalendars } = await payload.count({
+      collection: 'calendars',
+      where: { and: [{ tenant: { equals: tenantId } }, { isMain: { equals: true } }] },
+      overrideAccess: true,
+    })
+    if (mainCalendars === 0) {
+      await payload.create({
+        collection: 'calendars',
+        data: { tenant: tenantId, name: tenant.name, isMain: true },
+        overrideAccess: true,
+      })
+      payload.logger.info(`created the calendar for ${tenant.slug}`)
+    }
+
+    /**
      * Menus (`03` §5) — one row per tenant, pointing at the pages seeded above so every link
      * resolves.
      *

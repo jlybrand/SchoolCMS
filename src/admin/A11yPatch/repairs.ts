@@ -69,6 +69,13 @@ export const repairAdminA11y = (root: ParentNode): void => {
     name(button, 'Copy or paste')
   }
 
+  // 4.1.2 — a date's clear button: an "×" icon, shown once the date has a value (an event's
+  // Starts and Ends, 2026-11-11). Named after the field, so "Clear Starts" and "Clear Ends" differ.
+  for (const button of all(root, 'button.date-time-picker__clear-button')) {
+    const label = fieldLabel(button)
+    name(button, label ? `Clear ${label}` : 'Clear date')
+  }
+
   // 4.1.2 — list pagination arrows.
   for (const button of all(root, '.clickable-arrow--left')) name(button, 'Previous page')
   for (const button of all(root, '.clickable-arrow--right')) name(button, 'Next page')

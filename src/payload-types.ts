@@ -74,6 +74,8 @@ export interface Config {
     'post-folders': PostFolder;
     'post-boards': PostBoard;
     'post-tags': PostTag;
+    calendars: Calendar;
+    events: Event;
     navigation: Navigation;
     theme: Theme;
     settings: Setting;
@@ -93,6 +95,8 @@ export interface Config {
     'post-folders': PostFoldersSelect<false> | PostFoldersSelect<true>;
     'post-boards': PostBoardsSelect<false> | PostBoardsSelect<true>;
     'post-tags': PostTagsSelect<false> | PostTagsSelect<true>;
+    calendars: CalendarsSelect<false> | CalendarsSelect<true>;
+    events: EventsSelect<false> | EventsSelect<true>;
     navigation: NavigationSelect<false> | NavigationSelect<true>;
     theme: ThemeSelect<false> | ThemeSelect<true>;
     settings: SettingsSelect<false> | SettingsSelect<true>;
@@ -663,6 +667,81 @@ export interface Post {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "calendars".
+ */
+export interface Calendar {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  /**
+   * What the calendar is called, e.g. "Athletics" or "Testing".
+   */
+  name: string;
+  isMain?: boolean | null;
+  label?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "events".
+ */
+export interface Event {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  /**
+   * The event’s name, as the calendar shows it.
+   */
+  title: string;
+  /**
+   * Which calendar this goes on. Leave empty for the school’s own.
+   */
+  calendar?: (number | null) | Calendar;
+  start: string;
+  /**
+   * Optional.
+   */
+  end?: string | null;
+  /**
+   * The times are ignored; only the days are shown.
+   */
+  allDay?: boolean | null;
+  /**
+   * Optional. Where it is, e.g. "Auditorium".
+   */
+  location?: string | null;
+  repeat?: ('none' | 'daily' | 'weekdays' | 'mwf' | 'tth' | 'weekly' | 'monthly' | 'yearly') | null;
+  /**
+   * The last date it happens on.
+   */
+  repeatUntil?: string | null;
+  /**
+   * Optional. Shown when someone clicks the event on the calendar.
+   */
+  notes?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  reviewState?: ('editing' | 'submitted' | 'changes-requested') | null;
+  reviewNote?: string | null;
+  submittedAt?: string | null;
+  submittedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "navigation".
  */
 export interface Navigation {
@@ -988,6 +1067,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'post-tags';
         value: number | PostTag;
+      } | null)
+    | ({
+        relationTo: 'calendars';
+        value: number | Calendar;
+      } | null)
+    | ({
+        relationTo: 'events';
+        value: number | Event;
       } | null)
     | ({
         relationTo: 'navigation';
@@ -1329,6 +1416,41 @@ export interface PostTagsSelect<T extends boolean = true> {
   name?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "calendars_select".
+ */
+export interface CalendarsSelect<T extends boolean = true> {
+  tenant?: T;
+  name?: T;
+  isMain?: T;
+  label?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "events_select".
+ */
+export interface EventsSelect<T extends boolean = true> {
+  tenant?: T;
+  title?: T;
+  calendar?: T;
+  start?: T;
+  end?: T;
+  allDay?: T;
+  location?: T;
+  repeat?: T;
+  repeatUntil?: T;
+  notes?: T;
+  reviewState?: T;
+  reviewNote?: T;
+  submittedAt?: T;
+  submittedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

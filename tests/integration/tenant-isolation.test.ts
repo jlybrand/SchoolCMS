@@ -1,6 +1,7 @@
 import { createLocalReq, type Payload } from 'payload'
 import { beforeAll, describe, expect, it } from 'vitest'
 
+import { listEventOccurrences } from '@/content/events'
 import { listPosts } from '@/content/posts'
 import type { ContentContext } from '@/content/types'
 
@@ -10,7 +11,9 @@ import {
   readsNothing,
   seed,
   seedPosts,
+  seedEvents,
   boardFor,
+  type EventFixtures,
   type Fixtures,
   type PostFixtures,
 } from '../helpers/payload'
@@ -2312,6 +2315,347 @@ describe('announcement folders, boards and tags', () => {
 
     it('boards then tags', async () => {
       expect(await ids(f.tenantB, { boards: [f.boardDistrict], tags: [tagSports] })).toEqual([])
+    })
+  })
+})
+
+describe('events and calendars (Jason, 2026-10-28 and 2026-11-11)', () => {
+  let e: EventFixtures
+
+  beforeAll(async () => {
+    e = await seedEvents(payload, f)
+  })
+
+  const event = (
+    tenant: number,
+    calendar: number,
+    title: string,
+    extra: Record<string, unknown> = {},
+  ) => ({
+    tenant,
+    calendar,
+    title,
+    start: '2026-12-04T23:00:00.000Z',
+    ...extra,
+  })
+
+  describe('invariant 1 — a user cannot read another school’s events or calendars', () => {
+    it("school-manager B cannot read tenant A's events, published or not", async () => {
+      for (const id of [e.publishedEventA, e.draftEventA]) {
+        expect(
+          await isDenied(() =>
+            payload.findByID({
+              collection: 'events',
+              id,
+              draft: true,
+              user: f.managerB,
+              overrideAccess: false,
+            }),
+          ),
+        ).toBe(true)
+      }
+    })
+
+    it("school-manager A lists only their own school's events, at every status", async () => {
+      const { docs } = await payload.find({
+        collection: 'events',
+        draft: true,
+        user: f.managerA,
+        overrideAccess: false,
+        pagination: false,
+      })
+      expect(docs.map((d) => d.id).sort()).toEqual([e.publishedEventA, e.draftEventA].sort())
+    })
+
+    it("school-manager A lists only their own school's calendars", async () => {
+      const { docs } = await payload.find({
+        collection: 'calendars',
+        user: f.managerA,
+        overrideAccess: false,
+        pagination: false,
+      })
+      expect(docs.map((d) => d.id)).toEqual([e.calendarA])
+    })
+
+    it.each([
+      ['system-sync', () => f.systemSync],
+      ['a school-manager with no school', () => f.noTenantManager],
+    ])('%s reads no events and no calendars', async (_label, user) => {
+      for (const collection of ['events', 'calendars'] as const) {
+        expect(
+          await readsNothing(() =>
+            payload.find({ collection, user: user(), draft: true, overrideAccess: false }),
+          ),
+        ).toBe(true)
+      }
+    })
+  })
+
+  describe('invariant 2 — a user cannot write another school’s events or any calendar', () => {
+    it('school-manager A cannot create an event in School B', async () => {
+      expect(
+        await isDenied(() =>
+          payload.create({
+            collection: 'events',
+            data: event(f.tenantB, e.calendarB, 'Into B'),
+            draft: true,
+            user: f.managerA,
+            overrideAccess: false,
+          }),
+        ),
+      ).toBe(true)
+    })
+
+    it('school-manager A cannot edit School B’s event, singly or in bulk', async () => {
+      expect(
+        await isDenied(() =>
+          payload.update({
+            collection: 'events',
+            id: e.publishedEventB,
+            data: { title: 'Hijacked' },
+            draft: true,
+            user: f.managerA,
+            overrideAccess: false,
+          }),
+        ),
+      ).toBe(true)
+      await payload.update({
+        collection: 'events',
+        where: { id: { equals: e.publishedEventB } },
+        data: { title: 'Hijacked' },
+        draft: true,
+        user: f.managerA,
+        overrideAccess: false,
+      })
+      const still = await payload.findByID({
+        collection: 'events',
+        id: e.publishedEventB,
+        overrideAccess: true,
+      })
+      expect(still.title).toBe('published event b')
+    })
+
+    it('an event cannot go on another site’s calendar — not even by the district', async () => {
+      for (const user of [f.managerA, f.districtAdmin]) {
+        expect(
+          await isDenied(() =>
+            payload.create({
+              collection: 'events',
+              data: event(f.tenantA, e.calendarB, 'Wrong calendar'),
+              draft: true,
+              user,
+              overrideAccess: false,
+            }),
+          ),
+        ).toBe(true)
+      }
+    })
+
+    it('a school manager cannot create, rename or delete a calendar', async () => {
+      expect(
+        await isDenied(() =>
+          payload.create({
+            collection: 'calendars',
+            data: { tenant: f.tenantA, name: 'My own' },
+            user: f.managerA,
+            overrideAccess: false,
+          }),
+        ),
+      ).toBe(true)
+      expect(
+        await isDenied(() =>
+          payload.update({
+            collection: 'calendars',
+            id: e.calendarA,
+            data: { name: 'Renamed' },
+            user: f.managerA,
+            overrideAccess: false,
+          }),
+        ),
+      ).toBe(true)
+      expect(
+        await isDenied(() =>
+          payload.delete({
+            collection: 'calendars',
+            id: e.calendarA,
+            user: f.managerA,
+            overrideAccess: false,
+          }),
+        ),
+      ).toBe(true)
+    })
+
+    it('a school manager cannot delete an event — taking one down is the district’s', async () => {
+      expect(
+        await isDenied(() =>
+          payload.delete({
+            collection: 'events',
+            id: e.draftEventA,
+            user: f.managerA,
+            overrideAccess: false,
+          }),
+        ),
+      ).toBe(true)
+    })
+  })
+
+  describe('invariant 3 — the public site reads by the block’s calendars, published only', () => {
+    const site = (tenantId: number): ContentContext => ({
+      tenant: {
+        id: String(tenantId),
+        slug: 's',
+        name: 's',
+        hostname: 's.localhost',
+        type: 'school',
+      },
+      locale: 'en',
+    })
+    const titles = async (calendars: number[]) =>
+      (
+        await listEventOccurrences(site(f.tenantB), {
+          calendars: calendars.map(String),
+          range: { from: '2026-12-01', to: '2026-12-31' },
+        })
+      ).map((o) => o.title)
+
+    it('shows the chosen calendars’ published events — another site’s too, when chosen', async () => {
+      expect((await titles([e.calendarB, e.calendarDistrictHs])).sort()).toEqual([
+        'district hs event',
+        'published event b',
+      ])
+    })
+
+    it('never a draft, even on a chosen calendar', async () => {
+      expect(await titles([e.calendarA])).toEqual(['published event a'])
+    })
+
+    it('nothing from a calendar not chosen', async () => {
+      expect(await titles([e.calendarB])).toEqual(['published event b'])
+      expect(await titles([])).toEqual([])
+    })
+  })
+
+  describe('invariant 4 — the public API surface', () => {
+    it('an anonymous read returns published events ONLY', async () => {
+      const { docs } = await payload.find({
+        collection: 'events',
+        draft: true,
+        overrideAccess: false,
+        pagination: false,
+      })
+      expect(docs.map((d) => d.id)).not.toContain(e.draftEventA)
+      expect(docs.map((d) => d.id)).toContain(e.publishedEventA)
+    })
+
+    it('an anonymous caller reads no calendars and no event history', async () => {
+      expect(
+        await readsNothing(() => payload.find({ collection: 'calendars', overrideAccess: false })),
+      ).toBe(true)
+      expect(
+        await readsNothing(() =>
+          payload.findVersions({ collection: 'events', overrideAccess: false }),
+        ),
+      ).toBe(true)
+    })
+  })
+
+  describe('invariant 5 — a school-manager cannot PUBLISH an event by any route', () => {
+    it('cannot create an event already marked published, and nothing lands', async () => {
+      expect(
+        await isDenied(() =>
+          payload.create({
+            collection: 'events',
+            data: event(f.tenantA, e.calendarA, 'Sneaky event', { _status: 'published' }),
+            user: f.managerA,
+            overrideAccess: false,
+          }),
+        ),
+      ).toBe(true)
+      const { docs } = await payload.find({
+        collection: 'events',
+        where: { title: { equals: 'Sneaky event' } },
+        draft: true,
+        overrideAccess: true,
+      })
+      expect(docs).toHaveLength(0)
+    })
+
+    it('cannot update their own draft to published, singly or in bulk', async () => {
+      await isDenied(() =>
+        payload.update({
+          collection: 'events',
+          id: e.draftEventA,
+          data: { _status: 'published' },
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      )
+      await isDenied(() =>
+        payload.update({
+          collection: 'events',
+          where: { id: { equals: e.draftEventA } },
+          data: { _status: 'published' },
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      )
+      const still = await payload.findByID({
+        collection: 'events',
+        id: e.draftEventA,
+        draft: true,
+        overrideAccess: true,
+      })
+      expect(still._status).toBe('draft')
+    })
+
+    it('the HOOK layer refuses too — with access skipped, a school manager still cannot publish', async () => {
+      expect(
+        await isDenied(() =>
+          payload.update({
+            collection: 'events',
+            id: e.draftEventA,
+            data: { _status: 'published' },
+            user: f.managerA,
+            overrideAccess: true,
+          }),
+        ),
+      ).toBe(true)
+    })
+
+    it('CAN save a draft and send it — and the district approves it, on the trail', async () => {
+      const sent = await payload.update({
+        collection: 'events',
+        id: e.draftEventA,
+        data: { title: 'draft event a, edited', reviewState: 'submitted' },
+        draft: true,
+        user: f.managerA,
+        overrideAccess: false,
+      })
+      expect(sent.reviewState).toBe('submitted')
+      expect(sent._status).toBe('draft')
+
+      const approved = await payload.update({
+        collection: 'events',
+        id: e.draftEventA,
+        data: { _status: 'published' },
+        user: f.districtAdmin,
+        overrideAccess: false,
+      })
+      expect(approved._status).toBe('published')
+      expect(approved.reviewState).toBeNull()
+
+      const { docs } = await payload.find({
+        collection: 'audit-events',
+        where: {
+          and: [
+            { contentType: { equals: 'events' } },
+            { documentId: { equals: String(e.draftEventA) } },
+          ],
+        },
+        sort: 'createdAt',
+        overrideAccess: true,
+      })
+      expect(docs.map((d) => d.action)).toEqual(['submit', 'approve'])
     })
   })
 })

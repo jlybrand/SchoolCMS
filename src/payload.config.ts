@@ -16,6 +16,8 @@ import { PostFolders } from './collections/PostFolders'
 import { Posts } from './collections/Posts'
 import { crossTenantRelationships } from './lib/cross-tenant-relationships'
 import { PostTags } from './collections/PostTags'
+import { Calendars } from './collections/Calendars'
+import { Events } from './collections/Events'
 import { Settings } from './collections/Settings'
 import { Tenants } from './collections/Tenants'
 import { Theme } from './collections/Theme'
@@ -91,6 +93,8 @@ export default buildConfig({
     PostFolders,
     PostBoards,
     PostTags,
+    Calendars,
+    Events,
     Navigation,
     Theme,
     Settings,
@@ -142,6 +146,9 @@ export default buildConfig({
         /** A site's announcement folders and boards (Jason, 2026-10-28). Tags are district-wide. */
         'post-folders': {},
         'post-boards': {},
+        /** A site's calendars and their events (Jason, 2026-10-28). */
+        calendars: {},
+        events: {},
         /**
          * `isGlobal` is how a per-tenant "global" (`03` §5) is expressed under this plugin: a
          * Payload global is one document for the whole install, and there are 28 sites. It

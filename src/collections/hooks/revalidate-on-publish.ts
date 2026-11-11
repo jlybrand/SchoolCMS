@@ -206,7 +206,7 @@ export const pageRevalidationTargets: NonNullable<RevalidateDeps['targetsFor']> 
  * version.
  */
 export const liveStillPublished =
-  (collection: 'pages' | 'posts'): NonNullable<RevalidateDeps['stillLive']> =>
+  (collection: 'pages' | 'posts' | 'events'): NonNullable<RevalidateDeps['stillLive']> =>
   async (doc, req) => {
     const live = await req.payload.findByID({
       collection,
@@ -237,4 +237,20 @@ export const revalidatePost = makeRevalidateOnPublish({
     syndicationTargets(doc, previousDoc, await allTenantIds(req)),
   // An unpublished announcement leaves every site that lists it now, not in an hour.
   stillLive: liveStillPublished('posts'),
+})
+
+/**
+ * The events' revalidation: EVERY site, before and after. A calendar block on any site may show
+ * any site's calendars (Jason, 2026-10-28), and which blocks show which calendar is page content,
+ * not something worth a query per publish — 28 layout revalidations are cheap, a stale calendar
+ * is not. An unpublished event leaves every calendar now, not in an hour.
+ */
+export const revalidateEvent = makeRevalidateOnPublish({
+  revalidate: async (path, type) => {
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath(path, type)
+  },
+  hostnameFor: tenantHostname,
+  targetsFor: async (_doc, _previousDoc, req) => allTenantIds(req),
+  stillLive: liveStillPublished('events'),
 })
