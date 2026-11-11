@@ -4,6 +4,7 @@ import { districtOnly } from '@/access/tenant-scoped'
 import { isDistrictAdmin, tenantIdsFor } from '@/access/predicates'
 import type { AuthUser } from '@/access/types'
 import { makeMainCalendar } from '@/collections/hooks/event-hooks'
+import { refuseDeletingSiteWithContent } from '@/collections/hooks/tenant-delete'
 
 /**
  * `tenants` — the spine (`03` §2). One document per site: 1 district + 27 schools.
@@ -48,7 +49,11 @@ export const Tenants: CollectionConfig = {
     delete: districtOnly,
   },
   /** Each site's own calendar, made with it (Jason, 2026-10-28). */
-  hooks: { afterChange: [makeMainCalendar] },
+  hooks: {
+    afterChange: [makeMainCalendar],
+    /** Never with its content; its own setup goes with it (src/collections/hooks/tenant-delete.ts). */
+    beforeDelete: [refuseDeletingSiteWithContent],
+  },
   fields: [
     {
       name: 'name',

@@ -94,6 +94,8 @@ export const ensureMainCalendars = async (payload: Payload): Promise<string[]> =
  * when no other is chosen (`eventCalendarIsThisSites`). Other calendars may go.
  */
 export const keepMainCalendar: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  // The site itself is being deleted (empty of content): its calendar goes with it.
+  if (req.context?.deletingSite === true) return
   const calendar = await req.payload.findByID({
     collection: 'calendars',
     id,

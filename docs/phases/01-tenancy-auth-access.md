@@ -506,3 +506,22 @@ Local API, bypassing the admin form entirely.
 | `tenants.powerSchoolBuildingId`           | Phase 5 — building → tenant mapping for the staff sync                                             |
 | `users.entraObjectId`, `entra-mapping.ts` | The Entra switch — the OIDC strategy calls `mapEntraGroupsToRoles` and populates `entraObjectId`   |
 | `password-policy.ts` + the hook           | Deleted at the Entra switch                                                                        |
+
+## Deleting a site (2026-11-11)
+
+Deleting a site never deletes its content. `plugin-multi-tenant`'s `cleanupAfterTenantDelete` (on by
+default: deletes every document of the tenant) is **off** in `src/payload.config.ts`. Instead,
+`refuseDeletingSiteWithContent` (`src/collections/hooks/tenant-delete.ts`, `tenants` beforeDelete):
+
+- counts the site's `pages`, `posts`, `events` (drafts included) and the `users` assigned to it;
+  any → `ValidationError` on `name`, e.g. "School X still has 3 pages and 1 event. Delete or move
+  them first — deleting a site never deletes its content." / "… still has 2 staff accounts. Remove
+  the site from those accounts first.";
+- none → deletes the site's own setup — `calendars`, `post-boards`, `post-folders`, `navigation`,
+  `theme`, `settings` — with `req.context.deletingSite`, which lets `keepMainCalendar` release its
+  main calendar. Every other tenant reference is `SET NULL`, so nothing is left without a site.
+
+Tests: `tests/integration/tenant-delete.test.ts`.
+
+Also 2026-11-11: `admin.meta.titleSuffix` is "- DD2 Websites" (Payload's default is "- Payload");
+`tests/e2e/admin-session.spec.ts` pins it.

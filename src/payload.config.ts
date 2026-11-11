@@ -38,6 +38,8 @@ const dirname = path.dirname(fileURLToPath(import.meta.url))
  */
 export default buildConfig({
   admin: {
+    /** Browser tabs read "Approvals - DD2 Websites", not Payload's default "- Payload". */
+    meta: { titleSuffix: '- DD2 Websites' },
     user: Users.slug,
     importMap: { baseDir: path.resolve(dirname) },
     /**
@@ -139,6 +141,12 @@ export default buildConfig({
       tenantsSlug: 'tenants',
       // district-admin works across all 28 sites by design (`04` §3.2).
       userHasAccessToAllTenants: (user) => isDistrictAdmin(user),
+      /**
+       * OFF (2026-11-11). On by default, it deletes every document of a deleted tenant — one
+       * mistaken delete would take a school's pages, announcements and events beyond undo. A site
+       * is refused deletion while it has content instead (src/collections/hooks/tenant-delete.ts).
+       */
+      cleanupAfterTenantDelete: false,
       /** Declared in src/collections/Users.ts instead, with the plugin's own builder — see there. */
       tenantsArrayField: { includeDefaultField: false },
       collections: {
