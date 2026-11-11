@@ -48,8 +48,10 @@ Lighthouse CI, k6. CI on GitHub Actions.
 ### Pinned versions — and three places "latest" is wrong
 
 Node **24.19.0** (Krypton, Active LTS — see `.nvmrc`; Node 20 is EOL). pnpm **11.20.0** via
-corepack. Postgres **18**. Payload **3.87.0** exact-pinned across every `@payloadcms/*`
-package. Next **16.3.0**, React **19.2.8**.
+corepack. Postgres **18**. Payload **3.93.0** exact-pinned across every `@payloadcms/*`
+package. Next **16.4.6**, React **19.2.8**. (Moved from Payload 3.87.0 / Next 16.3.0 on
+2026-11-11 for critical security advisories — SQL injection and access-control bypasses in
+Payload < 3.90, unauthenticated RCEs in Next < 16.4.1.)
 
 Three dependencies are deliberately **not** on `latest`. Do not "helpfully" bump them
 without re-checking the constraint that pinned them:

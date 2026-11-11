@@ -1154,7 +1154,7 @@ signed in. Chosen over a drag-and-drop canvas after Puck failed axe and keyboard
 | `src/admin/A11yPatch/repairs.ts`, `A11yPatch.tsx`     | `#live-preview-iframe` title "Page preview"; size inputs "Preview width"/"Preview height"; `button.live-preview-toggler` `aria-pressed` FOLLOWS its `--active` class. The observer also watches `class` attributes (never ones the repairs set)                                           |
 
 `/admin-preview` stays on the admin host: the proxy's general matcher skips paths starting
-`admin`, so the session cookie reaches it. Package: `@payloadcms/live-preview-react` 3.87.0,
+`admin`, so the session cookie reaches it. Package: `@payloadcms/live-preview-react` (3.93.0 since 2026-11-11),
 pinned with Payload.
 
 ### Tests
