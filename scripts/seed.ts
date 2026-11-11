@@ -2,6 +2,7 @@ import { getPayload, type PayloadRequest } from 'payload'
 
 import config from '../src/payload.config'
 import type { Page } from '../src/payload-types'
+import { ensureMainCalendars } from '../src/collections/hooks/event-hooks'
 import { ROOT_SLUG } from '../src/lib/slug'
 
 /**
@@ -195,6 +196,11 @@ const run = async () => {
       })
       payload.logger.info(`created tenant ${tenant.slug} (${tenant.hostname})`)
     }
+  }
+
+  /** Each site's own calendar, for a site made before calendars (Jason, 2026-10-28). */
+  for (const slug of await ensureMainCalendars(payload)) {
+    payload.logger.info(`created the calendar for ${slug}`)
   }
 
   /**

@@ -4,6 +4,7 @@ import { Stack } from '@/components/Stack'
 import type { PageLink, ResolvedPageBlock } from '@/content/types'
 
 import { Accordion } from './Accordion'
+import { Calendar } from './Calendar'
 import { CallToAction } from './CallToAction'
 import { CardGrid } from './CardGrid'
 import { ChildPageNav } from './ChildPageNav'
@@ -102,6 +103,9 @@ const Block = ({
     case 'feed':
       // Already resolved — its announcements arrived with it (`resolvePageBlocks`).
       return <NewsFeed baseLevel={baseLevel} block={block} />
+    case 'calendar':
+      // Already resolved — its events arrived with it (`resolvePageBlocks`).
+      return <Calendar baseLevel={baseLevel} block={block} />
     case 'columns':
       // Its columns hold blocks: this list renders them, one level in (`columnLevels`).
       return (
@@ -154,7 +158,9 @@ export const BlockList = ({
     (block) =>
       (block.kind !== 'childPageNav' || childPages.length > 0) &&
       // The resolve pass drops an empty feed; a directly-built one is filtered for the same reason.
-      (block.kind !== 'feed' || block.items.length > 0),
+      (block.kind !== 'feed' || block.items.length > 0) &&
+      // An empty LIST is dropped the same way; a grid always shows (an empty month is a calendar).
+      (block.kind !== 'calendar' || block.display === 'grid' || block.events.length > 0),
   )
 
   /**

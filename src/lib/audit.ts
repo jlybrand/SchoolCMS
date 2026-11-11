@@ -90,7 +90,11 @@ const entry = (
 })
 
 /** Content that moves through review (`04` §4.1), and what an untitled one is called. */
-const REVIEWED: Readonly<Record<string, string>> = { pages: 'Page', posts: 'Post' }
+const REVIEWED: Readonly<Record<string, string>> = {
+  pages: 'Page',
+  posts: 'Post',
+  events: 'Event',
+}
 
 const reviewAction = (input: AuditInput): AuditAction | null => {
   const before = input.previous ?? {}

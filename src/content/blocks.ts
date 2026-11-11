@@ -12,6 +12,7 @@ import type {
   ChildPageNavBlock,
   DividerBlock,
   EmbedBlock,
+  CalendarBlock,
   FeedBlock,
   PageBlock,
   RichTextPageBlock,
@@ -234,6 +235,30 @@ const toFeed = (row: Row, index: number): FeedBlock | null => {
   }
 }
 
+/** How many a calendar list shows: 1-50, 5 unless set. */
+const calendarLimit = (value: unknown): number =>
+  typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(50, Math.max(1, Math.floor(value)))
+    : 5
+
+/**
+ * A calendar's SETTINGS (Jason, 2026-11-11). The events are not here: they are loaded by
+ * `resolvePageBlocks`, as a feed's announcements are. No calendars: dropped, for the feed's
+ * reason — it would read as "every calendar", which nobody chose.
+ */
+const toCalendar = (row: Row, index: number): CalendarBlock | null => {
+  const calendars = ids(row.calendars)
+  if (calendars.length === 0) return null
+  return {
+    kind: 'calendar',
+    id: idOf(row, index),
+    heading: str(row.heading),
+    calendars,
+    display: row.display === 'grid' ? 'grid' : 'list',
+    limit: calendarLimit(row.limit),
+  }
+}
+
 /** At most this many columns are rendered; the schema allows no more. */
 const MAX_COLUMNS = 3
 
@@ -266,6 +291,7 @@ const MAPPERS: Record<string, (row: Row, index: number, paths: PagePaths) => Pag
   embed: toEmbed,
   divider: toDivider,
   feed: toFeed,
+  calendar: toCalendar,
   columns: toColumns,
 }
 

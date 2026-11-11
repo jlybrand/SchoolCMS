@@ -136,14 +136,23 @@ and adds editor guardrails; it does not require new collections, blocks, or temp
 
 ### `events` (calendars, meetings, athletics)
 
-- `tenant`, `title`, `start`, `end`, `allDay`, `location`, `description`, `category`
-  (`general` | `meeting` | `athletics` | `holiday` | …), `recurrence` (rRULE),
-  `syndication` (as posts).
-- **`agendaBody`** — constrained rich text. Staff paste from Word or Google Docs; the paste
-  handler normalizes to the element allowlist and reconstructs real lists and headings
-  (`07` §4). Source formatting is discarded, not preserved.
-- **Athletics is a category, not a module** — no teams or rosters collection (`01` §5).
-- Read-only **iCal** feed endpoints per tenant and category.
+**Built 2026-11-11 with the fields of a Finalsite calendar event (Jason: "the same fields as
+Finalsite calendar events").**
+
+- `tenant`, `calendar` (one, of the event's own site), `title`, `start`, `end` (optional),
+  `allDay`, `location`, `repeat` (Finalsite's choices: daily, weekdays, MWF, TTh, weekly,
+  monthly, yearly) with `repeatUntil` (required when it repeats), `notes`.
+- **`notes`** — constrained rich text, shown when a reader clicks the event. It is where a pasted
+  agenda lands, so it is the `agendaBody` this section used to name: the paste handler normalizes
+  to the element allowlist (`07` §4). Finalsite's separate Description is not built — one field,
+  not two that mean nearly the same.
+- **`calendars`** replace `category`, as boards did for posts. Every calendar belongs to one site;
+  each site gets its own, made with the site; the district makes the others ("District HS").
+  **Athletics is a calendar, not a module** — no teams or rosters collection (`01` §5).
+- **No `syndication`.** Reach is chosen by the calendar block, which may show any site's
+  calendars (the district places it, as a news feed's boards).
+- `recurrence` is stored as the choice and its last date; `toRRule` writes it as an RRULE for the
+  iCal feed. Read-only **iCal** subscribe links per calendar are still to come.
 
 ### `people` (staff directories)
 
@@ -237,7 +246,8 @@ bypasses `media` would also bypass alt-required-at-upload (rule 7).
 
 | Block         | Requires                                                |
 | ------------- | ------------------------------------------------------- |
-| `FeedBlock`   | `posts` (built 2026-10-28; `events` with that module); honours syndication scope (`02` §6) |
+| `FeedBlock`   | `posts` (built 2026-10-28); honours syndication scope (`02` §6) |
+| `Calendar`    | `events` (built 2026-11-11): chosen calendars from any site, as a list (number of events) or a month grid; an event's notes open on click |
 | `StaffList`   | `people`, filtered by school or department              |
 | `AlertInline` | `alerts`                                                |
 

@@ -15,6 +15,7 @@
 
 /** Locale tiers per `08` §2. `en` is the only authored language. */
 import type { NewsItem } from '@/lib/post-url'
+import type { EventTiming } from '@/lib/recurrence'
 
 export type Locale = string
 
@@ -388,6 +389,62 @@ export type ResolvedFeedBlock = BlockBase & {
 }
 
 /**
+ * A calendar on a page (Jason, 2026-11-11) — Finalsite's calendar element. Settings only; the
+ * events are loaded by the resolve pass into `ResolvedCalendarBlock`, as a feed's announcements
+ * are. Its calendars may be any site's: the district chooses them, as a feed's boards.
+ */
+export type CalendarDisplay = 'list' | 'grid'
+
+export type CalendarBlock = BlockBase & {
+  kind: 'calendar'
+  heading: string | null
+  /** Calendar ids — at least one; a block with none is dropped by the mapper. */
+  calendars: string[]
+  display: CalendarDisplay
+  /** A list's number of events, 1-50. The grid shows every event in its months. */
+  limit: number
+}
+
+/** One day of a month grid: its date, and the keys of the events on it. */
+export type CalendarDay = {
+  date: string
+  day: number
+  isToday: boolean
+  eventKeys: string[]
+}
+
+export type CalendarMonth = {
+  /** `YYYY-MM`. */
+  key: string
+  /** E.g. "December 2026", in the reader's language. */
+  label: string
+  /** Weeks of seven days, Sunday first; a day outside the month is null. */
+  weeks: (CalendarDay | null)[][]
+  /** Every event touching the month, in order — what a narrow screen lists instead of the grid. */
+  eventKeys: string[]
+}
+
+/** A calendar READY TO RENDER: what `resolvePageBlocks` turns a `CalendarBlock` into. */
+export type ResolvedCalendarBlock = BlockBase & {
+  kind: 'calendar'
+  heading: string | null
+} & (
+    | {
+        display: 'list'
+        /** The next events, earliest first, at most the block's number. */
+        events: EventOccurrence[]
+      }
+    | {
+        display: 'grid'
+        weekdays: { short: string; long: string }[]
+        /** From the current month on; the first is shown first. */
+        months: CalendarMonth[]
+        /** Every event in those months, once each — what the days' keys refer to. */
+        events: EventOccurrence[]
+      }
+  )
+
+/**
  * Two or three columns, each holding other blocks (Jason, 2026-11-04 — nesting allowed). Side by
  * side on a wide screen, stacked with their contents on a narrow one. One level deep: a column
  * holds any block but another set of columns.
@@ -414,6 +471,7 @@ export type PageBlock =
   | EmbedBlock
   | DividerBlock
   | FeedBlock
+  | CalendarBlock
   | ColumnsBlock
 
 /**
@@ -425,7 +483,10 @@ export type PageBlock =
  * the same way.
  */
 export type ResolvedPageBlock =
-  Exclude<PageBlock, FeedBlock | ColumnsBlock> | ResolvedFeedBlock | ResolvedColumnsBlock
+  | Exclude<PageBlock, FeedBlock | CalendarBlock | ColumnsBlock>
+  | ResolvedFeedBlock
+  | ResolvedCalendarBlock
+  | ResolvedColumnsBlock
 
 /**
  * RICH TEXT (`07` §4.4).
@@ -517,4 +578,48 @@ export type Post = {
    * links there. Null where it is not known.
    */
   homeHostname: string | null
+}
+
+/**
+ * EVENTS (`03` §2; Jason, 2026-11-11 — the fields of a Finalsite calendar event).
+ *
+ * A calendar event as the rendering layer sees it. Only published events become one — the
+ * content layer filters, so a renderer cannot show a draft by forgetting to check (`03` §6.4).
+ * When it happens is `timing`, which `src/lib/recurrence.ts` turns into occurrences.
+ */
+export type CalendarEvent = {
+  id: string
+  /** The site that owns it. A calendar block may show another site's calendar. */
+  tenantId: string
+  /** The one calendar it is on (Jason, 2026-10-28). */
+  calendarId: string
+  title: string
+  location: string | null
+  /** Shown when the event is clicked (Jason, 2026-11-11). Empty when there are none. */
+  notes: RichText
+  timing: EventTiming
+}
+
+/**
+ * One time an event happens, ready to render: an event that repeats weekly is many of these.
+ * Everything decided — dates and times already written out in the reader's language.
+ */
+export type EventOccurrence = {
+  /** Unique within a calendar block: the event id and the local date it starts on. */
+  key: string
+  eventId: string
+  title: string
+  location: string | null
+  notes: RichText
+  allDay: boolean
+  /** ISO instant (timed) or `YYYY-MM-DD` (all day) — for `<time dateTime>`. */
+  start: string
+  end: string | null
+  /** Local dates, for placing it on a month grid. */
+  startDate: string
+  endDate: string
+  /** E.g. "Friday, December 4, 2026"; for several whole days, the run of them. */
+  dateLabel: string
+  /** E.g. "6:00 – 8:00 PM", "All day", "Dec 1, 9:00 AM – Dec 3, 3:00 PM". Null for several whole days. */
+  timeLabel: string | null
 }

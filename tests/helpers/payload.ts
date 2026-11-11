@@ -80,6 +80,8 @@ export type Fixtures = {
 export async function seed(payload: Payload): Promise<Fixtures> {
   // Order matters: pages, navigation, theme, settings and users all reference tenants.
   for (const collection of [
+    'events',
+    'calendars',
     'posts',
     'post-boards',
     'post-folders',
@@ -372,6 +374,87 @@ export async function seedPosts(payload: Payload, f: Fixtures): Promise<PostFixt
     selectedForBPost: await mk(district, 'selected-for-b', 'published', {
       syndication: { scope: 'selected', syndicatedTo: [f.tenantB] },
     }),
+  }
+}
+
+export type EventFixtures = {
+  /** Each site's own calendar, made with the site (`makeMainCalendar`). */
+  calendarA: number
+  calendarB: number
+  calendarDistrict: number
+  /** A second district calendar, e.g. "District HS". */
+  calendarDistrictHs: number
+  publishedEventA: number
+  draftEventA: number
+  publishedEventB: number
+  districtHsEvent: number
+}
+
+/** The site's own calendar, as `makeMainCalendar` made it. */
+export const mainCalendarFor = async (payload: Payload, tenant: number): Promise<number> => {
+  const { docs } = await payload.find({
+    collection: 'calendars',
+    where: { and: [{ tenant: { equals: tenant } }, { isMain: { equals: true } }] },
+    limit: 1,
+    overrideAccess: true,
+  })
+  if (!docs[0]) throw new Error(`tenant ${tenant} has no calendar of its own`)
+  return docs[0].id as number
+}
+
+/**
+ * Events across the axes the calendar rules turn on: owner, calendar and status. All on
+ * 4 December 2026 at 6 p.m. local, so one range finds every one. Created as the district admin,
+ * for the reason `seed` gives for pages.
+ */
+export async function seedEvents(payload: Payload, f: Fixtures): Promise<EventFixtures> {
+  const calendarA = await mainCalendarFor(payload, f.tenantA)
+  const calendarB = await mainCalendarFor(payload, f.tenantB)
+  const calendarDistrict = await mainCalendarFor(payload, f.districtTenant)
+  const calendarDistrictHs = (
+    await payload.create({
+      collection: 'calendars',
+      data: { tenant: f.districtTenant, name: 'District HS' },
+      overrideAccess: true,
+    })
+  ).id as number
+
+  const mk = async (
+    tenant: number,
+    calendar: number,
+    title: string,
+    status: 'draft' | 'published',
+  ): Promise<number> =>
+    (
+      await payload.create({
+        collection: 'events',
+        data: {
+          tenant,
+          calendar,
+          title,
+          start: '2026-12-04T23:00:00.000Z',
+          location: 'Auditorium',
+          _status: status,
+        },
+        user: f.districtAdmin,
+        overrideAccess: true,
+      })
+    ).id as number
+
+  return {
+    calendarA,
+    calendarB,
+    calendarDistrict,
+    calendarDistrictHs,
+    publishedEventA: await mk(f.tenantA, calendarA, 'published event a', 'published'),
+    draftEventA: await mk(f.tenantA, calendarA, 'draft event a', 'draft'),
+    publishedEventB: await mk(f.tenantB, calendarB, 'published event b', 'published'),
+    districtHsEvent: await mk(
+      f.districtTenant,
+      calendarDistrictHs,
+      'district hs event',
+      'published',
+    ),
   }
 }
 

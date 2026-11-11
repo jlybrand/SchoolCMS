@@ -3,6 +3,7 @@ import type { CollectionConfig } from 'payload'
 import { districtOnly } from '@/access/tenant-scoped'
 import { isDistrictAdmin, tenantIdsFor } from '@/access/predicates'
 import type { AuthUser } from '@/access/types'
+import { makeMainCalendar } from '@/collections/hooks/event-hooks'
 
 /**
  * `tenants` — the spine (`03` §2). One document per site: 1 district + 27 schools.
@@ -46,6 +47,8 @@ export const Tenants: CollectionConfig = {
     update: districtOnly,
     delete: districtOnly,
   },
+  /** Each site's own calendar, made with it (Jason, 2026-10-28). */
+  hooks: { afterChange: [makeMainCalendar] },
   fields: [
     {
       name: 'name',

@@ -12,6 +12,7 @@
 export { BlockList } from './BlockList'
 export type { BlockListProps } from './BlockList'
 export { Accordion } from './Accordion'
+export { Calendar } from './Calendar'
 export { CallToAction } from './CallToAction'
 export { CardGrid } from './CardGrid'
 export { ChildPageNav } from './ChildPageNav'

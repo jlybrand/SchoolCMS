@@ -334,6 +334,66 @@ export const feedBlock: Block = {
 }
 
 /**
+ * A calendar (Jason, 2026-11-11) — Finalsite's calendar element. Calendars from any site (the
+ * district chooses, as a feed's boards), shown as a list of the next events or as a month grid.
+ * District-only, like every data component (`src/access/school-layout.ts`).
+ */
+export const calendarBlock: Block = {
+  slug: 'calendar',
+  interfaceName: 'CalendarBlockRow',
+  labels: { singular: 'Calendar', plural: 'Calendars' },
+  fields: [
+    {
+      name: 'heading',
+      type: 'text',
+      label: 'Heading',
+      admin: {
+        description:
+          'Optional. A title above the calendar, like "Upcoming events" — it also names this part of the page for screen readers.',
+      },
+    },
+    {
+      name: 'calendars',
+      type: 'relationship',
+      relationTo: 'calendars',
+      hasMany: true,
+      required: true,
+      label: 'Calendars',
+      // Other sites' calendars too — see src/lib/cross-tenant-relationships.ts.
+      custom: { crossTenant: true },
+      admin: {
+        isSortable: false,
+        description: 'Which calendars to show events from — any site’s.',
+      },
+    },
+    {
+      name: 'display',
+      // A radio, not a select: Payload's select input fails axe (`docs/phases/04` §17).
+      type: 'radio',
+      label: 'Show as',
+      defaultValue: 'list',
+      options: [
+        { label: 'A list of the next events', value: 'list' },
+        { label: 'A month grid', value: 'grid' },
+      ],
+    },
+    {
+      name: 'limit',
+      type: 'number',
+      label: 'How many events',
+      min: 1,
+      max: 50,
+      defaultValue: 5,
+      admin: {
+        description: 'Up to 50 of the next events. With none to show, the list is hidden.',
+        condition: (_data, sibling: { display?: unknown } | undefined) =>
+          sibling?.display !== 'grid',
+      },
+    },
+  ],
+}
+
+/**
  * The library, in the order it is offered to an editor. Prose first — it is what most
  * sections are — then the block that interrupts prose to ask for something.
  */
@@ -392,6 +452,7 @@ export const columnsBlock: Block = {
             embedBlock,
             dividerBlock,
             feedBlock,
+            calendarBlock,
           ],
         },
       ],
@@ -406,6 +467,7 @@ export const blockLibrary: Block[] = [
   callToActionBlock,
   childPageNavBlock,
   feedBlock,
+  calendarBlock,
   embedBlock,
   dividerBlock,
   columnsBlock,

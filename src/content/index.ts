@@ -12,7 +12,7 @@
  *
  *   pages.ts      getPageBySlug(ctx, slug, opts) -> Page
  *   posts.ts      listPosts(ctx, filter) -> Post[]; getPostBySlug; listPostPaths
- *   events.ts     listEvents(ctx, range)         -> Event[]
+ *   events.ts     listEvents(query) -> CalendarEvent[]; listEventOccurrences(ctx, query)
  *   people.ts     listPeople(ctx, filter)        -> Person[]
  *   documents.ts  listDocuments(ctx, filter)     -> Document[]
  *   alerts.ts     getActiveAlerts(ctx)           -> Alert[]

@@ -48,6 +48,18 @@ describe('unnamed buttons', () => {
     expect($('button').getAttribute('aria-label')).toBe(label)
   })
 
+  it('names a date’s clear button after its field — an "×" with no words (events, 2026-11-11)', () => {
+    render(
+      '<div class="field-type date-time-field"><label class="field-label">Starts<span class="required">*</span></label><div class="date-time-picker"><div class="date-time-picker__icon-wrap"><button class="date-time-picker__clear-button" type="button"></button></div></div></div>',
+    )
+    expect($('.date-time-picker__clear-button').getAttribute('aria-label')).toBe('Clear Starts')
+  })
+
+  it('a date’s clear button outside a labelled field is still named', () => {
+    render('<button class="date-time-picker__clear-button" type="button"></button>')
+    expect($('button').getAttribute('aria-label')).toBe('Clear date')
+  })
+
   it('names the pagination arrows', () => {
     render(
       '<div class="paginator"><button class="clickable-arrow clickable-arrow--is-disabled clickable-arrow--left" disabled type="button"></button><button class="clickable-arrow clickable-arrow--right" type="button"></button></div>',

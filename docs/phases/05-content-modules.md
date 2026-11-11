@@ -1166,3 +1166,53 @@ pinned with Payload.
 - `tests/e2e/live-preview.spec.ts` — a school manager opens it by keyboard (`aria-pressed`), sees
   the page in School A's header with its words, types and sees the preview follow; whole-screen
   axe with it open, both themes; another school's preview and no sign-in → 404, the district → 200
+
+## 26. Calendars and events (Jason, 2026-10-28 and 2026-11-11)
+
+Site-owned calendars, events with the fields of a Finalsite calendar event, and the calendar
+block that shows them as a list or a month grid. Clicking an event reveals its notes.
+
+### Files
+
+| File                                                             | Holds                                                                                                                                                                                                                                                    |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/collections/Calendars.ts`                                   | `calendars`: `name`, `isMain` (platform-only), `label` ("Site · Calendar"). Read `schoolListReadAccess`; writes `districtOnly`. `labelCalendar` (beforeChange), `keepMainCalendar` (beforeDelete)                                                        |
+| `src/collections/Events.ts`                                      | `events`: `title`, `calendar`, `start`, `end`, `allDay`, `location`, `repeat` (radio, `REPEAT_OPTIONS`), `repeatUntil` (shown when it repeats), `notes` (rich text), the four review fields. Drafts + autosave. Hidden from school managers in the admin |
+| `src/collections/hooks/event-hooks.ts`                           | `makeMainCalendar` (on `tenants` afterChange create), `keepMainCalendar`, `labelCalendar`, `mainCalendarOf`, `eventCalendarIsThisSites` (none → the site's own; another site's → ValidationError on `calendar`), `eventDatesHook`                        |
+| `src/access/events.ts`                                           | posts' rules with `_status` the only publishing write and `PUBLIC_EVENT_CONSTRAINT = { _status: published }`                                                                                                                                             |
+| `src/lib/recurrence.ts`                                          | `REPEAT_OPTIONS`, `occurrences(timing, range, timeZone, cap)`, `toRRule`, `localDateOf`, `zonedTime`, `addDays`. Wall-clock repeats in the district zone; monthly/yearly skip a month without the date; no last date → once                              |
+| `src/lib/event-dates.ts`                                         | `checkEventDates` → per-field messages: end before start (dates only when all day), repeat without / before its last date, unknown repeat                                                                                                                |
+| `src/lib/event-format.ts`                                        | `toEventOccurrences(events, range, { locale, timeZone, limit })` → `EventOccurrence[]`, sorted day → all-day first → time → title; `dateLabel`/`timeLabel` from `Intl` (`formatRange`)                                                                   |
+| `src/lib/month-grid.ts`, `src/lib/calendar-view.ts`              | `monthsFrom`, `monthRange`, `monthGrid` (Sunday first, null outside the month), `spreadByDay`; `weekdayNames`, `toGridMonths` (days hold occurrence KEYS)                                                                                                |
+| `src/content/event-mapper.ts`, `src/content/events.ts`           | `toCalendarEvent`; `listEvents({ calendars, range })` (published, by calendar, `overrideAccess`), `listEventOccurrences(ctx, query)`                                                                                                                     |
+| `src/collections/blocks/index.ts`                                | `calendarBlock`: `heading`, `calendars` (hasMany, `custom.crossTenant`, not sortable), `display` (list / grid radio), `limit` 1–50 (list only). In the library and inside Columns; district-only (not in `SCHOOL_BLOCKS`)                                |
+| `src/content/blocks.ts`, `src/content/resolve-blocks.ts`         | `toCalendar` (no calendars → dropped); `resolveCalendar`: list = today → +365 days, `limit`, empty → dropped; grid = 12 months from this one, always kept. `Options.today` for tests                                                                     |
+| `src/blocks/Calendar/`                                           | `Calendar` (server): list = `<ol>`, an event with notes is a `<details>` whose summary holds title, date, place; grid = `MonthSwitcher` + per-month `<table>` + narrow-screen list (container query, `< 30rem`) + one native `<dialog>` per occurrence   |
+| `src/blocks/Calendar/MonthSwitcher.tsx`, `EventDialogButton.tsx` | the public site's first client components: month index state; `showModal()` on click                                                                                                                                                                     |
+| `src/collections/hooks/revalidate-on-publish.ts`                 | `revalidateEvent`: every tenant, `stillLive` for unpublish                                                                                                                                                                                               |
+| `src/admin/A11yPatch/repairs.ts`                                 | a date's clear button → "Clear <field label>"                                                                                                                                                                                                            |
+| `scripts/main-calendars.ts`, `scripts/seed.ts`                   | `ensureMainCalendars` for sites made before calendars: `pnpm calendars:backfill` (dd2_dev; production once, at the deploy that brings events) and the seed                                                                                               |
+
+`ReviewedCollection` includes `events` (approve endpoint, `NOUN`), and the audit trail records
+them (`REVIEWED.events = 'Event'`). The queue does not list them yet (`queue-data.ts` `REVIEWED`).
+
+### Not here yet
+
+The school's "Add an event" task, events in the approval queue and the outcome emails; an event's
+own page and a calendar's iCal subscribe link (`toRRule` is ready); feed calendars (iCal / Google);
+the `events.schedule` auto-approval scope.
+
+### Tests
+
+- `tests/unit/lib/recurrence.test.ts`, `event-dates.test.ts`, `event-format.test.ts`,
+  `month-grid.test.ts`, `calendar-view.test.ts`; `tests/unit/event-mapper.test.ts`;
+  `tests/unit/access/events.test.ts`; `tests/unit/blocks.test.ts` (calendar mapper);
+  `tests/unit/admin/a11y-patch.test.ts` (date clear button)
+- `tests/integration/events.test.ts` — main calendar made, labelled, undeletable, not claimable,
+  backfilled once;
+  no calendar → the site's own; date refusals; the trail; the resolve pass (list from today,
+  empty list dropped, 12-month grid, empty grid kept)
+- `tests/integration/tenant-isolation.test.ts` — events and calendars across invariants 1–5
+- `tests/e2e/calendar.spec.ts` — list reveals notes; grid opens a dialog, Escape returns focus;
+  axe with notes and dialog open, both themes
+- `tests/e2e/admin-planes-axe.spec.ts` — calendars list, events list, a repeating event's form

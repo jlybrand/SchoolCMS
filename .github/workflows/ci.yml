@@ -103,6 +103,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: test
+    # Playwright's own image: Chromium and every system library it needs are already in it, so
+    # nothing is fetched from Ubuntu's package mirrors — which went unreachable from GitHub's
+    # runners on 2026-11-11 and failed `playwright install --with-deps` three runs in a row. The
+    # tag MUST match the pinned `@playwright/test`; bump them together.
+    container: mcr.microsoft.com/playwright:v1.62.1-noble
     # No Postgres and no Next build: Storybook renders components in isolation. Keeping this
     # job independent of the database means a component regression is diagnosable on its own,
     # and it keeps working through phases where the page templates are still changing shape.
@@ -115,7 +120,6 @@ jobs:
           node-version: '${{ env.NODE_VERSION }}'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
       - name: axe over every story, both directions (zero critical/serious to merge)
         # `06` §2.4 — every block registers its axe test in the same PR. Driven from
         # Storybook's story index, so a new story is in the gate the moment it exists.
@@ -132,6 +136,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: test
+    # Playwright's own image, for the reason the component job gives. Inside a container job
+    # the Postgres service is reached by its name, `postgres`, not through a published port.
+    container: mcr.microsoft.com/playwright:v1.62.1-noble
     services:
       postgres:
         image: postgres:18
@@ -139,12 +146,11 @@ jobs:
           POSTGRES_USER: dd2
           POSTGRES_PASSWORD: dd2_ci
           POSTGRES_DB: dd2_test
-        ports: ['5432:5432']
         options: >-
           --health-cmd "pg_isready -U dd2 -d dd2_test"
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      DATABASE_URI: postgres://dd2:dd2_ci@localhost:5432/dd2_test
+      DATABASE_URI: postgres://dd2:dd2_ci@postgres:5432/dd2_test
       PAYLOAD_SECRET: ci-only-not-a-real-secret
       NEXT_PUBLIC_SERVER_URL: http://localhost:3000
       # The admin plane needs a real session from Phase 3's paste normalizer onward, and
@@ -173,7 +179,11 @@ jobs:
           node-version: '${{ env.NODE_VERSION }}'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
+      - name: Tenant hostnames resolve to this machine
+        # On a runner `*.localhost` resolves to loopback by itself (`06` §4); in a container
+        # Chromium still does, but Node's own requests (the specs' API calls, the server's
+        # readiness check) go through glibc, which does not. The image runs as root.
+        run: echo '127.0.0.1 a.localhost b.localhost c.localhost unknown.localhost' >> /etc/hosts
       - name: Build
         run: pnpm run build
       - name: Seed tenants + the CI district admin

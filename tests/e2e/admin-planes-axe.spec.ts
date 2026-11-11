@@ -76,6 +76,7 @@ let post: FixturePost
 let feedPage: number
 let columnsPage: number
 let linksPage: number
+let event: number
 
 /** The post form, once rendered and repaired — the page form's controls, less the page's own. */
 const POST_FORM_REPAIRED = PAGE_FORM_REPAIRED
@@ -219,8 +220,24 @@ adminTest.describe('district plane — whole screens', () => {
     })
     expect(linked.ok(), await linked.text()).toBe(true)
     linksPage = ((await linked.json()).doc as { id: number }).id
+    /** An event that repeats, so "Repeats until" is on screen, on its site's own calendar. */
+    const madeEvent = await fixture.admin.post('/api/events?draft=true&depth=0', {
+      data: {
+        tenant: (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json()).tenant,
+        title: 'Axe event',
+        start: '2030-12-04T23:00:00.000Z',
+        end: '2030-12-05T01:00:00.000Z',
+        location: 'Auditorium',
+        repeat: 'weekly',
+        repeatUntil: '2031-01-29T12:00:00.000Z',
+        _status: 'draft',
+      },
+    })
+    expect(madeEvent.ok(), await madeEvent.text()).toBe(true)
+    event = ((await madeEvent.json()).doc as { id: number }).id
   })
   adminTest.afterAll(async () => {
+    await fixture.admin.delete(`/api/events/${event}`)
     await fixture.admin.delete(`/api/pages/${feedPage}`)
     await fixture.admin.delete(`/api/pages/${columnsPage}`)
     await fixture.admin.delete(`/api/pages/${linksPage}`)
@@ -352,6 +369,36 @@ adminTest.describe('district plane — whole screens', () => {
         const [board] = (await boards.json()).docs as { id: number }[]
         await page.goto(`/admin/new-post?board=${board!.id}`)
         await auditScreen(page, '#board-heading', '#new-post form')
+      })
+      adminTest(`@a11y calendars list — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/collections/calendars')
+        await auditScreen(page, ...LIST_REPAIRED)
+      })
+      adminTest(`@a11y events list — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/collections/events')
+        await auditScreen(page, ...LIST_REPAIRED)
+      })
+      adminTest(`@a11y the event form, repeating — ${colorScheme}`, async ({ page }) => {
+        await page.goto(`/admin/collections/events/${event}`)
+        await expect(page.locator('#field-title')).toBeAttached({ timeout: 20_000 })
+        // Payload draws a field only once it scrolls into view; Notes is below the fold.
+        await expect(async () => {
+          await page.mouse.wheel(0, 2000)
+          await expect(page.locator('[data-lexical-editor="true"]')).toBeAttached({
+            timeout: 1_000,
+          })
+        }).toPass({ timeout: 20_000 })
+        await auditScreen(
+          page,
+          '#field-title',
+          '#field-calendar input[aria-label="Calendar"]',
+          '#field-repeatUntil',
+          '[data-lexical-editor="true"]',
+          // The chosen calendar's clear button, taken out of the tab order by the patch.
+          '#field-calendar .clear-indicator[aria-hidden="true"][tabindex="-1"]',
+          // Each date's "×", named by the patch ("Clear Starts").
+          '#field-start .date-time-picker__clear-button[aria-label="Clear Starts"]',
+        )
       })
       adminTest(`@a11y announcement folders list — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/collections/post-folders')

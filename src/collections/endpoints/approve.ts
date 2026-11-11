@@ -27,7 +27,7 @@ import { checkPostDates, type PostDates, type PostDatesInput } from '@/lib/post-
 export type ApproveResult = { ok: true } | { ok: false; reason: ApprovalRefusal | 'not-found' }
 
 /** The collections that go through review (`04` §4.1). */
-export type ReviewedCollection = 'pages' | 'posts'
+export type ReviewedCollection = 'pages' | 'posts' | 'events'
 
 type LatestVersion = { token: VersionToken; version: Record<string, unknown> }
 
