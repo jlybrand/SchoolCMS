@@ -207,7 +207,7 @@ more scopes:
 
 | Scope | Permits without review |
 |---|---|
-| `events.schedule` | **Superseded 2026-11-11:** events do not go through approval at all (Jason) — every school manager publishes and removes their own school's events, and the district sees them in the activity log. The grant option remains in the schema but does nothing |
+| ~~`events.schedule`~~ | **Removed 2026-11-11:** events do not go through approval at all (Jason) — every school manager publishes and removes their own school's events, and the district sees them in the activity log |
 | `posts.routine` | Publishing a post with no upload and no page-structure change — **its body included** (see below) |
 | *(none — the default)* | Nothing. All submissions queue. |
 

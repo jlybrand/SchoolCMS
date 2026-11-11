@@ -200,7 +200,7 @@ export interface User {
   /**
    * OFF BY DEFAULT. Granted per named person by a district-admin, deliberately, and revocable at any time. Changes are audited and surfaced on the district dashboard.
    */
-  autoApprove?: ('events.schedule' | 'posts.routine')[] | null;
+  autoApprove?: 'posts.routine'[] | null;
   /**
    * Every district admin keeps the same rights either way. If nobody has this on, every district admin is emailed, so the approval queue is never silent.
    */

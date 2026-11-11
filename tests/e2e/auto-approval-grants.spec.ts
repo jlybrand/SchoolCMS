@@ -131,7 +131,8 @@ test.describe('auto-approval grants', () => {
       'id',
       'field-autoApprove',
     )
-    await expect(field.getByRole('checkbox')).toHaveCount(2)
+    // One scope: `events.schedule` was removed (events skip approval, 2026-11-11).
+    await expect(field.getByRole('checkbox')).toHaveCount(1)
     await expect(posts).not.toBeChecked()
 
     await setGrant(page, posts, true, holderId, ['posts.routine'])
@@ -179,7 +180,7 @@ test.describe('auto-approval grants', () => {
       }) => {
         // With a holder listed, so the link is audited too.
         await page.request.patch(`/api/users/${holderId}`, {
-          data: { autoApprove: ['events.schedule'] },
+          data: { autoApprove: ['posts.routine'] },
         })
         await page.goto('/admin')
         await expect(

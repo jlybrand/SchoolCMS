@@ -33,7 +33,7 @@ const managerWithGrants = async () =>
 beforeAll(async () => {
   payload = await getTestPayload()
   f = await seed(payload)
-  await grant(['events.schedule', 'posts.routine'])
+  await grant(['posts.routine'])
 }, 120_000)
 
 afterAll(async () => {
@@ -46,7 +46,7 @@ const latest = (id: number) =>
 describe('holding every grant, a page still queues', () => {
   it('a new page sent for approval waits as a draft', async () => {
     const user = await managerWithGrants()
-    expect(user.autoApprove).toEqual(['events.schedule', 'posts.routine'])
+    expect(user.autoApprove).toEqual(['posts.routine'])
 
     const page = await payload.create({
       collection: 'pages',
