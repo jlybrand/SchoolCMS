@@ -1,5 +1,6 @@
 /**
- * Repairs to Payload 3.87's own admin markup where it fails axe (`docs/phases/04` §17, `04` §6,
+ * Repairs to Payload's own admin markup (written against 3.87; every repair re-checked by the
+ * whole-screen axe suite on 3.93.0, 2026-11-11) where it fails axe (`docs/phases/04` §17, `04` §6,
  * CLAUDE.md rule 6). `A11yPatch.tsx` runs this on load and after every DOM change.
  *
  * A STOPGAP, NOT A FORK. Each repair is reported upstream; delete it when Payload fixes the

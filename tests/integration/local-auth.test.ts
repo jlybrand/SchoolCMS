@@ -216,7 +216,29 @@ describe('the forgot-password email', () => {
     expect(message.html).toContain(`href="https://dd2.example.org/admin/reset/${token}"`)
   })
 
+  /**
+   * Payload 3.93 throttles reset requests: one per account per 15 seconds (`minRequestInterval`,
+   * its default), the rest silently ignored — no email, and nothing that says the address exists.
+   * Kept: it stops anyone flooding a staff member's inbox with reset emails.
+   */
+  const clearThrottle = (email: string) =>
+    payload.db.updateOne({
+      collection: 'users',
+      where: { email: { equals: email } },
+      data: { resetPasswordRequestedAt: null },
+    })
+
+  it('a second request for the same account within 15 seconds sends nothing (Payload 3.93)', async () => {
+    await clearThrottle('manager-a@test.local')
+    vi.stubEnv('NEXT_PUBLIC_SERVER_URL', 'https://dd2.example.org')
+    const send = vi.spyOn(payload.email, 'sendEmail').mockResolvedValue(undefined)
+    await payload.forgotPassword({ collection: 'users', data: { email: 'manager-a@test.local' } })
+    await payload.forgotPassword({ collection: 'users', data: { email: 'manager-a@test.local' } })
+    expect(send).toHaveBeenCalledTimes(1)
+  })
+
   it('sends nothing rather than a dead link when the origin is not set', async () => {
+    await clearThrottle('manager-a@test.local')
     vi.stubEnv('NEXT_PUBLIC_SERVER_URL', '')
     const send = vi.spyOn(payload.email, 'sendEmail').mockResolvedValue(undefined)
     const denied = await isDenied(() =>
