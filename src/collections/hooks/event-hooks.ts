@@ -164,6 +164,18 @@ export const eventCalendarIsThisSites: CollectionBeforeValidateHook = async ({
     tenant !== null &&
     relationshipIdOf((calendar as { tenant?: unknown }).tenant as never) === tenant
   ) {
+    // A feed calendar's events come from its address, and only the sync writes them.
+    if ((calendar as { source?: unknown }).source === 'feed' && !isFeedSync(req)) {
+      throw new ValidationError({
+        errors: [
+          {
+            path: 'calendar',
+            message:
+              'This calendar is copied from another calendar’s address. Add the event there, or choose another calendar.',
+          },
+        ],
+      })
+    }
     return data
   }
   throw new ValidationError({
@@ -188,4 +200,55 @@ export const eventDatesHook: CollectionBeforeChangeHook = ({ data, originalDoc }
   throw new ValidationError({
     errors: Object.entries(check.errors).map(([path, message]) => ({ path, message })),
   })
+}
+
+/** The feed sync's own writes (`src/jobs/calendar-feeds.ts`) — marked by server code only. */
+export const FEED_SYNC = 'feedSync'
+export const isFeedSync = (req: PayloadRequest): boolean => req.context?.[FEED_SYNC] === true
+
+/**
+ * Wraps an `events` afterChange/afterDelete hook so the hourly feed sync skips it: an outside
+ * calendar's hundreds of events are not district activity, and revalidating every site once per
+ * event would be hundreds of revalidations. The sync records its run on the calendar instead
+ * (`feedSyncedAt`, `feedError`), and the public site catches up on its hourly refresh.
+ */
+export const unlessFeedSync =
+  <T extends { req: PayloadRequest; doc?: unknown }>(hook: (args: T) => unknown) =>
+  (args: T) =>
+    isFeedSync(args.req) ? args.doc : hook(args)
+
+/** The task slug, shared with `src/jobs/calendar-feeds.ts` (which imports these hooks' module). */
+export const CALENDAR_FEEDS_TASK = 'calendarFeeds'
+
+/**
+ * A new or changed feed address is copied within minutes, not at the next hour: the sync is
+ * queued for this calendar, and Payload's runner (every five minutes) picks it up.
+ */
+export const queueFeedSync: CollectionAfterChangeHook = async ({ doc, previousDoc, req }) => {
+  if (doc.source !== 'feed') return doc
+  const changed =
+    previousDoc?.source !== 'feed' || previousDoc?.feedUrl !== doc.feedUrl || !doc.feedSyncedAt
+  if (!changed || isFeedSync(req)) return doc
+  await req.payload.jobs.queue({
+    task: CALENDAR_FEEDS_TASK,
+    input: { calendar: String(doc.id) },
+    req,
+  } as never)
+  return doc
+}
+
+/**
+ * A calendar turned back to local keeps only the events added here: the feed's are removed, as
+ * the platform (they are read-only to everyone else).
+ */
+export const dropFeedEvents: CollectionAfterChangeHook = async ({ doc, previousDoc, req }) => {
+  if (doc.source === 'feed' || previousDoc?.source !== 'feed') return doc
+  await req.payload.delete({
+    collection: 'events',
+    where: { and: [{ calendar: { equals: doc.id } }, { feedUid: { exists: true } }] },
+    overrideAccess: true,
+    req,
+    context: { [FEED_SYNC]: true },
+  })
+  return doc
 }

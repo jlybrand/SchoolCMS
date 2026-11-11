@@ -1199,7 +1199,7 @@ them (`REVIEWED.events = 'Event'`). The queue does not list them yet (`queue-dat
 ### Not here yet
 
 (The school's task: §27 — events skip approval. iCal links: §28. Event pages: skipped, Jason
-2026-11-11.) Feed calendars (iCal / Google).
+2026-11-11. Feed calendars: §29.)
 
 ### Tests
 
@@ -1272,3 +1272,38 @@ calendar block links to it. No per-event pages (Jason, 2026-11-11: skipped).
   null; the block's subscribe links
 - `tests/e2e/calendar.spec.ts` — the link's `webcal:` href; the feed is `text/calendar` with the
   event; another site 404s
+
+## 29. Feed calendars (Jason, 2026-11-11)
+
+A calendar whose events are copied from an outside calendar's iCal address — a Google calendar's
+public address, an athletics scheduler — hourly, and within minutes of a new or changed address.
+Every repeat is expanded, with its exceptions, into dated events; the last good copy is kept when
+the source fails; copied events are read-only to everyone and skip approval like all events.
+Parsed with Mozilla's `ical.js` 2.2.1 (exact pin; decided 2026-11-11).
+
+| File                                   | Holds                                                                                                                                                                                                                                                                                                                                                                 |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/collections/Calendars.ts`         | `source` (radio `local` / `feed`), `feedUrl` (validated by `checkFeedUrl` when a feed), `feedSyncedAt` and `feedError` (read-only, platform-written). afterChange `[queueFeedSync, dropFeedEvents]`                                                                                                                                                                   |
+| `src/collections/Events.ts`            | `feedUid`, `feedFingerprint` — hidden, API-unwritable (field access `false`). audit and revalidate hooks wrapped in `unlessFeedSync`                                                                                                                                                                                                                                  |
+| `src/collections/hooks/event-hooks.ts` | `FEED_SYNC` context mark, `isFeedSync`, `unlessFeedSync`; `queueFeedSync` (queues `calendarFeeds` with `{ calendar }` when the source becomes feed, the address changes, or it was never copied); `dropFeedEvents` (feed → local deletes the copied events); `eventCalendarIsThisSites` refuses a hand-added event on a feed calendar                                 |
+| `src/access/events.ts`                 | update / delete: `{ feedUid: { exists: false } }` for the district, and with the tenant constraint for a manager                                                                                                                                                                                                                                                      |
+| `src/lib/ical-parse.ts`                | `parseFeed(body, { range, timeZone, cap })` → `FeedEvent[]`: VTIMEZONEs registered, RECURRENCE-ID exceptions related, CANCELLED skipped, floating / unknown zones read in the district's zone, all-day ends converted to the last day; `uid` = `<UID>\|<original start>`; `NotACalendarError` for a body that is not iCal                                             |
+| `src/lib/feed-sync.ts`                 | `checkFeedUrl` (https or webcal→https; no credentials; no localhost / private IP literal), `isPublicAddress` (IPv4 private, CGNAT, link-local, multicast; IPv6 loopback, ULA, link-local, mapped), `fingerprintOf`, `planFeedSync` (create / update / remove by `feedUid`; events without one untouched), `feedEventData` (published; description → Notes paragraphs) |
+| `src/jobs/calendar-feeds.ts`           | `fetchPublicFeed` (every hop: `checkFeedUrl` + DNS `lookup` all-public; `redirect: 'manual'`, ≤ 3 redirects; 15 s; 5 MB), `syncCalendarFeed` (never throws: a failure records `feedError` and changes no event), `runCalendarFeeds`, `calendarFeedsTask` (cron `15 * * * *`, optional `calendar` input)                                                               |
+| `tests/fixtures/ical/`                 | a real Google feed (US holidays) and a Google-format one with the hard cases                                                                                                                                                                                                                                                                                          |
+
+The sync writes with `overrideAccess` and the `FEED_SYNC` mark: no activity entries, no per-event
+revalidation — the public pages show changes on their hourly refresh.
+
+### Tests
+
+- `tests/unit/lib/ical-parse.test.ts` — the real Google feed; repeats, EXDATE, a moved instance,
+  DST, UTC, cancelled, multi-day; range and cap; not-iCal throws
+- `tests/unit/lib/feed-sync.test.ts` — address checks, public addresses, the sync plan, the row
+- `tests/unit/jobs/fetch-feed.test.ts` — DNS to a private address, mixed answers, a redirect into
+  the network, redirect limit, status words, size limit, http refused (DNS and fetch mocked)
+- `tests/unit/access/events.test.ts` — feed events read-only
+- `tests/integration/calendar-feeds.test.ts` — queued on save; bad addresses refused; copy,
+  re-copy, change, removal; failure keeps the last copy; read-only; no hand-added events; no
+  forged `feedUid`; no activity entries; hourly run; back to local
+- `tests/e2e/admin-planes-axe.spec.ts` — a feed calendar's form

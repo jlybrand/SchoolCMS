@@ -8,7 +8,11 @@ import {
   eventsUpdateAccess,
 } from '@/access/events'
 import { auditChange, auditDelete } from '@/collections/hooks/audit'
-import { eventCalendarIsThisSites, eventDatesHook } from '@/collections/hooks/event-hooks'
+import {
+  eventCalendarIsThisSites,
+  eventDatesHook,
+  unlessFeedSync,
+} from '@/collections/hooks/event-hooks'
 import { restoreIsDistrictOnly } from '@/collections/hooks/page-history'
 import { revalidateEvent } from '@/collections/hooks/revalidate-on-publish'
 import { REPEAT_OPTIONS } from '@/lib/recurrence'
@@ -91,11 +95,11 @@ export const Events: CollectionConfig = {
     beforeChange: [eventDatesHook],
     afterChange: [
       /** FIRST, as on pages: the entry is in the change's transaction. */
-      auditChange('events'),
+      unlessFeedSync(auditChange('events')),
       /** Live in seconds on every site — a calendar block on any site may show it. */
-      revalidateEvent,
+      unlessFeedSync(revalidateEvent),
     ],
-    afterDelete: [auditDelete('events')],
+    afterDelete: [unlessFeedSync(auditDelete('events'))],
   },
 
   fields: [
@@ -181,6 +185,24 @@ export const Events: CollectionConfig = {
       type: 'richText',
       label: 'Notes',
       admin: { description: 'Optional. Shown when someone clicks the event on the calendar.' },
+    },
+    /**
+     * Set only by the feed sync (`src/jobs/calendar-feeds.ts`), never through the API: which
+     * occurrence of the outside calendar this is, and a hash of what it showed. An event with a
+     * `feedUid` is read-only (`src/access/events.ts`).
+     */
+    {
+      name: 'feedUid',
+      type: 'text',
+      index: true,
+      access: { create: () => false, update: () => false },
+      admin: { hidden: true },
+    },
+    {
+      name: 'feedFingerprint',
+      type: 'text',
+      access: { create: () => false, update: () => false },
+      admin: { hidden: true },
     },
   ],
 }

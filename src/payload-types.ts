@@ -126,6 +126,7 @@ export interface Config {
     tasks: {
       districtDigest: TaskDistrictDigest;
       publishSchedule: TaskPublishSchedule;
+      calendarFeeds: TaskCalendarFeeds;
       inline: {
         input: unknown;
         output: unknown;
@@ -556,6 +557,16 @@ export interface Calendar {
   name: string;
   isMain?: boolean | null;
   label?: string | null;
+  source?: ('local' | 'feed') | null;
+  /**
+   * The calendar’s public iCal address (in Google Calendar: Settings → the calendar → “Public address in iCal format”). Its events are copied here every hour and can’t be edited here.
+   */
+  feedUrl?: string | null;
+  feedSyncedAt?: string | null;
+  /**
+   * Empty when the last copy worked. The calendar keeps its last good copy.
+   */
+  feedError?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -756,6 +767,8 @@ export interface Event {
     };
     [k: string]: unknown;
   } | null;
+  feedUid?: string | null;
+  feedFingerprint?: string | null;
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -1004,7 +1017,7 @@ export interface PayloadJob {
     | {
         executedAt: string;
         completedAt: string;
-        taskSlug: 'inline' | 'districtDigest' | 'publishSchedule';
+        taskSlug: 'inline' | 'districtDigest' | 'publishSchedule' | 'calendarFeeds';
         taskID: string;
         input?:
           | {
@@ -1037,7 +1050,7 @@ export interface PayloadJob {
         id?: string | null;
       }[]
     | null;
-  taskSlug?: ('inline' | 'districtDigest' | 'publishSchedule') | null;
+  taskSlug?: ('inline' | 'districtDigest' | 'publishSchedule' | 'calendarFeeds') | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
@@ -1460,6 +1473,10 @@ export interface CalendarsSelect<T extends boolean = true> {
   name?: T;
   isMain?: T;
   label?: T;
+  source?: T;
+  feedUrl?: T;
+  feedSyncedAt?: T;
+  feedError?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1478,6 +1495,8 @@ export interface EventsSelect<T extends boolean = true> {
   repeat?: T;
   repeatUntil?: T;
   notes?: T;
+  feedUid?: T;
+  feedFingerprint?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
@@ -1707,6 +1726,16 @@ export interface TaskDistrictDigest {
  */
 export interface TaskPublishSchedule {
   input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskCalendarFeeds".
+ */
+export interface TaskCalendarFeeds {
+  input: {
+    calendar?: string | null;
+  };
   output?: unknown;
 }
 /**

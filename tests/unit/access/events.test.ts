@@ -122,13 +122,13 @@ describe('eventsCreateAccess', () => {
 
 describe('eventsUpdateAccess', () => {
   it('grants district-admin', () => {
-    expect(eventsUpdateAccess(args(districtAdmin))).toBe(true)
+    expect(eventsUpdateAccess(args(districtAdmin))).toEqual({ feedUid: { exists: false } })
   })
 
   it('returns a query constraint for a school-manager — NEVER true', () => {
     const result = eventsUpdateAccess(args(managerA, { data: { title: 'Edited' } }))
     expect(result).not.toBe(true)
-    expect(result).toEqual({ tenant: { in: ['A'] } })
+    expect(result).toEqual({ and: [{ tenant: { in: ['A'] } }, { feedUid: { exists: false } }] })
   })
 
   it.each([
@@ -142,28 +142,34 @@ describe('eventsUpdateAccess', () => {
   it('lets a school-manager publish — but only within their own school, as a constraint', () => {
     expect(
       eventsUpdateAccess(args(managerA, { data: { tenant: 'A', _status: 'published' } })),
-    ).toEqual({ tenant: { in: ['A'] } })
+    ).toEqual({ and: [{ tenant: { in: ['A'] } }, { feedUid: { exists: false } }] })
   })
 
   it('still allows a school-manager to save a draft', () => {
     expect(eventsUpdateAccess(args(managerA, { data: { _status: 'draft' } }))).toEqual({
-      tenant: { in: ['A'] },
+      and: [{ tenant: { in: ['A'] } }, { feedUid: { exists: false } }],
     })
   })
 
   it('allows district-admin to publish', () => {
-    expect(eventsUpdateAccess(args(districtAdmin, { data: { _status: 'published' } }))).toBe(true)
+    expect(eventsUpdateAccess(args(districtAdmin, { data: { _status: 'published' } }))).toEqual({
+      feedUid: { exists: false },
+    })
   })
 })
 
 describe('eventsDeleteAccess — a school removes its own events (Jason, 2026-11-11)', () => {
   it('grants district-admin', () => {
-    expect(eventsDeleteAccess(args(districtAdmin))).toBe(true)
+    expect(eventsDeleteAccess(args(districtAdmin))).toEqual({ feedUid: { exists: false } })
   })
 
   it('lets a school-manager delete within their own schools — a constraint, NEVER true', () => {
-    expect(eventsDeleteAccess(args(managerA))).toEqual({ tenant: { in: ['A'] } })
-    expect(eventsDeleteAccess(args(managerAB))).toEqual({ tenant: { in: ['A', 'B'] } })
+    expect(eventsDeleteAccess(args(managerA))).toEqual({
+      and: [{ tenant: { in: ['A'] } }, { feedUid: { exists: false } }],
+    })
+    expect(eventsDeleteAccess(args(managerAB))).toEqual({
+      and: [{ tenant: { in: ['A', 'B'] } }, { feedUid: { exists: false } }],
+    })
   })
 
   it.each([
@@ -172,6 +178,19 @@ describe('eventsDeleteAccess — a school removes its own events (Jason, 2026-11
     ['anonymous', null],
   ])('denies %s', (_label, user) => {
     expect(eventsDeleteAccess(args(user))).toBe(false)
+  })
+})
+
+describe('feed events are read-only (Jason, 2026-11-11: feed calendars)', () => {
+  it('nobody edits or deletes an event a feed brought in — the next sync would undo it', () => {
+    for (const access of [eventsUpdateAccess, eventsDeleteAccess]) {
+      expect(JSON.stringify(access(args(districtAdmin)))).toContain('"feedUid":{"exists":false}')
+      expect(JSON.stringify(access(args(managerA)))).toContain('"feedUid":{"exists":false}')
+    }
+  })
+
+  it('reading them is not affected', () => {
+    expect(eventsReadAccess(args(districtAdmin))).toBe(true)
   })
 })
 

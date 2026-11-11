@@ -62,11 +62,25 @@ export const eventsCreateAccess: Access = ({ req, data }) => {
   return allowed.includes(target)
 }
 
+/**
+ * An event a FEED brought in is read-only to everyone, the district included (Jason, 2026-11-11:
+ * feed calendars): the next sync would undo any edit, so the change belongs at the source. The
+ * sync itself writes with access overridden (`src/jobs/calendar-feeds.ts`).
+ */
+const NOT_FROM_A_FEED: Where = { feedUid: { exists: false } }
+
+const ownAndNotFromAFeed: Access = (args) => {
+  const own = ownSchools(args)
+  if (own === false) return false
+  if (own === true) return NOT_FROM_A_FEED
+  return { and: [own as Where, NOT_FROM_A_FEED] }
+}
+
 /** A constraint for scoped users — see `pagesUpdateAccess` for why a boolean would leak. */
-export const eventsUpdateAccess: Access = ownSchools
+export const eventsUpdateAccess: Access = ownAndNotFromAFeed
 
 /** A cancelled game comes off the calendar without asking anyone (Jason, 2026-11-11). */
-export const eventsDeleteAccess: Access = ownSchools
+export const eventsDeleteAccess: Access = ownAndNotFromAFeed
 
 /** The version history is the district's, as for pages (Jason, 2026-10-27). */
 export const eventsReadVersionsAccess: Access = ({ req }) => isDistrictAdmin(userOf(req))
