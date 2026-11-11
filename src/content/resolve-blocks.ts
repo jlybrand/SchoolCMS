@@ -5,7 +5,9 @@ import { NEWS_PATH, toNewsItems } from '@/lib/post-url'
 import { DISTRICT_TIME_ZONE } from '@/lib/queue-age'
 import { addDays, localDateOf } from '@/lib/recurrence'
 
-import { listEventOccurrences } from './events'
+import { subscribeUrl } from '@/lib/ical'
+
+import { listCalendarRefs, listEventOccurrences } from './events'
 import { listPosts } from './posts'
 import type {
   CalendarBlock,
@@ -70,8 +72,13 @@ const resolveCalendar = async (
   ctx: ContentContext,
   block: CalendarBlock,
   today: string,
+  serverUrl: string,
 ): Promise<ResolvedCalendarBlock | null> => {
-  const base = { kind: 'calendar' as const, id: block.id, heading: block.heading }
+  const subscribe = (await listCalendarRefs(block.calendars)).map((ref) => ({
+    name: ref.name,
+    href: subscribeUrl(serverUrl, ref.hostname, ref.id),
+  }))
+  const base = { kind: 'calendar' as const, id: block.id, heading: block.heading, subscribe }
   if (block.display === 'list') {
     const events = await listEventOccurrences(ctx, {
       calendars: block.calendars,
@@ -104,7 +111,7 @@ export const resolvePageBlocks = async (
         case 'feed':
           return resolveFeed(ctx, block, options)
         case 'calendar':
-          return resolveCalendar(ctx, block, today)
+          return resolveCalendar(ctx, block, today, options.serverUrl)
         case 'columns':
           // A column's data blocks — a feed in a column — resolve as a page's do.
           return {

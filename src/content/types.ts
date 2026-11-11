@@ -428,6 +428,11 @@ export type CalendarMonth = {
 export type ResolvedCalendarBlock = BlockBase & {
   kind: 'calendar'
   heading: string | null
+  /**
+   * One per calendar shown, in the block's order: its name and its `webcal:` feed on its own site
+   * (Jason, 2026-11-11). Empty when none can be named.
+   */
+  subscribe: { name: string; href: string }[]
 } & (
     | {
         display: 'list'

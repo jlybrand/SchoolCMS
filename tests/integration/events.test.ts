@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 
 import { listMyCalendars } from '@/admin/SchoolPlane/school-data'
 import { ensureMainCalendars } from '@/collections/hooks/event-hooks'
+import { getCalendarFeed } from '@/content/events'
 import { resolvePageBlocks } from '@/content/resolve-blocks'
 import type { CalendarBlock, ContentContext, ResolvedCalendarBlock } from '@/content/types'
 
@@ -187,7 +188,7 @@ describe('a calendar block, resolved (Jason, 2026-11-11)', () => {
   })
   const resolve = async (b: CalendarBlock) =>
     (await resolvePageBlocks(ctx(), [b], {
-      serverUrl: '',
+      serverUrl: 'http://localhost:3000',
       today: '2027-03-01',
     })) as ResolvedCalendarBlock[]
 
@@ -238,6 +239,15 @@ describe('a calendar block, resolved (Jason, 2026-11-11)', () => {
     ])
   })
 
+  it('names each calendar shown with its webcal feed on its own site', async () => {
+    const district = String(await mainCalendarFor(payload, f.districtTenant))
+    const [list] = await resolve(block({ calendars: [calendar, district] }))
+    expect(list?.subscribe).toEqual([
+      { name: 'School B', href: `webcal://b.localhost:3000/calendars/${calendar}.ics` },
+      { name: 'District', href: `webcal://localhost:3000/calendars/${district}.ics` },
+    ])
+  })
+
   it('an empty list is dropped — no heading over nothing', async () => {
     const other = String(await mainCalendarFor(payload, f.tenantA))
     expect(await resolve(block({ calendars: [other] }))).toEqual([])
@@ -268,5 +278,39 @@ describe('the school plane’s reads (Jason, 2026-11-11)', () => {
     // Only School A's — its own among them (an earlier test here adds a second one).
     expect(calendars.every((c) => c.tenant === f.tenantA)).toBe(true)
     expect(calendars.map((c) => c.label)).toContain('School A')
+  })
+})
+
+describe('a calendar’s iCal feed (Jason, 2026-11-11)', () => {
+  const site = (tenant: number, hostname: string) => ({
+    id: String(tenant),
+    slug: hostname,
+    name: hostname,
+    hostname,
+    type: 'school' as const,
+  })
+
+  it('has the calendar’s published events, and never a draft', async () => {
+    const calendar = String(await mainCalendarFor(payload, f.tenantB))
+    await payload.create({
+      collection: 'events',
+      data: { tenant: f.tenantB, title: 'Feed draft', start: '2027-03-20T23:00:00.000Z' } as never,
+      draft: true,
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+    const feed = await getCalendarFeed(site(f.tenantB, 'b.localhost'), calendar, '2027-03-01')
+    expect(feed?.name).toBe('School B')
+    const titles = feed?.events.map((e) => e.title) ?? []
+    expect(titles).toContain('Spring concert')
+    expect(titles).not.toContain('Feed draft')
+  })
+
+  it('is served only on the calendar’s own site — another site’s id is not found', async () => {
+    const calendarB = String(await mainCalendarFor(payload, f.tenantB))
+    expect(
+      await getCalendarFeed(site(f.tenantA, 'a.localhost'), calendarB, '2027-03-01'),
+    ).toBeNull()
+    expect(await getCalendarFeed(site(f.tenantB, 'b.localhost'), '999999', '2027-03-01')).toBeNull()
   })
 })

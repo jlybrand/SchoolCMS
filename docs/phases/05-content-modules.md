@@ -1198,8 +1198,8 @@ them (`REVIEWED.events = 'Event'`). The queue does not list them yet (`queue-dat
 
 ### Not here yet
 
-(The school's task: §27 — events skip approval.) An event's own page and a calendar's iCal
-subscribe link (`toRRule` is ready); feed calendars (iCal / Google).
+(The school's task: §27 — events skip approval. iCal links: §28. Event pages: skipped, Jason
+2026-11-11.) Feed calendars (iCal / Google).
 
 ### Tests
 
@@ -1248,3 +1248,27 @@ as the actor — which is what the dashboard's activity feed shows. `users.autoA
 - `tests/e2e/events-school.spec.ts` — task → form → "Save to the calendar" → published; all day;
   list button; delete; axe on the new-event screen with errors
 - `tests/e2e/admin-planes-axe.spec.ts` — school plane: add an event, events list, event form
+
+## 28. A calendar's iCal feed and subscribe links (Jason, 2026-11-11)
+
+Each calendar is a feed calendar apps subscribe to, at `/calendars/<id>.ics` on its own site; the
+calendar block links to it. No per-event pages (Jason, 2026-11-11: skipped).
+
+| File                                                              | Holds                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/ical.ts`                                                 | `toICalendar({ name, events, domain, now, timeZone })` → RFC 5545 text: CRLF, folded at 75 octets (never inside a character), VTIMEZONE for America/New_York; one VEVENT per event — `UID:event-<id>@<host>`, timed `DTSTART;TZID=…` wall-clock (+ `DTEND` when there is an end), all day `VALUE=DATE` with the end the day AFTER the last, `RRULE` from `toRRule`, SUMMARY / LOCATION / DESCRIPTION (notes via `plainTextOf`). `escapeText`, `foldLine`, `calendarFeedPath`, `subscribeUrl` (`webcal:`, built like `publicUrlFor`) |
+| `src/proxy.ts`                                                    | `/calendars/<digits>.ics` → `/sites/<host>/calendar-feed/<id>` (beside `[locale]`); anything else is a page path                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `src/app/(frontend)/sites/[hostname]/calendar-feed/[id]/route.ts` | `revalidate = 3600`; unknown host, non-digit id, another site's calendar → 404; `text/calendar; charset=utf-8`                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `src/content/events.ts`                                           | `getCalendarFeed(tenant, id, today)` → `{ name, events }` or null (calendar must be the tenant's; published; a year back, ten years ahead); `listCalendarRefs(ids)` → `{ id, name, hostname }` in the given order                                                                                                                                                                                                                                                                                                                   |
+| `src/content/resolve-blocks.ts`, `src/content/types.ts`           | `ResolvedCalendarBlock.subscribe: { name, href }[]` — one per calendar shown                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `src/blocks/Calendar/Calendar.tsx`                                | "Subscribe to <name>" links (`Link`) after the list or grid                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+
+### Tests
+
+- `tests/unit/lib/ical.test.ts` — calendar envelope, VTIMEZONE, timed / no end / all day / repeat /
+  notes, escaping, folding (multi-byte), plain text, the subscribe address
+- `tests/unit/proxy.test.ts` — the feed rewrite; near misses are page paths
+- `tests/integration/events.test.ts` — feed has published events only; another site's calendar →
+  null; the block's subscribe links
+- `tests/e2e/calendar.spec.ts` — the link's `webcal:` href; the feed is `text/calendar` with the
+  event; another site 404s

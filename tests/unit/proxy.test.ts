@@ -62,6 +62,28 @@ describe('proxy — per-tenant files', () => {
   })
 })
 
+describe('proxy — a calendar’s iCal feed (Jason, 2026-11-11)', () => {
+  it.each([
+    ['/calendars/12.ics', 'a.localhost', '/sites/a.localhost/calendar-feed/12'],
+    ['/calendars/7.ics', 'B.LOCALHOST:3000', '/sites/b.localhost/calendar-feed/7'],
+  ])('rewrites %s on %s to the tenant’s feed route', (path, host, expected) => {
+    expect(rewriteOf(`http://${host}${path}`, host)).toBe(expected)
+  })
+
+  it.each([
+    ['not a calendar id', '/calendars/abc.ics', '/sites/a.localhost/en/calendars/abc.ics'],
+    ['under a locale', '/es/calendars/12.ics', '/sites/a.localhost/es/calendars/12.ics'],
+    ['nested', '/calendars/12/13.ics', '/sites/a.localhost/en/calendars/12/13.ics'],
+  ])('%s is an ordinary page path, and 404s as one', (_label, path, expected) => {
+    expect(rewriteOf(`http://a.localhost${path}`, 'a.localhost')).toBe(expected)
+  })
+
+  it('the matcher reaches .ics — the general pattern does not skip it as an asset', () => {
+    const general = new RegExp(`^${config.matcher[0]!.replace('/(', '/(')}$`)
+    expect(general.test('/calendars/12.ics')).toBe(true)
+  })
+})
+
 describe('proxy — pages, unchanged', () => {
   it.each([
     ['/', '/sites/a.localhost/en'],

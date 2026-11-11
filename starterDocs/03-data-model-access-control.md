@@ -154,7 +154,8 @@ Finalsite calendar events").**
 - **No approval (Jason, 2026-11-11).** A school manager publishes, changes and removes their own
   school's events directly; no review fields. The district sees them in the activity log.
 - `recurrence` is stored as the choice and its last date; `toRRule` writes it as an RRULE for the
-  iCal feed. Read-only **iCal** subscribe links per calendar are still to come.
+  iCal feed. **iCal** subscribe links per calendar: built 2026-11-11 — `/calendars/<id>.ics` on the
+  calendar's own site; no per-event pages (Jason: skipped).
 
 ### `people` (staff directories)
 
