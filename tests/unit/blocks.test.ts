@@ -492,6 +492,64 @@ describe('toPageBlocks — feed', () => {
 })
 
 /**
+ * A calendar (Jason, 2026-11-11) — its SETTINGS only, as for a feed. The events are loaded by the
+ * resolve pass. Grid or list; a list has a number of events.
+ */
+describe('toPageBlocks — calendar', () => {
+  it('maps the heading, the calendars, the view and how many', () => {
+    expect(
+      toPageBlocks([
+        {
+          blockType: 'calendar',
+          id: 'c',
+          heading: ' What’s on ',
+          calendars: [4, { id: 5, label: 'District · District HS' }],
+          display: 'list',
+          limit: 8,
+        },
+      ]),
+    ).toEqual([
+      {
+        kind: 'calendar',
+        id: 'c',
+        heading: 'What’s on',
+        calendars: ['4', '5'],
+        display: 'list',
+        limit: 8,
+      },
+    ])
+  })
+
+  it('a grid; no heading is null; the view defaults to a list of 5', () => {
+    expect(
+      toPageBlocks([{ blockType: 'calendar', id: 'c', calendars: [4], display: 'grid' }]),
+    ).toEqual([
+      { kind: 'calendar', id: 'c', heading: null, calendars: ['4'], display: 'grid', limit: 5 },
+    ])
+    expect(
+      toPageBlocks([{ blockType: 'calendar', id: 'c', calendars: [4], display: 'x' }]),
+    ).toEqual([
+      { kind: 'calendar', id: 'c', heading: null, calendars: ['4'], display: 'list', limit: 5 },
+    ])
+  })
+
+  it.each([
+    [0, 1],
+    [80, 50],
+    [3.7, 3],
+    ['4', 5],
+  ])('keeps the count between 1 and 50 (%s → %s)', (limit, expected) => {
+    const [block] = toPageBlocks([{ blockType: 'calendar', id: 'c', calendars: [4], limit }])
+    expect(block).toMatchObject({ limit: expected })
+  })
+
+  it('a calendar block with no calendars is DROPPED — nobody chose what it shows', () => {
+    expect(toPageBlocks([{ blockType: 'calendar', id: 'c', calendars: [] }])).toEqual([])
+    expect(toPageBlocks([{ blockType: 'calendar', id: 'c' }])).toEqual([])
+  })
+})
+
+/**
  * Columns (Jason, 2026-11-04): two or three columns, each holding other blocks. Nesting is
  * allowed; the heading levels inside follow from where the column sits (`columnLevels`), so the
  * district cannot produce a skipped level by placing blocks.
@@ -571,6 +629,7 @@ describe('the block library and the mapper agree', () => {
       embed: { url: 'https://youtu.be/dQw4w9WgXcQ', title: 'A video' },
       divider: {},
       feed: { boards: [7] },
+      calendar: { calendars: [4] },
       columns: {
         columns: [
           { content: [{ blockType: 'richText', content: lexical(paragraph('One')) }] },

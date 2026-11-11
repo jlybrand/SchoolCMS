@@ -1,0 +1,223 @@
+/*
+ * Logical properties only (CLAUDE.md rule 5). The table flips with the writing direction on its
+ * own; nothing here names a physical side.
+ */
+
+/* ---- List ------------------------------------------------------------------------------- */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  list-style: none;
+  margin-block: 0;
+  padding-inline-start: 0;
+}
+
+.item {
+  border-block-end: 1px solid var(--color-border);
+  padding-block-end: var(--space-md);
+}
+
+.summary {
+  cursor: pointer;
+  /* The browser's own marker, beside the title — it follows the writing direction and survives
+     forced-colours mode, as in `Accordion`. */
+  display: list-item;
+}
+
+.summary > :first-child {
+  display: inline;
+}
+
+/* Title, date and place sit close, as one entry; with or without notes they read alike. */
+.plain > :first-child,
+.summary > :first-child {
+  margin-block: 0;
+}
+
+.summary:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.when,
+.where {
+  color: var(--color-text-muted);
+  margin-block: 0;
+}
+
+.notes {
+  margin-block-start: var(--space-sm);
+  padding-inline-start: var(--space-lg);
+}
+
+/* ---- Grid ------------------------------------------------------------------------------- */
+
+/* The container whose width decides grid or list — the block's, not the window's, so a calendar
+   in a narrow column gets the list too. */
+.grid {
+  container-type: inline-size;
+}
+
+.months {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.monthNav {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  justify-content: space-between;
+}
+
+.monthLabel {
+  flex: 1 1 auto;
+  text-align: center;
+}
+
+.navButton,
+.closeButton {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  cursor: pointer;
+  font: inherit;
+  padding-block: var(--space-xs);
+  padding-inline: var(--space-sm);
+}
+
+.navButton:disabled {
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
+.navButton:focus-visible,
+.closeButton:focus-visible,
+.dayEvent:focus-visible,
+.agendaEvent:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.table {
+  border-collapse: collapse;
+  inline-size: 100%;
+  table-layout: fixed;
+}
+
+.table th {
+  font-weight: 600;
+  padding-block: var(--space-xs);
+}
+
+.table abbr {
+  text-decoration: none;
+}
+
+.day,
+.outside {
+  border: 1px solid var(--color-border);
+  block-size: 6rem;
+  padding: var(--space-2xs);
+  vertical-align: top;
+}
+
+.outside {
+  background: var(--color-surface-raised);
+}
+
+.day[aria-current='date'] .dayNumber {
+  background: var(--color-brand);
+  border-radius: var(--radius);
+  color: var(--color-brand-contrast);
+  padding-inline: var(--space-2xs);
+}
+
+.dayNumber {
+  display: inline-block;
+  font-weight: 600;
+}
+
+.dayEvents {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  list-style: none;
+  margin-block: var(--space-2xs) 0;
+  padding-inline-start: 0;
+}
+
+/* An event in a day: its title, as a button that looks like a label. Full width, so it is an easy
+   target; wraps rather than overflowing the cell. */
+.dayEvent,
+.agendaEvent {
+  background: none;
+  border: 0;
+  color: var(--color-brand);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-align: start;
+  text-decoration: underline;
+}
+
+.dayEvent {
+  font-size: 0.875em;
+  inline-size: 100%;
+  overflow-wrap: anywhere;
+}
+
+.agenda {
+  display: none;
+}
+
+/* Narrow: seven columns cannot be read, so the month's events are listed instead. `display: none`
+   takes the hidden one out of the accessibility tree too, so nothing is announced twice. */
+@container (width < 30rem) {
+  .table {
+    display: none;
+  }
+
+  .agenda {
+    display: block;
+  }
+
+  /* The month's name on its own line, above the two buttons. */
+  .monthLabel {
+    flex-basis: 100%;
+    order: -1;
+  }
+}
+
+/* ---- Dialog ----------------------------------------------------------------------------- */
+
+.dialog {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  max-inline-size: min(36rem, calc(100vw - 2 * var(--space-md)));
+  padding: var(--space-lg);
+}
+
+.dialog::backdrop {
+  background: rgb(0 0 0 / 50%);
+}
+
+.dialog > * + * {
+  margin-block-start: var(--space-xs);
+}
+
+.close {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.dialogNotes {
+  margin-block-start: var(--space-md);
+}

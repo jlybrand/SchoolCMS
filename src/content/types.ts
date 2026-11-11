@@ -389,6 +389,62 @@ export type ResolvedFeedBlock = BlockBase & {
 }
 
 /**
+ * A calendar on a page (Jason, 2026-11-11) — Finalsite's calendar element. Settings only; the
+ * events are loaded by the resolve pass into `ResolvedCalendarBlock`, as a feed's announcements
+ * are. Its calendars may be any site's: the district chooses them, as a feed's boards.
+ */
+export type CalendarDisplay = 'list' | 'grid'
+
+export type CalendarBlock = BlockBase & {
+  kind: 'calendar'
+  heading: string | null
+  /** Calendar ids — at least one; a block with none is dropped by the mapper. */
+  calendars: string[]
+  display: CalendarDisplay
+  /** A list's number of events, 1-50. The grid shows every event in its months. */
+  limit: number
+}
+
+/** One day of a month grid: its date, and the keys of the events on it. */
+export type CalendarDay = {
+  date: string
+  day: number
+  isToday: boolean
+  eventKeys: string[]
+}
+
+export type CalendarMonth = {
+  /** `YYYY-MM`. */
+  key: string
+  /** E.g. "December 2026", in the reader's language. */
+  label: string
+  /** Weeks of seven days, Sunday first; a day outside the month is null. */
+  weeks: (CalendarDay | null)[][]
+  /** Every event touching the month, in order — what a narrow screen lists instead of the grid. */
+  eventKeys: string[]
+}
+
+/** A calendar READY TO RENDER: what `resolvePageBlocks` turns a `CalendarBlock` into. */
+export type ResolvedCalendarBlock = BlockBase & {
+  kind: 'calendar'
+  heading: string | null
+} & (
+    | {
+        display: 'list'
+        /** The next events, earliest first, at most the block's number. */
+        events: EventOccurrence[]
+      }
+    | {
+        display: 'grid'
+        weekdays: { short: string; long: string }[]
+        /** From the current month on; the first is shown first. */
+        months: CalendarMonth[]
+        /** Every event in those months, once each — what the days' keys refer to. */
+        events: EventOccurrence[]
+      }
+  )
+
+/**
  * Two or three columns, each holding other blocks (Jason, 2026-11-04 — nesting allowed). Side by
  * side on a wide screen, stacked with their contents on a narrow one. One level deep: a column
  * holds any block but another set of columns.
@@ -415,6 +471,7 @@ export type PageBlock =
   | EmbedBlock
   | DividerBlock
   | FeedBlock
+  | CalendarBlock
   | ColumnsBlock
 
 /**
@@ -426,7 +483,10 @@ export type PageBlock =
  * the same way.
  */
 export type ResolvedPageBlock =
-  Exclude<PageBlock, FeedBlock | ColumnsBlock> | ResolvedFeedBlock | ResolvedColumnsBlock
+  | Exclude<PageBlock, FeedBlock | CalendarBlock | ColumnsBlock>
+  | ResolvedFeedBlock
+  | ResolvedCalendarBlock
+  | ResolvedColumnsBlock
 
 /**
  * RICH TEXT (`07` §4.4).
@@ -558,8 +618,8 @@ export type EventOccurrence = {
   /** Local dates, for placing it on a month grid. */
   startDate: string
   endDate: string
-  /** E.g. "Friday, December 4, 2026". */
+  /** E.g. "Friday, December 4, 2026"; for several whole days, the run of them. */
   dateLabel: string
-  /** E.g. "6:00 PM – 8:00 PM", "All day", or for a multi-day event "Dec 21 – Dec 25". Null for none. */
+  /** E.g. "6:00 – 8:00 PM", "All day", "Dec 1, 9:00 AM – Dec 3, 3:00 PM". Null for several whole days. */
   timeLabel: string | null
 }

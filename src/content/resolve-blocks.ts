@@ -1,8 +1,20 @@
+import { toGridMonths, weekdayNames } from '@/lib/calendar-view'
 import { localizedPath } from '@/lib/locales'
+import { monthRange, monthsFrom } from '@/lib/month-grid'
 import { NEWS_PATH, toNewsItems } from '@/lib/post-url'
+import { DISTRICT_TIME_ZONE } from '@/lib/queue-age'
+import { addDays, localDateOf } from '@/lib/recurrence'
 
+import { listEventOccurrences } from './events'
 import { listPosts } from './posts'
-import type { ContentContext, FeedBlock, PageBlock, ResolvedPageBlock } from './types'
+import type {
+  CalendarBlock,
+  ContentContext,
+  FeedBlock,
+  PageBlock,
+  ResolvedCalendarBlock,
+  ResolvedPageBlock,
+} from './types'
 
 /**
  * THE RESOLVE PASS (Jason, 2026-10-28; `03` §3.2).
@@ -27,7 +39,13 @@ import type { ContentContext, FeedBlock, PageBlock, ResolvedPageBlock } from './
 type Options = {
   /** `NEXT_PUBLIC_SERVER_URL` — how a shared announcement links to its home site (`postHref`). */
   serverUrl: string
+  /** The district's date today, `YYYY-MM-DD`. Defaults to the clock; tests pass one. */
+  today?: string
 }
+
+/** How far ahead a calendar looks: a list's next events within a year; a grid's twelve months. */
+const LIST_DAYS_AHEAD = 365
+const GRID_MONTHS = 12
 
 const resolveFeed = async (ctx: ContentContext, block: FeedBlock, { serverUrl }: Options) => {
   const posts = await listPosts(ctx, { boards: block.boards, tags: block.tags, limit: block.limit })
@@ -41,16 +59,52 @@ const resolveFeed = async (ctx: ContentContext, block: FeedBlock, { serverUrl }:
   }
 }
 
+/**
+ * A calendar's events (Jason, 2026-11-11). A LIST is the next events from today, at most the
+ * block's number, and is dropped when there are none — the feed's rule. A GRID is this month and
+ * the eleven after, and is always shown: an empty month is still a calendar.
+ *
+ * Pages revalidate hourly, so "today" moves on without a publish.
+ */
+const resolveCalendar = async (
+  ctx: ContentContext,
+  block: CalendarBlock,
+  today: string,
+): Promise<ResolvedCalendarBlock | null> => {
+  const base = { kind: 'calendar' as const, id: block.id, heading: block.heading }
+  if (block.display === 'list') {
+    const events = await listEventOccurrences(ctx, {
+      calendars: block.calendars,
+      range: { from: today, to: addDays(today, LIST_DAYS_AHEAD) },
+      limit: block.limit,
+    })
+    return events.length === 0 ? null : { ...base, display: 'list', events }
+  }
+  const months = monthsFrom(today, GRID_MONTHS)
+  const range = { from: monthRange(months[0]!).from, to: monthRange(months.at(-1)!).to }
+  const events = await listEventOccurrences(ctx, { calendars: block.calendars, range })
+  return {
+    ...base,
+    display: 'grid',
+    weekdays: weekdayNames(ctx.locale),
+    months: toGridMonths(events, { months, today, locale: ctx.locale }),
+    events,
+  }
+}
+
 export const resolvePageBlocks = async (
   ctx: ContentContext,
   blocks: readonly PageBlock[],
   options: Options,
 ): Promise<ResolvedPageBlock[]> => {
+  const today = options.today ?? localDateOf(new Date().toISOString(), DISTRICT_TIME_ZONE)
   const resolved = await Promise.all(
     blocks.map(async (block): Promise<ResolvedPageBlock | null> => {
       switch (block.kind) {
         case 'feed':
           return resolveFeed(ctx, block, options)
+        case 'calendar':
+          return resolveCalendar(ctx, block, today)
         case 'columns':
           // A column's data blocks — a feed in a column — resolve as a page's do.
           return {
@@ -58,7 +112,7 @@ export const resolvePageBlocks = async (
             columns: await Promise.all(
               block.columns.map(async (column) => ({
                 heading: column.heading,
-                blocks: await resolvePageBlocks(ctx, column.blocks, options),
+                blocks: await resolvePageBlocks(ctx, column.blocks, { ...options, today }),
               })),
             ),
           }

@@ -27,14 +27,8 @@ const label = (
   { locale, timeZone }: Options,
 ) => {
   const multiDay = o.endDate !== o.startDate
-  if (o.allDay) {
-    if (!multiDay) return 'All day'
-    return new Intl.DateTimeFormat(locale, {
-      month: 'short',
-      day: 'numeric',
-      timeZone: 'UTC',
-    }).formatRange(dayAt(o.startDate), dayAt(o.endDate))
-  }
+  // Several whole days say so in the date (`dateLabel`), so there is no time to add.
+  if (o.allDay) return multiDay ? null : 'All day'
   const start = new Date(o.start)
   if (o.end === null) {
     return new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone }).format(
@@ -79,7 +73,10 @@ export const toEventOccurrences = (
       notes: event.notes,
       allDay: event.timing.allDay,
       ...o,
-      dateLabel: dateFormat.format(dayAt(o.startDate)),
+      dateLabel:
+        event.timing.allDay && o.endDate !== o.startDate
+          ? dateFormat.formatRange(dayAt(o.startDate), dayAt(o.endDate))
+          : dateFormat.format(dayAt(o.startDate)),
       timeLabel: label({ ...o, allDay: event.timing.allDay }, options),
     })),
   )

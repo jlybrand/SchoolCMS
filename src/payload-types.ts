@@ -288,6 +288,7 @@ export interface Page {
         | CallToActionBlock
         | ChildPageNavBlock
         | FeedBlockRow
+        | CalendarBlockRow
         | EmbedBlock
         | DividerBlock
         | ColumnsBlock
@@ -522,6 +523,44 @@ export interface PostTag {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "CalendarBlockRow".
+ */
+export interface CalendarBlockRow {
+  /**
+   * Optional. A title above the calendar, like "Upcoming events" — it also names this part of the page for screen readers.
+   */
+  heading?: string | null;
+  /**
+   * Which calendars to show events from — any site’s.
+   */
+  calendars: (number | Calendar)[];
+  display?: ('list' | 'grid') | null;
+  /**
+   * Up to 50 of the next events. With none to show, the list is hidden.
+   */
+  limit?: number | null;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'calendar';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "calendars".
+ */
+export interface Calendar {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  /**
+   * What the calendar is called, e.g. "Athletics" or "Testing".
+   */
+  name: string;
+  isMain?: boolean | null;
+  label?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "EmbedBlock".
  */
 export interface EmbedBlock {
@@ -573,6 +612,7 @@ export interface ColumnsBlock {
           | EmbedBlock
           | DividerBlock
           | FeedBlockRow
+          | CalendarBlockRow
         )[]
       | null;
     id?: string | null;
@@ -664,22 +704,6 @@ export interface Post {
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "calendars".
- */
-export interface Calendar {
-  id: number;
-  tenant?: (number | null) | Tenant;
-  /**
-   * What the calendar is called, e.g. "Athletics" or "Testing".
-   */
-  name: string;
-  isMain?: boolean | null;
-  label?: string | null;
-  updatedAt: string;
-  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1209,6 +1233,7 @@ export interface PagesSelect<T extends boolean = true> {
         callToAction?: T | CallToActionBlockSelect<T>;
         childPageNav?: T | ChildPageNavBlockSelect<T>;
         feed?: T | FeedBlockRowSelect<T>;
+        calendar?: T | CalendarBlockRowSelect<T>;
         embed?: T | EmbedBlockSelect<T>;
         divider?: T | DividerBlockSelect<T>;
         columns?: T | ColumnsBlockSelect<T>;
@@ -1310,6 +1335,18 @@ export interface FeedBlockRowSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "CalendarBlockRow_select".
+ */
+export interface CalendarBlockRowSelect<T extends boolean = true> {
+  heading?: T;
+  calendars?: T;
+  display?: T;
+  limit?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "EmbedBlock_select".
  */
 export interface EmbedBlockSelect<T extends boolean = true> {
@@ -1347,6 +1384,7 @@ export interface ColumnsBlockSelect<T extends boolean = true> {
               embed?: T | EmbedBlockSelect<T>;
               divider?: T | DividerBlockSelect<T>;
               feed?: T | FeedBlockRowSelect<T>;
+              calendar?: T | CalendarBlockRowSelect<T>;
             };
         id?: T;
       };

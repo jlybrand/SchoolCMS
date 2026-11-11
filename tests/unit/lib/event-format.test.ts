@@ -73,7 +73,7 @@ describe('toEventOccurrences', () => {
     expect(only).toMatchObject({ allDay: true, start: '2026-12-04', timeLabel: 'All day' })
   })
 
-  it('several days, all day: the run of dates', () => {
+  it('several days, all day: the date IS the run of dates, and there is no time', () => {
     const [only] = toEventOccurrences(
       [
         event({
@@ -81,14 +81,15 @@ describe('toEventOccurrences', () => {
           timing: {
             allDay: true,
             start: '2026-12-21T05:00:00.000Z',
-            end: '2026-12-25T05:00:00.000Z',
+            end: '2027-01-01T05:00:00.000Z',
           },
         }),
       ],
       december,
       opts,
     )
-    expect(plain(only!.timeLabel)).toBe('Dec 21 – 25')
+    expect(plain(only!.dateLabel)).toBe('Monday, December 21, 2026 – Friday, January 1, 2027')
+    expect(only!.timeLabel).toBeNull()
   })
 
   it('several days, timed: both days and times', () => {

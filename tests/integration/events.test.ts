@@ -1,6 +1,9 @@
 import type { Payload } from 'payload'
 import { beforeAll, describe, expect, it } from 'vitest'
 
+import { resolvePageBlocks } from '@/content/resolve-blocks'
+import type { CalendarBlock, ContentContext, ResolvedCalendarBlock } from '@/content/types'
+
 import { getTestPayload, isDenied, mainCalendarFor, seed, type Fixtures } from '../helpers/payload'
 
 /**
@@ -144,5 +147,102 @@ describe('an event', () => {
       overrideAccess: true,
     })
     expect(docs.map((d) => d.action)).toEqual(['publish'])
+  })
+})
+
+describe('a calendar block, resolved (Jason, 2026-11-11)', () => {
+  const ctx = (): ContentContext => ({
+    tenant: {
+      id: String(f.tenantB),
+      slug: 'b',
+      name: 'School B',
+      hostname: 'b.localhost',
+      type: 'school',
+    },
+    locale: 'en',
+  })
+  const block = (overrides: Partial<CalendarBlock>): CalendarBlock => ({
+    kind: 'calendar',
+    id: 'cal',
+    heading: 'Upcoming events',
+    calendars: [],
+    display: 'list',
+    limit: 5,
+    ...overrides,
+  })
+  const resolve = async (b: CalendarBlock) =>
+    (await resolvePageBlocks(ctx(), [b], {
+      serverUrl: '',
+      today: '2027-03-01',
+    })) as ResolvedCalendarBlock[]
+
+  let calendar: string
+
+  beforeAll(async () => {
+    calendar = String(await mainCalendarFor(payload, f.tenantB))
+    const mk = (title: string, start: string, extra: Record<string, unknown> = {}) =>
+      payload.create({
+        collection: 'events',
+        data: {
+          tenant: f.tenantB,
+          calendar: Number(calendar),
+          title,
+          start,
+          _status: 'published',
+          ...extra,
+        } as never,
+        user: f.districtAdmin,
+        overrideAccess: false,
+      })
+    await mk('Past event', '2027-02-10T23:00:00.000Z')
+    await mk('Spring concert', '2027-03-12T23:00:00.000Z', {
+      notes: {
+        root: {
+          type: 'root',
+          children: [{ type: 'paragraph', children: [{ type: 'text', text: 'Doors at 5.' }] }],
+        },
+      },
+    })
+    await mk('Board meeting', '2027-03-02T23:00:00.000Z', {
+      repeat: 'monthly',
+      repeatUntil: '2027-06-02T12:00:00.000Z',
+    })
+  })
+
+  it('a list is the next events from today, at most its number, with their notes', async () => {
+    const [list] = await resolve(block({ calendars: [calendar], limit: 3 }))
+    expect(list?.display).toBe('list')
+    if (list?.display !== 'list') return
+    expect(list.events.map((e) => [e.title, e.startDate])).toEqual([
+      ['Board meeting', '2027-03-02'],
+      ['Spring concert', '2027-03-12'],
+      ['Board meeting', '2027-04-02'],
+    ])
+    expect(list.events[1]!.notes).toEqual([
+      { kind: 'paragraph', children: [{ kind: 'text', text: 'Doors at 5.', marks: [] }] },
+    ])
+  })
+
+  it('an empty list is dropped — no heading over nothing', async () => {
+    const other = String(await mainCalendarFor(payload, f.tenantA))
+    expect(await resolve(block({ calendars: [other] }))).toEqual([])
+  })
+
+  it('a grid is twelve months from this one, each day holding its events', async () => {
+    const [grid] = await resolve(block({ calendars: [calendar], display: 'grid' }))
+    expect(grid?.display).toBe('grid')
+    if (grid?.display !== 'grid') return
+    expect(grid.months).toHaveLength(12)
+    expect(grid.months[0]!.label).toBe('March 2027')
+    const day12 = grid.months[0]!.weeks.flat().find((d) => d?.date === '2027-03-12')
+    const concert = grid.events.find((e) => e.title === 'Spring concert')!
+    expect(day12?.eventKeys).toEqual([concert.key])
+    expect(grid.months[0]!.weeks.flat().find((d) => d?.date === '2027-03-01')?.isToday).toBe(true)
+  })
+
+  it('an empty grid still shows — an empty month is a calendar', async () => {
+    const other = String(await mainCalendarFor(payload, f.tenantA))
+    const [grid] = await resolve(block({ calendars: [other], display: 'grid' }))
+    expect(grid?.display).toBe('grid')
   })
 })

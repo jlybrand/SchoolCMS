@@ -15,6 +15,9 @@ import type { Config } from 'payload'
  * WHY IT IS SAFE for the one field that uses it: the feed is in the district-only `layout`, and a
  * feed only NARROWS what a site can show — each announcement's own sharing decides reach
  * (`feedConstraint`). Picking another site's board shows only what is shared here.
+ * And for the second, a calendar block's calendars (Jason, 2026-10-28: a district page showing the
+ * ES, MS, HS and District calendars): also district-only, and an event has no staff-only setting,
+ * so a published event is public already — choosing a calendar decides only WHERE it is listed.
  */
 
 type AnyField = {
