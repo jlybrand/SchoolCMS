@@ -17,7 +17,7 @@ import type { AuthUser } from '@/access/types'
 
 export type SchoolPageRow = {
   id: number | string
-  collection: 'pages' | 'posts'
+  collection: 'pages' | 'posts' | 'events'
   title: string
   reviewState: string | null
   updatedAt: string
@@ -27,7 +27,7 @@ export type SchoolPageRow = {
 
 const toRow = (
   doc: Record<string, unknown>,
-  collection: 'pages' | 'posts' = 'pages',
+  collection: 'pages' | 'posts' | 'events' = 'pages',
 ): SchoolPageRow => ({
   id: doc.id as number | string,
   collection,
@@ -36,7 +36,9 @@ const toRow = (
       ? doc.title
       : collection === 'posts'
         ? 'Untitled announcement'
-        : 'Untitled page',
+        : collection === 'events'
+          ? 'Untitled event'
+          : 'Untitled page',
   reviewState: typeof doc.reviewState === 'string' ? doc.reviewState : null,
   updatedAt: typeof doc.updatedAt === 'string' ? doc.updatedAt : '',
   linked: doc.linkMode === 'redirect' || doc.linkMode === 'reuse',
@@ -59,7 +61,8 @@ export const listSchoolPages = async (req: PayloadRequest): Promise<SchoolPageRo
 }
 
 /**
- * The user's own pending submissions — pages and announcements, sent or sent back — most
+ * The user's own pending submissions — pages and announcements, sent or sent back. Not events:
+ * they skip approval (Jason, 2026-11-11), so one is never pending — most
  * recently changed first.
  *
  * "Your recent submissions" in `04` §2.2 also lists *Published*. An approve clears the
@@ -155,4 +158,36 @@ export const boardById = async (
     [doc.label, doc.title, doc.name].find((v): v is string => typeof v === 'string' && v !== '') ??
     String(doc.id)
   return { id: doc.id, tenant: Number.isNaN(Number(tenant)) ? tenant : Number(tenant), label }
+}
+
+export type CalendarOption = { id: number | string; tenant: number | string; label: string }
+
+/**
+ * The calendars the user may add events to — their schools' — read AS THE USER, so the list is
+ * what access allows and nothing more (Jason, 2026-11-11). Labelled "Site · Calendar" when the
+ * user has several schools, so two schools' calendars of the same name are told apart.
+ */
+export const listMyCalendars = async (req: PayloadRequest): Promise<CalendarOption[]> => {
+  if (!req.user) return []
+  const { docs } = await req.payload.find({
+    collection: 'calendars',
+    req,
+    user: req.user,
+    overrideAccess: false,
+    depth: 0,
+    pagination: false,
+    sort: 'label',
+    select: { label: true, name: true, tenant: true },
+  })
+  const schools = new Set(
+    docs.map((d) => relationshipIdOf((d as { tenant?: unknown }).tenant as never)),
+  )
+  return docs.flatMap((doc) => {
+    const tenant = relationshipIdOf((doc as { tenant?: unknown }).tenant as never)
+    if (tenant === null) return []
+    const name = typeof doc.name === 'string' && doc.name !== '' ? doc.name : String(doc.id)
+    const label =
+      schools.size > 1 && typeof doc.label === 'string' && doc.label !== '' ? doc.label : name
+    return [{ id: doc.id, tenant: Number.isNaN(Number(tenant)) ? tenant : Number(tenant), label }]
+  })
 }

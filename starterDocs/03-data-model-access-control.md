@@ -151,6 +151,8 @@ Finalsite calendar events").**
   **Athletics is a calendar, not a module** — no teams or rosters collection (`01` §5).
 - **No `syndication`.** Reach is chosen by the calendar block, which may show any site's
   calendars (the district places it, as a news feed's boards).
+- **No approval (Jason, 2026-11-11).** A school manager publishes, changes and removes their own
+  school's events directly; no review fields. The district sees them in the activity log.
 - `recurrence` is stored as the choice and its last date; `toRRule` writes it as an RRULE for the
   iCal feed. Read-only **iCal** subscribe links per calendar are still to come.
 

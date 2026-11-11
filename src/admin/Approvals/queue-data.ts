@@ -26,8 +26,8 @@ const LIMIT = 50
 export type QueueItem = {
   id: number | string
   collection: ReviewedCollection
-  /** What the school sent, in words: "page", "announcement" or "event". */
-  noun: 'page' | 'announcement' | 'event'
+  /** What the school sent, in words: "page" or "announcement". Events skip approval. */
+  noun: 'page' | 'announcement'
   title: string
   school: string
   submitter: string
@@ -41,7 +41,6 @@ type Doc = Record<string, unknown>
 const NOUN: Record<ReviewedCollection, QueueItem['noun']> = {
   pages: 'page',
   posts: 'announcement',
-  events: 'event',
 }
 
 const titleOf = (doc: Doc, noun: QueueItem['noun'] = 'page'): string =>
@@ -74,7 +73,7 @@ const withParentTitle = (doc: Doc, titles: Map<string, string>): Doc => {
     : { ...doc, parent: { id: parent, title: titles.get(parent) ?? null } }
 }
 
-/** Events join with the school's event task (the next PR of the events slice). */
+/** Not events: they skip approval (Jason, 2026-11-11). */
 const REVIEWED: readonly ReviewedCollection[] = ['pages', 'posts']
 
 /** A post's board and tags as `{ id, title }`, so the diff names them (`diffPost`). */

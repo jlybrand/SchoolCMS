@@ -1,6 +1,7 @@
-import type { Payload } from 'payload'
+import { createLocalReq, type Payload } from 'payload'
 import { beforeAll, describe, expect, it } from 'vitest'
 
+import { listMyCalendars } from '@/admin/SchoolPlane/school-data'
 import { ensureMainCalendars } from '@/collections/hooks/event-hooks'
 import { resolvePageBlocks } from '@/content/resolve-blocks'
 import type { CalendarBlock, ContentContext, ResolvedCalendarBlock } from '@/content/types'
@@ -258,5 +259,14 @@ describe('a calendar block, resolved (Jason, 2026-11-11)', () => {
     const other = String(await mainCalendarFor(payload, f.tenantA))
     const [grid] = await resolve(block({ calendars: [other], display: 'grid' }))
     expect(grid?.display).toBe('grid')
+  })
+})
+
+describe('the school plane’s reads (Jason, 2026-11-11)', () => {
+  it('the calendars offered are the manager’s own school’s, by name', async () => {
+    const calendars = await listMyCalendars(await createLocalReq({ user: f.managerA }, payload))
+    // Only School A's — its own among them (an earlier test here adds a second one).
+    expect(calendars.every((c) => c.tenant === f.tenantA)).toBe(true)
+    expect(calendars.map((c) => c.label)).toContain('School A')
   })
 })

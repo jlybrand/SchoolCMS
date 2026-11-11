@@ -13,9 +13,10 @@ import type { AuthUser } from '@/access/types'
 /**
  * Access control for `events` (`03` §2, §6.2) — calendar events (Jason, 2026-11-11).
  *
- * The rules are events' (tests/unit/access/events.test.ts): reads return a QUERY CONSTRAINT for
- * any scoped user, and a `school-manager` cannot publish BY ANY ROUTE. An event has no Start
- * date of its own (its `start` is when it HAPPENS, not when it goes live) and no staff-only
+ * Reads and writes return a QUERY CONSTRAINT for any scoped user, as everywhere. What differs:
+ * EVENTS DO NOT GO THROUGH APPROVAL (Jason, 2026-11-11) — a school manager publishes and removes
+ * their OWN school's events directly. CLAUDE.md rule 3 is lifted for events only, by that
+ * decision; another school's events stay out of reach (invariant 2). An event has no staff-only
  * setting, so the public constraint is the status alone.
  */
 
@@ -89,9 +90,15 @@ describe('eventsCreateAccess', () => {
     expect(eventsCreateAccess(args(user, { data: { tenant: 'A' } }))).toBe(false)
   })
 
-  it('DENIES a school-manager creating a event already marked published', () => {
+  it('allows a school-manager to publish an event straight onto their own school’s calendar', () => {
     expect(
       eventsCreateAccess(args(managerA, { data: { tenant: 'A', _status: 'published' } })),
+    ).toBe(true)
+  })
+
+  it('DENIES a school-manager publishing into another school', () => {
+    expect(
+      eventsCreateAccess(args(managerA, { data: { tenant: 'B', _status: 'published' } })),
     ).toBe(false)
   })
 
@@ -132,10 +139,10 @@ describe('eventsUpdateAccess', () => {
     expect(eventsUpdateAccess(args(user))).toBe(false)
   })
 
-  it('DENIES a school-manager publishing — in their OWN tenant too', () => {
+  it('lets a school-manager publish — but only within their own school, as a constraint', () => {
     expect(
       eventsUpdateAccess(args(managerA, { data: { tenant: 'A', _status: 'published' } })),
-    ).toBe(false)
+    ).toEqual({ tenant: { in: ['A'] } })
   })
 
   it('still allows a school-manager to save a draft', () => {
@@ -149,13 +156,18 @@ describe('eventsUpdateAccess', () => {
   })
 })
 
-describe('eventsDeleteAccess', () => {
-  it('is reserved to district-admin', () => {
+describe('eventsDeleteAccess — a school removes its own events (Jason, 2026-11-11)', () => {
+  it('grants district-admin', () => {
     expect(eventsDeleteAccess(args(districtAdmin))).toBe(true)
   })
 
+  it('lets a school-manager delete within their own schools — a constraint, NEVER true', () => {
+    expect(eventsDeleteAccess(args(managerA))).toEqual({ tenant: { in: ['A'] } })
+    expect(eventsDeleteAccess(args(managerAB))).toEqual({ tenant: { in: ['A', 'B'] } })
+  })
+
   it.each([
-    ['school-manager', managerA],
+    ['a school-manager with no school', managerNoTenant],
     ['system-sync', systemSync],
     ['anonymous', null],
   ])('denies %s', (_label, user) => {

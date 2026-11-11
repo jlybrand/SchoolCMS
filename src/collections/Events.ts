@@ -7,16 +7,10 @@ import {
   eventsReadVersionsAccess,
   eventsUpdateAccess,
 } from '@/access/events'
-import { isDistrictAdmin } from '@/access/predicates'
-import type { AuthUser } from '@/access/types'
-import { sendsForApproval } from '@/admin/SendForApproval/review-status'
-import { makeApproveEndpoint } from '@/collections/endpoints/approve'
 import { auditChange, auditDelete } from '@/collections/hooks/audit'
 import { eventCalendarIsThisSites, eventDatesHook } from '@/collections/hooks/event-hooks'
 import { restoreIsDistrictOnly } from '@/collections/hooks/page-history'
-import { publishGate } from '@/collections/hooks/publish-gate'
 import { revalidateEvent } from '@/collections/hooks/revalidate-on-publish'
-import { applyReviewState } from '@/collections/hooks/review-state'
 import { REPEAT_OPTIONS } from '@/lib/recurrence'
 
 /**
@@ -35,13 +29,17 @@ import { REPEAT_OPTIONS } from '@/lib/recurrence'
  *     boards replaced it for posts), the calendar block decides reach, and Notes is the
  *     constrained rich text a pasted agenda lands in (the paste normalizer applies, `07` §4).
  *
- * Built on the machinery pages and posts share: the same publish gate, review state, audit and
- * drafts with autosave. `tenant` is injected by `plugin-multi-tenant` (src/payload.config.ts).
+ * NO APPROVAL (Jason, 2026-11-11). A school manager adds one with "Add an event"
+ * (`/admin/new-event`), fills in the rest here and puts it on the calendar with "Save to the
+ * calendar" — no queue, no email. They change and remove their own school's events the same way.
+ * The district sees each in the activity log (`auditChange`). Access is in `src/access/events.ts`,
+ * which says which rules this lifts and why; there is deliberately no publish gate and no review
+ * state here.
  *
- * NOT HERE YET: the school's "Add an event" task, the approval queue and the outcome emails (the
- * next PR — until then the admin hides events from a school manager, as posts did at first);
- * the calendar block; an event's own page and the iCal subscribe link; feed calendars; the
- * `events.schedule` auto-approval scope (`04` §4.3).
+ * Drafts with autosave, as pages, so an event being written is not on the calendar until it is
+ * saved there. `tenant` is injected by `plugin-multi-tenant` (src/payload.config.ts).
+ *
+ * NOT HERE YET: an event's own page and the iCal subscribe link; feed calendars.
  *
  * Field declarations are not test-first (CLAUDE.md's exception table); the access functions and
  * hooks attached to them are.
@@ -54,11 +52,18 @@ export const Events: CollectionConfig = {
     useAsTitle: 'title',
     defaultColumns: ['title', 'start', 'calendar', '_status'],
     group: 'Content',
-    /** Until the school's task and the queue know events (the next PR). Access is unchanged. */
-    hidden: ({ user }) => !isDistrictAdmin(user as AuthUser | null),
     components: {
+      /** A school manager's "Add an event" on the list, as Pages has "Add a page". */
+      beforeListTable: [
+        {
+          path: '/admin/SchoolPlane/ListTaskButton#ListTaskButton',
+          clientProps: { collection: 'events' },
+        },
+      ],
       edit: {
-        PublishButton: '/admin/SendForApproval/SendForApprovalButton#SendForApprovalButton',
+        /** Payload's publish, worded for a school ("Save to the calendar"). */
+        PublishButton: '/admin/Events/EventSaveButton#EventSaveButton',
+        /** One button for a school: autosave covers the rest, as on pages. */
         SaveDraftButton: '/admin/SendForApproval/SchoolSaveDraftButton#SchoolSaveDraftButton',
       },
     },
@@ -82,8 +87,8 @@ export const Events: CollectionConfig = {
     beforeOperation: [restoreIsDistrictOnly],
     /** The site's own calendar when none is chosen, and never another site's. */
     beforeValidate: [eventCalendarIsThisSites],
-    /** The dates first, so a refusal names the field; then the gate; the review state last. */
-    beforeChange: [eventDatesHook, publishGate, applyReviewState],
+    /** The dates, so a refusal names the field. No publish gate: events skip approval. */
+    beforeChange: [eventDatesHook],
     afterChange: [
       /** FIRST, as on pages: the entry is in the change's transaction. */
       auditChange('events'),
@@ -93,18 +98,7 @@ export const Events: CollectionConfig = {
     afterDelete: [auditDelete('events')],
   },
 
-  /** The queue's one click, as on pages. */
-  endpoints: [makeApproveEndpoint('events')],
-
   fields: [
-    {
-      name: 'reviewStatus',
-      type: 'ui',
-      admin: {
-        condition: (_data, _siblingData, { user }) => sendsForApproval(user as AuthUser | null),
-        components: { Field: '/admin/SendForApproval/ReviewStatusField#ReviewStatusField' },
-      },
-    },
     {
       name: 'title',
       type: 'text',
@@ -188,32 +182,5 @@ export const Events: CollectionConfig = {
       label: 'Notes',
       admin: { description: 'Optional. Shown when someone clicks the event on the calendar.' },
     },
-    /** REVIEW STATE (`04` §4.1) — the four fields pages carry, owned by `applyReviewState`. */
-    {
-      name: 'reviewState',
-      type: 'radio',
-      index: true,
-      label: 'Approval',
-      options: [
-        { label: 'Being edited', value: 'editing' },
-        { label: 'Waiting for approval', value: 'submitted' },
-        { label: 'Changes requested', value: 'changes-requested' },
-      ],
-      hooks: { beforeDuplicate: [() => null] },
-      admin: { readOnly: true, position: 'sidebar' },
-    },
-    {
-      name: 'reviewNote',
-      type: 'textarea',
-      label: 'What needs to change',
-      admin: {
-        readOnly: true,
-        position: 'sidebar',
-        condition: (data: { reviewState?: unknown } | undefined) =>
-          data?.reviewState === 'changes-requested',
-      },
-    },
-    { name: 'submittedAt', type: 'date', index: true, admin: { hidden: true } },
-    { name: 'submittedBy', type: 'relationship', relationTo: 'users', admin: { hidden: true } },
   ],
 }

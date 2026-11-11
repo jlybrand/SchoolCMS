@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  checkNewEvent,
   checkNewPage,
   checkNewPost,
   explainCreateError,
+  explainEventCreateError,
   explainPostCreateError,
   listTaskFor,
   schoolEditPath,
@@ -25,6 +27,7 @@ describe('SCHOOL_TASKS — verbs, not collections (`04` §2.2)', () => {
   it('offers only tasks that work today, in the spec wording', () => {
     expect(SCHOOL_TASKS.map((t) => t.label)).toEqual([
       'Post an announcement',
+      'Add an event',
       'Update a page',
       'Add a page',
     ])
@@ -50,6 +53,10 @@ describe('listTaskFor — the create button a school manager gets on a list (Jas
 
   it('is one of the landing view’s own tasks, so the two never drift apart', () => {
     expect(SCHOOL_TASKS.map((t) => t.href)).toContain(listTaskFor('pages')?.href)
+  })
+
+  it('offers the new-event task on Events (Jason, 2026-11-11)', () => {
+    expect(listTaskFor('events')).toEqual({ label: 'Add an event', href: '/admin/new-event' })
   })
 
   it('offers nothing on News and announcements, whose own screen has Create post', () => {
@@ -271,5 +278,82 @@ describe('schoolEditPath — where a submission opens', () => {
   it('opens a page or an announcement in its own form', () => {
     expect(schoolEditPath('pages', 4)).toBe('/admin/collections/pages/4')
     expect(schoolEditPath('posts', 9)).toBe('/admin/collections/posts/9')
+    expect(schoolEditPath('events', 5)).toBe('/admin/collections/events/5')
+  })
+})
+
+describe('checkNewEvent — what a new event needs before it is created (Jason, 2026-11-11)', () => {
+  /** The calendars the user may add to: their schools' — the school follows from the calendar. */
+  const one = [{ id: 7, tenant: 3 }]
+  const two = [
+    { id: 7, tenant: 3 },
+    { id: 8, tenant: 3 },
+  ]
+
+  it('a name, a day and a start time; one calendar is not asked, and the school follows', () => {
+    expect(
+      checkNewEvent({ title: ' Book fair ', date: '2026-12-04', time: '18:30', calendars: one }),
+    ).toEqual({
+      ok: true,
+      title: 'Book fair',
+      // 6:30 p.m. in the district (EST) is 23:30 UTC.
+      start: '2026-12-04T23:30:00.000Z',
+      allDay: false,
+      calendar: 7,
+      school: 3,
+    })
+  })
+
+  it('no start time is an all-day event, on that day in the district', () => {
+    expect(
+      checkNewEvent({ title: 'Spirit day', date: '2026-07-15', time: '', calendars: one }),
+    ).toMatchObject({ ok: true, start: '2026-07-15T04:00:00.000Z', allDay: true })
+  })
+
+  it('refuses a missing name or day, every problem at once, in plain words', () => {
+    expect(checkNewEvent({ title: ' ', date: '', calendars: one })).toEqual({
+      ok: false,
+      errors: { title: 'Give the event a name.', date: 'Choose the day it happens.' },
+    })
+  })
+
+  it('refuses a day or time that is not one', () => {
+    const bad = checkNewEvent({ title: 'T', date: '2026-02-30', time: '25:00', calendars: one })
+    expect(bad).toEqual({
+      ok: false,
+      errors: { date: 'Choose the day it happens.', time: 'Enter a time, like 6:30 PM.' },
+    })
+  })
+
+  it('with several calendars, asks which — and refuses one that is not theirs', () => {
+    expect(
+      checkNewEvent({ title: 'T', date: '2026-12-04', calendars: two, calendar: '8' }),
+    ).toMatchObject({ ok: true, calendar: 8 })
+    const unchosen = checkNewEvent({ title: 'T', date: '2026-12-04', calendars: two })
+    expect(unchosen.ok ? null : unchosen.errors.calendar).toBe(
+      'Choose which calendar this goes on.',
+    )
+    expect(checkNewEvent({ title: 'T', date: '2026-12-04', calendars: two, calendar: 99 }).ok).toBe(
+      false,
+    )
+  })
+
+  it('with no calendar at all, says who sets one up', () => {
+    const check = checkNewEvent({ title: 'T', date: '2026-12-04', calendars: [] })
+    expect(check.ok ? null : check.errors.calendar).toMatch(/district web team/)
+  })
+})
+
+describe('explainEventCreateError', () => {
+  it('a refusal by access says they cannot add events here', () => {
+    expect(
+      explainEventCreateError({
+        errors: [{ message: 'You are not allowed to perform this action.' }],
+      }),
+    ).toMatch(/cannot add events/)
+  })
+
+  it('anything else gets a generic sentence about the event', () => {
+    expect(explainEventCreateError(null)).toMatch(/event could not be created/)
   })
 })

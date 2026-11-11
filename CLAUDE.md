@@ -178,6 +178,10 @@ These are release-blocking. Do not weaken, skip, or mark flaky-and-ignored.
    secondary check. Reads return **query constraints, never booleans**.
 3. **A `school-manager` cannot publish by any route** — admin, REST, GraphQL, or bulk op.
    Gated at both the access and hook layer.
+   _Exception — events (Jason, 2026-11-11):_ events do not go through approval. A school manager
+   publishes, changes and removes their **own school's** events directly; the district sees them
+   in the activity log. Pages and announcements keep the rule. See `src/access/events.ts`; the
+   isolation suite proves the exception is no wider than their own school.
 4. **No student data enters the platform.** The PowerSchool sync is staff-only, enforced in
    five independent layers (`11` §4). The `people` collection has no fields where student
    data could land. Proven by a test seeded with student records (`11` §9).
@@ -188,7 +192,8 @@ These are release-blocking. Do not weaken, skip, or mark flaky-and-ignored.
 7. **Alt text is required at upload** unless `isDecorative` is set — enforced by field
    validation _and_ a `beforeValidate` hook, so the API path cannot bypass it.
 8. **Auto-approval is off by default and granted per named user**, never by role, tenant, or
-   content type. A mixed submission queues in full (`04` §4.3).
+   content type. A mixed submission queues in full (`04` §4.3). (Events are outside approval
+   altogether — rule 3's exception — so this governs pages and announcements.)
 9. **Postgres, never Mongo.** Portability is a hard requirement.
 
 ## Commands
