@@ -9,6 +9,7 @@ import {
 } from '@/access/posts'
 import { districtOnlyField } from '@/access/tenant-scoped'
 import type { AuthUser } from '@/access/types'
+import { documentReviewField } from '@/admin/Approvals/document-review-field'
 import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 import { makeApproveEndpoint } from '@/collections/endpoints/approve'
 import { auditChange, auditDelete } from '@/collections/hooks/audit'
@@ -171,6 +172,8 @@ export const Posts: CollectionConfig = {
         components: { Field: '/admin/SendForApproval/ReviewStatusField#ReviewStatusField' },
       },
     },
+    /** The district's review — diff, Approve, Request changes — on the announcement itself. */
+    documentReviewField,
     {
       name: 'title',
       type: 'text',

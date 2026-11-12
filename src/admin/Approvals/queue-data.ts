@@ -1,6 +1,7 @@
 import type { Payload, PayloadRequest } from 'payload'
 
-import { relationshipIdOf } from '@/access/predicates'
+import { isDistrictAdmin, relationshipIdOf } from '@/access/predicates'
+import type { AuthUser } from '@/access/types'
 import type { VersionToken } from '@/access/approval'
 import { latestVersion, type ReviewedCollection } from '@/collections/endpoints/approve'
 
@@ -94,6 +95,8 @@ const withBoardAndTags = (
   }
 }
 
+type Waiting = { collection: ReviewedCollection; doc: Doc }
+
 export const loadQueue = async (req: PayloadRequest, now = new Date()): Promise<QueueItem[]> => {
   const waitingIn = async (collection: ReviewedCollection) =>
     (
@@ -116,6 +119,42 @@ export const loadQueue = async (req: PayloadRequest, now = new Date()): Promise<
     .sort((a, b) => String(a.doc.submittedAt ?? '').localeCompare(String(b.doc.submittedAt ?? '')))
     .slice(0, LIMIT)
 
+  return buildItems(req, waiting, now)
+}
+
+/**
+ * One waiting page or announcement as the queue shows it — for the review panel on the document
+ * itself (Jason, 2026-11-12), so approving there sends the same token the queue would. Null for
+ * anyone but the district, for something not waiting, and for something that is not there.
+ */
+export const loadQueueItem = async (
+  req: PayloadRequest,
+  collection: ReviewedCollection,
+  id: number | string,
+  now = new Date(),
+): Promise<QueueItem | null> => {
+  if (!isDistrictAdmin(req.user as AuthUser | null)) return null
+  const { docs } = await req.payload.find({
+    collection,
+    where: { and: [{ id: { equals: id } }, { reviewState: { equals: 'submitted' } }] },
+    draft: true,
+    limit: 1,
+    depth: 0,
+    overrideAccess: false,
+    user: req.user,
+    req,
+  })
+  const doc = docs[0] as unknown as Doc | undefined
+  if (!doc) return null
+  return (await buildItems(req, [{ collection, doc }], now))[0] ?? null
+}
+
+/** The diff, names, wait and version token for each waiting document, in the order given. */
+const buildItems = async (
+  req: PayloadRequest,
+  waiting: readonly Waiting[],
+  now: Date,
+): Promise<QueueItem[]> => {
   const rows = await Promise.all(
     waiting.map(async ({ collection, doc: draft }) => {
       const id = draft.id as number | string

@@ -36,6 +36,17 @@
   gap: 1.5rem;
 }
 
+/* The queue's item on the page or announcement itself (`DocumentReview.tsx`, 2026-11-12). */
+.documentReview {
+  margin-block-end: 1.5rem;
+}
+
+.documentReviewLead {
+  margin-block: 0 0.75rem;
+  color: var(--theme-elevation-800);
+  font-weight: 600;
+}
+
 .item {
   padding-block: 1.25rem;
   padding-inline: 1.5rem;

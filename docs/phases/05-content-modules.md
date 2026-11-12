@@ -1420,3 +1420,35 @@ it, the refusal was skipped, the publish was stored as a draft, and the live pag
   for a past time, schedule and cancel, with axe in both themes; Publish now; Escape and focus; Now
   on a scheduled page; a live page's change scheduled and cancelled while the site keeps the page,
   with axe in both themes; the school plane. `page-toolbar.spec.ts` publishes through the dialog
+
+## 32. Approving from the page or announcement itself (Jason, 2026-11-12)
+
+A district admin who opens a page or announcement that is waiting for approval sees the queue's
+review at the top of the form: who sent it and how long ago, the diff panel, an announcement's
+optional dates, **Approve and publish** (or **Approve and schedule**), **Request changes**, and
+**Review in the approval queue**. There is no need to go back to the queue to publish it.
+
+It IS the queue's item. The same read (`loadQueueItem`, which shares `buildItems` with
+`loadQueue`), the same component (`ApprovalItem`), and the same approve endpoint and version token.
+So there is one approval path and one version check. If the school saved again since the form
+loaded, approve refuses it ("Reload the page").
+
+| File                                                  | Does                                                                                                                                                                     |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/admin/Approvals/queue-data.ts`                   | `loadQueueItem(req, collection, id)`: null unless a district admin and the document is `submitted`; `buildItems` is the diff/names/token step `loadQueue` uses too       |
+| `src/admin/Approvals/document-review-field.ts`        | `documentReviewField`, a `ui` field, condition: district admin and `reviewState === 'submitted'`; second in `pages` and `posts`                                          |
+| `src/admin/Approvals/DocumentReview.tsx`              | the field's server component: `#document-review`, a lead line, then `DocumentApproval`                                                                                   |
+| `src/admin/Approvals/DocumentApproval.tsx`            | client: `ApprovalItem` with `place="document"`. On a decision: toast; on a publish, `setHasPublishedDoc(true)` and so on (as Payload's Publish); `router.refresh()`      |
+| `src/admin/Approvals/ApprovalItem.tsx`                | `place` (`queue` / `document`): on the document, no anchor id, "Review in the approval queue" instead of "Open the …", "Reload the page"; `onDecided(decision, outcome)` |
+| `src/admin/SendForApproval/SendForApprovalButton.tsx` | the header's "Review in the approval queue" is now a SECONDARY button: Approve is in the panel                                                                           |
+
+### Tests
+
+- `tests/integration/queue-item.test.ts`: the item for a waiting page with the token approve
+  checks; nothing for a page not waiting, for a school manager, or for a missing page
+- `tests/e2e/document-review.spec.ts`:
+  - the panel on a waiting page, its queue links (panel and header), and axe in both themes
+  - Approve: published, the panel gone, the header now "Publish changes"
+  - Request changes with a note: `changes-requested`
+  - an announcement's dates behind "Set dates (optional)"
+  - no panel on a page not waiting, and none for the school that sent it
