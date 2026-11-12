@@ -14,7 +14,7 @@
 
 /*
  * The marker is left to the browser rather than replaced with a custom glyph. A CSS triangle
- * would need `transform: rotate()` under RTL and would drop out entirely in forced-colours
+ * would need `transform: rotate()` under RTL and would drop out entirely in forced-colors
  * mode, where the native marker survives.
  */
 .summary {

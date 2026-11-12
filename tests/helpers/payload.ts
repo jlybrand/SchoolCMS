@@ -60,7 +60,7 @@ export type Fixtures = {
   /** One `navigation` row per school — the per-tenant record a school-manager may not touch. */
   navigationA: number
   navigationB: number
-  /** One `theme` row per school, with different colours — same rule as the menus. */
+  /** One `theme` row per school, with different colors — same rule as the menus. */
   themeA: number
   themeB: number
   /** One `settings` row per school, with different details — same rule again. */
@@ -207,7 +207,7 @@ export async function seed(payload: Payload): Promise<Fixtures> {
       })
     ).id as number
 
-  /** Both valid, and different, so a leak reads as the wrong school's colour. */
+  /** Both valid, and different, so a leak reads as the wrong school's color. */
   const mkTheme = async (
     tenant: number,
     primaryColor: string,
@@ -274,7 +274,7 @@ export async function seed(payload: Payload): Promise<Fixtures> {
     // A serves two languages beside English and B none, so both ends of the list are seeded.
     settingsA: await mkSettings(tenantA, 'Alpha', '(843) 555-0101', ['es', 'ar']),
     settingsB: await mkSettings(tenantB, 'Bravo', '(843) 555-0202', []),
-    // A has both colours and B only a main one, so the mapper's two shapes are both seeded.
+    // A has both colors and B only a main one, so the mapper's two shapes are both seeded.
     themeA: await mkTheme(tenantA, '#7a1f2b', '#c9a227'),
     themeB: await mkTheme(tenantB, '#14532d'),
     navigationA: await mkNavigation(tenantA, 'School A'),

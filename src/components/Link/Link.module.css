@@ -1,7 +1,7 @@
 /**
- * Underline is not decoration here — it is the non-colour cue required by 1.4.1. Do not
+ * Underline is not decoration here — it is the non-color cue required by 1.4.1. Do not
  * remove it on hover-only or for "cleaner" navigation styling; a nav link still needs a
- * cue that is not its colour.
+ * cue that is not its color.
  */
 
 .link {
@@ -15,8 +15,8 @@
  * follows the writing direction, so the affordance mirrors for Arabic with no RTL rules.
  *
  * THIS IS THE ONE PLACE THE UNDERLINE COMES OFF, and only because the cue it provides is
- * replaced rather than dropped: a filled block of brand colour with its own border radius
- * and padding does not read as body text, so 1.4.1's "not by colour alone" is satisfied by
+ * replaced rather than dropped: a filled block of brand color with its own border radius
+ * and padding does not read as body text, so 1.4.1's "not by color alone" is satisfied by
  * shape. The pair is validated at token level, so a per-tenant brand palette cannot ship a
  * combination that fails AA (`07` §3).
  *

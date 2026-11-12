@@ -14,7 +14,7 @@ import {
  *
  * Two claims in the design suite are only true if something checks them on every build:
  *
- *   1. "Contrast is baked into theme tokens ... so a school cannot pick a brand colour that
+ *   1. "Contrast is baked into theme tokens ... so a school cannot pick a brand color that
  *      fails" — the same `checkContrastPairs` call runs here over the shipped defaults and,
  *      in `src/lib/theme.ts`, over each tenant's `theme` overrides. If the default palette were
  *      allowed to fail, the per-tenant validator would be enforcing a bar the platform
@@ -42,9 +42,9 @@ describe('design tokens: contrast (`07` §3)', () => {
     expect(tokens['--color-surface']).toBe('#ffffff')
   })
 
-  it('declares a pair for every colour token that carries meaning', () => {
+  it('declares a pair for every color token that carries meaning', () => {
     /**
-     * A colour token nobody checks is a colour token free to drift below AA, so the
+     * A color token nobody checks is a color token free to drift below AA, so the
      * manifest has to cover all of them. Exclusions are by name, with the reasoning in
      * `REQUIRED_CONTRAST_PAIRS`: the two surfaces are only ever the background half of a
      * pair, and `--color-border` is a decorative hairline outside 1.4.11.
@@ -57,7 +57,7 @@ describe('design tokens: contrast (`07` §3)', () => {
       '--color-accent',
     ]
 
-    const colourTokens = Object.keys(tokens).filter(
+    const colorTokens = Object.keys(tokens).filter(
       (name) => name.startsWith('--color-') || name === '--focus-ring-color',
     )
     const paired = new Set(
@@ -65,7 +65,7 @@ describe('design tokens: contrast (`07` §3)', () => {
     )
 
     expect(
-      colourTokens.filter((name) => !paired.has(name) && !UNPAIRED_BY_DESIGN.includes(name)),
+      colorTokens.filter((name) => !paired.has(name) && !UNPAIRED_BY_DESIGN.includes(name)),
     ).toEqual([])
   })
 

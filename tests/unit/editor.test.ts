@@ -92,7 +92,7 @@ describe('the editor allowlist', () => {
     ['indent', 'indentation fakes structure that screen readers cannot see'],
     ['underline', 'underlined text that is not a link is a usability trap'],
     ['strikethrough', 'conveys meaning by appearance alone'],
-    ['textState', 'arbitrary colour and styling defeats the token-level contrast guarantee'],
+    ['textState', 'arbitrary color and styling defeats the token-level contrast guarantee'],
     ['blockquote', 'not in the `07` §4.2 allowlist'],
     ['horizontalrule', 'decorative separators carry no semantics'],
     ['upload', 'images go through the media flow so alt text is captured (`07` §4.3)'],

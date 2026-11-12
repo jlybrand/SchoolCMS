@@ -868,11 +868,11 @@ export interface Theme {
   id: number;
   tenant?: (number | null) | Tenant;
   /**
-   * Used for links and buttons, so it has to be dark enough to read on a white page. Leave empty for the district's blue. If the school's main colour is a light one — a gold, a sky blue — put the darker of its two colours here and the light one below.
+   * Used for links and buttons, so it has to be dark enough to read on a white page. Leave empty for the district's blue. If the school's main color is a light one — a gold, a sky blue — put the darker of its two colors here and the light one below.
    */
   primaryColor?: string | null;
   /**
-   * Used for the coloured lines under the header and above the footer. Any colour works here. Leave empty for a plain grey line.
+   * Used for the colored lines under the header and above the footer. Any color works here. Leave empty for a plain grey line.
    */
   secondaryColor?: string | null;
   updatedAt: string;

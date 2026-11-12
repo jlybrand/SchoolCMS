@@ -239,8 +239,8 @@ export type Page = {
  *   - **No nesting.** No block holds other blocks. Column layouts and tabs are open
  *     questions, not omissions (`03` §3.3); resolving them yes would mean threading
  *     `baseLevel` to arbitrary depth and owning RTL column order and mobile stack order.
- *   - **No styling fields.** No alignment, no colour, no width. Per-tenant themes override
- *     tokens at render (`02` §4.4); an editor who can set a colour can fail contrast, which
+ *   - **No styling fields.** No alignment, no color, no width. Per-tenant themes override
+ *     tokens at render (`02` §4.4); an editor who can set a color can fail contrast, which
  *     token-level validation exists to make impossible (`07` §3).
  */
 
@@ -506,7 +506,7 @@ export type ResolvedPageBlock =
  * whole reason a CMS swap costs one file rather than every template (`02` §11, ADR-5).
  *
  * The vocabulary is the `07` §4.2 allowlist and nothing else. There is no node here for
- * alignment, colour, underline or a table, because there is no way to author one — see
+ * alignment, color, underline or a table, because there is no way to author one — see
  * `src/lib/editor.ts`. Adding a node type to this file is a conformance decision.
  */
 export type RichTextMark = 'strong' | 'em'

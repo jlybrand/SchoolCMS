@@ -536,7 +536,7 @@ export const Pages: CollectionConfig = {
        * (3.4–4.0:1), as inline styles, in 3.87.0 and still in 3.90.1. That is a serious axe
        * violation on the admin plane, which non-negotiable rule 6 does not allow, and an inline
        * style leaves nothing to fix it with but `!important` selectors keyed to the plugin's
-       * literal colours. `tests/e2e/page-seo-fields.spec.ts` is the axe check that found it.
+       * literal colors. `tests/e2e/page-seo-fields.spec.ts` is the axe check that found it.
        *
        * THE GROUP IS NAMED `meta` AND ITS FIELDS `title` / `description` — the plugin's names
        * and stored shape, on purpose. If the plugin fixes its contrast, adopting it is a config

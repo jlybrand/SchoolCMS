@@ -33,7 +33,7 @@ describe('parseHexColor', () => {
   })
 
   it('returns null for anything it cannot evaluate', () => {
-    // Named colours, rgb() and hsl() are not accepted: the point of this module is a
+    // Named colors, rgb() and hsl() are not accepted: the point of this module is a
     // definite answer, and a parser that guesses is worse than one that refuses.
     expect(parseHexColor('rebeccapurple')).toBeNull()
     expect(parseHexColor('rgb(15 76 129)')).toBeNull()
@@ -42,7 +42,7 @@ describe('parseHexColor', () => {
   })
 
   it('returns null for hex with alpha', () => {
-    // Contrast against a translucent colour depends on what is behind it, which a token
+    // Contrast against a translucent color depends on what is behind it, which a token
     // cannot know. Rejecting is honest; compositing against an assumed backdrop is not.
     expect(parseHexColor('#0f4c8180')).toBeNull()
   })
@@ -68,7 +68,7 @@ describe('contrastRatio', () => {
     expect(contrastRatio('#000000', '#ffffff')).toBeCloseTo(21, 5)
   })
 
-  it('is 1:1 for a colour against itself', () => {
+  it('is 1:1 for a color against itself', () => {
     expect(contrastRatio('#0f4c81', '#0f4c81')).toBeCloseTo(1, 5)
   })
 
@@ -85,10 +85,10 @@ describe('contrastRatio', () => {
     expect(contrastRatio('#595959', '#ffffff')).toBeCloseTo(7.0, 2)
   })
 
-  it('throws on an unparseable colour rather than returning a passing number', () => {
+  it('throws on an unparseable color rather than returning a passing number', () => {
     // Failing loudly matters here: a silent 21:1 for a typo'd token would report
     // conformance the platform does not have.
-    expect(() => contrastRatio('not-a-colour', '#ffffff')).toThrow(/not-a-colour/)
+    expect(() => contrastRatio('not-a-color', '#ffffff')).toThrow(/not-a-color/)
   })
 })
 
@@ -180,7 +180,7 @@ describe('checkContrastPairs', () => {
     )
 
     expect(failures).toEqual([
-      expect.objectContaining({ label: 'indirect token', reason: 'unevaluable-colour' }),
+      expect.objectContaining({ label: 'indirect token', reason: 'unevaluable-color' }),
     ])
   })
 

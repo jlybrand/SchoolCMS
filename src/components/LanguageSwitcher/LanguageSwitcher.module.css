@@ -20,7 +20,7 @@
   padding-block: var(--space-2xs);
 }
 
-/* The language being read reads as current without colour: heavier, as well as announced. */
+/* The language being read reads as current without color: heavier, as well as announced. */
 .list a[aria-current='page'] {
   font-weight: 700;
 }

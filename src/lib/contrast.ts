@@ -2,7 +2,7 @@
  * Token-level contrast validation (`07` §3).
  *
  * The design suite makes a specific promise: per-tenant palettes are validated against AA
- * contrast **at token level, so a school cannot pick a brand colour that fails**. That is
+ * contrast **at token level, so a school cannot pick a brand color that fails**. That is
  * only meaningful if one function answers the question everywhere it is asked —
  *
  *   - `tests/unit/tokens.test.ts` runs it over the shipped defaults in `tokens.css`
@@ -25,8 +25,8 @@ const HEX = /^#([\da-f]{3}|[\da-f]{6})$/i
 /**
  * Hex only — `#rgb` or `#rrggbb`.
  *
- * `#rrggbbaa` is rejected rather than composited: the contrast of a translucent colour
- * depends on whatever is painted behind it, which a token does not know. Named colours and
+ * `#rrggbbaa` is rejected rather than composited: the contrast of a translucent color
+ * depends on whatever is painted behind it, which a token does not know. Named colors and
  * `rgb()`/`hsl()` are rejected because the theme UI produces hex, and a parser that guesses
  * at the rest would be a parser nobody can reason about.
  */
@@ -57,14 +57,14 @@ export const relativeLuminance = ({ r, g, b }: Rgb): number => {
 /**
  * WCAG 2.x contrast ratio, 1–21. Symmetric in its arguments.
  *
- * Throws on a colour it cannot evaluate. The alternative — returning a number — would mean
+ * Throws on a color it cannot evaluate. The alternative — returning a number — would mean
  * a typo'd token reporting conformance the platform does not have.
  */
 export const contrastRatio = (a: string, b: string): number => {
   const first = parseHexColor(a)
   const second = parseHexColor(b)
-  if (!first) throw new Error(`Cannot evaluate contrast: unsupported colour value "${a}"`)
-  if (!second) throw new Error(`Cannot evaluate contrast: unsupported colour value "${b}"`)
+  if (!first) throw new Error(`Cannot evaluate contrast: unsupported color value "${a}"`)
+  if (!second) throw new Error(`Cannot evaluate contrast: unsupported color value "${b}"`)
 
   const lighter = Math.max(relativeLuminance(first), relativeLuminance(second))
   const darker = Math.min(relativeLuminance(first), relativeLuminance(second))
@@ -99,7 +99,7 @@ export type ContrastFailure = {
   readonly foreground: string
   readonly background: string
   readonly required: number
-  readonly reason: 'unresolved-token' | 'unevaluable-colour' | 'insufficient-contrast'
+  readonly reason: 'unresolved-token' | 'unevaluable-color' | 'insufficient-contrast'
   /** Absent when the pair could not be evaluated at all. */
   readonly ratio?: number
 }
@@ -110,7 +110,7 @@ export type TokenResolver = (token: string) => string | undefined
  * Checks every pair and returns *all* failures.
  *
  * All of them, not the first: a school submitting a brand palette needs to see everything
- * that has to change, and one-at-a-time correction of a colour scheme is how a validator
+ * that has to change, and one-at-a-time correction of a color scheme is how a validator
  * becomes the thing people work around.
  */
 export const checkContrastPairs = (
@@ -135,7 +135,7 @@ export const checkContrastPairs = (
     try {
       ratio = contrastRatio(foregroundValue, backgroundValue)
     } catch {
-      failures.push({ ...base, reason: 'unevaluable-colour' })
+      failures.push({ ...base, reason: 'unevaluable-color' })
       continue
     }
 
@@ -153,7 +153,7 @@ export const checkContrastPairs = (
 /**
  * The pairs that must hold for the default palette and for every tenant theme.
  *
- * A colour token that appears in no pair is a colour token free to drift below AA, so the
+ * A color token that appears in no pair is a color token free to drift below AA, so the
  * token suite asserts this manifest covers all of them. Two tokens are excluded there by
  * name, with reasons:
  *
@@ -164,7 +164,7 @@ export const checkContrastPairs = (
  *   - `--color-surface` and `--color-surface-raised` are backgrounds; they are checked as
  *     the background half of the pairs below.
  *
- * Alert severity colours are checked as text/icon colours. When the alert block lands with
+ * Alert severity colors are checked as text/icon colors. When the alert block lands with
  * tinted backgrounds (Phase 5, `03` §2) it adds its own pairs here.
  */
 export const REQUIRED_CONTRAST_PAIRS: readonly ContrastPair[] = [
@@ -237,7 +237,7 @@ export const REQUIRED_CONTRAST_PAIRS: readonly ContrastPair[] = [
   {
     /**
      * `Link`'s button variant swaps its fill to `--color-text` on hover and keeps its label
-     * colour. Unlisted, that was a pair the stylesheet used and nothing checked — harmless
+     * color. Unlisted, that was a pair the stylesheet used and nothing checked — harmless
      * while both values were the platform's, and exactly the gap a tenant theme would find.
      */
     label: 'text on a hovered brand fill',
@@ -247,7 +247,7 @@ export const REQUIRED_CONTRAST_PAIRS: readonly ContrastPair[] = [
   },
   {
     /**
-     * The pair most often missed. A single dark focus ring is invisible on a brand-coloured
+     * The pair most often missed. A single dark focus ring is invisible on a brand-colored
      * control — which is exactly where focus lands first on every page, the skip link.
      * `--focus-ring-color-inverse` is the ring used on brand fills (2.4.11).
      */

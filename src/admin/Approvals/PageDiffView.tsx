@@ -5,7 +5,7 @@ import styles from './Approvals.module.css'
  * The diff, rendered (`04` §4.2). Presentational only; `diffPage` decided what changed.
  *
  * Added and removed are said in WORDS ("Added", "Removed") and carried by a start-edge rule —
- * never colour alone (1.4.1). Body blocks are shown as text with their kind named, not as
+ * never color alone (1.4.1). Body blocks are shown as text with their kind named, not as
  * real headings and lists: a body `h2` inside the queue would put the school's headings into
  * the queue's own outline, which is the reviewer's navigation.
  */
@@ -124,7 +124,7 @@ export const PageDiffView = ({ diff, titleId }: { diff: PageDiff; titleId: strin
   )
 }
 
-/** Said in words, never colour alone (1.4.1). */
+/** Said in words, never color alone (1.4.1). */
 const SECTION_VERBS = {
   added: 'Added',
   removed: 'Removed',

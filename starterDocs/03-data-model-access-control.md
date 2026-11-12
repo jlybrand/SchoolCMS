@@ -393,10 +393,10 @@ one row per tenant, and the admin opens that row directly instead of a list. All
 district-only for every operation, reads included (§6.1); the public site reads them through
 `src/content/*` with access overridden and an explicit tenant filter.
 
-`theme` is built with a school's two colours. The **main colour** is the brand token — link
+`theme` is built with a school's two colors. The **main color** is the brand token — link
 text and buttons — so it is checked against every contrast pair it appears in (`07` §3), when
 saved and again when rendered; a failing palette is never served and the site falls back to the
-default. The **second colour** is an accent used for decorative rules only, so any colour is
+default. The **second color** is an accent used for decorative rules only, so any color is
 accepted; it gains a contrast pair the day a component puts text on it. Logo and favicon wait
 for `media` (Phase 6) and hero style for the hero block; a type scale has no DD2 usage traced
 to it and is not planned.

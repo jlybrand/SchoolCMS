@@ -33,7 +33,7 @@ export const InRunningText: Story = {
   render: (args) => (
     <p>
       Meeting dates are published on <Link {...args} />, which is underlined rather than
-      distinguished by colour alone.
+      distinguished by color alone.
     </p>
   ),
 }

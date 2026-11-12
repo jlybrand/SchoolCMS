@@ -29,13 +29,13 @@
 /**
  * The "Add …" button under a list of rows — 1.4.3 Contrast (Minimum).
  *
- * Payload colours its label and icon `--theme-elevation-400`, the same 2.81:1 grey as the
+ * Payload colors its label and icon `--theme-elevation-400`, the same 2.81:1 grey as the
  * help text above, and only darkens it on hover — so the one control that grows a menu or a
  * list of social accounts reads as disabled until it is pointed at. The resting state now
- * uses the colour Payload already chose for hover.
+ * uses the color Payload already chose for hover.
  *
  * `:not(:disabled)`, because these rules are unlayered and would otherwise also outrank
- * Payload's own disabled colour — at `maxRows` the button SHOULD look unavailable. Found by
+ * Payload's own disabled color — at `maxRows` the button SHOULD look unavailable. Found by
  * tests/e2e/settings-fields.spec.ts, which now pins it.
  */
 .array-field__add-row.btn:not(:disabled) {
@@ -59,7 +59,7 @@
  *
  * The blocks-field twin of `.array-field__add-row` above: the same 2.81:1 grey label until
  * hovered — set here as `color` on the inner `span.btn`, not through `--btn-color`. The resting
- * state takes Payload's own hover colour. The toggler's `disabled` keeps an unavailable one
+ * state takes Payload's own hover color. The toggler's `disabled` keeps an unavailable one
  * grey. Found 2026-10-28 by tests/e2e/admin-planes-axe.spec.ts ("a page with a news feed").
  */
 .blocks-field__drawer-toggler:not(:disabled) .btn {

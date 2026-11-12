@@ -106,7 +106,7 @@ slow enough to hurt the dev loop. Neither is true today.
 `plugin-cloud-storage` (R2). Nothing else without weighing swap cost (`02` §11).
 `plugin-form-builder` is a _deferred add-on_, not adopted in v1. `plugin-seo` was evaluated
 and **not adopted** (2026-09-21): its admin fields fail the axe gate with hardcoded inline
-colours. The SEO fields are a plain `meta` group that keeps the plugin's stored shape — see
+colors. The SEO fields are a plain `meta` group that keeps the plugin's stored shape — see
 `src/collections/Pages.ts` before proposing it again.
 
 **Never introduce:** MongoDB, per-field manual localization as the primary mechanism,

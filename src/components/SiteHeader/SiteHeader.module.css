@@ -6,8 +6,8 @@
 .header {
   background-color: var(--color-surface-raised);
   /*
-   * The school's second colour (`--color-accent`), as a rule. DECORATIVE: it bounds nothing a
-   * visitor operates and nothing is read against it, which is why any colour is allowed here
+   * The school's second color (`--color-accent`), as a rule. DECORATIVE: it bounds nothing a
+   * visitor operates and nothing is read against it, which is why any color is allowed here
    * (see the token's declaration). The raised surface already separates the header from the
    * page, so the header reads as a header when this is a gold nobody can see on white.
    */

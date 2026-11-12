@@ -482,7 +482,7 @@ describe('getTheme', () => {
     })
   })
 
-  it("never returns another tenant's colour", async () => {
+  it("never returns another tenant's color", async () => {
     // Access is overridden on this path; the tenant filter is the only scoping (`02` §4.2).
     expect(await getTheme(await tenantFor('b.localhost'))).toEqual({
       tokens: { '--color-brand': '#14532d' },
