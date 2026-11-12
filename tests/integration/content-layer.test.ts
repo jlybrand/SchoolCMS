@@ -191,6 +191,13 @@ describe('getPageByPath', () => {
       slug: 'not-in-results',
       hideFromSearchEngines: true,
     })
+    // Hidden from the site's own search (Jason, 2026-11-11) — which Phase 6 builds.
+    await mkPage({
+      tenant: district.id,
+      title: 'Not in site search',
+      slug: 'not-in-site-search',
+      hideFromSiteSearch: true,
+    })
     await mkPage({ tenant: district.id, title: 'Draft', slug: 'draft-only', _status: 'draft' })
     await mkPage({
       tenant: district.id,
@@ -411,6 +418,14 @@ describe('getPageByPath', () => {
     it('says which pages are hidden from search engines', async () => {
       expect((await getPageByPath(ctx, '/not-in-results'))?.hideFromSearchEngines).toBe(true)
       expect((await getPageByPath(ctx, '/about'))?.hideFromSearchEngines).toBe(false)
+    })
+
+    it("says which pages are hidden from the site's own search", async () => {
+      const hidden = await getPageByPath(ctx, '/not-in-site-search')
+      expect(hidden?.hideFromSiteSearch).toBe(true)
+      // The two hide options are separate: hiding from one does not hide from the other.
+      expect(hidden?.hideFromSearchEngines).toBe(false)
+      expect((await getPageByPath(ctx, '/not-in-results'))?.hideFromSiteSearch).toBe(false)
     })
   })
 })

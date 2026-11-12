@@ -584,14 +584,14 @@ describe('invariant 5 — a school-manager cannot PUBLISH by any route', () => {
     expect(still._status).toBe('draft')
   })
 
-  it('cannot hide a page from navigation or from search engines', async () => {
+  it('cannot hide a page from navigation, site search or search engines', async () => {
     // The district's page options (Jason, 2026-10-29). Field access drops the write silently,
     // as Payload does for any field a user may not update; the value is what proves it.
     await payload
       .update({
         collection: 'pages',
         id: f.draftPageA,
-        data: { hideFromNavigation: true, hideFromSearchEngines: true },
+        data: { hideFromNavigation: true, hideFromSiteSearch: true, hideFromSearchEngines: true },
         user: f.managerA,
         overrideAccess: false,
       })
@@ -604,6 +604,7 @@ describe('invariant 5 — a school-manager cannot PUBLISH by any route', () => {
       overrideAccess: true,
     })
     expect(still.hideFromNavigation ?? false).toBe(false)
+    expect(still.hideFromSiteSearch ?? false).toBe(false)
     expect(still.hideFromSearchEngines ?? false).toBe(false)
   })
 

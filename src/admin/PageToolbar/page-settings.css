@@ -88,3 +88,25 @@
   > :not(.dd2-page-setting) {
   display: none;
 }
+
+/*
+ * THE TABS (Jason, 2026-11-11). One tab's settings at a time: the header (`PageSettingsHeader`)
+ * sets `data-settings-tab` on the form, and every setting not on that tab is hidden. The heading
+ * and footer belong to no tab and always show; the permanent link belongs to none either, so it
+ * never shows (Jason: the address bar has it).
+ */
+.document-fields[data-page-settings='open'][data-settings-tab='page']
+  .dd2-page-setting:not(.dd2-settings-tab-page, #page-settings-header, #page-settings-footer),
+.document-fields[data-page-settings='open'][data-settings-tab='linking']
+  .dd2-page-setting:not(.dd2-settings-tab-linking, #page-settings-header, #page-settings-footer),
+.document-fields[data-page-settings='open'][data-settings-tab='seo']
+  .dd2-page-setting:not(.dd2-settings-tab-seo, #page-settings-header, #page-settings-footer),
+.document-fields[data-page-settings='open'][data-settings-tab='access']
+  .dd2-page-setting:not(.dd2-settings-tab-access, #page-settings-header, #page-settings-footer) {
+  display: none;
+}
+
+/* Tabs of different lengths should not make the panel jump about as you move between them. */
+.document-fields[data-page-settings='open'] > .document-fields__main {
+  min-block-size: min(28rem, 70vh);
+}

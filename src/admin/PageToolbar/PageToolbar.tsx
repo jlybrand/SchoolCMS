@@ -13,11 +13,17 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import {
+  firstRefusedTab,
   HEADING_ID,
   missingRequired,
+  PANEL_ID,
   REFUSED_EVENT,
   SETTING_PATHS,
   SETTINGS_EVENT,
+  TAB_EVENT,
+  tabFor,
+  tabId,
+  type SettingsTab,
 } from './page-settings'
 import './page-settings.css'
 import styles from './PageToolbar.module.css'
@@ -40,7 +46,8 @@ const UNPUBLISH_SLUG = 'dd2-unpublish-page'
  * re-rendered or moved: the values, validation and autosave are Payload's as ever, and a school
  * manager — who has no toolbar — sees the same fields in their usual places. What this adds is
  * the dialog's behaviour: `role="dialog"`, focus moved in and given back, Escape, and the rest of
- * the screen made `inert` while it is open.
+ * the screen made `inert` while it is open — and, since 2026-11-11, its tabs: the main column's
+ * fields become the `tabpanel` the header's tabs control (`PageSettingsHeader.tsx`).
  *
  * Built, then locked with a Playwright flow and axe (CLAUDE.md's exception for admin views):
  * `tests/e2e/page-toolbar.spec.ts`.
@@ -59,9 +66,12 @@ export const PageToolbar = () => {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
 
-  /** A setting the last save refused, so the dialog opens on it rather than hiding it. */
-  const settingRefused = useFormFields(([fields]) =>
-    SETTING_PATHS.some((path) => fields[path]?.valid === false),
+  /**
+   * The tab holding a setting the last save refused, so the dialog opens on it rather than hiding
+   * it — on that tab, not just the first.
+   */
+  const refusedTab = useFormFields(([fields]) =>
+    firstRefusedTab(SETTING_PATHS.filter((path) => fields[path]?.valid === false)),
   )
 
   const title = useFormFields(([fields]) => fields.title?.value)
@@ -71,6 +81,7 @@ export const PageToolbar = () => {
     /** A page with no title or no address stays in the dialog, which says why. */
     const missing = restore.current ? missingRequired({ title, slug }) : null
     if (missing) {
+      showTab(tabFor(missing.path) ?? 'page')
       window.dispatchEvent(new CustomEvent(REFUSED_EVENT, { detail: missing.label }))
       document.querySelector<HTMLElement>(`#field-${missing.path}`)?.focus()
       return
@@ -81,7 +92,7 @@ export const PageToolbar = () => {
     gearRef.current?.focus()
   }, [title, slug])
 
-  const openSettings = useCallback(() => {
+  const openSettings = useCallback((tab: SettingsTab = 'page') => {
     const dialog = document.querySelector<HTMLElement>('.document-fields')
     if (!dialog || restore.current) return
 
@@ -89,6 +100,13 @@ export const PageToolbar = () => {
     dialog.setAttribute('role', 'dialog')
     dialog.setAttribute('aria-modal', 'true')
     dialog.setAttribute('aria-labelledby', HEADING_ID)
+
+    /** Every setting is in the main column (`src/collections/Pages.ts`), so it is the one panel. */
+    const panel = dialog.querySelector<HTMLElement>('.document-fields__fields')
+    panel?.setAttribute('role', 'tabpanel')
+    panel?.setAttribute('id', PANEL_ID)
+    panel?.setAttribute('aria-labelledby', tabId(tab))
+    showTab(tab)
 
     /**
      * Everything outside the dialog goes `inert`: not focusable, not clickable, not read. Walked
@@ -109,6 +127,9 @@ export const PageToolbar = () => {
 
     restore.current = () => {
       delete dialog.dataset.pageSettings
+      panel?.removeAttribute('role')
+      panel?.removeAttribute('id')
+      panel?.removeAttribute('aria-labelledby')
       dialog.removeAttribute('role')
       dialog.removeAttribute('aria-modal')
       dialog.removeAttribute('aria-labelledby')
@@ -136,10 +157,12 @@ export const PageToolbar = () => {
     }
   }, [close])
 
-  // A refused setting would otherwise be an error nobody can see.
+  // A refused setting would otherwise be an error nobody can see — on its own tab, too.
   useEffect(() => {
-    if (settingRefused && !open) openSettings()
-  }, [settingRefused, open, openSettings])
+    if (!refusedTab) return
+    if (open) showTab(refusedTab)
+    else openSettings(refusedTab)
+  }, [refusedTab, open, openSettings])
 
   // Leaving the page with the dialog open must not leave the next screen inert.
   useEffect(() => () => restore.current?.(), [])
@@ -229,7 +252,7 @@ export const PageToolbar = () => {
         aria-expanded={open}
         aria-haspopup="dialog"
         className={`${styles.button} ${styles.gear}`}
-        onClick={openSettings}
+        onClick={() => openSettings()}
         ref={gearRef}
         type="button"
       >
@@ -254,6 +277,10 @@ export const PageToolbar = () => {
     </div>
   )
 }
+
+/** Asks the dialog's header to show a tab (it owns the tabs; `PageSettingsHeader.tsx`). */
+const showTab = (tab: SettingsTab) =>
+  window.dispatchEvent(new CustomEvent<SettingsTab>(TAB_EVENT, { detail: tab }))
 
 const GearIcon = () => (
   <svg

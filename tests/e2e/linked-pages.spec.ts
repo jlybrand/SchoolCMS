@@ -9,7 +9,7 @@ import {
 import { ADMIN_STORAGE_STATE, adminCredentials } from './support/admin-session'
 import { uniqueTitle, wordsSection } from './support/fixture-pages'
 import { SCHOOL_HOSTNAME, schoolTest, tenantIdFor } from './support/school-session'
-import { openPageSettings } from './support/page-settings'
+import { openPageSettings, showSettingsTab } from './support/page-settings'
 import { siteUrl } from './support/site-url'
 
 /**
@@ -305,9 +305,9 @@ test.describe('linked pages — reuse content', () => {
 
           await page.goto(`/admin/collections/pages/${reuse.id}`)
           await openPageSettings(page)
-          await expect(
-            page.getByRole('radio', { name: "Show a district page's content here" }),
-          ).toBeChecked()
+          await showSettingsTab(page, 'Linking')
+          await expect(page.getByRole('checkbox', { name: 'This page is linked' })).toBeChecked()
+          await expect(page.getByRole('radio', { name: 'Reuse content' })).toBeChecked()
           await expect(page.locator('#field-districtLinkTarget')).toBeVisible()
           await expect(page.locator('#field-linkTo')).toHaveCount(0)
           await expect(page.locator('#field-linkTarget')).toHaveCount(0)
@@ -367,11 +367,12 @@ for (const colorScheme of ['light', 'dark'] as const) {
           })
 
           await page.goto(`/admin/collections/pages/${linked.id}`)
-          // The choice is a Page setting, behind the toolbar's gear (Jason, 2026-10-29).
+          // The choice is a Page setting, on its Linking tab (Jason, 2026-10-29 and 2026-11-11).
           await openPageSettings(page)
-          await expect(
-            page.getByRole('radio', { name: 'Send visitors to another page' }),
-          ).toBeChecked({ timeout: 20_000 })
+          await showSettingsTab(page, 'Linking')
+          await expect(page.getByRole('radio', { name: 'Internal redirect' })).toBeChecked({
+            timeout: 20_000,
+          })
           // Repaired by A11yPatch before the audit: the chosen page's clear button.
           await expect(
             page.locator(

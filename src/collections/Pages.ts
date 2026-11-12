@@ -39,7 +39,7 @@ import {
   pageRevalidationTargets,
   tenantHostname,
 } from '@/collections/hooks/revalidate-on-publish'
-import { SETTING_CLASS } from '@/admin/PageToolbar/page-settings'
+import { settingClass } from '@/admin/PageToolbar/page-settings'
 import { PERMALINK_SEGMENT } from '@/lib/permalink'
 import { isReservedSlug, isReservedTopLevelSlug, slugify } from '@/lib/slug'
 
@@ -233,7 +233,7 @@ export const Pages: CollectionConfig = {
       type: 'text',
       required: true,
       admin: {
-        className: SETTING_CLASS,
+        className: settingClass('page'),
         description: 'What this page is called. Shown as the page heading.',
       },
       // A clone says it is one (the page toolbar's Clone, Jason 2026-10-29).
@@ -249,7 +249,7 @@ export const Pages: CollectionConfig = {
       // A clone takes a free address beside the original — see `freeSlugForCopy`.
       hooks: { beforeDuplicate: [freeSlugForCopy] },
       admin: {
-        className: SETTING_CLASS,
+        className: settingClass('page'),
         description:
           "The page's address, filled in from the title. Links chosen as pages, menus and the permanent link follow a change; addresses typed by hand and links from other websites do not.",
       },
@@ -279,7 +279,7 @@ export const Pages: CollectionConfig = {
       relationTo: 'pages',
       index: true,
       admin: {
-        className: SETTING_CLASS,
+        className: settingClass('page'),
         description: 'Sits this page underneath another one. Drives the URL and the menus.',
       },
       /**
@@ -305,7 +305,7 @@ export const Pages: CollectionConfig = {
         { label: 'Staff only', value: 'staff' },
       ],
       admin: {
-        className: SETTING_CLASS,
+        className: settingClass('access'),
         description:
           'Staff-only pages never appear on the public site or in the public API (`03` §6.4).',
       },
@@ -334,7 +334,11 @@ export const Pages: CollectionConfig = {
      * menu link the district added by hand still shows — that was chosen, not built.
      *
      * Hidden from search engines: `noindex` on the page and left out of the sitemap; its links
-     * are still followed. Hiding from the site's own search waits for that search (Phase 6).
+     * are still followed. Hidden from site search (2026-11-11) is stored now; the site's own
+     * search that honours it is Phase 6's.
+     *
+     * In the main column since the Page settings tabs (2026-11-11), not the sidebar, so every
+     * setting sits in the one element the dialog makes its tab panel. A school never sees them.
      */
     /**
      * LINKED PAGE (Jason, 2026-10-29) — Finalsite's "Linked" setting. An internal redirect sends
@@ -359,12 +363,14 @@ export const Pages: CollectionConfig = {
       access: { create: districtOnlyField, update: districtOnlyField },
       validate: validateLinkMode,
       admin: {
-        className: SETTING_CLASS,
-        position: 'sidebar',
+        className: settingClass('linking'),
         condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
-        description:
-          "A linked page has no content of its own. Visitors are sent to the page chosen, or see a district page's title and content here, at this page's address.",
-        components: { Cell: '/admin/LinkedPage/LinkedPageCell#LinkedPageCell' },
+        description: 'A linked page has no content of its own.',
+        components: {
+          Cell: '/admin/LinkedPage/LinkedPageCell#LinkedPageCell',
+          // A checkbox, then the kind as pills (Jason, 2026-11-11). Same stored value.
+          Field: '/admin/LinkedPage/LinkModeField#LinkModeField',
+        },
       },
     },
     {
@@ -378,8 +384,7 @@ export const Pages: CollectionConfig = {
       ],
       access: { create: districtOnlyField, update: districtOnlyField },
       admin: {
-        className: SETTING_CLASS,
-        position: 'sidebar',
+        className: settingClass('linking'),
         condition: (data, _siblingData, { user }) =>
           !sendsForApproval(user as AuthUser | null) && data?.linkMode === 'redirect',
       },
@@ -391,8 +396,7 @@ export const Pages: CollectionConfig = {
       label: 'Page on this site',
       access: { create: districtOnlyField, update: districtOnlyField },
       admin: {
-        className: SETTING_CLASS,
-        position: 'sidebar',
+        className: settingClass('linking'),
         condition: (data, _siblingData, { user }) =>
           !sendsForApproval(user as AuthUser | null) &&
           data?.linkMode === 'redirect' &&
@@ -411,8 +415,7 @@ export const Pages: CollectionConfig = {
        */
       custom: { crossTenant: true, filterOptions: { 'tenant.type': { equals: 'district' } } },
       admin: {
-        className: SETTING_CLASS,
-        position: 'sidebar',
+        className: settingClass('linking'),
         condition: (data, _siblingData, { user }) =>
           !sendsForApproval(user as AuthUser | null) &&
           (data?.linkMode === 'reuse' ||
@@ -426,10 +429,26 @@ export const Pages: CollectionConfig = {
       label: 'Hide from navigation',
       access: { create: districtOnlyField, update: districtOnlyField },
       admin: {
-        className: SETTING_CLASS,
-        position: 'sidebar',
+        className: settingClass('page'),
         condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
         description: 'Leaves this page out of section menus. Its address still works.',
+      },
+    },
+    {
+      /**
+       * Hidden from the site's OWN search (Jason, 2026-11-11), beside "hide from search engines",
+       * which is Google's. Stored and carried by the content layer now; the site search that
+       * honours it is Phase 6's. Neither option implies the other.
+       */
+      name: 'hideFromSiteSearch',
+      type: 'checkbox',
+      defaultValue: false,
+      label: 'Hide from site search',
+      access: { create: districtOnlyField, update: districtOnlyField },
+      admin: {
+        className: settingClass('page'),
+        condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
+        description: "Leaves this page out of this website's own search results.",
       },
     },
     {
@@ -439,8 +458,7 @@ export const Pages: CollectionConfig = {
       label: 'Hide from search engines',
       access: { create: districtOnlyField, update: districtOnlyField },
       admin: {
-        className: SETTING_CLASS,
-        position: 'sidebar',
+        className: settingClass('page'),
         condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
         description:
           'Asks Google and others not to list this page. Anyone with the link can still visit it.',
@@ -462,8 +480,11 @@ export const Pages: CollectionConfig = {
        * (`pageDatesHook`), and the schedule job puts it live (`src/collections/endpoints/schedule.ts`).
        */
       access: { read: districtOnlyField, create: districtOnlyField, update: districtOnlyField },
+      /**
+       * Not a Page setting since 2026-11-11 (Jason: the Start becomes a choice when publishing).
+       * Until that lands it sits in the sidebar, beside Publish.
+       */
       admin: {
-        className: SETTING_CLASS,
         description:
           'Optional. Publishing with a time still to come schedules the page: it goes live then.',
         position: 'sidebar',
@@ -536,7 +557,7 @@ export const Pages: CollectionConfig = {
       type: 'group',
       label: 'Search and sharing',
       admin: {
-        className: SETTING_CLASS,
+        className: settingClass('seo'),
         description:
           'How this page appears in search results and when its link is shared. Both are optional — leave them empty and the page title and its first paragraph are used.',
       },

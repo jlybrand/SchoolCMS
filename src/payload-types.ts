@@ -261,7 +261,7 @@ export interface Page {
    */
   visibility: 'public' | 'staff';
   /**
-   * A linked page has no content of its own. Visitors are sent to the page chosen, or see a district page's title and content here, at this page's address.
+   * A linked page has no content of its own.
    */
   linkMode?: ('none' | 'redirect' | 'reuse') | null;
   linkTo?: ('site' | 'district') | null;
@@ -271,6 +271,10 @@ export interface Page {
    * Leaves this page out of section menus. Its address still works.
    */
   hideFromNavigation?: boolean | null;
+  /**
+   * Leaves this page out of this website's own search results.
+   */
+  hideFromSiteSearch?: boolean | null;
   /**
    * Asks Google and others not to list this page. Anyone with the link can still visit it.
    */
@@ -1233,6 +1237,7 @@ export interface PagesSelect<T extends boolean = true> {
   linkTarget?: T;
   districtLinkTarget?: T;
   hideFromNavigation?: T;
+  hideFromSiteSearch?: T;
   hideFromSearchEngines?: T;
   publishAt?: T;
   layout?:

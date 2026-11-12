@@ -40,6 +40,7 @@ type PayloadPage = {
   requiresTranslationReview?: boolean | null
   hideFromNavigation?: boolean | null
   hideFromSearchEngines?: boolean | null
+  hideFromSiteSearch?: boolean | null
   linkMode?: 'none' | 'redirect' | 'reuse' | null
   linkTo?: 'site' | 'district' | null
   linkTarget?: string | number | { id: string | number } | null
@@ -119,6 +120,7 @@ const toDomain = (
       description: textOrNull(content.meta?.description),
     },
     hideFromSearchEngines: doc.hideFromSearchEngines === true,
+    hideFromSiteSearch: doc.hideFromSiteSearch === true,
     redirect: link?.kind === 'redirect' ? link.target : null,
     reusedFrom: reuse ? reuse.from : null,
     // The single point where stored blocks become DD2 ones: nothing downstream sees a

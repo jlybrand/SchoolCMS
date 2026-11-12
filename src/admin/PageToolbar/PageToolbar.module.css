@@ -90,10 +90,50 @@
 .refused {
   flex-basis: 100%;
   margin: 0;
-  color: var(--theme-error-500);
+  /* A red bar, readable words: `--theme-error-500` as text fails 4.5:1 on white. */
+  padding-block: 0.25rem;
+  padding-inline-start: 0.75rem;
+  border-inline-start: 4px solid var(--theme-error-500);
+  color: var(--theme-elevation-800);
   font-weight: 600;
 }
 
 .refused:empty {
   display: none;
+}
+
+/* The dialog's tabs (Jason, 2026-11-11). A row under the heading, the open one underlined. */
+.tabs {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-block-end: 1px solid var(--theme-elevation-400);
+}
+
+.tab {
+  min-block-size: 2.75rem;
+  margin-block-end: -1px;
+  padding-block: 0.5rem;
+  padding-inline: 1rem;
+  border: 0;
+  border-block-end: 3px solid transparent;
+  background: none;
+  color: var(--theme-elevation-800);
+  font: inherit;
+  cursor: pointer;
+}
+
+.tab:hover {
+  background: var(--theme-elevation-100);
+}
+
+.tab[aria-selected='true'] {
+  border-block-end-color: var(--theme-elevation-800);
+  font-weight: 600;
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--theme-elevation-800);
+  outline-offset: -2px;
 }

@@ -10,7 +10,7 @@ import {
 import { ADMIN_STORAGE_STATE, adminCredentials } from './support/admin-session'
 import { uniqueTitle, wordsSection } from './support/fixture-pages'
 import { SCHOOL_HOSTNAME, schoolTest, tenantIdFor } from './support/school-session'
-import { openPageSettings } from './support/page-settings'
+import { openPageSettings, showSettingsTab } from './support/page-settings'
 import { siteUrl } from './support/site-url'
 
 /**
@@ -92,20 +92,43 @@ test.describe('the district page toolbar', () => {
         }
         expect(await blockingViolations(page)).toEqual([])
 
-        // Open: a dialog, named, focused on its heading, holding the settings — the URL among them.
+        // Open: a dialog, named, focused on its heading, in tabs (Jason, 2026-11-11).
         const gear = page.getByRole('button', { name: 'Page settings' })
         const dialog = await openPageSettings(page)
         await expect(page.locator('#page-settings-title')).toBeFocused()
-        for (const field of ['#field-title', '#field-slug', '#field-parent', '#field-linkMode']) {
-          await expect(page.locator(field)).toBeVisible()
-        }
         await expect(page.locator('.ContentEditable__root').first()).toBeHidden()
-        // Payload builds a group's fields as they come near the view; scrolled to, they are there.
-        await page.locator('#field-meta').scrollIntoViewIfNeeded()
-        await expect(page.locator('[name="meta.title"]')).toBeVisible()
-        await page.locator('#page-settings-footer').scrollIntoViewIfNeeded()
-        await expect(page.getByRole('button', { name: 'Done' })).toBeVisible()
-        expect(await blockingViolations(page)).toEqual([])
+        await expect(dialog.getByRole('tab')).toHaveText(['Page', 'Linking', 'SEO', 'Access'])
+        await expect(dialog.getByRole('tabpanel', { name: 'Page' })).toBeVisible()
+
+        /** Each tab holds its own settings and none of the others' — and passes axe. */
+        const tabs = {
+          Page: [
+            '#field-title',
+            '#field-slug',
+            '#field-parent',
+            '#field-hideFromNavigation',
+            '#field-hideFromSiteSearch',
+            '#field-hideFromSearchEngines',
+          ],
+          Linking: ['#field-linkMode'],
+          SEO: ['#field-meta'],
+          Access: ['#field-visibility'],
+        } as const
+        for (const [name, fields] of Object.entries(tabs)) {
+          await showSettingsTab(page, name as keyof typeof tabs)
+          await expect(dialog.getByRole('tabpanel', { name })).toBeVisible()
+          for (const field of fields) await expect(page.locator(field)).toBeVisible()
+          for (const [other, theirs] of Object.entries(tabs)) {
+            if (other === name) continue
+            for (const field of theirs) await expect(page.locator(field)).toBeHidden()
+          }
+          if (name === 'SEO') {
+            // Payload builds a group's fields as they come near the view.
+            await expect(page.locator('[name="meta.title"]')).toBeVisible()
+          }
+          await expect(dialog.getByRole('button', { name: 'Done' })).toBeVisible()
+          expect(await blockingViolations(page), name).toEqual([])
+        }
 
         // Escape closes it and gives focus back to the gear.
         await page.keyboard.press('Escape')
@@ -168,10 +191,81 @@ test.describe('the district page toolbar', () => {
       await expect(dialog).toBeVisible()
       await expect(page.getByRole('alert').filter({ hasText: 'needs a title' })).toBeVisible()
       await expect(page.locator('#field-title')).toBeFocused()
+      expect(await blockingViolations(page)).toEqual([])
 
       await page.locator('#field-title').fill('Named again')
       await page.keyboard.press('Escape')
       await expect(dialog).toBeHidden()
+    } finally {
+      await admin.delete(`/api/pages/${made.id}`)
+      await admin.dispose()
+    }
+  })
+
+  test('moves between tabs with the arrow keys, one tab stop', async ({ page, baseURL }) => {
+    const admin = await asDistrict(baseURL)
+    const made = await mkPage(admin, 'b.localhost')
+    try {
+      await openForm(page, made.id)
+      const dialog = await openPageSettings(page)
+      const tab = (name: string) => dialog.getByRole('tab', { name, exact: true })
+      await tab('Page').focus()
+      await page.keyboard.press('ArrowRight')
+      await expect(tab('Linking')).toBeFocused()
+      await expect(tab('Linking')).toHaveAttribute('aria-selected', 'true')
+      await expect(page.locator('#field-linkMode')).toBeVisible()
+      await page.keyboard.press('End')
+      await expect(tab('Access')).toBeFocused()
+      await page.keyboard.press('ArrowRight')
+      await expect(tab('Page')).toBeFocused()
+      // The others are not tab stops: Tab leaves the row for the first setting.
+      await expect(tab('Linking')).toHaveAttribute('tabindex', '-1')
+      await page.keyboard.press('Tab')
+      await expect(page.locator('#field-title')).toBeFocused()
+    } finally {
+      await admin.delete(`/api/pages/${made.id}`)
+      await admin.dispose()
+    }
+  })
+
+  test('a refused setting opens the dialog on its own tab', async ({ page, baseURL }) => {
+    const admin = await asDistrict(baseURL)
+    const made = await mkPage(admin, 'b.localhost')
+    try {
+      await openForm(page, made.id)
+      const dialog = await openPageSettings(page)
+      // Linked, with no page chosen: the save is refused on the Linking tab.
+      await showSettingsTab(page, 'Linking')
+      await dialog.getByRole('checkbox', { name: 'This page is linked' }).check()
+      await expect(dialog.getByRole('radio', { name: 'Internal redirect' })).toBeChecked()
+      // The picker follows the choice (its condition), before anything is sent.
+      await expect(page.locator('#field-linkTarget')).toBeVisible({ timeout: 10_000 })
+      await showSettingsTab(page, 'Page')
+      await page.getByRole('button', { name: 'Done' }).click()
+      await expect(dialog).toBeHidden()
+
+      await page
+        .getByRole('button', { name: /^Publish/ })
+        .first()
+        .click()
+      await expect(dialog).toBeVisible({ timeout: 20_000 })
+      await expect(dialog.getByRole('tab', { name: 'Linking' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
+      await expect(page.locator('#field-linkTarget')).toBeVisible()
+      const reason = dialog
+        .getByRole('alert')
+        .filter({ hasText: 'Choose the page to send visitors to.' })
+      await expect(reason).toBeVisible()
+      await expect(dialog.getByRole('checkbox', { name: 'This page is linked' })).toHaveAttribute(
+        'aria-invalid',
+        'true',
+      )
+      expect(await blockingViolations(page)).toEqual([])
+      // The reason stays until the linking changes, then goes.
+      await dialog.getByRole('radio', { name: 'Reuse content' }).check()
+      await expect(reason).toBeHidden()
     } finally {
       await admin.delete(`/api/pages/${made.id}`)
       await admin.dispose()
