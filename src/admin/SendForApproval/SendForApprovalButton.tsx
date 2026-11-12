@@ -13,7 +13,7 @@ import {
 } from '@payloadcms/ui'
 import Link from 'next/link'
 import { formatAdminURL } from 'payload/shared'
-import { useCallback } from 'react'
+import { useCallback, useId, useState } from 'react'
 
 import type { AuthUser } from '@/access/types'
 import { approvalAnchor } from '@/admin/Approvals/anchor'
@@ -57,10 +57,17 @@ export const SendForApprovalButton = () => {
   return <DistrictPublish />
 }
 
-/** Pages choose their Start when publishing (Jason, 2026-11-11); posts keep theirs in the form. */
+/**
+ * Pages choose their Start when publishing (Jason, 2026-11-11), and announcements do too: they get
+ * the same dialog, with its optional comment (Jason, 2026-11-12). Anything else keeps Payload's.
+ */
 const DistrictPublish = () => {
   const { collectionSlug } = useDocumentInfo()
-  return collectionSlug === 'pages' ? <PagePublishControl /> : <PublishButton />
+  return collectionSlug === 'pages' || collectionSlug === 'posts' ? (
+    <PagePublishControl />
+  ) : (
+    <PublishButton />
+  )
 }
 
 /**
@@ -93,6 +100,13 @@ const SendButton = () => {
   const { submit } = useForm()
 
   const body = useFormFields(([fields]) => fields.body?.value)
+  /**
+   * The optional note for the district (Jason, 2026-11-12: a box beside the button, so sending
+   * stays one click). Local, not a form field, so autosave never sends it; it goes with the send
+   * as `changeComment` and lands on the submit's activity-log entry, the queue and the digest.
+   */
+  const [note, setNote] = useState('')
+  const noteId = useId()
 
   const send = useCallback(async () => {
     if (!collectionSlug || uploadStatus === 'uploading') return
@@ -103,24 +117,44 @@ const SendButton = () => {
       return
     }
     const search = `?locale=${locale}&depth=0&fallback-locale=null&draft=true`
-    await submit({
+    const result = await submit({
       action: formatAdminURL({
         apiRoute: api,
         path: `/${collectionSlug}${id ? `/${id}` : ''}${search}`,
       }),
       method: id ? 'PATCH' : 'POST',
-      overrides: { _status: 'draft', reviewState: 'submitted' },
+      overrides: {
+        _status: 'draft',
+        reviewState: 'submitted',
+        ...(note.trim() === '' ? {} : { changeComment: note.trim() }),
+      },
     })
-  }, [api, body, collectionSlug, id, locale, submit, uploadStatus])
+    if (result) setNote('')
+  }, [api, body, collectionSlug, id, locale, note, submit, uploadStatus])
 
   return (
-    <FormSubmit
-      buttonId="action-send-for-approval"
-      onClick={() => void send()}
-      size="medium"
-      type="button"
-    >
-      {SEND_FOR_APPROVAL}
-    </FormSubmit>
+    <div className="send-for-approval">
+      <div className="send-for-approval__note">
+        <label className="send-for-approval__label" htmlFor={noteId}>
+          Note for the district
+        </label>
+        <input
+          className="send-for-approval__input"
+          id={noteId}
+          maxLength={2000}
+          onChange={(event) => setNote(event.target.value)}
+          type="text"
+          value={note}
+        />
+      </div>
+      <FormSubmit
+        buttonId="action-send-for-approval"
+        onClick={() => void send()}
+        size="medium"
+        type="button"
+      >
+        {SEND_FOR_APPROVAL}
+      </FormSubmit>
+    </div>
   )
 }

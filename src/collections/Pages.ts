@@ -12,6 +12,7 @@ import { schoolPalette } from '@/access/school-layout'
 import { districtOnlyField } from '@/access/tenant-scoped'
 import type { AuthUser } from '@/access/types'
 import { documentReviewField } from '@/admin/Approvals/document-review-field'
+import { changeCommentField } from '@/collections/fields/change-comment'
 import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 import {
   deriveSlugFromTitle,
@@ -219,6 +220,8 @@ export const Pages: CollectionConfig = {
     },
     /** The district's review — diff, Approve, Request changes — on the page itself (2026-11-12). */
     documentReviewField,
+    /** The optional comment sent with a publish, schedule or send — never stored (2026-11-12). */
+    changeCommentField,
     {
       /**
        * The Page settings dialog's heading and Close (Jason, 2026-10-29) — first, so it heads the

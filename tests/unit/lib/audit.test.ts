@@ -44,6 +44,7 @@ describe('pages', () => {
         actor: '5',
         actorLabel: 'm@dd2.org',
         summary: '',
+        comment: '',
         autoApproved: false,
       },
     ])
@@ -407,5 +408,42 @@ describe('users', () => {
 describe('anything else', () => {
   it('a collection the trail does not cover records nothing', () => {
     expect(auditEntries({ ...pages({}), collection: 'theme' })).toEqual([])
+  })
+})
+
+describe('comments on publish, schedule and send (Jason, 2026-11-12)', () => {
+  it('a school’s comment on sending is on the submit entry, trimmed', () => {
+    const [entry] = auditEntries(
+      pages({ doc: page({ reviewState: 'submitted' }), comment: '  Spring bus times.  ' }),
+    )
+    expect(entry).toMatchObject({ action: 'submit', comment: 'Spring bus times.' })
+  })
+
+  it('the district’s comment on publishing is on the publish entry', () => {
+    const [entry] = auditEntries(
+      pages({
+        user: district,
+        previous: page({ _status: 'draft' }),
+        doc: page({ _status: 'published' }),
+        comment: 'Checked with the principal.',
+      }),
+    )
+    expect(entry).toMatchObject({ action: 'publish', comment: 'Checked with the principal.' })
+  })
+
+  it('a request for changes carries its note as the comment', () => {
+    const [entry] = auditEntries(
+      pages({
+        user: district,
+        previous: page({ reviewState: 'submitted' }),
+        doc: page({ reviewState: 'changes-requested', reviewNote: 'Add return times.' }),
+      }),
+    )
+    expect(entry).toMatchObject({ action: 'request-changes', comment: 'Add return times.' })
+  })
+
+  it('no comment is an empty one', () => {
+    const [entry] = auditEntries(pages({ doc: page({ reviewState: 'submitted' }), comment: '   ' }))
+    expect(entry?.comment).toBe('')
   })
 })

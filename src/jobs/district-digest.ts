@@ -1,6 +1,7 @@
 import type { PayloadRequest, TaskConfig } from 'payload'
 
 import { relationshipIdOf } from '@/access/predicates'
+import { sentComments } from '@/collections/sent-comments'
 import { alertRecipients, districtMail, type WaitingPage } from '@/lib/district-digest'
 import { DISTRICT_TIME_ZONE } from '@/lib/queue-age'
 
@@ -63,11 +64,16 @@ const waitingPages = async (req: PayloadRequest): Promise<WaitingPage[]> => {
           req,
         })
   const names = new Map(tenants.map((t) => [String(t.id), t.name]))
+  const comments = await sentComments(
+    req,
+    docs.map((d) => ({ collection: d.kind === 'announcement' ? 'posts' : 'pages', id: d.id })),
+  )
   return docs.map((d) => ({
     title: typeof d.title === 'string' ? d.title : '',
     school: names.get(relationshipIdOf(d.tenant as never) ?? '') ?? 'Unknown school',
     sentAt: d.submittedAt,
     kind: d.kind,
+    comment: comments.get(`${d.kind === 'announcement' ? 'posts' : 'pages'}/${String(d.id)}`) ?? '',
   }))
 }
 

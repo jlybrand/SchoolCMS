@@ -10,6 +10,7 @@ import {
 import { districtOnlyField } from '@/access/tenant-scoped'
 import type { AuthUser } from '@/access/types'
 import { documentReviewField } from '@/admin/Approvals/document-review-field'
+import { changeCommentField } from '@/collections/fields/change-comment'
 import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 import { makeApproveEndpoint } from '@/collections/endpoints/approve'
 import { auditChange, auditDelete } from '@/collections/hooks/audit'
@@ -65,7 +66,13 @@ import { slugify } from '@/lib/slug'
  * like `syndication`: a school's form then never holds a date, so a school's save never carries
  * one back — which post access would refuse as publishing (`isPublishingWrite`).
  */
-const dateField = (name: string, label: string, description: string): Field => ({
+const dateField = (
+  name: string,
+  label: string,
+  description: string,
+  /** Chosen elsewhere, so not drawn in the form — but kept in its state for what reads it. */
+  hidden = false,
+): Field => ({
   name,
   type: 'date',
   label,
@@ -74,6 +81,7 @@ const dateField = (name: string, label: string, description: string): Field => (
   admin: {
     description,
     position: 'sidebar',
+    hidden,
     date: { pickerAppearance: 'dayAndTime' },
     condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
   },
@@ -174,6 +182,8 @@ export const Posts: CollectionConfig = {
     },
     /** The district's review — diff, Approve, Request changes — on the announcement itself. */
     documentReviewField,
+    /** The optional comment sent with a publish, schedule or send — never stored (2026-11-12). */
+    changeCommentField,
     {
       name: 'title',
       type: 'text',
@@ -290,7 +300,11 @@ export const Posts: CollectionConfig = {
      * a school's sight: a Start would let a school publish by waiting (`isPublishingWrite`). The
      * district usually sets them when approving, in the queue.
      */
-    dateField('publishAt', 'Start', 'Optional. Goes live at this time instead of now.'),
+    /**
+     * Chosen in the Publish dialog since 2026-11-12 (Jason: announcements get the pages' dialog),
+     * so hidden here; still in form state, which is where the dialog reads a scheduled time.
+     */
+    dateField('publishAt', 'Start', 'Optional. Goes live at this time instead of now.', true),
     dateField(
       'expiresAt',
       'Expires',

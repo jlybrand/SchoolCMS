@@ -85,6 +85,11 @@ export const AuditEvents: CollectionConfig = {
       },
     },
     { name: 'summary', type: 'textarea', admin: { readOnly: true } },
+    /**
+     * What was written with a publish, schedule or send — or a request's note (Jason,
+     * 2026-11-12). The page's history and the queue read it here.
+     */
+    { name: 'comment', type: 'textarea', admin: { readOnly: true } },
     {
       name: 'autoApproved',
       label: 'Auto-approved',

@@ -39,17 +39,20 @@ export const headerLabel = (state: PublishState, time: string | null): string =>
 /** Opens on "Now"; on "Later", showing its time, when something is already scheduled. */
 export const initialWhen = (state: PublishState): PublishWhen => (state.scheduled ? 'later' : 'now')
 
-export const dialogHeading = (state: PublishState): string => {
+/** What is being published, in the dialog's words — announcements share it (2026-11-12). */
+export type PublishNoun = 'page' | 'announcement'
+
+export const dialogHeading = (state: PublishState, noun: PublishNoun = 'page'): string => {
   if (state.scheduled) {
-    return state.live ? 'Change when your changes go live' : 'Change when this page goes live'
+    return state.live ? 'Change when your changes go live' : `Change when this ${noun} goes live`
   }
-  return state.live ? 'Publish your changes' : 'Publish this page'
+  return state.live ? 'Publish your changes' : `Publish this ${noun}`
 }
 
 /** What "later" means for this page: off the site until then, or the site as it is. */
-export const laterHint = (state: PublishState): string =>
+export const laterHint = (state: PublishState, noun: PublishNoun = 'page'): string =>
   state.live
-    ? 'The page on the site stays as it is until then. Your changes go live on their own at that time.'
+    ? `The ${noun} on the site stays as it is until then. Your changes go live on their own at that time.`
     : 'It stays off the site until then, and goes live on its own at that time.'
 
 /** The dialog has one primary action, named for the choice made. */
@@ -80,17 +83,22 @@ export const publishRequest = (
   when: PublishWhen,
   value: string,
   now: Date,
+  /** The optional comment (Jason, 2026-11-12) — sent as `changeComment`, kept in the activity log. */
+  comment = '',
 ):
-  | {
-      ok: true
-      overrides: typeof PUBLISH_NOW | ReturnType<typeof scheduleFor>
-      draft: boolean
-    }
+  | { ok: true; overrides: Record<string, unknown>; draft: boolean }
   | { ok: false; refusal: string } => {
-  if (when === 'now') return { ok: true, overrides: PUBLISH_NOW, draft: false }
+  const said = comment.trim()
+  const withComment = <T extends Record<string, unknown>>(o: T) =>
+    said === '' ? o : { ...o, changeComment: said }
+  if (when === 'now') return { ok: true, overrides: withComment(PUBLISH_NOW), draft: false }
   const refusal = scheduleRefusal(value, now)
   if (refusal) return { ok: false, refusal }
-  return { ok: true, overrides: scheduleFor(new Date(value).toISOString()), draft: true }
+  return {
+    ok: true,
+    overrides: withComment(scheduleFor(new Date(value).toISOString())),
+    draft: true,
+  }
 }
 
 /** Why a typed day and time cannot be scheduled, or null. Same words as the announcement dates. */

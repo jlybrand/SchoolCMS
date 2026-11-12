@@ -164,3 +164,40 @@ describe('toLocalInputValue', () => {
     expect(toLocalInputValue('nonsense')).toBe('')
   })
 })
+
+describe('announcements get the same dialog, in their own words (Jason, 2026-11-12)', () => {
+  it('names an announcement where a page is named', () => {
+    expect(dialogHeading(NEW, 'announcement')).toBe('Publish this announcement')
+    expect(dialogHeading(SCHEDULED, 'announcement')).toBe('Change when this announcement goes live')
+    expect(laterHint(LIVE, 'announcement')).toBe(
+      'The announcement on the site stays as it is until then. Your changes go live on their own at that time.',
+    )
+  })
+
+  it('a page by default, as before', () => {
+    expect(dialogHeading(NEW)).toBe('Publish this page')
+  })
+})
+
+describe('the optional comment rides with the publish (Jason, 2026-11-12)', () => {
+  it('is added to what either choice sends, trimmed', () => {
+    expect(publishRequest('now', '', NOW, '  Checked.  ')).toEqual({
+      ok: true,
+      overrides: { ...PUBLISH_NOW, changeComment: 'Checked.' },
+      draft: false,
+    })
+    expect(publishRequest('later', toLocalInputValue(LATER), NOW, 'For Monday.')).toEqual({
+      ok: true,
+      overrides: { ...scheduleFor(LATER), changeComment: 'For Monday.' },
+      draft: true,
+    })
+  })
+
+  it('is left out when empty', () => {
+    expect(publishRequest('now', '', NOW, '   ')).toEqual({
+      ok: true,
+      overrides: PUBLISH_NOW,
+      draft: false,
+    })
+  })
+})

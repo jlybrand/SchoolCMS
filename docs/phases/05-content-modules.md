@@ -967,7 +967,7 @@ form. No end date. Expires = unpublished entirely.
 | `src/collections/endpoints/schedule.ts`                     | `runSchedule(req, now)`: scheduled + Start ≤ now → publish the latest version if still `scheduled`; published + Expires ≤ now → `_status: draft`; Featured until passed in the last 10 min → `revalidatePost`. `POST /api/schedule/run` (root endpoint) (district, or `x-dd2-schedule-key` = HMAC of `PAYLOAD_SECRET`). `scheduleTask` every 5 min calls it on `DD2_INTERNAL_URL` or `127.0.0.1:$PORT`; on failure sweeps in-process |
 | `src/collections/hooks/revalidate-on-publish.ts`            | `revalidatePost` (moved from `Posts.ts`, named for the job)                                                                                                                                                                                                                                                                                                                                                                          |
 | `src/content/posts.ts`                                      | `listPosts`: featured (`featuredUntil > now`) first, then the rest; each newest first                                                                                                                                                                                                                                                                                                                                                |
-| `src/admin/Approvals/ApprovalDates.tsx`, `ApprovalItem.tsx` | posts: "Set dates (optional)" `<details>`, three `datetime-local` inputs; checked client-side with `checkPostDates`; a future Start makes "Approve and schedule"; outcome "Approved. … goes live on …"                                                                                                                                                                                                                               |
+| `src/admin/Approvals/ApprovalDates.tsx`, `ApprovalItem.tsx` | posts: "Set dates" `<details>`, three `datetime-local` inputs; checked client-side with `checkPostDates`; a future Start makes "Approve and schedule"; outcome "Approved. … goes live on …"                                                                                                                                                                                                                                          |
 | `src/lib/audit.ts`, `src/lib/dashboard.ts`                  | actions `schedule` ("Goes live …") and `expire`; the job's publish summary "At its scheduled time"; activity sentences                                                                                                                                                                                                                                                                                                               |
 | `src/lib/review-emails.ts`                                  | outcome `scheduled` (approved, goes live on …); `scheduled` → published = `approved`                                                                                                                                                                                                                                                                                                                                                 |
 | `src/admin/Announcements/announcements.ts`, `SchoolPlane/*` | `scheduled`: district "Scheduled", school "Approved, goes live later"; school recent submissions include it (posts only)                                                                                                                                                                                                                                                                                                             |
@@ -1456,7 +1456,7 @@ loaded, approve refuses it ("Reload the page").
   - the panel on a waiting page, its queue links (panel and header), and axe in both themes
   - Approve: published, the panel gone, the header now "Publish changes"
   - Request changes with a note: `changes-requested`
-  - an announcement's dates behind "Set dates (optional)"
+  - an announcement's dates behind "Set dates"
   - no panel on a page not waiting, and none for the school that sent it
 
 ## 33. The dashboard icon at the top of the side navigation (Jason, 2026-11-12)
@@ -1481,3 +1481,57 @@ navigation is closed.
   and every menu link (school: above "Your school"); leads home and is marked current there; axe in
   both themes. Payload saves "nav open" per user on the server and other specs flip it, so the spec
   opens the nav until a trial click on the icon succeeds.
+
+## 34. An optional comment on Publish, Schedule and Send for approval (Jason, 2026-11-12)
+
+Anyone publishing, scheduling or sending a page or announcement may add a comment. It is kept on
+that action's activity-log entry, which is where the history, the queue and the emails read it.
+Announcements get the pages' Publish dialog, so their Start is chosen there too.
+
+| Who      | Where                                                                                                                                              |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| District | the Publish dialog (pages and announcements): **Comment**, with Now or At a set time; in the queue and the review panel, **Comment** above Approve |
+| School   | **Note for the district**, a box beside **Send for approval** in the header. Sending is still one click; the box clears once sent                  |
+
+**How it travels.** `changeComment` is a VIRTUAL field on `pages` and `posts`
+(`src/collections/fields/change-comment.ts`), so it is never stored on the document and never
+rides into the next autosave. Its `beforeChange` hook leaves it on `req.context`, keyed
+`{ collection, id }`, so another document written in the same request never picks it up.
+`auditChange` reads it with `changeCommentFor` onto the entry's new `comment` column. A request's
+note is its comment. Approve takes `comment` in its body and sends it as `changeComment`.
+
+**Where it shows.**
+
+| Place        | Shows                                                                                                                                                 |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Queue        | "Note from <school>" above the diff, from the newest `submit` entry (`sentComments`, `src/collections/sent-comments.ts`); empty if that send had none |
+| Daily digest | the school's comment quoted on the item's line                                                                                                        |
+| Outcome mail | "Comment from the district:" in the approved or scheduled mail                                                                                        |
+
+| File                                                     | Does                                                                                                |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `src/collections/fields/change-comment.ts`               | `changeCommentField` (virtual, hidden, max 2000), `changeCommentFor(req, collection, id)`           |
+| `src/collections/sent-comments.ts`                       | `sentComments(req, items)`: `collection/id` → the newest submit's comment                           |
+| `src/collections/AuditEvents.ts`                         | `comment` (textarea, read-only)                                                                     |
+| `src/lib/audit.ts`                                       | `AuditInput.comment`; `AuditEntry.comment`; request-changes → its note                              |
+| `src/lib/review-emails.ts`, `src/lib/district-digest.ts` | the comment in the outcome mail; the school's comment on a digest line                              |
+| `src/admin/PagePublish/`                                 | `publishRequest(…, comment)`; `dialogHeading` and `laterHint` take a noun; the dialog's comment box |
+| `src/admin/SendForApproval/SendForApprovalButton.tsx`    | the school's note box; `DistrictPublish` gives posts the dialog                                     |
+| `src/collections/Posts.ts`                               | `publishAt` hidden: chosen in the dialog                                                            |
+| `src/admin/Approvals/`                                   | `QueueItem.comment`; the school's note above the diff; the approve comment                          |
+
+### Tests
+
+- Unit: `audit.test.ts`, `review-emails.test.ts`, `district-digest.test.ts`, `page-publish.test.ts`
+- Integration:
+  - `change-comments.test.ts`: submit, publish and approve entries carry the comment; it is never
+    stored; the queue item has the school's
+  - `review-emails.test.ts`: approve's email quotes it
+  - `district-digest.test.ts`: the digest quotes it
+- E2E:
+  - `publish-comments.spec.ts`:
+    - the dialog's comment is kept (axe, both themes)
+    - an announcement gets the dialog
+    - the queue shows the school's note, and approve takes a comment
+    - the school's note goes with the send and clears (axe, both themes)
+  - `post-dates.spec.ts`: a post's Start is in the dialog

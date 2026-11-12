@@ -5,6 +5,7 @@ import type {
   PayloadRequest,
 } from 'payload'
 
+import { changeCommentFor } from '@/collections/fields/change-comment'
 import { autoApprovalOf } from '@/collections/hooks/auto-approve'
 import { scheduledRunOf } from '@/collections/hooks/scheduled-dates'
 import { auditEntries, type AuditInput } from '@/lib/audit'
@@ -88,6 +89,7 @@ export const auditChange =
       restoring: req.context?.isRestoringVersion === true,
       autoApproval: autoApprovalOf(req) ?? undefined,
       scheduledRun: scheduledRunOf(req) ?? undefined,
+      comment: changeCommentFor(req, collection, doc.id),
     })
     return doc
   }

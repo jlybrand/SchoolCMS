@@ -123,7 +123,7 @@ adminTest.describe('reviewing on the page itself', () => {
         timeout: 20_000,
       })
       // Closed by default, as in the queue, so Approve stays one click.
-      await panel.getByText('Set dates (optional)').click()
+      await panel.getByText('Set dates').click()
       await expect(panel.getByLabel('Start')).toBeVisible()
       await expect(panel.getByRole('button', { name: 'Approve and publish' })).toBeVisible()
     } finally {

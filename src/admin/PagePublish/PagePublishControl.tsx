@@ -21,6 +21,7 @@ import {
   publishRequest,
   publishStateFor,
   toLocalInputValue,
+  type PublishNoun,
   type PublishWhen,
 } from './page-publish'
 import styles from './PagePublishControl.module.css'
@@ -75,7 +76,10 @@ export const PagePublishControl = () => {
   const [when, setWhen] = useState<PublishWhen>('now')
   const [value, setValue] = useState('')
   const [refusal, setRefusal] = useState<string | null>(null)
+  const [comment, setComment] = useState('')
   const ids = useId()
+  const commentId = `${ids}-comment`
+  const commentHintId = `${ids}-comment-hint`
   const headingId = `${ids}-heading`
   const nowId = `${ids}-now`
   const laterId = `${ids}-later`
@@ -107,7 +111,11 @@ export const PagePublishControl = () => {
     [api, collectionSlug, id, locale, submit, uploadStatus],
   )
 
+  // Pages and announcements share the dialog (Jason, 2026-11-12); it names which.
+  const noun: PublishNoun = collectionSlug === 'posts' ? 'announcement' : 'page'
+
   const openDialog = () => {
+    setComment('')
     const first = initialWhen(state)
     setWhen(first)
     setValue(toLocalInputValue(scheduledAt))
@@ -123,7 +131,7 @@ export const PagePublishControl = () => {
   }
 
   const confirm = async () => {
-    const request = publishRequest(when, value, new Date())
+    const request = publishRequest(when, value, new Date(), comment)
     if (!request.ok) {
       setRefusal(request.refusal)
       document.getElementById(inputId)?.focus()
@@ -163,7 +171,7 @@ export const PagePublishControl = () => {
          */}
         <div className={styles.form}>
           <h2 className={styles.heading} id={headingId}>
-            {dialogHeading(state)}
+            {dialogHeading(state, noun)}
           </h2>
           <fieldset className={styles.choices}>
             <legend className={styles.label}>When should it go live?</legend>
@@ -193,7 +201,7 @@ export const PagePublishControl = () => {
 
           {when === 'later' ? (
             <>
-              <p className={styles.hint}>{laterHint(state)}</p>
+              <p className={styles.hint}>{laterHint(state, noun)}</p>
               <label className={styles.label} htmlFor={inputId}>
                 Goes live on
               </label>
@@ -217,6 +225,22 @@ export const PagePublishControl = () => {
               />
             </>
           ) : null}
+          {/* Optional (Jason, 2026-11-12): kept with this publish in the activity log and the
+              history, and quoted in the email to the school when it approves their change. */}
+          <label className={styles.label} htmlFor={commentId}>
+            Comment
+          </label>
+          <span className={styles.hint} id={commentHintId}>
+            Saved in this {noun}’s history.
+          </span>
+          <textarea
+            aria-describedby={commentHintId}
+            className={styles.comment}
+            id={commentId}
+            onChange={(event) => setComment(event.target.value)}
+            rows={3}
+            value={comment}
+          />
           <p className={styles.error} id={errorId} role="alert">
             {refusal}
           </p>
