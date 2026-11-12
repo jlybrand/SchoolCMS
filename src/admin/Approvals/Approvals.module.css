@@ -25,6 +25,12 @@
   color: var(--theme-elevation-800);
 }
 
+/* "Showing pages only" — the queue narrowed from a dashboard card. */
+.filter {
+  margin-block: -1rem 1.5rem;
+  color: var(--theme-elevation-800);
+}
+
 .items {
   display: grid;
   gap: 1.5rem;

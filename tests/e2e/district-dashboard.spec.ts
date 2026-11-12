@@ -84,6 +84,51 @@ adminTest.describe('the district dashboard', () => {
     },
   )
 
+  for (const colorScheme of ['light', 'dark'] as const) {
+    adminTest(
+      `@a11y a kind’s card opens the queue at that kind, with the way back — ${colorScheme}`,
+      async ({ page, baseURL }) => {
+        await page.emulateMedia({ colorScheme })
+        const fixture = await makePage(baseURL, { title: uniqueTitle('Card check') })
+        const school = await schoolRequest(baseURL)
+        try {
+          const sent = await school.patch(`/api/pages/${fixture.id}?draft=true`, {
+            data: { reviewState: 'submitted' },
+          })
+          expect(sent.ok(), await sent.text()).toBe(true)
+
+          await page.goto('/admin')
+          const pagesCard = page.locator('#approval-card-pages')
+          await expect(pagesCard).toContainText(/\d+ pages? waiting/, { timeout: 20_000 })
+          await expect(page.locator('#approval-card-posts')).toContainText(/announcements? waiting/)
+          expect(await blockingViolations(page)).toEqual([])
+
+          const open = pagesCard.getByRole('link', { name: /^Open the \d+ pages? waiting/ })
+          await expect(open).toHaveAttribute('href', '/admin/approvals?kind=pages')
+          await open.click()
+          await expect(page).toHaveURL(/\/admin\/approvals\?kind=pages$/)
+          await expect(page.locator('#approvals').getByRole('status')).toHaveText(
+            /pages? (is|are) waiting/,
+          )
+          await expect(page.getByText('Showing pages only.')).toBeVisible()
+          await expect(page.locator(`#approval-pages-${fixture.id}`)).toBeVisible()
+          // Only pages: no announcement is listed here.
+          await expect(page.locator('[id^="approval-posts-"]')).toHaveCount(0)
+          expect(await blockingViolations(page)).toEqual([])
+
+          await page.getByRole('link', { name: 'Show everything waiting' }).click()
+          await expect(page).toHaveURL(/\/admin\/approvals$/)
+          await expect(page.locator('#approvals').getByRole('status')).toHaveText(
+            /submissions? (is|are) waiting/,
+          )
+        } finally {
+          await school.dispose()
+          await dropPage(fixture)
+        }
+      },
+    )
+  }
+
   adminTest('needs freshening names what is stale, or says nothing is', async ({ page }) => {
     await page.goto('/admin')
     const panel = page.locator('#freshness-panel')

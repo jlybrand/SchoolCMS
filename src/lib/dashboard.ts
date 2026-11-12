@@ -1,3 +1,4 @@
+import { kindWords, type QueueKind } from '@/admin/Approvals/queue-filter'
 import { DAY, describeWait, localDay, OVERDUE_BUSINESS_DAYS } from '@/lib/queue-age'
 
 /**
@@ -94,6 +95,29 @@ export const approvalSummary = (
       : `${count} submissions are waiting.${when ? ` The oldest was ${when}.` : ''}`
   return { count, text, overdue }
 }
+
+export type ApprovalCard = { id: string; title: string; href: string; label: string }
+
+/**
+ * One card per kind (Payload's `Card`, Jason 2026-11-12), each opening the queue at that kind
+ * (`src/admin/Approvals/queue-filter.ts`). Both kinds always, so the cards do not appear and
+ * vanish as the queue empties. `label` names the card's link — Payload's Card puts its link over
+ * the whole card with no text of its own.
+ */
+export const approvalCards = (waiting: readonly { collection?: unknown }[]): ApprovalCard[] =>
+  (['pages', 'posts'] as const satisfies readonly QueueKind[]).map((kind) => {
+    const { one, many } = kindWords(kind)
+    const count = waiting.filter((w) => w.collection === kind).length
+    return {
+      id: `approval-card-${kind}`,
+      title: count === 0 ? `No ${many} waiting` : `${count} ${count === 1 ? one : many} waiting`,
+      href: `/admin/approvals?kind=${kind}`,
+      label:
+        count === 0
+          ? `Open the ${many} part of the approval queue`
+          : `Open the ${count} ${count === 1 ? one : many} waiting for approval`,
+    }
+  })
 
 // ---------------------------------------------------------------------------------------------
 // ② Needs freshening
