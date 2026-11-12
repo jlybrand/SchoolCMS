@@ -1,0 +1,65 @@
+/*
+ * Live Preview's device tabs (Jason, 2026-11-12) — see `DeviceTabs.tsx`. Global, not a module:
+ * the tabs are portaled into Payload's toolbar, and the dropdown they replace is Payload's.
+ * Payload's theme variables: `--theme-elevation-800` on `-0` passes in both themes. Logical
+ * properties only (rule 5).
+ */
+
+/* Payload's breakpoint dropdown: the tabs replace it. Width, height, zoom and the new-tab link stay. */
+.live-preview-toolbar-controls__breakpoint {
+  display: none;
+}
+
+.device-tabs-host {
+  display: flex;
+}
+
+.device-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border: 1px solid var(--theme-elevation-400);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.device-tabs__tab {
+  padding-block: 0.25rem;
+  padding-inline: 0.75rem;
+  border: 0;
+  border-inline-start: 1px solid var(--theme-elevation-400);
+  background: var(--theme-elevation-0);
+  color: var(--theme-elevation-800);
+  font: inherit;
+  cursor: pointer;
+}
+
+.device-tabs__tab:first-child {
+  border-inline-start: 0;
+}
+
+.device-tabs__tab:hover {
+  background: var(--theme-elevation-100);
+}
+
+/* The chosen device: filled, and in bold, so it does not rest on color alone. */
+.device-tabs__tab[aria-pressed='true'] {
+  background: var(--theme-elevation-800);
+  color: var(--theme-elevation-0);
+  font-weight: 600;
+}
+
+.device-tabs__tab:focus-visible {
+  outline: 2px solid var(--theme-elevation-800);
+  outline-offset: -4px;
+}
+
+/*
+ * The device fitted to its pane (Jason, 2026-11-12): Payload's device frame — the box sized to the
+ * device, inside the pane — drawn at `--dd2-preview-fit`, set by `DeviceTabs.tsx`. CSS `zoom`, not
+ * a transform: it shrinks the box itself, so the page inside is still laid out at the device's
+ * width and nothing is left taking up the unshrunk space.
+ */
+.live-preview-window__main > div > div {
+  zoom: var(--dd2-preview-fit, 1);
+}

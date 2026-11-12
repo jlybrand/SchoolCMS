@@ -1583,3 +1583,42 @@ publish at its scheduled time carries the comment it was scheduled with.
   - a school sees nothing
 - E2E: `page-history.spec.ts` (the tab is History) and `page-toolbar.spec.ts` (History opens the
   list)
+
+## 36. Live Preview's device tabs (Jason, 2026-11-12)
+
+Live Preview's toolbar shows **Mobile · Tablet · Desktop · Responsive** as tabs and opens on
+**Desktop**. This replaces Payload's breakpoint dropdown, which hid the choice behind a click and
+always opened on Responsive. Payload's width and height boxes, zoom, and open-in-a-new-tab stay.
+
+Payload's preview toolbar has no slot. So `previewDevices`, a `ui` field on `pages`, draws nothing
+where it sits. It reads and sets Payload's `breakpoint` through `useLivePreviewContext()`, and
+PORTALS its buttons into a host it adds at the start of `.live-preview-toolbar-controls`. A
+`MutationObserver` finds the toolbar again whenever the preview reopens. It moves Payload's opening
+Responsive to Desktop once; after that the person's choice stands, Responsive included. The tabs
+are a group of toggle buttons (`aria-pressed`, "Preview size"), not ARIA tabs, because they size
+the one preview and own no panels.
+
+**Fitted to the pane.** A device wider than the pane (Desktop, and usually Tablet) is shrunk until
+it shows whole: on opening, on every tab, and as the pane resizes (`ResizeObserver`). It uses CSS
+`zoom` on Payload's device frame (`.live-preview-window__main > div > div`, from
+`--dd2-preview-fit`), so the page is still laid out at the device's width. Payload's own zoom is
+NOT used: it keeps the device box at its size and lays the page out wider inside it. If the person
+sets Payload's zoom away from 100%, the fit steps aside.
+
+| File                                    | Does                                                                                                                            |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `src/admin/LivePreview/device-tabs.ts`  | pure: `PREVIEW_BREAKPOINTS` (Mobile 375×667, Tablet 768×1024, Desktop 1280×800), `DEVICE_TABS`, `DEFAULT_DEVICE`, `firstDevice` |
+| `src/admin/LivePreview/DeviceTabs.tsx`  | the portaled group; `#preview-device-tabs`                                                                                      |
+| `src/admin/LivePreview/device-tabs.css` | hides `.live-preview-toolbar-controls__breakpoint`; the tabs' look (chosen: filled and bold)                                    |
+| `src/collections/Pages.ts`              | `livePreview.breakpoints` from `PREVIEW_BREAKPOINTS`; the `previewDevices` field                                                |
+
+### Tests
+
+- `tests/unit/admin/device-tabs.test.ts`: the order, the names, the sizes, opening on Desktop once,
+  `fitZoom`, `deviceWidth`
+- `tests/e2e/live-preview.spec.ts`:
+  - the four tabs; Payload's dropdown hidden
+  - opens on Desktop (width 1280); Mobile, Tablet and Desktop set 375, 768 and 1280; Responsive
+    is pressed
+  - at Desktop and Tablet the frame fits inside the pane and the page is laid out at 1280 and 768
+  - the existing whole-screen axe with the preview open covers the tabs in both themes

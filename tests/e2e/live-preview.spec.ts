@@ -79,6 +79,66 @@ schoolTest.describe('Live Preview — a school manager', () => {
     },
   )
 
+  schoolTest(
+    'device tabs: opens on Desktop, and Mobile, Tablet and Responsive resize it (2026-11-12)',
+    async ({ page, baseURL }) => {
+      const fixture = await makePage(baseURL, { title: uniqueTitle('Device tabs') })
+      try {
+        await page.goto(`/admin/collections/pages/${fixture.id}`)
+        await openPreview(page)
+        try {
+          const tabs = page.getByRole('group', { name: 'Preview size' })
+          await expect(tabs.getByRole('button')).toHaveText([
+            'Mobile',
+            'Tablet',
+            'Desktop',
+            'Responsive',
+          ])
+          // Payload's own dropdown is gone; its width box stays and says the size.
+          await expect(page.locator('.live-preview-toolbar-controls__breakpoint')).toBeHidden()
+          const width = page.locator('input[name="live-preview-width"]')
+          const pick = (name: string) => tabs.getByRole('button', { name, exact: true })
+
+          await expect(pick('Desktop')).toHaveAttribute('aria-pressed', 'true')
+          await expect(width).toHaveValue('1280')
+          for (const [name, px] of [
+            ['Mobile', '375'],
+            ['Tablet', '768'],
+            ['Desktop', '1280'],
+          ] as const) {
+            await pick(name).click()
+            await expect(pick(name)).toHaveAttribute('aria-pressed', 'true')
+            await expect(width).toHaveValue(px)
+          }
+          // Fitted to the pane (Jason, 2026-11-12): the whole device shows, laid out at its own width.
+          for (const [name, px] of [
+            ['Desktop', 1280],
+            ['Tablet', 768],
+          ] as const) {
+            await pick(name).click()
+            await expect(async () => {
+              const pane = await page.locator('.live-preview-window__main').boundingBox()
+              const frame = await page.locator('#live-preview-iframe').boundingBox()
+              expect(frame!.x + frame!.width).toBeLessThanOrEqual(pane!.x + pane!.width)
+              const laidOut = await preview(page)
+                .locator('html')
+                .evaluate(() => window.innerWidth)
+              expect(Math.abs(laidOut - px)).toBeLessThanOrEqual(1)
+            }).toPass({ timeout: 10_000 })
+          }
+
+          await pick('Responsive').click()
+          await expect(pick('Responsive')).toHaveAttribute('aria-pressed', 'true')
+          await expect(pick('Desktop')).toHaveAttribute('aria-pressed', 'false')
+        } finally {
+          await closePreview(page)
+        }
+      } finally {
+        await dropPage(fixture)
+      }
+    },
+  )
+
   for (const colorScheme of ['light', 'dark'] as const) {
     schoolTest(
       `@a11y the page form with the preview open — ${colorScheme}`,
