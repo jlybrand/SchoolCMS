@@ -6,6 +6,7 @@ import { ReviewStatusField as ReviewStatusField_078936fce220cbf8e528e3d7e8fc0dfa
 import { PageSettingsHeader as PageSettingsHeader_db46844617032efcf0d7dec80489bbeb } from '../../../admin/PageToolbar/PageSettingsHeader'
 import { PermalinkField as PermalinkField_f6814ebdf510877580b089f38a229b9a } from '../../../admin/Permalink/PermalinkField'
 import { LinkedPageCell as LinkedPageCell_7356ccf667888eca398b067f1932d5a1 } from '../../../admin/LinkedPage/LinkedPageCell'
+import { LinkModeField as LinkModeField_ffc1c570f7c591672fe8b03a65452e01 } from '../../../admin/LinkedPage/LinkModeField'
 import { PageSettingsFooter as PageSettingsFooter_db46844617032efcf0d7dec80489bbeb } from '../../../admin/PageToolbar/PageSettingsHeader'
 import { RscEntryLexicalCell as RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
 import { RscEntryLexicalField as RscEntryLexicalField_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
@@ -54,6 +55,7 @@ export const importMap = {
   "/admin/PageToolbar/PageSettingsHeader#PageSettingsHeader": PageSettingsHeader_db46844617032efcf0d7dec80489bbeb,
   "/admin/Permalink/PermalinkField#PermalinkField": PermalinkField_f6814ebdf510877580b089f38a229b9a,
   "/admin/LinkedPage/LinkedPageCell#LinkedPageCell": LinkedPageCell_7356ccf667888eca398b067f1932d5a1,
+  "/admin/LinkedPage/LinkModeField#LinkModeField": LinkModeField_ffc1c570f7c591672fe8b03a65452e01,
   "/admin/PageToolbar/PageSettingsHeader#PageSettingsFooter": PageSettingsFooter_db46844617032efcf0d7dec80489bbeb,
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalCell": RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e,
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalField": RscEntryLexicalField_44fe37237e0ebf4470c9990d8cb7b07e,

@@ -649,7 +649,7 @@ of an address, and render with the path the page has today — the same path ind
 
 ## 11. Hide from navigation and from search engines (Jason, 2026-10-29)
 
-Two district-only checkboxes in the page sidebar (Finalsite's "hide from navigation elements" and
+Two district-only checkboxes, now on the Page settings Page tab (§30) with a third, `hideFromSiteSearch` (Finalsite's "hide from navigation elements" and
 "hide from external search engines").
 
 ### Files
@@ -1307,3 +1307,42 @@ revalidation — the public pages show changes on their hourly refresh.
   re-copy, change, removal; failure keeps the last copy; read-only; no hand-added events; no
   forged `feedUid`; no activity entries; hourly run; back to local
 - `tests/e2e/admin-planes-axe.spec.ts` — a feed calendar's form
+
+## 30. Page settings in tabs (Jason, 2026-11-11)
+
+The Page settings dialog (§13) shows one tab at a time: **Page · Linking · SEO · Access**. The
+fields are still Payload's own, where they always were; a school manager's form is unchanged.
+
+| Tab     | Settings                                                                                                                            |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Page    | `title`, `slug`, `parent`, `hideFromNavigation`, `hideFromSiteSearch` (new), `hideFromSearchEngines`                                |
+| Linking | `linkMode` (checkbox "This page is linked" → pills Internal redirect / Reuse content), `linkTo`, `linkTarget`, `districtLinkTarget` |
+| SEO     | `meta.title`, `meta.description`                                                                                                    |
+| Access  | `visibility` (Anyone / Staff only)                                                                                                  |
+
+Out of the dialog: `publishAt` (in the sidebar beside Publish until it becomes a choice at
+publish), the permanent link (on no tab, so shown nowhere for the district).
+
+### Files
+
+| File                                           | Does                                                                                                                                                                                                      |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/admin/PageToolbar/page-settings.ts`       | `SETTING_TABS` (id, label, paths); `SETTING_PATHS` derived; `tabFor`, `tabClass`, `settingClass`, `firstRefusedTab`, `tabAfterKey`; `TAB_EVENT`, `PANEL_ID`, `tabId`                                      |
+| `src/admin/PageToolbar/PageSettingsHeader.tsx` | the `tablist`: roving `tabIndex`, arrows (reversed under `dir="rtl"`), Home/End; `show(tab)` sets `data-settings-tab` on `.document-fields` and the panel's `aria-labelledby` synchronously               |
+| `src/admin/PageToolbar/PageToolbar.tsx`        | opening marks `.document-fields__fields` `role="tabpanel"` + `PANEL_ID`; `refusedTab` (`firstRefusedTab` over invalid setting paths) opens the dialog on that tab; a missing title shows Page             |
+| `src/admin/PageToolbar/page-settings.css`      | per tab: hides `.dd2-page-setting` not carrying `.dd2-settings-tab-<tab>` (header and footer exempt); `min-block-size` on the panel                                                                       |
+| `src/admin/LinkedPage/LinkModeField.tsx`       | custom `Field` for `linkMode`: checkbox = `linkMode !== 'none'` (ticking → `redirect`); native radios as pills; keeps the server's refusal (`role="alert"`, `aria-invalid`) until a linking value changes |
+| `src/collections/Pages.ts`                     | `className: settingClass(<tab>)` on each setting; link and hide settings moved from the sidebar to the main column (district-only, so one panel holds every setting); `hideFromSiteSearch`                |
+| `src/content/pages.ts`, `src/content/types.ts` | `Page.hideFromSiteSearch` — carried now; the site search that honours it is Phase 6's                                                                                                                     |
+
+### Tests
+
+- `tests/unit/admin/page-settings.test.ts` — tab order, every setting on one tab, `firstRefusedTab`,
+  `tabAfterKey` (LTR and RTL)
+- `tests/integration/content-layer.test.ts` — `hideFromSiteSearch`, separate from search engines
+- `tests/integration/tenant-isolation.test.ts` — a school manager cannot set `hideFromSiteSearch`
+- `tests/e2e/page-toolbar.spec.ts` — each tab's fields only, axe on every tab in both themes,
+  arrow keys and one tab stop, a refused link opens the Linking tab with its reason (axe), the
+  title refusal (axe); `tests/e2e/support/page-settings.ts` (`showSettingsTab`)
+- `tests/e2e/linked-pages.spec.ts`, `page-permalinks.spec.ts`, `post-dates.spec.ts` — updated for
+  the Linking tab, the permanent link out of the dialog, the Start beside Publish

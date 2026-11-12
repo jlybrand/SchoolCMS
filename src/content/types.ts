@@ -184,6 +184,11 @@ export type Page = {
   /** `noindex` and out of the sitemap (Jason, 2026-10-29). Its links are still followed. */
   hideFromSearchEngines: boolean
   /**
+   * Out of the site's own search (Jason, 2026-11-11) — Phase 6 builds that search and honours
+   * this. Separate from `hideFromSearchEngines`: neither implies the other.
+   */
+  hideFromSiteSearch: boolean
+  /**
    * A linked page's target (Jason, 2026-10-29): visiting this page sends the visitor there.
    * Null on an ordinary page. A page on this site or the district site — never anywhere else.
    * The route turns it into an address in the visitor's language (`redirectHref`).

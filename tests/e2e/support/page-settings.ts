@@ -14,3 +14,10 @@ export const openPageSettings = async (page: Page) => {
   }).toPass({ timeout: 30_000 })
   return dialog
 }
+
+/** Shows one of the dialog's tabs (Jason, 2026-11-11): Page, Linking, SEO or Access. */
+export const showSettingsTab = async (page: Page, name: 'Page' | 'Linking' | 'SEO' | 'Access') => {
+  const tab = page.getByRole('tab', { name, exact: true })
+  await tab.click()
+  await expect(tab).toHaveAttribute('aria-selected', 'true')
+}

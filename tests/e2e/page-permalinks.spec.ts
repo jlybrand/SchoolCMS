@@ -8,7 +8,7 @@ import {
 import { ADMIN_STORAGE_STATE, adminCredentials } from './support/admin-session'
 import { uniqueTitle } from './support/fixture-pages'
 import { tenantIdFor } from './support/school-session'
-import { openPageSettings } from './support/page-settings'
+import { openPageSettings, showSettingsTab } from './support/page-settings'
 import { siteUrl } from './support/site-url'
 
 /**
@@ -214,14 +214,17 @@ test.describe('page permalinks', () => {
   test.describe('in the page form', () => {
     test.use({ storageState: ADMIN_STORAGE_STATE })
 
-    test('Page settings shows the permanent link', async ({ page, baseURL }) => {
+    test('Page settings leaves the permanent link out', async ({ page, baseURL }) => {
       const admin = await asDistrict(baseURL)
       const made = await mkPage(admin, 'b.localhost')
       try {
         await page.goto(`/admin/collections/pages/${made.id}`)
-        // A Page setting: behind the toolbar's gear (Jason, 2026-10-29).
-        await openPageSettings(page)
-        await expect(page.getByText(`/dd2/pages/${made.id}`)).toBeVisible({ timeout: 20_000 })
+        // Jason, 2026-11-11: not shown in the dialog — on no tab of it.
+        const dialog = await openPageSettings(page)
+        for (const tab of ['Page', 'Linking', 'SEO', 'Access'] as const) {
+          await showSettingsTab(page, tab)
+          await expect(dialog.getByText(`/dd2/pages/${made.id}`)).toBeHidden()
+        }
       } finally {
         await admin.delete(`/api/pages/${made.id}`)
         await admin.dispose()
