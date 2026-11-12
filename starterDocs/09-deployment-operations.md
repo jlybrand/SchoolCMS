@@ -29,7 +29,8 @@ against the production directory.
 
 ```
 PR:   typecheck → lint (boundary + logical-properties) → unit → integration → build
-      → e2e smoke → axe gate → Lighthouse budget → Preview deploy
+      → e2e (full, sharded) → axe gate → Lighthouse budget* → Preview deploy
+      (* and the component axe gate and dependency audit: only when the PR can affect them — `06` §3)
 main: (all above) → Staging deploy → DB migration (guarded) → post-deploy smoke + a11y
 rel:  tag → manual approval → Production deploy → migration → health/smoke → cache warm
 ```
