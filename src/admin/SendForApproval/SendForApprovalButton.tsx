@@ -17,6 +17,7 @@ import { useCallback } from 'react'
 
 import type { AuthUser } from '@/access/types'
 import { approvalAnchor } from '@/admin/Approvals/anchor'
+import { PagePublishControl } from '@/admin/PagePublish/PagePublishControl'
 
 import { publishControlFor, sendRefusal } from './review-status'
 
@@ -31,7 +32,8 @@ export const SEND_FOR_APPROVAL = 'Send for approval'
  * Which control goes here is `publishControlFor`: a school manager gets the one button — and
  * would otherwise get NOTHING, since Payload's PublishButton renders null without publish
  * permission and autosave hides Save draft. A district admin gets Payload's own Publish, except
- * on a page waiting for approval, where they get a link to it in the approval queue.
+ * on a page waiting for approval, where they get a link to it in the approval queue — and on a
+ * PAGE, "Publish now" / "Schedule…" (`PagePublishControl`, Jason 2026-11-11).
  *
  * WHAT IT SENDS. A draft save with `reviewState: 'submitted'` — the same request Payload's
  * Save draft makes, plus the one field. `applyReviewState` decides what that write means
@@ -51,7 +53,13 @@ export const SendForApprovalButton = () => {
   const control = publishControlFor(user as AuthUser | null, reviewState)
   if (control === 'send') return <SendButton />
   if (control === 'queue') return <ReviewInQueue />
-  return <PublishButton />
+  return <DistrictPublish />
+}
+
+/** Pages choose their Start when publishing (Jason, 2026-11-11); posts keep theirs in the form. */
+const DistrictPublish = () => {
+  const { collectionSlug } = useDocumentInfo()
+  return collectionSlug === 'pages' ? <PagePublishControl /> : <PublishButton />
 }
 
 /**

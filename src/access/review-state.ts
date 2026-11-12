@@ -12,8 +12,9 @@ import type { AuthUser } from './types'
  *   `editing`            a school manager has saved without sending
  *   `submitted`          in the district's queue
  *   `changes-requested`  sent back, with a note, still editable
- *   `scheduled`          approved with a future Start; goes live at its time (posts only —
- *                        Jason, 2026-11-04). A school's save drops it: new words, unapproved.
+ *   `scheduled`          approved with a future Start; goes live at its time (Jason,
+ *                        2026-11-04). A school's save drops it: new words, unapproved. The
+ *                        district cancels it by asking for `null` (2026-11-11).
  *
  * PURE, and the only place the transitions are decided. The `beforeChange` hook in
  * `src/collections/hooks/review-state.ts` applies the result and overwrites whatever the
@@ -144,6 +145,21 @@ const forDistrictAdmin = (current: ReviewFields, input: ReviewInput): ReviewResu
 
   const asked = input.requested !== undefined && input.requested !== current.reviewState
   if (!asked) return { ok: true, fields: current }
+
+  /**
+   * Cancel a schedule (Jason, 2026-11-11 — the Start is chosen when publishing, and unchosen
+   * there). Asked for, never inferred from a Start that has passed. A school's approved change
+   * goes back to the queue with its sender and age; the district's own has nothing pending.
+   */
+  if (input.requested === null && current.reviewState === 'scheduled') {
+    return {
+      ok: true,
+      fields:
+        current.submittedBy === null
+          ? NOTHING_PENDING
+          : { ...current, reviewState: 'submitted', reviewNote: null },
+    }
+  }
 
   if (input.requested !== 'changes-requested') {
     return refuse('The district publishes directly or requests changes.', 'reviewState')

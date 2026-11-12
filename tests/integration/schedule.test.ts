@@ -255,8 +255,8 @@ describe('Expires', () => {
 })
 
 /**
- * A page's Start (Page settings), which nothing acted on until now (Jason, 2026-11-04): the same
- * schedule as an announcement's.
+ * A page's Start (Jason, 2026-11-04): the same schedule as an announcement's. Chosen when
+ * publishing since 2026-11-11 — "Publish now" or "Schedule for…" — and cancelled there.
  */
 describe('a page’s Start', () => {
   const page = (data: Record<string, unknown>) =>
@@ -325,5 +325,66 @@ describe('a page’s Start', () => {
         overrideAccess: false,
       }),
     ).rejects.toThrow(/publishAt/)
+  })
+
+  const draftPage = (id: number | string) =>
+    payload.findByID({ collection: 'pages', id, draft: true, depth: 0, overrideAccess: true })
+  const asDistrict = (id: number | string, data: Record<string, unknown>) =>
+    payload.update({
+      collection: 'pages',
+      id,
+      data: data as never,
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+
+  it('cancelling the schedule leaves a draft with nothing pending, and the sweep passes it by', async () => {
+    const created = await page({ publishAt: inHours(3).toISOString(), _status: 'published' })
+    await asDistrict(created.id, { _status: 'draft', publishAt: null, reviewState: null })
+
+    const doc = await draftPage(created.id)
+    expect(doc.reviewState ?? null).toBeNull()
+    expect(doc.publishAt ?? null).toBeNull()
+    const run = await runSchedule(await system(), inHours(4))
+    expect(run.published).not.toContain(`pages/${created.id}`)
+    expect((await livePage(created.id))._status).toBe('draft')
+  })
+
+  it('“Publish now” on a scheduled page puts it live at once and clears the Start', async () => {
+    const created = await page({ publishAt: inHours(3).toISOString(), _status: 'published' })
+    await asDistrict(created.id, { _status: 'published', publishAt: null })
+
+    const doc = await livePage(created.id)
+    expect(doc._status).toBe('published')
+    expect(doc.publishAt ?? null).toBeNull()
+    expect(doc.reviewState ?? null).toBeNull()
+  })
+
+  it('a new time reschedules it', async () => {
+    const created = await page({ publishAt: inHours(3).toISOString(), _status: 'published' })
+    const later = inHours(8).toISOString()
+    await asDistrict(created.id, { _status: 'published', publishAt: later })
+
+    const doc = await draftPage(created.id)
+    expect(doc.reviewState).toBe('scheduled')
+    expect(new Date(doc.publishAt as string).toISOString()).toBe(later)
+    expect((await runSchedule(await system(), inHours(4))).published).not.toContain(
+      `pages/${created.id}`,
+    )
+  })
+
+  it('a school manager cannot cancel a schedule', async () => {
+    const created = await page({ publishAt: inHours(3).toISOString(), _status: 'published' })
+    await expect(
+      payload.update({
+        collection: 'pages',
+        id: created.id,
+        data: { reviewState: null } as never,
+        draft: true,
+        user: f.managerA,
+        overrideAccess: false,
+      }),
+    ).rejects.toThrow()
+    expect((await draftPage(created.id)).reviewState).toBe('scheduled')
   })
 })

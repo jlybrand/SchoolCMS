@@ -279,9 +279,6 @@ export interface Page {
    * Asks Google and others not to list this page. Anyone with the link can still visit it.
    */
   hideFromSearchEngines?: boolean | null;
-  /**
-   * Optional. Publishing with a time still to come schedules the page: it goes live then.
-   */
   publishAt?: string | null;
   /**
    * The sections of this page, top to bottom. Drag to reorder.

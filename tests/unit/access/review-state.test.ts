@@ -325,4 +325,34 @@ describe('resolveReview — scheduled', () => {
       nothingPending,
     )
   })
+  /**
+   * Cancelling a schedule (Jason, 2026-11-11: the Start is a choice made when publishing, so it
+   * can be unmade there). Asked for explicitly — `reviewState: null` — never inferred from a
+   * Start that has passed, which an autosave between the Start and the job's run would carry.
+   */
+  describe('cancelling the schedule', () => {
+    const scheduledOwn: ReviewFields = { ...nothingPending, reviewState: 'scheduled' }
+
+    it('the district’s own schedule: nothing pending', () => {
+      expect(
+        fieldsOf(run({ user: districtAdmin, current: scheduledOwn, requested: null })),
+      ).toEqual(nothingPending)
+    })
+
+    it('a school’s approved change goes back to the queue, its sender and age kept', () => {
+      expect(fieldsOf(run({ user: districtAdmin, current: scheduled, requested: null }))).toEqual(
+        submitted,
+      )
+    })
+
+    it('is the district’s only', () => {
+      expect(run({ user: managerA, current: scheduled, requested: null }).ok).toBe(false)
+    })
+
+    it('clears nothing that is not a schedule', () => {
+      for (const current of [submitted, changesRequested]) {
+        expect(run({ user: districtAdmin, current, requested: null }).ok).toBe(false)
+      }
+    })
+  })
 })
