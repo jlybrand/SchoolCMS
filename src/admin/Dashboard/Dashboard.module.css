@@ -144,6 +144,18 @@
   border-block-end: 0;
 }
 
+/* The site's name, then what happened as a Payload Pill (Jason, 2026-11-12). */
+.rowHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rowHead :global(.pill) {
+  margin: 0;
+}
+
 .school {
   font-size: 0.8125rem;
   font-weight: 600;

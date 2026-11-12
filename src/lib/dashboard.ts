@@ -235,9 +235,29 @@ export type ActivityInput = {
   autoApproved?: unknown
 }
 
+/**
+ * What happened, in one word and a color — Payload's `Pill` (Jason, 2026-11-12), for scanning the
+ * panel. The sentence says the same in full, so the color is never the only cue (WCAG 1.4.1).
+ * `style` is one of Payload's pill styles: live is green, waiting on someone amber, gone red.
+ */
+export type ActivityTag = { label: string; style: 'success' | 'warning' | 'error' | 'light-gray' }
+
+const TAGS: Record<ContentAction, ActivityTag> = {
+  publish: { label: 'Published', style: 'success' },
+  approve: { label: 'Approved', style: 'success' },
+  'auto-approve': { label: 'Auto-approved', style: 'success' },
+  submit: { label: 'Sent', style: 'warning' },
+  'request-changes': { label: 'Sent back', style: 'warning' },
+  delete: { label: 'Deleted', style: 'error' },
+  schedule: { label: 'Scheduled', style: 'light-gray' },
+  expire: { label: 'Expired', style: 'light-gray' },
+  restore: { label: 'Restored', style: 'light-gray' },
+}
+
 export type ActivityRow = {
   school: string
   sentence: string
+  tag: ActivityTag
   /** Null when there is nothing to open — the item was deleted. */
   href: string | null
   when: string
@@ -296,6 +316,7 @@ export const activityRow = (
   return {
     school: event.school ?? 'District',
     sentence: sentence[event.action],
+    tag: TAGS[event.action],
     href:
       event.action === 'delete' || !id || !NOUNS[type]
         ? null
