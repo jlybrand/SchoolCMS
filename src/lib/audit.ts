@@ -47,6 +47,11 @@ export type AuditEntry = {
   actor: string | null
   actorLabel: string
   summary: string
+  /**
+   * What the person wrote as they published, scheduled or sent it (Jason, 2026-11-12) — or a
+   * request's note. Empty when nothing was written.
+   */
+  comment: string
   autoApproved: boolean
 }
 
@@ -64,6 +69,8 @@ export type AuditInput = {
   autoApproval?: { scope: string } | undefined
   /** Set by the post schedule job (`src/collections/hooks/post-dates.ts`) on its own writes. */
   scheduledRun?: 'publish' | 'expire' | undefined
+  /** The optional comment sent with this write (`changeComment`, `src/collections/fields/`). */
+  comment?: string | undefined
 }
 
 const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '')
@@ -77,7 +84,7 @@ const entry = (
   input: AuditInput,
   doc: NonNullable<Doc>,
   action: AuditAction,
-  fields: { documentTitle: string; tenant: string | null; summary?: string },
+  fields: { documentTitle: string; tenant: string | null; summary?: string; comment?: string },
 ): AuditEntry => ({
   action,
   contentType: input.collection,
@@ -86,6 +93,7 @@ const entry = (
   tenant: fields.tenant,
   ...who(input.user),
   summary: fields.summary ?? '',
+  comment: fields.comment ?? '',
   autoApproved: action === 'auto-approve',
 })
 
@@ -145,6 +153,8 @@ const forReviewed = (input: AuditInput, noun: string): AuditEntry[] => {
               : action === 'publish' && input.scheduledRun === 'publish'
                 ? 'At its scheduled time'
                 : '',
+      // A request's note IS its comment; anything else carries what was written with it.
+      comment: action === 'request-changes' ? text(doc.reviewNote) : text(input.comment),
     }),
   ]
 }

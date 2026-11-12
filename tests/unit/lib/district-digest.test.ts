@@ -273,3 +273,28 @@ describe('alertRecipients', () => {
     expect(alertRecipients([])).toEqual({ to: [], fallback: false })
   })
 })
+
+describe('digestEmail — the school’s comment (Jason, 2026-11-12)', () => {
+  const now = new Date('2026-10-27T11:00:00Z')
+
+  it('quotes a waiting item’s comment on its line, on one line', () => {
+    const email = digestEmail({
+      pages: [{ ...page('Bus routes', '2026-10-26T14:00:00Z'), comment: 'Spring\ntimes.' }],
+      now,
+      timeZone: TZ,
+      queueUrl: QUEUE,
+    })
+    expect(email?.text).toContain('“Spring times.”')
+    expect(email?.html).toContain('“Spring times.”')
+  })
+
+  it('leaves a line without a comment as it was', () => {
+    const email = digestEmail({
+      pages: [page('Bus routes', '2026-10-26T14:00:00Z')],
+      now,
+      timeZone: TZ,
+      queueUrl: QUEUE,
+    })
+    expect(email?.text).not.toContain('“')
+  })
+})

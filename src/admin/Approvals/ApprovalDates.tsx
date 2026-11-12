@@ -43,7 +43,7 @@ export const ApprovalDates = ({
 
   return (
     <details className={styles.dates} open={open || undefined}>
-      <summary className={styles.datesSummary}>Set dates (optional)</summary>
+      <summary className={styles.datesSummary}>Set dates</summary>
       <div className={styles.datesFields}>
         {FIELDS.map((field) => {
           const inputId = `${id}-${field.name}`

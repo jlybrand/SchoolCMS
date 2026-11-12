@@ -81,6 +81,19 @@
   color-scheme: inherit;
 }
 
+.comment {
+  min-block-size: 4.5rem;
+  padding-block: 0.5rem;
+  padding-inline: 0.75rem;
+  border: 1px solid var(--theme-elevation-400);
+  border-radius: 4px;
+  background: var(--theme-elevation-0);
+  color: var(--theme-elevation-800);
+  font: inherit;
+  resize: block;
+}
+
+.comment:focus-visible,
 .input:focus-visible {
   outline: 2px solid var(--theme-elevation-800);
   outline-offset: 2px;

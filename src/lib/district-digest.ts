@@ -27,6 +27,8 @@ export type WaitingPage = {
   school: string
   sentAt: unknown
   kind?: 'page' | 'announcement'
+  /** The school's optional comment as they sent it (Jason, 2026-11-12). */
+  comment?: string | null
 }
 
 const DAY = 24 * 60 * 60 * 1000
@@ -78,9 +80,12 @@ const line = (p: WaitingPage, now: Date, timeZone: string, markOverdue: boolean)
   const title = p.kind === 'announcement' ? `${named} (announcement)` : named
   const school = oneLine(p.school)
   const marker = markOverdue && wait.overdue ? ' (overdue)' : ''
+  // The school's comment, quoted, on the same line: what they said they changed.
+  const said = oneLine(p.comment ?? '')
+  const quote = said === '' ? '' : ` — “${said}”`
   return {
-    text: `- ${title} — ${school} — ${wait.label}${marker}`,
-    html: `<li>${escapeHtml(title)} — ${escapeHtml(school)} — ${escapeHtml(wait.label)}${marker ? ' <strong>(overdue)</strong>' : ''}</li>`,
+    text: `- ${title} — ${school} — ${wait.label}${marker}${quote}`,
+    html: `<li>${escapeHtml(title)} — ${escapeHtml(school)} — ${escapeHtml(wait.label)}${marker ? ' <strong>(overdue)</strong>' : ''}${escapeHtml(quote)}</li>`,
   }
 }
 

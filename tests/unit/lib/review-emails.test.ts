@@ -239,3 +239,35 @@ describe('outcomeEmail — a page approved for later', () => {
     )
   })
 })
+
+describe('outcomeEmail — the district’s comment (Jason, 2026-11-12)', () => {
+  const page = {
+    title: 'Bus routes',
+    school: 'Oakbrook Elementary',
+    pageUrl: 'https://oakbrook.dd2.org/bus-routes',
+    editUrl: 'https://admin.dd2.org/admin/collections/pages/12',
+  }
+
+  it('approved with a comment quotes it, in text and html', () => {
+    const email = outcomeEmail({ outcome: 'approved', comment: 'Lovely <b>update</b>.', ...page })
+    expect(email.text).toContain('Comment from the district:')
+    expect(email.text).toContain('Lovely <b>update</b>.')
+    expect(email.html).toContain('Lovely &lt;b&gt;update&lt;/b&gt;.')
+  })
+
+  it('approved for later with a comment quotes it too', () => {
+    const email = outcomeEmail({
+      outcome: 'scheduled',
+      comment: 'Timed for Monday.',
+      goesLive: '2026-11-16T13:00:00.000Z',
+      ...page,
+    })
+    expect(email.text).toContain('Timed for Monday.')
+  })
+
+  it('no comment, no comment block', () => {
+    expect(outcomeEmail({ outcome: 'approved', comment: '  ', ...page }).text).not.toContain(
+      'Comment from the district',
+    )
+  })
+})

@@ -71,6 +71,23 @@ describe('the submitter is emailed when the district decides', () => {
     expect(message.text).toContain('a.localhost')
   })
 
+  it('approve with a comment: the email quotes it (Jason, 2026-11-12)', async () => {
+    const id = await sentPage()
+    const send = spySend()
+    const token = await latestVersionToken(payload, 'pages', id)
+    await approveDocument(
+      await createLocalReq({ user: f.districtAdmin }, payload),
+      'pages',
+      id,
+      token,
+      undefined,
+      'Thanks — the new times are clear.',
+    )
+    const message = send.mock.calls[0]![0] as { text: string }
+    expect(message.text).toContain('Comment from the district:')
+    expect(message.text).toContain('Thanks — the new times are clear.')
+  })
+
   it('request changes: one email, carrying the note', async () => {
     const id = await sentPage()
     const send = spySend()

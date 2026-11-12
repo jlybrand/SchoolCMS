@@ -53,6 +53,8 @@ export const ApprovalItem = ({
   const id = useId()
   const titleId = `${id}-title`
   const noteId = `${id}-note`
+  const commentId = `${id}-comment`
+  const commentHintId = `${id}-comment-hint`
   const noteErrorId = `${id}-note-error`
 
   const [phase, setPhase] = useState<'idle' | 'busy' | 'done'>('idle')
@@ -60,6 +62,8 @@ export const ApprovalItem = ({
   const [outcome, setOutcome] = useState<string | null>(null)
   const [problem, setProblem] = useState<{ text: string; reload: boolean } | null>(null)
   const [noteError, setNoteError] = useState<string | null>(null)
+  /** The reviewer's optional comment on approving (Jason, 2026-11-12) — to the school's email. */
+  const [comment, setComment] = useState('')
   // An announcement's dates (Jason, 2026-11-04); a page has none.
   const [dates, setDates] = useState<DateInputs>(NO_DATES)
   const [dateErrors, setDateErrors] = useState<Partial<Record<PostDateField, string>>>({})
@@ -119,7 +123,11 @@ export const ApprovalItem = ({
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(hasDates ? { ...item.token, ...isoDates } : item.token),
+        body: JSON.stringify({
+          ...item.token,
+          ...(hasDates ? isoDates : {}),
+          ...(comment.trim() === '' ? {} : { comment: comment.trim() }),
+        }),
       })
       const body = (await res.json().catch(() => null)) as {
         error?: string
@@ -204,6 +212,14 @@ export const ApprovalItem = ({
         </p>
       </header>
 
+      {/* What the school wrote as it sent this (Jason, 2026-11-12), read before the diff. */}
+      {item.comment !== '' ? (
+        <div className={styles.schoolNote}>
+          <p className={styles.schoolNoteLabel}>Note from {item.school}</p>
+          <blockquote className={styles.schoolNoteText}>{item.comment}</blockquote>
+        </div>
+      ) : null}
+
       <PageDiffView diff={item.diff} titleId={titleId} />
 
       {hasDates && phase !== 'done' && !noteOpen ? (
@@ -268,45 +284,64 @@ export const ApprovalItem = ({
               </div>
             </div>
           ) : (
-            <div className={styles.buttons}>
-              <button
-                className={styles.primary}
-                disabled={phase === 'busy'}
-                onClick={() => void approve()}
-                type="button"
-              >
-                {phase === 'busy'
-                  ? schedules
-                    ? 'Scheduling…'
-                    : 'Publishing…'
-                  : schedules
-                    ? 'Approve and schedule'
-                    : 'Approve and publish'}
-              </button>
-              <button
-                className={styles.secondary}
-                disabled={phase === 'busy'}
-                onClick={openNote}
-                type="button"
-              >
-                Request changes
-              </button>
-              {onDocument ? (
-                <Link
-                  className={styles.open}
-                  href={`/admin/approvals#${approvalAnchor(item.collection, item.id)}`}
+            <>
+              <div className={styles.approveComment}>
+                <label className={styles.noteLabel} htmlFor={commentId}>
+                  Comment
+                </label>
+                <span className={styles.dateHint} id={commentHintId}>
+                  Sent to {item.school} with your approval, and kept in the history.
+                </span>
+                <textarea
+                  aria-describedby={commentHintId}
+                  className={styles.note}
+                  disabled={phase === 'busy'}
+                  id={commentId}
+                  onChange={(event) => setComment(event.target.value)}
+                  rows={2}
+                  value={comment}
+                />
+              </div>
+              <div className={styles.buttons}>
+                <button
+                  className={styles.primary}
+                  disabled={phase === 'busy'}
+                  onClick={() => void approve()}
+                  type="button"
                 >
-                  Review in the approval queue
-                </Link>
-              ) : (
-                <Link
-                  className={styles.open}
-                  href={`/admin/collections/${item.collection}/${String(item.id)}`}
+                  {phase === 'busy'
+                    ? schedules
+                      ? 'Scheduling…'
+                      : 'Publishing…'
+                    : schedules
+                      ? 'Approve and schedule'
+                      : 'Approve and publish'}
+                </button>
+                <button
+                  className={styles.secondary}
+                  disabled={phase === 'busy'}
+                  onClick={openNote}
+                  type="button"
                 >
-                  Open the {item.noun}
-                </Link>
-              )}
-            </div>
+                  Request changes
+                </button>
+                {onDocument ? (
+                  <Link
+                    className={styles.open}
+                    href={`/admin/approvals#${approvalAnchor(item.collection, item.id)}`}
+                  >
+                    Review in the approval queue
+                  </Link>
+                ) : (
+                  <Link
+                    className={styles.open}
+                    href={`/admin/collections/${item.collection}/${String(item.id)}`}
+                  >
+                    Open the {item.noun}
+                  </Link>
+                )}
+              </div>
+            </>
           )}
         </div>
       )}

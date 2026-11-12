@@ -82,6 +82,8 @@ export type OutcomeEmailInput = {
   /** The page form — used when changes are requested. */
   editUrl: string
   note?: string | null
+  /** The district's optional comment on an approval (Jason, 2026-11-12). */
+  comment?: string | null
   /** When an announcement approved for later goes live — with `scheduled`. */
   goesLive?: string | null
 }
@@ -105,9 +107,25 @@ export const emailDocument = (heading: string, body: string): string =>
     '</body></html>',
   ].join('')
 
+/**
+ * The district's comment on an approval (Jason, 2026-11-12), quoted as a request's note is —
+ * nothing at all when there is none.
+ */
+const commentBlock = (comment: string | null | undefined): { text: string[]; html: string } => {
+  const said = (comment ?? '').trim()
+  if (said === '') return { text: [], html: '' }
+  return {
+    text: ['Comment from the district:', ...said.split('\n').map((l) => `  ${l}`), ''],
+    html:
+      '<p>Comment from the district:</p>' +
+      `<blockquote style="margin: 0 0 16px; padding-left: 12px; border-left: 4px solid #4d5563;">${escapeHtml(said).replace(/\n/g, '<br>')}</blockquote>`,
+  }
+}
+
 export const outcomeEmail = (input: OutcomeEmailInput): Email => {
   const title = oneLine(input.title)
   const school = oneLine(input.school)
+  const comment = commentBlock(input.comment)
 
   /**
    * Approved with a future Start: nothing to link to yet. A second email, the plain approval
@@ -128,8 +146,8 @@ export const outcomeEmail = (input: OutcomeEmailInput): Email => {
       : `The district approved your announcement “${title}” for ${school}’s website. It goes live ${at}.`
     return {
       subject: `${heading}: ${title}`,
-      text: [sentence, '', SIGN_OFF].join('\n'),
-      html: emailDocument(heading, `<p>${escapeHtml(sentence)}</p>`),
+      text: [sentence, '', ...comment.text, SIGN_OFF].join('\n'),
+      html: emailDocument(heading, `<p>${escapeHtml(sentence)}</p>${comment.html}`),
     }
   }
 
@@ -143,6 +161,7 @@ export const outcomeEmail = (input: OutcomeEmailInput): Email => {
         url ? `${sentence} It is live now:` : sentence,
         ...(url ? ['', url] : []),
         '',
+        ...comment.text,
         SIGN_OFF,
       ].join('\n'),
       html: emailDocument(
@@ -150,7 +169,8 @@ export const outcomeEmail = (input: OutcomeEmailInput): Email => {
         `<p>The district approved your announcement “${escapeHtml(title)}” for ${escapeHtml(school)}’s website.${url ? ' It is live now.' : ''}</p>` +
           (url
             ? `<p><a href="${escapeHtml(url)}">See “${escapeHtml(title)}” on the website</a></p>`
-            : ''),
+            : '') +
+          comment.html,
       ),
     }
   }
@@ -165,12 +185,14 @@ export const outcomeEmail = (input: OutcomeEmailInput): Email => {
         '',
         pageUrl,
         '',
+        ...comment.text,
         SIGN_OFF,
       ].join('\n'),
       html: emailDocument(
         heading,
         `<p>The district approved your changes to “${escapeHtml(title)}” on ${escapeHtml(school)}’s website. They are live now.</p>` +
-          `<p><a href="${escapeHtml(pageUrl)}">See “${escapeHtml(title)}” on the website</a></p>`,
+          `<p><a href="${escapeHtml(pageUrl)}">See “${escapeHtml(title)}” on the website</a></p>` +
+          comment.html,
       ),
     }
   }

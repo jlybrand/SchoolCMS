@@ -1,6 +1,7 @@
 import type { CollectionAfterChangeHook, PayloadRequest } from 'payload'
 
 import { relationshipIdOf } from '@/access/predicates'
+import { changeCommentFor } from '@/collections/fields/change-comment'
 import { autoApprovalOf } from '@/collections/hooks/auto-approve'
 import { outcomeEmail, publicUrlFor, reviewOutcome } from '@/lib/review-emails'
 import { buildPagePath } from '@/lib/slug'
@@ -73,6 +74,7 @@ export const makeNotifyReviewOutcome =
               : deps.serverUrl,
         editUrl: `${deps.serverUrl.replace(/\/$/, '')}/admin/collections/${deps.collection}/${String(doc.id)}`,
         note: typeof doc.reviewNote === 'string' ? doc.reviewNote : null,
+        comment: changeCommentFor(req, deps.collection, doc.id) ?? null,
         goesLive:
           typeof doc.publishAt === 'string' || doc.publishAt instanceof Date
             ? new Date(doc.publishAt as string).toISOString()

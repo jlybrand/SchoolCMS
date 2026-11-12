@@ -4,6 +4,7 @@ import { isDistrictAdmin, relationshipIdOf } from '@/access/predicates'
 import type { AuthUser } from '@/access/types'
 import type { VersionToken } from '@/access/approval'
 import { latestVersion, type ReviewedCollection } from '@/collections/endpoints/approve'
+import { sentComments } from '@/collections/sent-comments'
 
 import { diffPage, diffPost, type PageDiff } from './page-diff'
 import { describeWait, DISTRICT_TIME_ZONE, type Wait } from '@/lib/queue-age'
@@ -35,6 +36,8 @@ export type QueueItem = {
   wait: Wait
   diff: PageDiff
   token: VersionToken
+  /** What the school wrote as it sent this (Jason, 2026-11-12); empty for nothing. */
+  comment: string
 }
 
 type Doc = Record<string, unknown>
@@ -193,7 +196,7 @@ const buildItems = async (
       .map((v) => relationshipIdOf(v as never))
       .filter((v): v is string => v !== null)
 
-  const [schools, submitters, parents, boards, tagNames] = await Promise.all([
+  const [schools, submitters, parents, boards, tagNames, comments] = await Promise.all([
     namesFor(
       req,
       'tenants',
@@ -221,6 +224,10 @@ const buildItems = async (
     ),
     namesFor(req, 'post-boards', postRefs('board'), (d) => String(d.title ?? d.name ?? d.id)),
     namesFor(req, 'post-tags', postRefs('tags'), (d) => String(d.name ?? d.id)),
+    sentComments(
+      req,
+      present.map((r) => ({ collection: r.collection, id: r.id })),
+    ),
   ])
 
   return present.map(({ id, collection, latest, live }) => {
@@ -249,6 +256,7 @@ const buildItems = async (
               withParentTitle(proposed, parents),
             ),
       token: latest.token,
+      comment: comments.get(`${collection}/${String(id)}`) ?? '',
     }
   })
 }

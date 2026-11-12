@@ -56,7 +56,7 @@ adminTest.describe('dates in the approval queue', () => {
         // Closed by default: one click still publishes.
         await expect(item.getByRole('button', { name: 'Approve and publish' })).toBeVisible()
 
-        await item.getByText('Set dates (optional)').click()
+        await item.getByText('Set dates').click()
         await item.getByLabel('Start').fill(localInput(48))
         const schedule = item.getByRole('button', { name: 'Approve and schedule' })
         await expect(schedule).toBeVisible()
@@ -88,7 +88,7 @@ adminTest.describe('dates in the approval queue', () => {
           await page.goto('/admin/approvals')
           const item = page.getByRole('article', { name: new RegExp(title) })
           await expect(item).toBeVisible({ timeout: 20_000 })
-          await item.getByText('Set dates (optional)').click()
+          await item.getByText('Set dates').click()
           await item.getByLabel('Start').fill(localInput(48))
           await item.getByLabel('Expires').fill(localInput(24))
           await item.getByRole('button', { name: 'Approve and schedule' }).click()
@@ -110,11 +110,14 @@ adminTest.describe('dates in the approval queue', () => {
     const post = await makePost(baseURL, { title: uniqueTitle('Form dates') })
     try {
       await page.goto(`/admin/collections/posts/${post.id}`)
-      for (const label of ['Start', 'Expires', 'Featured until']) {
+      for (const label of ['Expires', 'Featured until']) {
         await expect(page.getByText(label, { exact: true }).first()).toBeVisible({
           timeout: 20_000,
         })
       }
+      // Start is chosen in the Publish dialog, as a page's is (Jason, 2026-11-12).
+      await expect(page.locator('#field-publishAt')).toBeHidden()
+      await expect(page.locator('#action-publish')).toHaveText('Publish')
     } finally {
       await dropPost(post)
     }

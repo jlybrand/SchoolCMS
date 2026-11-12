@@ -244,6 +244,7 @@ export interface User {
 export interface Page {
   id: number;
   tenant?: (number | null) | Tenant;
+  changeComment?: string | null;
   /**
    * What this page is called. Shown as the page heading.
    */
@@ -641,6 +642,7 @@ export interface ColumnsBlock {
 export interface Post {
   id: number;
   tenant?: (number | null) | Tenant;
+  changeComment?: string | null;
   /**
    * The headline. Shown above the announcement and in news lists.
    */
@@ -946,6 +948,7 @@ export interface AuditEvent {
    */
   actorLabel: string;
   summary?: string | null;
+  comment?: string | null;
   autoApproved?: boolean | null;
   updatedAt: string;
   createdAt: string;
@@ -1225,6 +1228,7 @@ export interface UsersSelect<T extends boolean = true> {
  */
 export interface PagesSelect<T extends boolean = true> {
   tenant?: T;
+  changeComment?: T;
   title?: T;
   slug?: T;
   parent?: T;
@@ -1410,6 +1414,7 @@ export interface ColumnsBlockSelect<T extends boolean = true> {
  */
 export interface PostsSelect<T extends boolean = true> {
   tenant?: T;
+  changeComment?: T;
   title?: T;
   slug?: T;
   board?: T;
@@ -1602,6 +1607,7 @@ export interface AuditEventsSelect<T extends boolean = true> {
   actor?: T;
   actorLabel?: T;
   summary?: T;
+  comment?: T;
   autoApproved?: T;
   updatedAt?: T;
   createdAt?: T;

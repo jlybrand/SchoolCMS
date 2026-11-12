@@ -78,6 +78,8 @@ export const approveDocument = async (
    * saved as a draft marked `scheduled`, so anything already live stays live until its time.
    */
   dates?: { dates: PostDates; schedules: boolean },
+  /** The reviewer's optional comment (Jason, 2026-11-12) — onto the activity log and the email. */
+  comment?: string,
 ): Promise<ApproveResult> => {
   const user = req.user as AuthUser | null
   // Before any read, so a refusal reveals nothing about the page.
@@ -94,7 +96,9 @@ export const approveDocument = async (
   })
   if (!check.ok) return check
 
-  const content = { ...publishable(latest.version), ...(dates?.dates ?? {}) }
+  const said =
+    typeof comment === 'string' && comment.trim() !== '' ? { changeComment: comment } : {}
+  const content = { ...publishable(latest.version), ...(dates?.dates ?? {}), ...said }
   if (dates?.schedules) {
     await req.payload.update({
       collection,
@@ -165,7 +169,15 @@ export const makeApproveEndpoint = (collection: ReviewedCollection): Endpoint =>
       }
       dates = check
     }
-    const result = await approveDocument(req, collection, id, tokenFrom(body), dates)
+    const said = (body as { comment?: unknown } | null)?.comment
+    const result = await approveDocument(
+      req,
+      collection,
+      id,
+      tokenFrom(body),
+      dates,
+      typeof said === 'string' ? said : undefined,
+    )
     if (result.ok) return Response.json({ ok: true })
     return Response.json(
       { error: APPROVE_MESSAGES[result.reason], reason: result.reason },

@@ -87,6 +87,27 @@ describe('the district digest', () => {
     expect(message.text).toContain('/admin/approvals')
   })
 
+  it('a school’s comment as it sent is quoted on its line (Jason, 2026-11-12)', async () => {
+    await payload.create({
+      collection: 'pages',
+      data: {
+        tenant: f.tenantA,
+        title: 'Spring concert',
+        slug: `digest-c-${Date.now()}`,
+        visibility: 'public',
+        reviewState: 'submitted',
+        changeComment: 'New date and time.',
+      } as never,
+      draft: true,
+      user: f.managerA,
+      overrideAccess: false,
+    })
+    const send = spySend()
+    await runDistrictDigest(await req(), DIGEST_HOUR)
+    const [message] = send.mock.calls[0]!
+    expect(message.text).toMatch(/Spring concert — School A — .*“New date and time\.”/)
+  })
+
   it('an announcement waiting is in the same digest, named as one', async () => {
     await payload.create({
       collection: 'posts',
