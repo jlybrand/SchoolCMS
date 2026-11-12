@@ -13,7 +13,8 @@ import { checkPostDates, type PostDateField } from '@/lib/post-dates'
  * - PUBLISHING WITH A FUTURE START SCHEDULES instead, when nothing is live yet: the write stays a
  *   draft, marked `scheduled`, and the schedule job publishes it at its time. When the post is
  *   already live a publish cannot be turned into a draft without taking it down, so it is refused
- *   with the way out; the approval queue schedules a live post's change as a draft version.
+ *   with the way out: a live page's or post's change is scheduled as a draft version — by the
+ *   approval queue, and by a page's Publish dialog (`src/admin/PagePublish/`, 2026-11-12).
  * - Republishing something that expired clears its Expires, or the job would take it down again.
  *
  * Only the district can write these fields (field-level access), so a school's write never
@@ -39,9 +40,34 @@ const iso = (value: unknown): string | null => {
   return Number.isNaN(date.getTime()) ? String(value) : date.toISOString()
 }
 
+/**
+ * Is the document on the website now? Read from its RECORD, never from `originalDoc`: Payload
+ * hands a hook the newest VERSION, and on a live page with an autosaved edit that is a draft —
+ * read from it, "live" said no, the publish became a draft, and the page came down until its
+ * Start (Jason's 404, 2026-11-12). A draft save leaves the record published; an unpublish does not.
+ */
+const isLive = async (
+  collection: 'posts' | 'pages',
+  id: unknown,
+  req: PayloadRequest,
+): Promise<boolean> => {
+  if (typeof id !== 'string' && typeof id !== 'number') return false
+  const record = await req.payload.findByID({
+    collection,
+    id,
+    draft: false,
+    depth: 0,
+    overrideAccess: true,
+    disableErrors: true,
+    req,
+    select: { _status: true } as never,
+  })
+  return (record as { _status?: unknown } | null)?._status === 'published'
+}
+
 const makeDatesHook =
   (fields: readonly PostDateField[], noun: 'announcement' | 'page'): CollectionBeforeChangeHook =>
-  ({ data, originalDoc, req }) => {
+  async ({ data, originalDoc, req }) => {
     if (!data || scheduledRunOf(req)) return data
 
     const before = (originalDoc ?? {}) as Record<string, unknown>
@@ -77,16 +103,16 @@ const makeDatesHook =
       if (expires !== null && expires <= now.toISOString()) next.expiresAt = null
 
       if (check.schedules) {
-        if (before._status === 'published') {
+        if (await isLive(noun === 'page' ? 'pages' : 'posts', before.id, req)) {
           throw new ValidationError({
             errors: [
               {
                 path: 'publishAt',
-                // A page has no Start field to clear: its Start is chosen when publishing, and a
-                // live page is only ever offered "Publish changes" (`src/admin/PagePublish/`).
+                // A page has no Start field to clear: its Start is chosen when publishing, and the
+                // Publish dialog schedules a live page's change as a draft (`src/admin/PagePublish/`).
                 message:
                   noun === 'page'
-                    ? 'This page is on the website now, so it can’t be scheduled. Publish the change now instead.'
+                    ? 'This page is on the website now, so publishing it with a Start would take it down. Save the change as a scheduled draft instead.'
                     : `This ${noun} is on the website now. Clear Start to publish this change now.`,
               },
             ],

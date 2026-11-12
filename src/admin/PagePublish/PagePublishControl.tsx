@@ -1,12 +1,11 @@
 'use client'
 
 import {
-  FormSubmit,
-  PublishButton,
   useConfig,
   useDocumentInfo,
   useForm,
   useFormFields,
+  useFormModified,
   useLocale,
 } from '@payloadcms/ui'
 import { formatAdminURL } from 'payload/shared'
@@ -14,32 +13,38 @@ import { useCallback, useId, useRef, useState } from 'react'
 
 import {
   CANCEL_SCHEDULE,
-  PUBLISH_NOW,
-  publishOfferFor,
-  scheduleFor,
-  scheduleRefusal,
+  dialogHeading,
+  headerLabel,
+  initialWhen,
+  laterHint,
+  primaryLabel,
+  publishRequest,
+  publishStateFor,
   toLocalInputValue,
+  type PublishWhen,
 } from './page-publish'
 import styles from './PagePublishControl.module.css'
 
-const when = (iso: string) =>
+const formatTime = (iso: string) =>
   new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(
     new Date(iso),
   )
 
 /**
- * The district's Publish on a page (Jason, 2026-11-11): "Publish now" or "Schedule…", the Start
- * chosen here instead of in Page settings. Fills the `PublishButton` slot through
- * `SendForApprovalButton`, so a school manager still gets "Send for approval" and a page waiting
- * in the queue still gets its link there.
+ * The district's Publish on a page: ONE button, whose dialog asks "now or later" (Jason,
+ * 2026-11-12; the Start chosen here instead of in Page settings since 2026-11-11). Fills the
+ * `PublishButton` slot through `SendForApprovalButton`, so a school manager still gets "Send for
+ * approval" and a page waiting in the queue still gets its link there.
  *
- * - Not on the site: Schedule… and Publish now.
- * - Scheduled: its time (opening the same dialog — change it or cancel it) and Publish now.
- * - On the site: Payload's own "Publish changes". A live page cannot be scheduled.
+ * - Not on the site: "Publish" — the dialog opens on Now; Later shows a day-and-time.
+ * - On the site: "Publish changes" — the same, for the change; the page stays up until its time.
+ * - Scheduled: "Scheduled for <time>" / "Changes scheduled for <time>" — the dialog opens on
+ *   Later with its time, to change it, publish now instead, or cancel the schedule.
  *
- * Each choice is one write (`page-publish.ts`); the server does the scheduling. The time is
- * picked in a native `<dialog>` — modal, Escape to close, focus given back by the browser — with
- * a native day-and-time input, so nothing here re-implements a date picker.
+ * Each choice is one write (`page-publish.ts`): a publish for Now, a draft save marked
+ * `scheduled` for Later, which the schedule job publishes at its time. The dialog is a
+ * native `<dialog>` — modal, Escape to close, focus given back by the browser — with native radios
+ * and a native day-and-time input, so nothing here re-implements a picker.
  *
  * Built, then locked with Playwright + axe (CLAUDE.md's exception for admin views):
  * `tests/e2e/page-publish.spec.ts`.
@@ -49,6 +54,7 @@ export const PagePublishControl = () => {
     id,
     collectionSlug,
     hasPublishedDoc,
+    unpublishedVersionCount,
     uploadStatus,
     setHasPublishedDoc,
     setUnpublishedVersionCount,
@@ -61,19 +67,29 @@ export const PagePublishControl = () => {
   } = useConfig()
   const { code: locale } = useLocale()
   const { submit } = useForm()
+  const modified = useFormModified()
   const reviewState = useFormFields(([fields]) => fields.reviewState?.value)
   const publishAt = useFormFields(([fields]) => fields.publishAt?.value)
 
   const dialog = useRef<HTMLDialogElement>(null)
+  const [when, setWhen] = useState<PublishWhen>('now')
   const [value, setValue] = useState('')
   const [refusal, setRefusal] = useState<string | null>(null)
   const ids = useId()
   const headingId = `${ids}-heading`
+  const nowId = `${ids}-now`
+  const laterId = `${ids}-later`
   const inputId = `${ids}-at`
   const errorId = `${ids}-error`
 
-  const offer = publishOfferFor({ live: Boolean(hasPublishedDoc), reviewState })
+  const state = publishStateFor({ live: Boolean(hasPublishedDoc), reviewState })
   const scheduledAt = typeof publishAt === 'string' && publishAt !== '' ? publishAt : null
+  /**
+   * As Payload's own Publish: a live page with nothing new has nothing to publish. Autosave leaves
+   * the form unmodified, so a saved change counts by its unpublished version.
+   */
+  const nothingToPublish =
+    state.live && !state.scheduled && !modified && (unpublishedVersionCount ?? 0) <= 0
 
   const send = useCallback(
     async (overrides: Record<string, unknown>, draft: boolean) => {
@@ -91,31 +107,36 @@ export const PagePublishControl = () => {
     [api, collectionSlug, id, locale, submit, uploadStatus],
   )
 
-  const publishNow = async () => {
-    const result = await send(PUBLISH_NOW, false)
-    // As Payload's own Publish does, so the header's status follows.
-    if (result) {
-      setUnpublishedVersionCount(0)
-      setMostRecentVersionIsAutosaved(false)
-      setHasPublishedDoc(true)
-    }
-  }
-
   const openDialog = () => {
+    const first = initialWhen(state)
+    setWhen(first)
     setValue(toLocalInputValue(scheduledAt))
     setRefusal(null)
     dialog.current?.showModal()
+    // The choice already made has focus, not whichever radio comes first.
+    document.getElementById(first === 'now' ? nowId : laterId)?.focus()
   }
 
-  const schedule = async () => {
-    const why = scheduleRefusal(value, new Date())
-    if (why) {
-      setRefusal(why)
+  const choose = (next: PublishWhen) => {
+    setWhen(next)
+    setRefusal(null)
+  }
+
+  const confirm = async () => {
+    const request = publishRequest(when, value, new Date())
+    if (!request.ok) {
+      setRefusal(request.refusal)
       document.getElementById(inputId)?.focus()
       return
     }
     dialog.current?.close()
-    await send(scheduleFor(new Date(value).toISOString()), false)
+    const result = await send(request.overrides, request.draft)
+    // As Payload's own Publish does, so the header's status follows.
+    if (result && when === 'now') {
+      setUnpublishedVersionCount(0)
+      setMostRecentVersionIsAutosaved(false)
+      setHasPublishedDoc(true)
+    }
   }
 
   const cancelSchedule = async () => {
@@ -123,72 +144,91 @@ export const PagePublishControl = () => {
     await send(CANCEL_SCHEDULE, true)
   }
 
-  if (offer === 'live') return <PublishButton />
-
   return (
     <>
       <button
-        className="btn btn--style-secondary btn--size-medium"
-        id="action-schedule"
+        className="btn btn--style-primary btn--size-medium"
+        disabled={nothingToPublish || uploadStatus === 'uploading'}
+        id="action-publish"
         onClick={openDialog}
         type="button"
       >
-        {offer === 'scheduled' && scheduledAt ? `Scheduled for ${when(scheduledAt)}` : 'Schedule…'}
+        {headerLabel(state, scheduledAt ? formatTime(scheduledAt) : null)}
       </button>
-      <FormSubmit
-        buttonId="action-publish-now"
-        onClick={() => void publishNow()}
-        size="medium"
-        type="button"
-      >
-        Publish now
-      </FormSubmit>
 
       <dialog aria-labelledby={headingId} className={styles.dialog} ref={dialog}>
         {/*
          * Not a <form>: this dialog sits inside Payload's document form, and a form in a form is
-         * invalid HTML — its submit went to Payload's. Enter in the time does what Schedule does.
+         * invalid HTML — its submit went to Payload's. Enter in the time does what the action does.
          */}
         <div className={styles.form}>
           <h2 className={styles.heading} id={headingId}>
-            {offer === 'scheduled' ? 'Change when this page goes live' : 'Schedule this page'}
+            {dialogHeading(state)}
           </h2>
-          <p className={styles.hint}>
-            It stays off the site until then, and goes live on its own at that time.
-          </p>
-          <label className={styles.label} htmlFor={inputId}>
-            Goes live on
-          </label>
-          <input
-            aria-describedby={refusal ? errorId : undefined}
-            aria-invalid={refusal ? true : undefined}
-            className={styles.input}
-            id={inputId}
-            min={toLocalInputValue(new Date().toISOString())}
-            onChange={(event) => {
-              setValue(event.target.value)
-              setRefusal(null)
-            }}
-            onKeyDown={(event) => {
-              if (event.key !== 'Enter') return
-              event.preventDefault()
-              void schedule()
-            }}
-            type="datetime-local"
-            value={value}
-          />
+          <fieldset className={styles.choices}>
+            <legend className={styles.label}>When should it go live?</legend>
+            <div className={styles.choice}>
+              <input
+                checked={when === 'now'}
+                id={nowId}
+                name={`${ids}-when`}
+                onChange={() => choose('now')}
+                type="radio"
+                value="now"
+              />
+              <label htmlFor={nowId}>Now</label>
+            </div>
+            <div className={styles.choice}>
+              <input
+                checked={when === 'later'}
+                id={laterId}
+                name={`${ids}-when`}
+                onChange={() => choose('later')}
+                type="radio"
+                value="later"
+              />
+              <label htmlFor={laterId}>At a set time</label>
+            </div>
+          </fieldset>
+
+          {when === 'later' ? (
+            <>
+              <p className={styles.hint}>{laterHint(state)}</p>
+              <label className={styles.label} htmlFor={inputId}>
+                Goes live on
+              </label>
+              <input
+                aria-describedby={refusal ? errorId : undefined}
+                aria-invalid={refusal ? true : undefined}
+                className={styles.input}
+                id={inputId}
+                min={toLocalInputValue(new Date().toISOString())}
+                onChange={(event) => {
+                  setValue(event.target.value)
+                  setRefusal(null)
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter') return
+                  event.preventDefault()
+                  void confirm()
+                }}
+                type="datetime-local"
+                value={value}
+              />
+            </>
+          ) : null}
           <p className={styles.error} id={errorId} role="alert">
             {refusal}
           </p>
           <div className={styles.actions}>
             <button
               className="btn btn--style-primary btn--size-medium"
-              onClick={() => void schedule()}
+              onClick={() => void confirm()}
               type="button"
             >
-              {offer === 'scheduled' ? 'Save the new time' : 'Schedule'}
+              {primaryLabel(state, when)}
             </button>
-            {offer === 'scheduled' ? (
+            {state.scheduled ? (
               <button
                 className="btn btn--style-secondary btn--size-medium"
                 onClick={() => void cancelSchedule()}

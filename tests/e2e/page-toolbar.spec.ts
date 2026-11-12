@@ -244,9 +244,11 @@ test.describe('the district page toolbar', () => {
       await page.getByRole('button', { name: 'Done' }).click()
       await expect(dialog).toBeHidden()
 
+      // The one Publish button asks now or later; "Publish now" sends it (`src/admin/PagePublish/`).
+      await page.locator('#action-publish').click()
       await page
-        .getByRole('button', { name: /^Publish/ })
-        .first()
+        .getByRole('dialog', { name: 'Publish your changes' })
+        .getByRole('button', { name: 'Publish now' })
         .click()
       await expect(dialog).toBeVisible({ timeout: 20_000 })
       await expect(dialog.getByRole('tab', { name: 'Linking' })).toHaveAttribute(
