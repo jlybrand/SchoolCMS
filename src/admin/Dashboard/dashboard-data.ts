@@ -1,7 +1,13 @@
 import type { Payload, PayloadRequest } from 'payload'
 
 import { relationshipIdOf } from '@/access/predicates'
-import { CONTENT_ACTIONS, STALE_DAYS, keyPageKind, type KeyPage } from '@/lib/dashboard'
+import {
+  CONTENT_ACTIONS,
+  STALE_DAYS,
+  keyPageKind,
+  type FeedFailure,
+  type KeyPage,
+} from '@/lib/dashboard'
 import { DAY } from '@/lib/queue-age'
 
 /**
@@ -162,3 +168,36 @@ export const findRecentActivity = async (payload: Payload, user: User, limit = 1
       },
     })
   ).docs as Row[]
+
+/**
+ * Feed calendars whose last copy failed (`feedError`, set by `src/jobs/calendar-feeds.ts` and
+ * cleared by the next good copy), with their site's name — for the dashboard's banners.
+ */
+export const findFeedFailures = async (
+  payload: Payload,
+  user: User,
+  siteNames: ReadonlyMap<string, string>,
+): Promise<FeedFailure[]> => {
+  const { docs } = await payload.find({
+    collection: 'calendars',
+    ...asUser(user),
+    pagination: false,
+    where: {
+      and: [
+        { source: { equals: 'feed' } },
+        { feedError: { exists: true } },
+        { feedError: { not_equals: '' } },
+      ],
+    },
+    select: { name: true, tenant: true, feedError: true },
+  })
+  return (docs as Row[]).map((doc) => {
+    const site = relationshipIdOf(doc.tenant as never)
+    return {
+      id: doc.id as number | string,
+      name: typeof doc.name === 'string' && doc.name !== '' ? doc.name : 'Unnamed calendar',
+      site: (site && siteNames.get(site)) ?? 'Unknown site',
+      error: typeof doc.feedError === 'string' ? doc.feedError : '',
+    }
+  })
+}

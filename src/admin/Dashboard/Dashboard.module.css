@@ -66,9 +66,34 @@
 }
 
 /* Overdue is said in words, not colour alone (WCAG 1.4.1). */
-.overdue {
-  margin-block: 0.5rem 0;
-  font-weight: 600;
+/*
+ * "Needs attention" — Payload's Banner, one per item (Jason, 2026-11-12). Its own colours are
+ * Payload's warning/error ramps, which Payload tunes for 4.5:1 in both themes; the whole-screen
+ * axe check in `tests/e2e/district-dashboard.spec.ts` holds it to that.
+ */
+.attention {
+  margin-block-end: 1.5rem;
+}
+
+.banners {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * Banner carries a block margin of its own; in a list with a gap it only doubles the space. A
+ * banner with a link drops its underline in Payload's styles, which leaves nothing saying it is
+ * one — underlined here, as every other link on the dashboard is.
+ */
+.banners :global(.banner) {
+  display: block;
+  margin: 0;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 
 .action {

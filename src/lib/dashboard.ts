@@ -1,13 +1,63 @@
-import { DAY, describeWait, localDay } from '@/lib/queue-age'
+import { DAY, describeWait, localDay, OVERDUE_BUSINESS_DAYS } from '@/lib/queue-age'
 
 /**
  * The district dashboard's decisions (`04` §3.1; layout decided by Jason, 2026-11-04): the
  * approval queue in a line, what needs freshening, and recent activity from the audit trail.
  * Pure — `src/admin/Dashboard/` reads the data and renders these.
  *
- * Panels for sync status, live alerts and the work queues join when their modules exist: a panel
- * that leads nowhere teaches the district the dashboard lies.
+ * Above them, banners for what needs acting on now (`needsAttention`). Panels for sync status,
+ * live alerts and the work queues join when their modules exist: a panel that leads nowhere
+ * teaches the district the dashboard lies.
  */
+
+// ---------------------------------------------------------------------------------------------
+// ⓪ Needs attention — banners over the panels (Jason, 2026-11-12)
+// ---------------------------------------------------------------------------------------------
+
+/** A calendar whose last feed copy failed (`feedError`, `src/jobs/calendar-feeds.ts`). */
+export type FeedFailure = { id: number | string; name: string; site: string; error: string }
+
+export type AttentionItem = { type: 'warning' | 'error'; text: string; href: string }
+
+/**
+ * What the district has to act on, one banner each, each one click from where it is fixed:
+ * overdue approvals (a warning — work waiting) then failed calendar feeds (an error — something
+ * broken), by site and calendar. Empty when there is nothing, so the section is not drawn.
+ *
+ * A feed failure shows only on that calendar's own form otherwise, so nobody would see it.
+ */
+export const needsAttention = ({
+  overdue,
+  feedFailures,
+}: {
+  overdue: number
+  feedFailures: readonly FeedFailure[]
+}): AttentionItem[] => {
+  const items: AttentionItem[] = []
+  if (overdue > 0) {
+    items.push({
+      type: 'warning',
+      text:
+        overdue === 1
+          ? `1 submission is overdue. It has waited more than ${OVERDUE_BUSINESS_DAYS} school days.`
+          : `${overdue} submissions are overdue. They have waited more than ${OVERDUE_BUSINESS_DAYS} school days.`,
+      href: '/admin/approvals',
+    })
+  }
+  const byPlace = [...feedFailures].sort(
+    (a, b) => a.site.localeCompare(b.site) || a.name.localeCompare(b.name),
+  )
+  for (const feed of byPlace) {
+    const problem =
+      feed.error.trim() !== '' ? feed.error.trim() : 'It will be tried again within the hour.'
+    items.push({
+      type: 'error',
+      text: `${feed.site} · ${feed.name}: the calendar feed could not be copied. ${problem}`,
+      href: `/admin/collections/calendars/${String(feed.id)}`,
+    })
+  }
+  return items
+}
 
 // ---------------------------------------------------------------------------------------------
 // ① Approvals
