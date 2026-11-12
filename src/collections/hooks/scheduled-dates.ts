@@ -4,7 +4,7 @@ import { checkPostDates, type PostDateField } from '@/lib/post-dates'
 
 /**
  * Dates on every write (Jason, 2026-11-04): an announcement's Start, Expires and Featured until,
- * and a page's Start (Page settings). The rules are `checkPostDates`; this applies them. FIRST in
+ * and a page's Start (chosen when publishing, 2026-11-11). The rules are `checkPostDates`; this applies them. FIRST in
  * `beforeChange`, so the publish gate and the review state see the write as it will be.
  *
  * - Only a write that CHANGES a date is checked, so dates that have simply passed (a Start that
@@ -82,7 +82,12 @@ const makeDatesHook =
             errors: [
               {
                 path: 'publishAt',
-                message: `This ${noun} is on the website now. Clear Start to publish this change now.`,
+                // A page has no Start field to clear: its Start is chosen when publishing, and a
+                // live page is only ever offered "Publish changes" (`src/admin/PagePublish/`).
+                message:
+                  noun === 'page'
+                    ? 'This page is on the website now, so it can’t be scheduled. Publish the change now instead.'
+                    : `This ${noun} is on the website now. Clear Start to publish this change now.`,
               },
             ],
           })
@@ -100,5 +105,5 @@ export const postDatesHook = makeDatesHook(
   'announcement',
 )
 
-/** Pages: a Start only (Page settings) — which, until now, nothing acted on. */
+/** Pages: a Start only — chosen when publishing (`src/admin/PagePublish/`). */
 export const pageDatesHook = makeDatesHook(['publishAt'], 'page')

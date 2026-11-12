@@ -1320,7 +1320,7 @@ fields are still Payload's own, where they always were; a school manager's form 
 | SEO     | `meta.title`, `meta.description`                                                                                                    |
 | Access  | `visibility` (Anyone / Staff only)                                                                                                  |
 
-Out of the dialog: `publishAt` (in the sidebar beside Publish until it becomes a choice at
+Out of the dialog: `publishAt` (chosen when publishing since §31 — it sat beside Publish until
 publish), the permanent link (on no tab, so shown nowhere for the district).
 
 ### Files
@@ -1346,3 +1346,37 @@ publish), the permanent link (on no tab, so shown nowhere for the district).
   title refusal (axe); `tests/e2e/support/page-settings.ts` (`showSettingsTab`)
 - `tests/e2e/linked-pages.spec.ts`, `page-permalinks.spec.ts`, `post-dates.spec.ts` — updated for
   the Linking tab, the permanent link out of the dialog, the Start beside Publish
+
+## 31. A page's Start, chosen when publishing (Jason, 2026-11-11)
+
+The district's Publish on a page offers **Publish now** and **Schedule…** in place of a Start
+field. The server already schedules (§21: publishing with a future Start stores a draft marked
+`scheduled`; the schedule job puts it live), so each choice is one write.
+
+| Page                 | Header shows                                                              |
+| -------------------- | ------------------------------------------------------------------------- |
+| not on the site      | Schedule… · Publish now                                                   |
+| scheduled            | "Scheduled for <time>" (opens the dialog: change or cancel) · Publish now |
+| on the site          | Payload's own Publish changes — a live page cannot be scheduled           |
+| waiting for approval | Review in the approval queue (unchanged)                                  |
+
+School managers keep "Send for approval".
+
+### Files
+
+| File                                                  | Does                                                                                                                                                                                                                   |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/admin/PagePublish/page-publish.ts`               | `publishOfferFor`; `PUBLISH_NOW` `{ _status: 'published', publishAt: null }`; `scheduleFor(iso)`; `CANCEL_SCHEDULE` `{ _status: 'draft', publishAt: null, reviewState: null }`; `scheduleRefusal`; `toLocalInputValue` |
+| `src/admin/PagePublish/PagePublishControl.tsx`        | the buttons and a native `<dialog>` with a `datetime-local` input; not a `<form>` (it sits inside Payload's); submits through `useForm().submit` like Payload's Publish                                                |
+| `src/admin/SendForApproval/SendForApprovalButton.tsx` | `DistrictPublish`: `PagePublishControl` on pages, Payload's `PublishButton` on posts                                                                                                                                   |
+| `src/access/review-state.ts`                          | cancel: a district request for `reviewState: null` on `scheduled` → nothing pending, or back to `submitted` when a school sent it                                                                                      |
+| `src/collections/Pages.ts`                            | `publishAt` `admin.hidden` (still in form state); review option "Scheduled to go live"                                                                                                                                 |
+| `src/collections/hooks/scheduled-dates.ts`            | a live page's refusal no longer says "Clear Start"                                                                                                                                                                     |
+
+### Tests
+
+- `tests/unit/admin/page-publish.test.ts`; `tests/unit/access/review-state.test.ts` (cancel)
+- `tests/integration/schedule.test.ts` — cancel, Publish now on a scheduled page, reschedule, a
+  school cannot cancel
+- `tests/e2e/page-publish.spec.ts` — schedule (refusal for a past time) and cancel from the header
+  with axe in both themes; Escape and focus; Publish now; a live page; the school plane

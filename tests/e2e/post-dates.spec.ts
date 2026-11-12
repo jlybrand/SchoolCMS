@@ -9,7 +9,6 @@ import {
   uniqueTitle,
 } from './support/fixture-pages'
 import { dropPost, makePost, type FixturePost } from './support/fixture-posts'
-import { openPageSettings } from './support/page-settings'
 import { schoolTest } from './support/school-session'
 
 /**
@@ -152,32 +151,6 @@ schoolTest.describe('dates are the district’s', () => {
         ).status(),
       ).toBe(403)
       await anonymous.dispose()
-    },
-  )
-})
-
-/**
- * A page's Start (Jason, 2026-11-04): the district's, with a time; never a school's. Out of Page
- * settings since 2026-11-11 (it moves to publishing) — until then, in the sidebar beside Publish.
- */
-adminTest.describe('a page’s Start', () => {
-  adminTest.skip(credentials === null, SKIP)
-
-  adminTest(
-    'is beside Publish as a day and time, not in Page settings',
-    async ({ page, baseURL }) => {
-      const fixture = await makePage(baseURL, { title: uniqueTitle('Start setting') })
-      try {
-        await page.goto(`/admin/collections/pages/${fixture.id}`)
-        await expect(page.locator('#field-publishAt')).toBeVisible({ timeout: 20_000 })
-        await expect(page.locator('.document-fields__sidebar-fields')).toContainText(
-          'Publishing with a time still to come schedules the page',
-        )
-        const dialog = await openPageSettings(page)
-        await expect(dialog.locator('#field-publishAt')).toBeHidden()
-      } finally {
-        await dropPage(fixture)
-      }
     },
   )
 })

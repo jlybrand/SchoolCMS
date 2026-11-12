@@ -1,0 +1,79 @@
+/**
+ * The schedule dialog — see `PagePublishControl.tsx`. Payload's theme variables, not DD2 tokens
+ * (`src/admin/SendForApproval/ReviewStatusField.module.css`): `--theme-elevation-800` on
+ * `--theme-elevation-0` clears 4.5:1 in both themes. The refusal is a red bar with readable words,
+ * as the Page settings messages are. Logical properties only (rule 5).
+ */
+
+.dialog {
+  inline-size: min(28rem, calc(100vw - 2rem));
+  padding: 1.5rem;
+  border: 0;
+  border-radius: 8px;
+  background: var(--theme-elevation-0);
+  color: var(--theme-elevation-800);
+}
+
+.dialog::backdrop {
+  background: rgb(0 0 0 / 55%);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.heading {
+  margin: 0;
+  color: var(--theme-elevation-800);
+  font-size: 1.25rem;
+}
+
+.hint {
+  margin: 0;
+}
+
+.label {
+  font-weight: 600;
+}
+
+.input {
+  min-block-size: 2.5rem;
+  padding-inline: 0.75rem;
+  border: 1px solid var(--theme-elevation-400);
+  border-radius: 4px;
+  background: var(--theme-elevation-0);
+  color: var(--theme-elevation-800);
+  font: inherit;
+  color-scheme: inherit;
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--theme-elevation-800);
+  outline-offset: 2px;
+}
+
+.error {
+  margin: 0;
+  padding-block: 0.25rem;
+  padding-inline-start: 0.75rem;
+  border-inline-start: 4px solid var(--theme-error-500);
+  font-weight: 600;
+}
+
+.error:empty {
+  display: none;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-block-start: 0.5rem;
+}
+
+/* Payload's buttons carry a block margin of their own; in a row it only misaligns them. */
+.actions :global(.btn) {
+  margin: 0;
+}

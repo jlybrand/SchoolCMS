@@ -481,14 +481,12 @@ export const Pages: CollectionConfig = {
        */
       access: { read: districtOnlyField, create: districtOnlyField, update: districtOnlyField },
       /**
-       * Not a Page setting since 2026-11-11 (Jason: the Start becomes a choice when publishing).
-       * Until that lands it sits in the sidebar, beside Publish.
+       * Chosen when publishing since 2026-11-11 (Jason): "Publish now" or "Schedule…" in the
+       * header (`src/admin/PagePublish/`), so the field itself is hidden. Still in the form
+       * state, which is where that control reads the scheduled time from.
        */
       admin: {
-        description:
-          'Optional. Publishing with a time still to come schedules the page: it goes live then.',
-        position: 'sidebar',
-        date: { pickerAppearance: 'dayAndTime' },
+        hidden: true,
         condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
       },
     },
@@ -618,7 +616,7 @@ export const Pages: CollectionConfig = {
         { label: 'Being edited', value: 'editing' },
         { label: 'Waiting for approval', value: 'submitted' },
         { label: 'Changes requested', value: 'changes-requested' },
-        { label: 'Scheduled, goes live at its Start', value: 'scheduled' },
+        { label: 'Scheduled to go live', value: 'scheduled' },
       ],
       // A clone starts fresh: it has not been sent, approved or scheduled (its Start is cleared too).
       hooks: { beforeDuplicate: [() => null] },
