@@ -144,9 +144,52 @@ adminTest.describe('the district dashboard', () => {
       timeout: 20_000,
     })
     await expect(panel).toContainText(
-      /Every site and key page has changed|Sites with no change in 90 days|Key pages unchanged in 90 days/,
+      /Every site and key page has changed|(site|sites) or key pages? (has|have) not changed in 90 days/,
     )
   })
+
+  for (const colorScheme of ['light', 'dark'] as const) {
+    adminTest(
+      `@a11y what needs freshening is a table, a site with nothing published first — ${colorScheme}`,
+      async ({ page }) => {
+        await page.emulateMedia({ colorScheme })
+        // A new site with nothing on it: "Nothing published yet", so it sorts to the top.
+        const stamp = uniqueTitle('quiet').replace(/\W+/g, '-').toLowerCase()
+        const name = uniqueTitle('Quiet School')
+        const made = await page.request.post('/api/tenants?depth=0', {
+          data: {
+            name,
+            slug: stamp,
+            hostname: `${stamp}.localhost`,
+            type: 'school',
+            status: 'active',
+          },
+        })
+        expect(made.ok(), await made.text()).toBe(true)
+        const id = ((await made.json()).doc as { id: number }).id
+        try {
+          await page.goto('/admin')
+          const panel = page.locator('#freshness-panel')
+          const table = panel.getByRole('table')
+          await expect(table).toBeVisible({ timeout: 20_000 })
+          await expect(table.getByRole('columnheader')).toHaveText(['Site', 'What', 'Last changed'])
+          const row = table.getByRole('row').filter({ hasText: name })
+          await expect(row.getByRole('cell')).toHaveText([
+            name,
+            'The whole site',
+            'Nothing published yet',
+          ])
+          // Never-published sites lead; ours is one of them, so it sits above any dated row.
+          const firstRow = table.getByRole('row').nth(1)
+          await expect(firstRow.getByRole('cell').nth(2)).toHaveText('Nothing published yet')
+          expect(await blockingViolations(page)).toEqual([])
+        } finally {
+          const gone = await page.request.delete(`/api/tenants/${id}`)
+          expect(gone.ok(), await gone.text()).toBe(true)
+        }
+      },
+    )
+  }
 
   for (const colorScheme of ['light', 'dark'] as const) {
     adminTest(

@@ -137,7 +137,13 @@ const lastChanged = (iso: string, timeZone: string): string =>
     year: 'numeric',
   }).format(new Date(iso))}`
 
-export type StaleSite = { id: string; name: string; last: string }
+export type StaleSite = {
+  id: string
+  name: string
+  /** When it last went live, or null for nothing published — what the table sorts by. */
+  at: string | null
+  last: string
+}
 
 /**
  * Sites whose newest published page or announcement is older than `STALE_DAYS` — and sites with
@@ -158,6 +164,7 @@ export const staleSites = (
       return {
         id: site.id,
         name: site.name,
+        at: at ?? null,
         last: at === undefined ? 'Nothing published yet' : lastChanged(at, timeZone),
       }
     })
@@ -195,6 +202,63 @@ export const staleKeyPages = (
       href: `/admin/collections/pages/${page.id}`,
       last: lastChanged(page.updatedAt, timeZone),
     }))
+
+export type FreshnessRow = {
+  id: string
+  site: string
+  what: string
+  /** The page to open, or null for a whole site. */
+  href: string | null
+  when: string
+}
+
+/**
+ * The freshness panel as one table (Payload's `Table`, Jason 2026-11-12): stale sites and stale
+ * key pages together, a site with nothing published first, then oldest first — whichever kind it
+ * is, so what has waited longest is at the top. The column says "Last changed", so the day is
+ * given alone.
+ */
+export const freshnessRows = (
+  sites: readonly StaleSite[],
+  pages: readonly StaleKeyPage[],
+  timeZone: string,
+): FreshnessRow[] => {
+  const day = (iso: string) =>
+    new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(new Date(iso))
+  const rows = [
+    ...sites.map((site) => ({
+      at: site.at,
+      row: {
+        id: `site-${site.id}`,
+        site: site.name,
+        what: 'The whole site',
+        href: null,
+        when: site.at === null ? 'Nothing published yet' : day(site.at),
+      },
+    })),
+    ...pages.map((page) => ({
+      at: page.updatedAt as string | null,
+      row: {
+        id: `page-${String(page.id)}`,
+        site: page.site,
+        what: `${page.kind}: ${page.title}`,
+        href: page.href,
+        when: day(page.updatedAt),
+      },
+    })),
+  ]
+  return rows
+    .sort((a, b) => {
+      if (a.at === null || b.at === null) return a.at === b.at ? 0 : a.at === null ? -1 : 1
+      return a.at.localeCompare(b.at) || a.row.site.localeCompare(b.row.site)
+    })
+    .map((r) => r.row)
+}
 
 // ---------------------------------------------------------------------------------------------
 // ③ Recent activity
