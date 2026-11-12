@@ -5,6 +5,7 @@ import {
   approvalSummary,
   CONTENT_ACTIONS,
   keyPageKind,
+  needsAttention,
   STALE_DAYS,
   staleKeyPages,
   staleSites,
@@ -197,5 +198,72 @@ describe('activityRow — one line of the audit trail, content actions only', ()
     expect(at(new Date(NOW.getTime() - 3 * 60 * 60 * 1000).toISOString())?.when).toBe('3 h ago')
     expect(at(daysAgo(1))?.when).toBe('Yesterday')
     expect(at(daysAgo(20))?.when).toBe('Oct 15')
+  })
+})
+
+describe('needsAttention — the banners over the panels (Jason, 2026-11-12)', () => {
+  it('is empty when nothing is overdue and every feed copied', () => {
+    expect(needsAttention({ overdue: 0, feedFailures: [] })).toEqual([])
+  })
+
+  it('warns of overdue approvals, in the queue’s words, linking to the queue', () => {
+    expect(needsAttention({ overdue: 1, feedFailures: [] })).toEqual([
+      {
+        type: 'warning',
+        text: '1 submission is overdue. It has waited more than 3 school days.',
+        href: '/admin/approvals',
+      },
+    ])
+    expect(needsAttention({ overdue: 4, feedFailures: [] })[0]?.text).toBe(
+      '4 submissions are overdue. They have waited more than 3 school days.',
+    )
+  })
+
+  it('names each calendar whose feed failed, its site, and the problem, linking to it', () => {
+    const items = needsAttention({
+      overdue: 0,
+      feedFailures: [
+        {
+          id: 7,
+          name: 'Athletics',
+          site: 'Central High',
+          error: 'The address could not be reached.',
+        },
+      ],
+    })
+    expect(items).toEqual([
+      {
+        type: 'error',
+        text: 'Central High · Athletics: the calendar feed could not be copied. The address could not be reached.',
+        href: '/admin/collections/calendars/7',
+      },
+    ])
+  })
+
+  it('puts overdue approvals first, then feed failures by site and calendar', () => {
+    const items = needsAttention({
+      overdue: 2,
+      feedFailures: [
+        { id: 3, name: 'Sports', site: 'West Elementary', error: 'Gone.' },
+        { id: 2, name: 'Testing', site: 'East Middle', error: 'Gone.' },
+        { id: 1, name: 'Arts', site: 'East Middle', error: 'Gone.' },
+      ],
+    })
+    expect(items.map((i) => i.href)).toEqual([
+      '/admin/approvals',
+      '/admin/collections/calendars/1',
+      '/admin/collections/calendars/2',
+      '/admin/collections/calendars/3',
+    ])
+  })
+
+  it('says something useful when the stored problem is empty', () => {
+    const [item] = needsAttention({
+      overdue: 0,
+      feedFailures: [{ id: 9, name: 'Arts', site: 'East Middle', error: '  ' }],
+    })
+    expect(item?.text).toBe(
+      'East Middle · Arts: the calendar feed could not be copied. It will be tried again within the hour.',
+    )
   })
 })

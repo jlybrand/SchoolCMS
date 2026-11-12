@@ -1,4 +1,5 @@
-import { expect } from '@playwright/test'
+import AxeBuilder from '@axe-core/playwright'
+import { expect, type Page } from '@playwright/test'
 
 import { adminCredentials, adminTest } from './support/admin-session'
 import { dropPage, makePage, schoolRequest, uniqueTitle } from './support/fixture-pages'
@@ -12,6 +13,14 @@ import { dropPage, makePage, schoolRequest, uniqueTitle } from './support/fixtur
  */
 
 const credentials = adminCredentials()
+const BLOCKING = ['critical', 'serious']
+
+const blockingViolations = async (page: Page) =>
+  (
+    await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
+  ).violations
+    .filter((v) => BLOCKING.includes(v.impact ?? ''))
+    .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)
 const SKIP =
   'No SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD — set them in .env and re-run `pnpm run seed`.'
 
@@ -24,9 +33,12 @@ adminTest.describe('the district dashboard', () => {
     await expect(dashboard.getByRole('heading', { level: 1 })).toHaveText('District dashboard', {
       timeout: 20_000,
     })
-    const headings = await page
-      .locator('#district-dashboard h2, #grants-heading, #everything-else')
-      .allTextContents()
+    // "Needs attention" leads only when something does — another spec's feed calendar may.
+    const headings = (
+      await page
+        .locator('#district-dashboard h2, #grants-heading, #everything-else')
+        .allTextContents()
+    ).filter((h, i) => !(i === 0 && h === 'Needs attention'))
     expect(headings).toEqual([
       'Approvals',
       'Needs freshening',
@@ -82,4 +94,56 @@ adminTest.describe('the district dashboard', () => {
       /Every site and key page has changed|Sites with no change in 90 days|Key pages unchanged in 90 days/,
     )
   })
+
+  for (const colorScheme of ['light', 'dark'] as const) {
+    adminTest(
+      `@a11y a calendar feed that failed is a banner, linking to the calendar — ${colorScheme}`,
+      async ({ page, baseURL }) => {
+        await page.emulateMedia({ colorScheme })
+        const fixture = await makePage(baseURL, { title: uniqueTitle('Feed banner') })
+        let calendar: number | null = null
+        try {
+          const tenant = (
+            (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json()) as {
+              tenant: number
+            }
+          ).tenant
+          // `.invalid` never resolves, so the copy fails and the problem is recorded in words.
+          const name = uniqueTitle('Broken feed')
+          const made = await fixture.admin.post('/api/calendars?depth=0', {
+            data: { tenant, name, source: 'feed', feedUrl: 'https://example.invalid/feed.ics' },
+          })
+          expect(made.ok(), await made.text()).toBe(true)
+          calendar = ((await made.json()).doc as { id: number }).id
+          // The job runner's own endpoint (district-only) instead of waiting for its cron.
+          await expect
+            .poll(
+              async () => {
+                await fixture.admin.get('/api/payload-jobs/run?queue=default&limit=50')
+                const doc = (await (
+                  await fixture.admin.get(`/api/calendars/${calendar}?depth=0`)
+                ).json()) as { feedError?: string | null }
+                return doc.feedError ?? ''
+              },
+              { timeout: 30_000 },
+            )
+            .not.toBe('')
+
+          await page.goto('/admin')
+          const attention = page.locator('#attention-panel')
+          await expect(attention.getByRole('heading', { name: 'Needs attention' })).toBeVisible({
+            timeout: 20_000,
+          })
+          const banner = attention.getByRole('link', {
+            name: new RegExp(`${name}: the calendar feed could not be copied`),
+          })
+          await expect(banner).toHaveAttribute('href', `/admin/collections/calendars/${calendar}`)
+          expect(await blockingViolations(page)).toEqual([])
+        } finally {
+          if (calendar !== null) await fixture.admin.delete(`/api/calendars/${calendar}`)
+          await dropPage(fixture)
+        }
+      },
+    )
+  }
 })

@@ -2,6 +2,7 @@ import type { Payload } from 'payload'
 import { beforeAll, describe, expect, it } from 'vitest'
 
 import {
+  findFeedFailures,
   findKeyPages,
   findLastPublished,
   findRecentActivity,
@@ -142,5 +143,49 @@ describe('as a school manager — their school, or nothing', () => {
   it('sees no other school’s last change', async () => {
     const last = await findLastPublished(payload, f.managerA, [String(f.tenantB)], NOW)
     expect(last.has(String(f.tenantB))).toBe(false)
+  })
+})
+
+describe('findFeedFailures — feed calendars whose last copy failed (2026-11-12)', () => {
+  /** A feed calendar, its problem recorded as the sync job records it (the field is read-only). */
+  const feedCalendar = async (tenant: number, name: string, feedError: string | null) => {
+    const made = await payload.create({
+      collection: 'calendars',
+      data: { tenant, name, source: 'feed', feedUrl: 'https://example.invalid/x.ics' } as never,
+      overrideAccess: true,
+    })
+    await payload.update({
+      collection: 'calendars',
+      id: made.id,
+      data: { feedError } as never,
+      overrideAccess: true,
+    })
+    return made.id
+  }
+  const names = () =>
+    new Map([
+      [String(f.tenantA), 'School A'],
+      [String(f.tenantB), 'School B'],
+    ])
+
+  it('finds a failed feed with its site and problem, and not one that copied', async () => {
+    const broken = await feedCalendar(f.tenantA, 'Broken athletics', 'Could not be found.')
+    const fine = await feedCalendar(f.tenantA, 'Working arts', null)
+    const failures = await findFeedFailures(payload, f.districtAdmin, names())
+    expect(failures).toContainEqual({
+      id: broken,
+      name: 'Broken athletics',
+      site: 'School A',
+      error: 'Could not be found.',
+    })
+    expect(failures.map((x) => x.id)).not.toContain(fine)
+  })
+
+  it('a school manager reads only their own site’s calendars', async () => {
+    const theirs = await feedCalendar(f.tenantA, 'A broken', 'Gone.')
+    const other = await feedCalendar(f.tenantB, 'B broken', 'Gone.')
+    const ids = (await findFeedFailures(payload, f.managerA, names())).map((x) => x.id)
+    expect(ids).toContain(theirs)
+    expect(ids).not.toContain(other)
   })
 })

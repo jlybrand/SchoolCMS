@@ -1,12 +1,20 @@
+import { Banner } from '@payloadcms/ui'
 import Link from 'next/link'
 import type { Payload, PayloadRequest } from 'payload'
 
 import { isDistrictAdmin, relationshipIdOf } from '@/access/predicates'
 import type { AuthUser } from '@/access/types'
-import { activityRow, approvalSummary, staleKeyPages, staleSites } from '@/lib/dashboard'
+import {
+  activityRow,
+  approvalSummary,
+  needsAttention,
+  staleKeyPages,
+  staleSites,
+} from '@/lib/dashboard'
 import { DISTRICT_TIME_ZONE } from '@/lib/queue-age'
 
 import {
+  findFeedFailures,
   findKeyPages,
   findLastPublished,
   findRecentActivity,
@@ -17,7 +25,8 @@ import styles from './Dashboard.module.css'
 
 /**
  * The top of the district's dashboard (`admin.components.beforeDashboard`; `04` §3.1, layout
- * decided by Jason, 2026-11-04): ① approvals ② what needs freshening ③ recent activity. The
+ * decided by Jason, 2026-11-04): ① approvals ② what needs freshening ③ recent activity — under
+ * banners for what needs acting on now (Payload's `Banner`, Jason 2026-11-12). The
  * auto-approval panel follows (`GrantsPanel`), then Payload's cards under "Everything else".
  *
  * Renders nothing for anyone else — school managers never see Payload's dashboard at all.
@@ -39,7 +48,7 @@ export const DistrictDashboard = async ({
     findRecentActivity(payload, user),
   ])
   const names = new Map(sites.map((s) => [s.id, s.name]))
-  const [last, keyPages] = await Promise.all([
+  const [last, keyPages, feedFailures] = await Promise.all([
     findLastPublished(
       payload,
       user,
@@ -47,9 +56,11 @@ export const DistrictDashboard = async ({
       now,
     ),
     findKeyPages(payload, user, names),
+    findFeedFailures(payload, user, names),
   ])
 
   const approvals = approvalSummary(waiting, now, tz)
+  const attention = needsAttention({ overdue: approvals.overdue, feedFailures })
   const quietSites = staleSites(sites, last, now, tz)
   const quietPages = staleKeyPages(keyPages, now, tz)
   const rows = activity.flatMap((event) => {
@@ -66,6 +77,28 @@ export const DistrictDashboard = async ({
     <div className={styles.dashboard} id="district-dashboard">
       <h1 className={styles.title}>District dashboard</h1>
 
+      {attention.length > 0 ? (
+        <section
+          aria-labelledby="attention-heading"
+          className={styles.attention}
+          id="attention-panel"
+        >
+          <h2 className={styles.heading} id="attention-heading">
+            Needs attention
+          </h2>
+          {/* One banner each, the whole banner a link to where it is fixed. */}
+          <ul className={styles.banners}>
+            {attention.map((item) => (
+              <li key={item.href}>
+                <Banner to={item.href} type={item.type}>
+                  {item.text}
+                </Banner>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <div className={styles.grid}>
         <div className={styles.column}>
           <section
@@ -76,12 +109,8 @@ export const DistrictDashboard = async ({
             <h2 className={styles.heading} id="approvals-heading">
               Approvals
             </h2>
+            {/* Overdue is said once, in the banner above. */}
             <p className={styles.lead}>{approvals.text}</p>
-            {approvals.overdue > 0 ? (
-              <p className={styles.overdue}>
-                {approvals.overdue} overdue — waiting more than 3 school days.
-              </p>
-            ) : null}
             {/* Always, as the banner it replaces did: the queue is the way in even when empty. */}
             <p className={styles.action}>
               <Link href="/admin/approvals">Open the approval queue</Link>

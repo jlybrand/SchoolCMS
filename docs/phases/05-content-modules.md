@@ -893,13 +893,19 @@ first keystroke.
 auto-approval panel, then Payload's cards under "Everything else". Sync status, live alerts and
 the work queues join as their modules land.
 
-| File                                        | Holds                                                                                                                                                                                                                                                                                                      |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/dashboard.ts`                      | pure: `approvalSummary(waiting, now, tz)` (count, oldest via `describeWait`, overdue); `STALE_DAYS` 90; `staleSites(sites, last, now, tz)` (none published first, then oldest); `keyPageKind` (top-level `home`, `contact`, `calendar`); `staleKeyPages`; `CONTENT_ACTIONS`; `activityRow(event, now, tz)` |
-| `src/admin/Dashboard/dashboard-data.ts`     | reads AS THE USER: `findWaiting`, `findSites`, `findLastPublished` (one windowed read per collection, then newest per quiet site), `findKeyPages`, `findRecentActivity` (content actions, newest 10)                                                                                                       |
-| `src/admin/Dashboard/DistrictDashboard.tsx` | `beforeDashboard`, district only: `#district-dashboard` h1, `#approvals-panel`, `#freshness-panel`, `#activity-panel`; `EverythingElseHeading` `#everything-else`                                                                                                                                          |
-| `src/lib/queue-age.ts`                      | `localDay`, `DAY` now exported                                                                                                                                                                                                                                                                             |
-| `src/payload.config.ts`                     | `beforeDashboard`: `DistrictDashboard`, `GrantsPanel`, `EverythingElseHeading`                                                                                                                                                                                                                             |
+**Needs attention (2026-11-12):** above the panels, one Payload `Banner` per thing to act on, each
+banner a link to where it is fixed, the section drawn only when there is something: overdue
+approvals (`warning`, to `/admin/approvals`; said here instead of in the Approvals panel), then
+each feed calendar whose last copy failed (`error`, to the calendar), by site and calendar. A feed
+failure otherwise shows only on that calendar's own form.
+
+| File                                        | Holds                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/dashboard.ts`                      | pure: `needsAttention({ overdue, feedFailures })` → `{ type, text, href }[]`; `approvalSummary(waiting, now, tz)` (count, oldest via `describeWait`, overdue); `STALE_DAYS` 90; `staleSites(sites, last, now, tz)` (none published first, then oldest); `keyPageKind` (top-level `home`, `contact`, `calendar`); `staleKeyPages`; `CONTENT_ACTIONS`; `activityRow(event, now, tz)` |
+| `src/admin/Dashboard/dashboard-data.ts`     | reads AS THE USER: `findWaiting`, `findSites`, `findLastPublished` (one windowed read per collection, then newest per quiet site), `findKeyPages`, `findRecentActivity` (content actions, newest 10), `findFeedFailures` (feed calendars with a non-empty `feedError`, with site names)                                                                                            |
+| `src/admin/Dashboard/DistrictDashboard.tsx` | `beforeDashboard`, district only: `#district-dashboard` h1, `#attention-panel` (only when needed; `<ul>` of `Banner`s, underlined), `#approvals-panel`, `#freshness-panel`, `#activity-panel`; `EverythingElseHeading` `#everything-else`                                                                                                                                          |
+| `src/lib/queue-age.ts`                      | `localDay`, `DAY` now exported                                                                                                                                                                                                                                                                                                                                                     |
+| `src/payload.config.ts`                     | `beforeDashboard`: `DistrictDashboard`, `GrantsPanel`, `EverythingElseHeading`                                                                                                                                                                                                                                                                                                     |
 
 `WaitingBanner.tsx` and `countWaiting` are removed: the Approvals panel replaces them.
 
@@ -915,9 +921,11 @@ the work queues join as their modules land.
 - `tests/unit/lib/dashboard.test.ts` — every pure function
 - `tests/integration/dashboard.test.ts` — the reads in Postgres: top-level home only, drafts
   ignored, content actions only; a school manager sees their own site, no activity, no other
-  site's last change
+  site's last change; a failed feed is found with its site and problem, a working one is not, a
+  school manager reads only their own site's
 - `tests/e2e/district-dashboard.spec.ts` — panel order, a sent page counted and in the activity
-  with its link, no sign-ins; `approval-queue.spec.ts` — the panel links to the queue;
+  with its link, no sign-ins; a failed feed (`.invalid`, run through the jobs endpoint) is a
+  banner linking to its calendar, axe in both themes; `approval-queue.spec.ts` — the panel links to the queue;
   `admin-planes-axe.spec.ts` — the whole dashboard, both themes
 
 ## 19. Announcement dates: Start, Expires, Featured until (Jason, 2026-11-04)
