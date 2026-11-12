@@ -43,8 +43,8 @@ export default async function PagePreview({ params }: { params: Promise<{ id: st
 
   return (
     /**
-     * The tenant's colours, as the public layout puts them on `<html>` — here on the wrapper,
-     * since this document's `<html>` is shared by every school's preview. Colours only, already
+     * The tenant's colors, as the public layout puts them on `<html>` — here on the wrapper,
+     * since this document's `<html>` is shared by every school's preview. Colors only, already
      * contrast-checked by `toTheme`; nothing layout-bearing.
      */
     <div style={theme.tokens as React.CSSProperties}>

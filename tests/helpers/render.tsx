@@ -12,7 +12,7 @@ import { afterEach } from 'vitest'
  *
  * That is why axe does not run here. Component accessibility is checked by
  * `tests/a11y/storybook.spec.ts`, which runs axe over every story in real Chromium in both
- * directions, where colour contrast, focus appearance and RTL mirroring actually exist. Two
+ * directions, where color contrast, focus appearance and RTL mirroring actually exist. Two
  * axe implementations reporting different results on the same component would be worse than
  * one that is trusted (`06` §2.4).
  */

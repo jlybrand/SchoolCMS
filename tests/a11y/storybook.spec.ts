@@ -9,7 +9,7 @@ import { expect, test } from '@playwright/test'
  * the gate the moment it exists — the failure mode of a list is that the component someone
  * forgot to add is exactly the one that needed checking.
  *
- * Run in real Chromium, not jsdom, because the rules that matter most here — colour contrast,
+ * Run in real Chromium, not jsdom, because the rules that matter most here — color contrast,
  * focus appearance, anything computed from layout — do not exist without a layout engine. It
  * is also the RTL check the design suite asks for from the first component (`08` §7): the same
  * stories re-run with `dir="rtl"` and `lang="ar"`, which is when a physical property that

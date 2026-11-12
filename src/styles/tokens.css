@@ -4,16 +4,16 @@
  * Per-tenant themes override these VALUES at render from the `theme` global — they never
  * fork stylesheets. One shared design system, 28 brands.
  *
- * Contrast is validated at token level (`07` §3), so a school cannot pick a brand colour
+ * Contrast is validated at token level (`07` §3), so a school cannot pick a brand color
  * that fails AA. `tests/unit/tokens.test.ts` asserts every pair in
  * `REQUIRED_CONTRAST_PAIRS` (`src/lib/contrast.ts`) meets 4.5:1 for body text and 3:1 for
  * large text, interactive boundaries and focus indicators. The ratios quoted in the
- * comments below are what that suite computes; adding a colour token without adding its
+ * comments below are what that suite computes; adding a color token without adding its
  * pair fails the suite.
  */
 
 :root {
-  /* --- Colour: neutrals ------------------------------------------------- */
+  /* --- Color: neutrals ------------------------------------------------- */
   --color-surface: #ffffff;
   --color-surface-raised: #f6f7f9;
 
@@ -31,24 +31,24 @@
   /* Contrast against --color-surface: 7.5:1 (AAA body text) */
   --color-text-muted: #4d5563;
 
-  /* --- Colour: brand (per-tenant override target) ----------------------- */
+  /* --- Color: brand (per-tenant override target) ----------------------- */
   /* Contrast against --color-surface: 8.8:1 */
   --color-brand: #0f4c81;
   --color-brand-contrast: #ffffff;
 
   /**
-   * A school's SECOND colour (per-tenant override target). DECORATIVE ONLY — a rule under the
+   * A school's SECOND color (per-tenant override target). DECORATIVE ONLY — a rule under the
    * header, a rule over the footer — and, like --color-border, not contrast-checked for that
    * reason: 1.4.11 does not cover decoration, which is what lets a school's gold or sky blue
    * be used at all. Never text, never behind text, never the only boundary of a control. The
    * first component that needs either adds a pair to REQUIRED_CONTRAST_PAIRS, and the token
    * suite stops excusing this token.
    *
-   * The default is the hairline grey, so an unthemed site shows a quiet rule, not a colour.
+   * The default is the hairline grey, so an unthemed site shows a quiet rule, not a color.
    */
   --color-accent: #d3d7de;
 
-  /* --- Colour: alert severity (`03` §2 — never colour-only, `07` §3) ---- */
+  /* --- Color: alert severity (`03` §2 — never color-only, `07` §3) ---- */
   --color-info: #0f4c81;
   --color-warning: #7a4a00;
   --color-emergency: #8a1420;

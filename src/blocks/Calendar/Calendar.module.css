@@ -22,7 +22,7 @@
 .summary {
   cursor: pointer;
   /* The browser's own marker, beside the title — it follows the writing direction and survives
-     forced-colours mode, as in `Accordion`. */
+     forced-colors mode, as in `Accordion`. */
   display: list-item;
 }
 

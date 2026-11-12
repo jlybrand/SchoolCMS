@@ -9,7 +9,7 @@ import styles from './Link.module.css'
  *
  * Three things it owns so no block author has to remember them:
  *
- *   - **Underlined, always.** Distinguishing a link from body text by colour alone fails
+ *   - **Underlined, always.** Distinguishing a link from body text by color alone fails
  *     1.4.1; it also disappears entirely for anyone using a high-contrast or custom stylesheet.
  *   - **A new window is announced.** 3.2.5 is AAA, but an unannounced new tab is a real
  *     orientation problem for screen-reader and magnifier users, and the notice is free when

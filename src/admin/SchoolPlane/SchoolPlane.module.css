@@ -176,7 +176,7 @@
   color: var(--theme-elevation-800);
 }
 
-/** Errors carry words and a start-edge rule; never colour alone (1.4.1). */
+/** Errors carry words and a start-edge rule; never color alone (1.4.1). */
 .error {
   margin-block: 0.25rem 0.5rem;
   padding-inline-start: 0.75rem;

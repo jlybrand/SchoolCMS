@@ -4,7 +4,7 @@
  * Deliberate: contrast is validated at token level (`07` §3), so a palette that fails AA
  * cannot ship. Styling this from `--theme-elevation-*` would look more native in the admin
  * but would mean the component axe gate measures a fallback palette while the admin renders
- * a different one — the gate would be checking colours nobody sees. What Storybook measures
+ * a different one — the gate would be checking colors nobody sees. What Storybook measures
  * here is what the admin paints.
  *
  * LOGICAL PROPERTIES ONLY. The admin plane is localized too (`08` §6), and stylelint does not

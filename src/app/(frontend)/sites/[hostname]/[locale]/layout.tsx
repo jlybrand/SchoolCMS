@@ -41,7 +41,7 @@ export default async function SiteLayout({
    * same element is what outranks it without a specificity argument.
    *
    * An inline `style`, which CLAUDE.md warns off for anything LAYOUT-bearing because
-   * stylelint cannot see it. These are colours, from a closed map of property names, each
+   * stylelint cannot see it. These are colors, from a closed map of property names, each
    * value an exact `#rrggbb` that has already passed the contrast pairs (`toTheme`) — there
    * is no direction in them to get wrong and no string in them a person typed freely.
    *

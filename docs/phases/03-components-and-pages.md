@@ -113,10 +113,10 @@ One function answers the question in both places. Two implementations would even
 disagree, and the generous one would be the one that let a failing palette ship.
 
 Everything the checker cannot evaluate is a failure, never a skip: a missing token
-(`unresolved-token`), a `var()` indirection or a colour with alpha (`unevaluable-colour`).
-`contrastRatio` throws rather than returning a number for an unparseable colour.
+(`unresolved-token`), a `var()` indirection or a color with alpha (`unevaluable-color`).
+`contrastRatio` throws rather than returning a number for an unparseable color.
 
-The token suite also asserts that **every colour token appears in some pair**. Three are
+The token suite also asserts that **every color token appears in some pair**. Three are
 excluded by name, each for a stated reason (`src/lib/contrast.ts`): the two surfaces are only
 ever the background half of a pair, and `--color-border` is a decorative hairline outside
 1.4.11. Interactive boundaries use `--color-border-strong`, which is checked.
@@ -1104,7 +1104,7 @@ start, this is a new table — pure expand.
 
 ---
 
-## 22. Theme — a school's two colours, contrast-checked twice
+## 22. Theme — a school's two colors, contrast-checked twice
 
 The second per-tenant record (`03` §5). Same collection shape as `navigation` (§21); what is new
 is the validator and the render path.
@@ -1121,24 +1121,24 @@ is the validator and the render path.
 
 ### Changed
 
-| File                                         | Change                                                     |
-| -------------------------------------------- | ---------------------------------------------------------- |
-| `src/payload.config.ts`                      | Collection registered; `theme: { isGlobal: true }`         |
-| `src/content/types.ts`                       | `Theme`                                                    |
-| `src/styles/tokens.css`                      | `--color-accent` (default: the hairline grey)              |
-| `src/lib/contrast.ts`                        | New pair: `text on a hovered brand fill`                   |
-| `SiteHeader` / `SiteFooter` `.module.css`    | The boundary rule is now `--color-accent`                  |
-| `.../[locale]/layout.tsx`                    | Resolves tenant + theme; `style` on `<html>`               |
-| `scripts/seed.ts`                            | Maroon + gold for School A only, created when absent       |
-| `tests/helpers/payload.ts`                   | `themeA` (both colours) / `themeB` (main only)             |
-| `tests/unit/tokens.test.ts`                  | `--color-accent` joins `UNPAIRED_BY_DESIGN`                |
-| `tests/integration/tenant-isolation.test.ts` | 7 cases: district-only, one row, what each colour refuses  |
-| `tests/integration/content-layer.test.ts`    | `getTheme`: own tenant only; a failing row written by SQL  |
-| `tests/e2e/tenant-routing.spec.ts`           | Themed and unthemed tenant: computed link and rule colours |
-| `src/payload-types.ts`                       | Regenerated                                                |
-| `starterDocs/03-...md`                       | §5: what `theme` holds in v1                               |
+| File                                         | Change                                                    |
+| -------------------------------------------- | --------------------------------------------------------- |
+| `src/payload.config.ts`                      | Collection registered; `theme: { isGlobal: true }`        |
+| `src/content/types.ts`                       | `Theme`                                                   |
+| `src/styles/tokens.css`                      | `--color-accent` (default: the hairline grey)             |
+| `src/lib/contrast.ts`                        | New pair: `text on a hovered brand fill`                  |
+| `SiteHeader` / `SiteFooter` `.module.css`    | The boundary rule is now `--color-accent`                 |
+| `.../[locale]/layout.tsx`                    | Resolves tenant + theme; `style` on `<html>`              |
+| `scripts/seed.ts`                            | Maroon + gold for School A only, created when absent      |
+| `tests/helpers/payload.ts`                   | `themeA` (both colors) / `themeB` (main only)             |
+| `tests/unit/tokens.test.ts`                  | `--color-accent` joins `UNPAIRED_BY_DESIGN`               |
+| `tests/integration/tenant-isolation.test.ts` | 7 cases: district-only, one row, what each color refuses  |
+| `tests/integration/content-layer.test.ts`    | `getTheme`: own tenant only; a failing row written by SQL |
+| `tests/e2e/tenant-routing.spec.ts`           | Themed and unthemed tenant: computed link and rule colors |
+| `src/payload-types.ts`                       | Regenerated                                               |
+| `starterDocs/03-...md`                       | §5: what `theme` holds in v1                              |
 
-### The two colours are held to different standards
+### The two colors are held to different standards
 
 | Field            | Token            | Used for                                   | Checked against                   |
 | ---------------- | ---------------- | ------------------------------------------ | --------------------------------- |
@@ -1150,16 +1150,16 @@ of a control, so no pair names it and it sits in `UNPAIRED_BY_DESIGN` beside `--
 The first component that puts text on it adds a pair to `REQUIRED_CONTRAST_PAIRS` and removes it
 from that list.
 
-A school whose main colour is its light one (gold and black) enters the dark one as
+A school whose main color is its light one (gold and black) enters the dark one as
 `primaryColor`. The field description and the validation message both say so.
 
 ### The call chain
 
 ```
 SAVE   Theme.primaryColor / .secondaryColor
-         beforeValidate        toHexColor on each -> '#aabbcc' (left as typed when not a colour)
+         beforeValidate        toHexColor on each -> '#aabbcc' (left as typed when not a color)
          validate (per field)  checkThemeColors({ [field]: value })
-                                 not hex                  -> unevaluable-colour, outright
+                                 not hex                  -> unevaluable-color, outright
                                  overrides laid over DEFAULT_COLOR_TOKENS
                                  checkContrastPairs(pairs naming an overridden token)
                                describeThemeFailures(failures) -> the error under that field
@@ -1168,12 +1168,12 @@ RENDER layout.tsx
          getTenantByHostname(hostname)      unknown host -> no theme; the page 404s
          getTheme({ tenant })               src/content/theme.ts, overrideAccess + tenant clause
            toTheme(docs[0])                 src/content/theme-tokens.ts
-             toHexColor per THEME_FIELDS    not a colour -> { tokens: {} }
+             toHexColor per THEME_FIELDS    not a color -> { tokens: {} }
              checkThemeColors (both)        any failure  -> { tokens: {} }
          <html style={theme.tokens}>        --color-brand: #7a1f2b; --color-accent: #c9a227
 ```
 
-The render check judges both colours together and drops the whole palette on any failure, so a
+The render check judges both colors together and drops the whole palette on any failure, so a
 failing `primaryColor` written around the validator takes a valid `secondaryColor` with it.
 
 ### What `primaryColor` has to pass
@@ -1188,12 +1188,12 @@ failing `primaryColor` written around the validator takes a valid `secondaryColo
 The raised-surface pair is the binding one: `#767676` passes on white (4.54) and fails there
 (4.23). All failures are returned together.
 
-`--color-brand-contrast` is not a field. Any colour at 4.5:1 against white carries white text at
+`--color-brand-contrast` is not a field. Any color at 4.5:1 against white carries white text at
 the same ratio, so it has no free choice in it.
 
 ### Malformed values fail outright
 
-`checkThemeColors` reports a non-hex override as `unevaluable-colour` before consulting the
+`checkThemeColors` reports a non-hex override as `unevaluable-color` before consulting the
 pairs. It has to: no pair names `--color-accent`, so a malformed `secondaryColor` would otherwise
 have nothing to fail.
 
@@ -1207,14 +1207,14 @@ fails that test. It also asserts every `THEME_FIELDS` token is declared in the s
 ### The new contrast pair
 
 `Link`'s button variant sets `background-color: var(--color-text)` on hover and keeps
-`--color-brand-contrast` as its label colour. That pair was in the stylesheet and not in
+`--color-brand-contrast` as its label color. That pair was in the stylesheet and not in
 `REQUIRED_CONTRAST_PAIRS`. It is now; the defaults score 17.9:1.
 
 ### Inline `style` on `<html>`
 
 `tokens.css` declares on `:root`; the overrides are an inline declaration on the same element.
 The property names come from `THEME_FIELDS`, never from the row, and each value is an exact
-`#rrggbb`. The e2e spec reads computed colours — a header link, the header's rule — rather than
+`#rrggbb`. The e2e spec reads computed colors — a header link, the header's rule — rather than
 the attribute: no component references the theme.
 
 There is no CSP in the repo. When one lands it has to account for this attribute: a hash or
@@ -1349,7 +1349,7 @@ entry. `proxy.test.ts` pins the entry; the e2e spec requests four such paths and
 `plugin-seo@3.87.0` was installed and its fields put under the axe spec. Failures, all inline
 styles in the plugin's components, all still present in 3.90.1:
 
-| Element                | Colours                  | Ratio  |
+| Element                | Colors                   | Ratio  |
 | ---------------------- | ------------------------ | ------ |
 | Hint text under fields | `#9A9A9A` on `#ffffff`   | 2.81:1 |
 | "Too short" pill       | `#ffffff` on `orangered` | 3.44:1 |

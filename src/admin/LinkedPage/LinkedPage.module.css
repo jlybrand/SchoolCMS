@@ -1,7 +1,7 @@
 /**
  * Payload's theme variables, not DD2 tokens — see
  * `src/admin/SendForApproval/ReviewStatusField.module.css`. `currentColor` takes the cell's text
- * colour, which clears 3:1 for a graphic in both themes. Logical properties only (rule 5).
+ * color, which clears 3:1 for a graphic in both themes. Logical properties only (rule 5).
  */
 
 .icon {

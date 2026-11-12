@@ -21,7 +21,7 @@ import {
  *
  * `07` §4.4 says to explain this to communications staff as a feature, and it is one: the
  * removed controls are the ones that let a well-meaning author produce content that looks
- * structured and is not — centred text, colour used to carry meaning, a bold line standing
+ * structured and is not — centred text, color used to carry meaning, a bold line standing
  * in for a heading. What remains maps exactly onto the elements the paste normalizer admits
  * (`07` §4.2), so typing and pasting produce the same vocabulary.
  *
@@ -166,7 +166,7 @@ export const TRIAGED_FEATURES: Record<string, FeatureVerdict> = {
   TextStateFeature: {
     allowed: false,
     reason:
-      'Arbitrary colour and styling defeats the token-level contrast guarantee (`07` §3) — the palette is validated, ad-hoc colours are not.',
+      'Arbitrary color and styling defeats the token-level contrast guarantee (`07` §3) — the palette is validated, ad-hoc colors are not.',
   },
   SubscriptFeature: { allowed: false, reason: 'Not in the `07` §4.2 allowlist; no DD2 use case.' },
   SuperscriptFeature: {

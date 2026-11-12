@@ -12,7 +12,7 @@ import type { Theme } from './types'
  * VALIDATES AGAIN, and drops a failing palette WHOLE. The field validator tells the editor;
  * this is what `07` §3's "cannot ship a combination that fails AA" actually rests on, because
  * it also covers a row written around the validator and a palette that passed until the
- * platform's own neutrals changed underneath it. Whole rather than per-colour, because a
+ * platform's own neutrals changed underneath it. Whole rather than per-color, because a
  * palette is judged as a set — half of one is a combination nobody checked.
  */
 
@@ -34,7 +34,7 @@ export const toTheme = (doc: unknown): Theme => {
     if (raw === null || raw === undefined || raw === '') continue
 
     const hex = toHexColor(raw)
-    // Not a colour: nothing here is safe to put in a style attribute.
+    // Not a color: nothing here is safe to put in a style attribute.
     if (hex === null) return NO_OVERRIDES
 
     colors[field as ThemeField] = hex

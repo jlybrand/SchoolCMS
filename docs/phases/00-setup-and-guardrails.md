@@ -240,7 +240,7 @@ the token layer. Phase 2's `SiteLayout` is the only importer.
 alert severity (`--color-info`/`--color-warning`/`--color-emergency`), focus
 (`--focus-ring-color`/`-width`/`-offset`), and a type scale
 (`--font-family-base`, `--font-size-base` → `--font-size-2xl`). Measured contrast ratios are
-recorded in comments beside the colour pairs.
+recorded in comments beside the color pairs.
 
 `globals.css` sets `box-sizing` on `*`, base `html`/`body` typography from the tokens, a
 `main` reflow rule for 200–400% zoom, list and link defaults, a focus-visible indicator

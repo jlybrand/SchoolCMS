@@ -293,7 +293,7 @@ technology, and an inaccessible admin excludes them from their own job.
   each release.
 - Custom admin components (task landing view, submit control, diff viewer, block list) carry
   the same conformance bar as public blocks, including visible focus and accessible names.
-- Error messages are specific and text-based, never colour-only.
+- Error messages are specific and text-based, never color-only.
 
 Payload's admin is reasonably accessible but not audited to AA; custom components are where
 regressions will originate, so that is where testing concentrates.

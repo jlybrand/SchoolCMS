@@ -17,7 +17,7 @@
 /*
  * Why the last save was refused. Empty, it takes no room. The red is a bar, not the text:
  * `--theme-error-500` as text fails 4.5:1 on white (axe, 2026-11-11), so the words keep the
- * readable colour — as the approval queue's notices do.
+ * readable color — as the approval queue's notices do.
  */
 .error {
   margin: 0;

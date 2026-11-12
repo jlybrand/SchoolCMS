@@ -460,7 +460,7 @@ Changed:
 | `[[...segments]]/page.tsx`                       | `resolvePageBlocks(ctx, page.layout, { serverUrl })` before `BlockList`                                                                |
 | `src/collections/PostBoards.ts`, `post-hooks.ts` | `label` = `boardLabel(site name, title)` = "Site · Folder → Board"; `useAsTitle: 'label'`                                              |
 | `src/admin/A11yPatch/repairs.ts`                 | names `.collapsible__drag` "Reorder", `.array-actions__button` "Row actions", `.clipboard-action__popup .popup-button` "Copy or paste" |
-| `src/app/(payload)/admin-overrides.css`          | `.blocks-field__drawer-toggler:not(:disabled) .btn` colour                                                                             |
+| `src/app/(payload)/admin-overrides.css`          | `.blocks-field__drawer-toggler:not(:disabled) .btn` color                                                                              |
 | `src/payload.config.ts`                          | `crossTenantRelationships` after `multiTenantPlugin`                                                                                   |
 
 ### The two passes

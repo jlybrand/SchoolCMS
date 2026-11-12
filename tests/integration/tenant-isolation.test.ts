@@ -1220,9 +1220,9 @@ describe('theme — district-only, one row per tenant, never a failing palette (
     expect(denied).toBe(true)
   })
 
-  it('refuses a colour that fails contrast — through the API, not just the admin form', async () => {
+  it('refuses a color that fails contrast — through the API, not just the admin form', async () => {
     /**
-     * `07` §3: "a school cannot pick a brand colour that fails". The district admin is the
+     * `07` §3: "a school cannot pick a brand color that fails". The district admin is the
      * only actor who can write here, so the district admin is who the check has to stop.
      */
     for (const primaryColor of ['#ffcc00', '#767676', 'navy', '#0f4c81;background:red']) {
@@ -1239,8 +1239,8 @@ describe('theme — district-only, one row per tenant, never a failing palette (
     }
   })
 
-  it('takes a light colour as the SECOND colour — and still refuses one that is not a colour', async () => {
-    // The same gold the main colour refuses above. It is decorative here (`src/lib/theme.ts`).
+  it('takes a light color as the SECOND color — and still refuses one that is not a color', async () => {
+    // The same gold the main color refuses above. It is decorative here (`src/lib/theme.ts`).
     const updated = await payload.update({
       collection: 'theme',
       id: f.themeA,
@@ -1264,7 +1264,7 @@ describe('theme — district-only, one row per tenant, never a failing palette (
     }
   })
 
-  it('stores one spelling per colour, and lets the district admin clear it', async () => {
+  it('stores one spelling per color, and lets the district admin clear it', async () => {
     const updated = await payload.update({
       collection: 'theme',
       id: f.themeB,

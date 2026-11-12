@@ -203,13 +203,13 @@ test.describe('per-tenant theme (`02` §4.4)', () => {
   test.describe('a themed tenant', () => {
     test.use(site('a.localhost'))
 
-    test("@smoke renders the school's two colours, and components pick them up unchanged", async ({
+    test("@smoke renders the school's two colors, and components pick them up unchanged", async ({
       page,
     }) => {
       await page.goto('/about')
-      // The link colour is the point: no component was told about the theme.
+      // The link color is the point: no component was told about the theme.
       expect(await brandOf(page)).toEqual({
-        // Main colour: maroon. Second colour: gold, as the rule under the header.
+        // Main color: maroon. Second color: gold, as the rule under the header.
         link: 'rgb(122, 31, 43)',
         rule: 'rgb(201, 162, 39)',
       })
@@ -219,7 +219,7 @@ test.describe('per-tenant theme (`02` §4.4)', () => {
   test.describe('an unthemed tenant', () => {
     test.use(site('b.localhost'))
 
-    test("@smoke renders the default palette — never a neighbour's colour", async ({ page }) => {
+    test("@smoke renders the default palette — never a neighbour's color", async ({ page }) => {
       await page.goto('/about')
       expect(await brandOf(page)).toEqual({ link: 'rgb(15, 76, 129)', rule: 'rgb(211, 215, 222)' })
     })

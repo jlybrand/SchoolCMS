@@ -42,11 +42,11 @@ Every block ships with:
   reordering blocks, because they never choose heading levels.
 - **Required accessibility fields** enforced at the schema level, not the form level:
   accessible names on interactive blocks, `title` on embeds, alt on meaningful images.
-- **No colour-only meaning.** Severity, status, and error states carry text or icon plus
+- **No color-only meaning.** Severity, status, and error states carry text or icon plus
   text.
 - **Visible focus** on every interactive element, meeting 2.4.11 focus appearance.
 - **Contrast baked into theme tokens.** Per-tenant palettes are validated against AA
-  contrast at token level, so a school cannot pick a brand colour that fails.
+  contrast at token level, so a school cannot pick a brand color that fails.
 - **CSS logical properties only** — RTL correctness is structural, verified from the first
   component (`08` §7).
 - A Storybook entry and an axe test in the same PR (`06` §2.4).
@@ -75,7 +75,7 @@ export.
 
 | Input | Behaviour |
 |---|---|
-| Inline styles, classes, `mso-*`, font/colour declarations | Stripped entirely |
+| Inline styles, classes, `mso-*`, font/color declarations | Stripped entirely |
 | Elements outside the allowlist (`p`, `h2`, `h3`, `strong`, `em`, `a`, `ul`, `ol`, `li`) | Unwrapped to text content |
 | Lines beginning `•`, `-`, `*`, `1.`, `a)` | **Reconstructed as real `<ul>`/`<ol>` items** — the highest-value transform, since agendas are largely lists |
 | Smart quotes, non-breaking spaces, empty spacer paragraphs, doubled breaks | Normalized quietly |
@@ -102,7 +102,7 @@ disappear.
 ### 4.4 Constrained rich text
 
 A fixed Lexical element allowlist (§4.2). No arbitrary HTML, no inline styles, no font or
-colour controls. Editors cannot express a formatting idea the design system hasn't already
+color controls. Editors cannot express a formatting idea the design system hasn't already
 made accessible. This is a feature, and it should be explained to communications staff as
 one.
 
