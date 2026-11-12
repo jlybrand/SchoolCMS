@@ -65,14 +65,15 @@ const DistrictPublish = () => {
 
 /**
  * In place of Publish on a page waiting for approval — see `publishControlFor`. A link, not a
- * disabled button: it says where approving happens and takes the reviewer there, to this page's
- * own entry.
+ * disabled button: it takes the reviewer to this page's own entry in the queue. SECONDARY since
+ * the review panel on the page itself holds Approve (Jason, 2026-11-12: the queue link stays, as
+ * the secondary way).
  */
 const ReviewInQueue = () => {
   const { id, collectionSlug } = useDocumentInfo()
   return (
     <Link
-      className="btn btn--style-primary btn--size-medium"
+      className="btn btn--style-secondary btn--size-medium"
       href={`/admin/approvals#${approvalAnchor(collectionSlug ?? 'pages', id ?? '')}`}
       id="action-review-in-queue"
     >

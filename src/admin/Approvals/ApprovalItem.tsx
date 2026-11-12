@@ -27,8 +27,23 @@ import styles from './Approvals.module.css'
  *
  * Outcomes are announced in a `role="status"` region that replaces the actions, so focus is
  * moved to it and a screen-reader user hears what happened.
+ *
+ * `place` (Jason, 2026-11-12): in the queue, or on the document itself (`DocumentReview`). On the
+ * document the way out is back to the queue, not "open" it. `onDecided` hears each decision, so
+ * the document can bring its own header and form up to date (`DocumentApproval.tsx`).
  */
-export const ApprovalItem = ({ item }: { item: QueueItem }) => {
+export type Decision = 'published' | 'scheduled' | 'sent-back'
+
+export const ApprovalItem = ({
+  item,
+  place = 'queue',
+  onDecided,
+}: {
+  item: QueueItem
+  place?: 'queue' | 'document'
+  onDecided?: (decision: Decision, outcome: string) => void
+}) => {
+  const onDocument = place === 'document'
   const {
     config: {
       routes: { api },
@@ -79,9 +94,10 @@ export const ApprovalItem = ({ item }: { item: QueueItem }) => {
     if (noteOpen) noteRef.current?.focus()
   }, [noteOpen])
 
-  const finish = (text: string) => {
+  const finish = (text: string, decision: Decision) => {
     setOutcome(text)
     setPhase('done')
+    onDecided?.(decision, text)
   }
 
   const fail = (text: string, reload: boolean) => {
@@ -111,13 +127,17 @@ export const ApprovalItem = ({ item }: { item: QueueItem }) => {
         errors?: Partial<Record<PostDateField, string>>
       } | null
       if (res.ok)
-        return finish(
-          schedules && isoDates.publishAt
-            ? `Approved. “${item.title}” goes live ${goesLive(isoDates.publishAt)}.`
-            : item.noun === 'announcement'
-              ? `Published. “${item.title}” is approved for ${item.school}.`
-              : `Published. “${item.title}” will be on ${item.school}’s site within a few seconds.`,
-        )
+        return schedules && isoDates.publishAt
+          ? finish(
+              `Approved. “${item.title}” goes live ${goesLive(isoDates.publishAt)}.`,
+              'scheduled',
+            )
+          : finish(
+              item.noun === 'announcement'
+                ? `Published. “${item.title}” is approved for ${item.school}.`
+                : `Published. “${item.title}” will be on ${item.school}’s site within a few seconds.`,
+              'published',
+            )
       if (body?.errors) setDateErrors(body.errors)
       fail(
         body?.error ?? `The ${item.noun} could not be approved. Please try again.`,
@@ -149,7 +169,7 @@ export const ApprovalItem = ({ item }: { item: QueueItem }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reviewState: 'changes-requested', reviewNote: check.note }),
       })
-      if (res.ok) return finish(`Sent back to ${item.school} with your note.`)
+      if (res.ok) return finish(`Sent back to ${item.school} with your note.`, 'sent-back')
       fail(`The ${item.noun} could not be sent back. Reload and try again.`, true)
     } catch {
       fail(`The ${item.noun} could not be sent back. Check your connection and try again.`, false)
@@ -161,8 +181,8 @@ export const ApprovalItem = ({ item }: { item: QueueItem }) => {
       aria-labelledby={titleId}
       className={styles.item}
       data-overdue={item.wait.overdue}
-      // The target of "Review in the approval queue" on the page form.
-      id={approvalAnchor(item.collection, item.id)}
+      // The target of "Review in the approval queue" on the page form — in the queue only.
+      id={onDocument ? undefined : approvalAnchor(item.collection, item.id)}
       tabIndex={-1}
     >
       <header className={styles.itemHeader}>
@@ -195,7 +215,7 @@ export const ApprovalItem = ({ item }: { item: QueueItem }) => {
           <p>{problem.text}</p>
           {problem.reload ? (
             <button className={styles.secondary} onClick={() => router.refresh()} type="button">
-              Reload the queue
+              {onDocument ? `Reload the ${item.noun}` : 'Reload the queue'}
             </button>
           ) : null}
         </div>
@@ -271,12 +291,21 @@ export const ApprovalItem = ({ item }: { item: QueueItem }) => {
               >
                 Request changes
               </button>
-              <Link
-                className={styles.open}
-                href={`/admin/collections/${item.collection}/${String(item.id)}`}
-              >
-                Open the {item.noun}
-              </Link>
+              {onDocument ? (
+                <Link
+                  className={styles.open}
+                  href={`/admin/approvals#${approvalAnchor(item.collection, item.id)}`}
+                >
+                  Review in the approval queue
+                </Link>
+              ) : (
+                <Link
+                  className={styles.open}
+                  href={`/admin/collections/${item.collection}/${String(item.id)}`}
+                >
+                  Open the {item.noun}
+                </Link>
+              )}
             </div>
           )}
         </div>
