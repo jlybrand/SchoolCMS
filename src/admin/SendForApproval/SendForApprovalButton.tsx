@@ -33,7 +33,8 @@ export const SEND_FOR_APPROVAL = 'Send for approval'
  * would otherwise get NOTHING, since Payload's PublishButton renders null without publish
  * permission and autosave hides Save draft. A district admin gets Payload's own Publish, except
  * on a page waiting for approval, where they get a link to it in the approval queue — and on a
- * PAGE, "Publish now" / "Schedule…" (`PagePublishControl`, Jason 2026-11-11).
+ * PAGE, one Publish button whose dialog asks now or later (`PagePublishControl`, Jason
+ * 2026-11-11 / 2026-11-12).
  *
  * WHAT IT SENDS. A draft save with `reviewState: 'submitted'` — the same request Payload's
  * Save draft makes, plus the one field. `applyReviewState` decides what that write means

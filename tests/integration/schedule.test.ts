@@ -204,6 +204,46 @@ describe('the district’s own form', () => {
     ).rejects.toThrow(/publishAt/)
     expect((await live(post.id))._status).toBe('published')
   })
+
+  /**
+   * The 404 Jason hit (2026-11-12). Payload hands the hook the NEWEST version as `originalDoc`,
+   * and on a live post with an autosaved edit that version is a draft — so "is it live?" read from
+   * it said no, the publish became a draft, and the live post came down until its Start.
+   */
+  it('a Start on a live post with a newer draft is refused too — the post stays up', async () => {
+    const post = await payload.create({
+      collection: 'posts',
+      data: {
+        tenant: f.tenantA,
+        board: f.boardA,
+        title: `Live with a draft ${Date.now()}`,
+        body: BODY,
+        visibility: 'public',
+        _status: 'published',
+      } as never,
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+    await payload.update({
+      collection: 'posts',
+      id: post.id,
+      data: { title: `Edited ${Date.now()}` } as never,
+      draft: true,
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+    expect((await latest(post.id))._status).toBe('draft')
+    await expect(
+      payload.update({
+        collection: 'posts',
+        id: post.id,
+        data: { publishAt: inHours(6).toISOString(), _status: 'published' } as never,
+        user: f.districtAdmin,
+        overrideAccess: false,
+      }),
+    ).rejects.toThrow(/publishAt/)
+    expect((await live(post.id))._status).toBe('published')
+  })
 })
 
 describe('Expires', () => {
@@ -327,6 +367,37 @@ describe('a page’s Start', () => {
     ).rejects.toThrow(/publishAt/)
   })
 
+  it('a Start on a live page with a newer draft is refused too — the page stays up', async () => {
+    const created = await page({ _status: 'published' })
+    // An edit not yet published, as autosave leaves one: the newest version is now a draft.
+    await payload.update({
+      collection: 'pages',
+      id: created.id,
+      data: { title: `Edited ${Date.now()}` } as never,
+      draft: true,
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+    await expect(
+      payload.update({
+        collection: 'pages',
+        id: created.id,
+        data: { publishAt: inHours(3).toISOString(), _status: 'published' } as never,
+        user: f.districtAdmin,
+        overrideAccess: false,
+      }),
+    ).rejects.toThrow(/publishAt/)
+    expect((await livePage(created.id))._status).toBe('published')
+  })
+
+  it('a page taken off the site can be scheduled again — it is not live', async () => {
+    const created = await page({ _status: 'published' })
+    await asDistrict(created.id, { _status: 'draft' })
+    await asDistrict(created.id, { publishAt: inHours(3).toISOString(), _status: 'published' })
+    expect((await livePage(created.id))._status).toBe('draft')
+    expect((await draftPage(created.id)).reviewState).toBe('scheduled')
+  })
+
   const draftPage = (id: number | string) =>
     payload.findByID({ collection: 'pages', id, draft: true, depth: 0, overrideAccess: true })
   const asDistrict = (id: number | string, data: Record<string, unknown>) =>
@@ -371,6 +442,109 @@ describe('a page’s Start', () => {
     expect((await runSchedule(await system(), inHours(4))).published).not.toContain(
       `pages/${created.id}`,
     )
+  })
+
+  /**
+   * Scheduling a CHANGE to a page already on the site (Jason, 2026-11-12): the edit is saved as a
+   * draft marked `scheduled` — what the dialog's "At a set time" sends — so the page on the site
+   * stays exactly as it is until the sweep publishes the change.
+   */
+  const scheduleChange = (id: number | string, data: Record<string, unknown>, at: Date) =>
+    payload.update({
+      collection: 'pages',
+      id,
+      data: {
+        ...data,
+        _status: 'draft',
+        publishAt: at.toISOString(),
+        reviewState: 'scheduled',
+      } as never,
+      draft: true,
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+
+  it('a change to a live page can be scheduled: the page stays up as it was until its time', async () => {
+    const created = await page({ title: 'Before', _status: 'published' })
+    await scheduleChange(created.id, { title: 'After' }, inHours(3))
+
+    const onSite = await livePage(created.id)
+    expect(onSite._status).toBe('published')
+    expect(onSite.title).toBe('Before')
+    expect((await draftPage(created.id)).reviewState).toBe('scheduled')
+
+    expect((await runSchedule(await system(), inHours(2))).published).not.toContain(
+      `pages/${created.id}`,
+    )
+    expect((await livePage(created.id)).title).toBe('Before')
+
+    const run = await runSchedule(await system(), inHours(4))
+    expect(run.published).toContain(`pages/${created.id}`)
+    const after = await livePage(created.id)
+    expect(after).toMatchObject({ _status: 'published', title: 'After' })
+    expect(after.reviewState ?? null).toBeNull()
+  })
+
+  it('the district’s later edits join the scheduled change', async () => {
+    const created = await page({ title: 'Before', _status: 'published' })
+    await scheduleChange(created.id, { title: 'After' }, inHours(3))
+    // An autosave from the district's form: every field sent, the Start and state as stored.
+    const stored = await draftPage(created.id)
+    await payload.update({
+      collection: 'pages',
+      id: created.id,
+      data: {
+        title: 'After, edited',
+        publishAt: stored.publishAt,
+        reviewState: 'scheduled',
+      } as never,
+      draft: true,
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+    expect((await draftPage(created.id)).reviewState).toBe('scheduled')
+    expect((await livePage(created.id)).title).toBe('Before')
+
+    await runSchedule(await system(), inHours(4))
+    expect((await livePage(created.id)).title).toBe('After, edited')
+  })
+
+  it('cancelling a live page’s scheduled change keeps the page up and the edit as a draft', async () => {
+    const created = await page({ title: 'Before', _status: 'published' })
+    await scheduleChange(created.id, { title: 'After' }, inHours(3))
+    await payload.update({
+      collection: 'pages',
+      id: created.id,
+      data: { _status: 'draft', publishAt: null, reviewState: null } as never,
+      draft: true,
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+
+    expect(await livePage(created.id)).toMatchObject({ _status: 'published', title: 'Before' })
+    const pending = await draftPage(created.id)
+    expect(pending.title).toBe('After')
+    expect(pending.reviewState ?? null).toBeNull()
+    expect((await runSchedule(await system(), inHours(4))).published).not.toContain(
+      `pages/${created.id}`,
+    )
+  })
+
+  it('a school’s edit to a live page’s scheduled change drops the schedule', async () => {
+    const created = await page({ title: 'Before', _status: 'published' })
+    await scheduleChange(created.id, { title: 'After' }, inHours(3))
+    await payload.update({
+      collection: 'pages',
+      id: created.id,
+      data: { title: 'A school’s words' } as never,
+      draft: true,
+      user: f.managerA,
+      overrideAccess: false,
+    })
+    expect((await runSchedule(await system(), inHours(4))).published).not.toContain(
+      `pages/${created.id}`,
+    )
+    expect((await livePage(created.id)).title).toBe('Before')
   })
 
   it('a school manager cannot cancel a schedule', async () => {
