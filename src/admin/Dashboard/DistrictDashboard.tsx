@@ -1,4 +1,4 @@
-import { Banner, Card } from '@payloadcms/ui'
+import { Banner, Card, Pill } from '@payloadcms/ui'
 import Link from 'next/link'
 import type { Payload, PayloadRequest } from 'payload'
 
@@ -184,7 +184,16 @@ export const DistrictDashboard = async ({
             <ul className={styles.activity}>
               {rows.map((row, index) => (
                 <li className={styles.event} key={index}>
-                  <span className={styles.school}>{row.school}</span>
+                  {/* Divs: Payload's Pill renders a <div>, which a <span> cannot hold. */}
+                  <div className={styles.rowHead}>
+                    <span className={styles.school}>{row.school}</span>
+                    {/* The sentence says it in full; the pill is for the eye, so it is not read twice. */}
+                    <div aria-hidden="true">
+                      <Pill pillStyle={row.tag.style} rounded size="small">
+                        {row.tag.label}
+                      </Pill>
+                    </div>
+                  </div>
                   <span>
                     {row.href ? <Link href={row.href}>{row.sentence}</Link> : row.sentence}
                   </span>

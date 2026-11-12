@@ -75,6 +75,14 @@ adminTest.describe('the district dashboard', () => {
           name: new RegExp(`sent the page “${fixture.title}” for approval`),
         })
         await expect(line).toHaveAttribute('href', `/admin/collections/pages/${fixture.id}`)
+        // What happened, as a pill for the eye — hidden from screen readers, which hear the line.
+        // `has` matches inside each row, so the link is located from the page, not the panel.
+        const row = activity.locator('li').filter({
+          has: page.getByRole('link', {
+            name: new RegExp(`sent the page “${fixture.title}” for approval`),
+          }),
+        })
+        await expect(row.locator('[aria-hidden="true"] .pill')).toHaveText('Sent')
         // Content only: sign-ins never appear (Jason, 2026-11-04) — the admin signed in to get here.
         await expect(activity).not.toContainText(/signed in|logged in/i)
       } finally {

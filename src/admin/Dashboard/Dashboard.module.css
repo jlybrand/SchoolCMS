@@ -66,7 +66,7 @@
 }
 
 /*
- * "Needs attention" — Payload's Banner, one per item (Jason, 2026-11-12). Its own colours are
+ * "Needs attention" — Payload's Banner, one per item (Jason, 2026-11-12). Its own colors are
  * Payload's warning/error ramps, which Payload tunes for 4.5:1 in both themes; the whole-screen
  * axe check in `tests/e2e/district-dashboard.spec.ts` holds it to that.
  */
@@ -142,6 +142,18 @@
 
 .event:last-child {
   border-block-end: 0;
+}
+
+/* The site's name, then what happened as a Payload Pill (Jason, 2026-11-12). */
+.rowHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.rowHead :global(.pill) {
+  margin: 0;
 }
 
 .school {

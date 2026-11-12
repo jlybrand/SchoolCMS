@@ -150,6 +150,7 @@ describe('activityRow — one line of the audit trail, content actions only', ()
     expect(activityRow({ ...base, action: 'submit' }, NOW, TZ)).toEqual({
       school: 'School A',
       sentence: 'Jane Doe sent the announcement “Lunch menu” for approval',
+      tag: { label: 'Sent', style: 'warning' },
       href: '/admin/collections/posts/9',
       when: expect.any(String),
     })
@@ -185,6 +186,23 @@ describe('activityRow — one line of the audit trail, content actions only', ()
     const row = activityRow({ ...base, action: 'delete' }, NOW, TZ)
     expect(row?.sentence).toBe('Jane Doe deleted the announcement “Lunch menu”')
     expect(row?.href).toBeNull()
+  })
+
+  it('tags each row with what happened, in one word and a color (Pill, 2026-11-12)', () => {
+    const tag = (action: string) => activityRow({ ...base, action }, NOW, TZ)?.tag
+    // Live — green.
+    expect(tag('publish')).toEqual({ label: 'Published', style: 'success' })
+    expect(tag('approve')).toEqual({ label: 'Approved', style: 'success' })
+    expect(tag('auto-approve')).toEqual({ label: 'Auto-approved', style: 'success' })
+    // Waiting on someone — amber.
+    expect(tag('submit')).toEqual({ label: 'Sent', style: 'warning' })
+    expect(tag('request-changes')).toEqual({ label: 'Sent back', style: 'warning' })
+    // Gone — red.
+    expect(tag('delete')).toEqual({ label: 'Deleted', style: 'error' })
+    // The rest — neutral.
+    expect(tag('schedule')).toEqual({ label: 'Scheduled', style: 'light-gray' })
+    expect(tag('expire')).toEqual({ label: 'Expired', style: 'light-gray' })
+    expect(tag('restore')).toEqual({ label: 'Restored', style: 'light-gray' })
   })
 
   it('names the district when there is no school', () => {
