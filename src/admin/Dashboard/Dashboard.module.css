@@ -55,11 +55,6 @@
   font-size: 1.25rem;
 }
 
-.subheading {
-  margin-block: 1rem 0.5rem;
-  font-size: 1rem;
-}
-
 .lead {
   margin: 0;
   font-weight: 600;
@@ -118,13 +113,18 @@
   color: var(--theme-elevation-800);
 }
 
-.strong {
-  font-weight: 600;
+/*
+ * The freshness table — Payload's Table (Jason, 2026-11-12). Scrolls inside the panel rather than
+ * widening the page on a narrow screen; the first row reads as the start of the list.
+ */
+.table {
+  /* Both axes, so it has no direction; with no set height it only ever scrolls across. */
+  overflow: auto;
+  margin-block-start: 0.75rem;
 }
 
-.list {
+.table :global(.table) {
   margin: 0;
-  padding-inline-start: 1.25rem;
 }
 
 .activity {

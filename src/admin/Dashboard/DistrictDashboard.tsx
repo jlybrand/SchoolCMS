@@ -1,6 +1,7 @@
-import { Banner, Card, Pill } from '@payloadcms/ui'
+import { Banner, Card, Pill, Table } from '@payloadcms/ui'
 import Link from 'next/link'
-import type { Payload, PayloadRequest } from 'payload'
+import type { ClientField, Column, Payload, PayloadRequest } from 'payload'
+import type { ReactNode } from 'react'
 
 import { isDistrictAdmin, relationshipIdOf } from '@/access/predicates'
 import type { AuthUser } from '@/access/types'
@@ -8,6 +9,7 @@ import {
   activityRow,
   approvalCards,
   approvalSummary,
+  freshnessRows,
   needsAttention,
   staleKeyPages,
   staleSites,
@@ -65,6 +67,7 @@ export const DistrictDashboard = async ({
   const attention = needsAttention({ overdue: approvals.overdue, feedFailures })
   const quietSites = staleSites(sites, last, now, tz)
   const quietPages = staleKeyPages(keyPages, now, tz)
+  const stale = freshnessRows(quietSites, quietPages, tz)
   const rows = activity.flatMap((event) => {
     const site = relationshipIdOf(event.tenant as never)
     const row = activityRow(
@@ -140,37 +143,51 @@ export const DistrictDashboard = async ({
             <h2 className={styles.heading} id="freshness-heading">
               Needs freshening
             </h2>
-            {quietSites.length === 0 && quietPages.length === 0 ? (
+            {stale.length === 0 ? (
               <p className={styles.muted}>
                 Every site and key page has changed in the last 90 days.
               </p>
-            ) : null}
-            {quietSites.length > 0 ? (
+            ) : (
               <>
-                <h3 className={styles.subheading}>Sites with no change in 90 days</h3>
-                <ul className={styles.list}>
-                  {quietSites.map((site) => (
-                    <li key={site.id}>
-                      <span className={styles.strong}>{site.name}</span> —{' '}
-                      <span className={styles.muted}>{site.last}</span>
-                    </li>
-                  ))}
-                </ul>
+                <p className={styles.lead}>
+                  {stale.length === 1
+                    ? '1 site or key page has not changed in 90 days.'
+                    : `${stale.length} sites or key pages have not changed in 90 days.`}{' '}
+                  Longest first.
+                </p>
+                <div className={styles.table}>
+                  <Table
+                    appearance="condensed"
+                    columns={[
+                      column(
+                        'site',
+                        'Site',
+                        stale.map((row) => row.site),
+                      ),
+                      column(
+                        'what',
+                        'What',
+                        stale.map((row) =>
+                          row.href ? (
+                            <Link href={row.href} key={row.id}>
+                              {row.what}
+                            </Link>
+                          ) : (
+                            row.what
+                          ),
+                        ),
+                      ),
+                      column(
+                        'when',
+                        'Last changed',
+                        stale.map((row) => row.when),
+                      ),
+                    ]}
+                    data={stale}
+                  />
+                </div>
               </>
-            ) : null}
-            {quietPages.length > 0 ? (
-              <>
-                <h3 className={styles.subheading}>Key pages unchanged in 90 days</h3>
-                <ul className={styles.list}>
-                  {quietPages.map((page) => (
-                    <li key={page.id}>
-                      {page.site} · {page.kind}: <Link href={page.href}>{page.title}</Link> —{' '}
-                      <span className={styles.muted}>{page.last}</span>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ) : null}
+            )}
           </section>
         </div>
 
@@ -210,6 +227,19 @@ export const DistrictDashboard = async ({
     </div>
   )
 }
+
+/**
+ * One column of Payload's `Table` (Jason, 2026-11-12). Table is built for list views, so each
+ * column names a field; these are not collection fields, so a plain text one stands in. The
+ * cells are rendered here and handed over in row order.
+ */
+const column = (accessor: string, heading: string, cells: ReactNode[]): Column => ({
+  accessor,
+  active: true,
+  field: { name: accessor, type: 'text' } as ClientField,
+  Heading: heading,
+  renderedCells: cells,
+})
 
 /**
  * The heading over Payload's own cards, last before them (`beforeDashboard`), so they read as

@@ -5,6 +5,7 @@ import {
   approvalCards,
   approvalSummary,
   CONTENT_ACTIONS,
+  freshnessRows,
   keyPageKind,
   needsAttention,
   STALE_DAYS,
@@ -73,8 +74,18 @@ describe('staleSites — sites with no published change in 90 days (`04` §3.1 i
       ['3', daysAgo(120)],
     ])
     expect(staleSites(sites, last, NOW, TZ)).toEqual([
-      { id: '2', name: 'School B', last: expect.stringMatching(/^Last changed /) },
-      { id: '3', name: 'School C', last: expect.stringMatching(/^Last changed /) },
+      {
+        id: '2',
+        name: 'School B',
+        at: daysAgo(200),
+        last: expect.stringMatching(/^Last changed /),
+      },
+      {
+        id: '3',
+        name: 'School C',
+        at: daysAgo(120),
+        last: expect.stringMatching(/^Last changed /),
+      },
     ])
   })
 
@@ -84,7 +95,7 @@ describe('staleSites — sites with no published change in 90 days (`04` §3.1 i
       ['2', daysAgo(10)],
     ])
     expect(staleSites(sites, last, NOW, TZ)).toEqual([
-      { id: '3', name: 'School C', last: 'Nothing published yet' },
+      { id: '3', name: 'School C', at: null, last: 'Nothing published yet' },
     ])
   })
 
@@ -124,6 +135,59 @@ describe('staleKeyPages — key pages unchanged in 90 days', () => {
       href: '/admin/collections/pages/3',
       last: expect.stringMatching(/^Last changed /),
     })
+  })
+})
+
+describe('freshnessRows — the freshness panel as one table (Payload Table, 2026-11-12)', () => {
+  const site = (id: string, name: string, at: string | null) => ({
+    id,
+    name,
+    at,
+    last: at ? 'Last changed …' : 'Nothing published yet',
+  })
+  const page = (id: number, site: string, title: string, updatedAt: string) => ({
+    id,
+    site,
+    title,
+    kind: 'Home page' as const,
+    updatedAt,
+    href: `/admin/collections/pages/${id}`,
+    last: 'Last changed …',
+  })
+
+  it('is one list: a site with nothing published first, then oldest first, sites and pages alike', () => {
+    const rows = freshnessRows(
+      [site('1', 'School A', daysAgo(120)), site('2', 'School B', null)],
+      [page(7, 'School C', 'Welcome', daysAgo(300)), page(8, 'School A', 'Home', daysAgo(100))],
+      TZ,
+    )
+    expect(rows.map((r) => r.id)).toEqual(['site-2', 'page-7', 'site-1', 'page-8'])
+  })
+
+  it('says what each row is, links a page, and gives the day it last changed', () => {
+    const [never, oldPage] = freshnessRows(
+      [site('2', 'School B', null)],
+      [page(7, 'School C', 'Welcome', '2026-03-04T15:00:00.000Z')],
+      TZ,
+    )
+    expect(never).toEqual({
+      id: 'site-2',
+      site: 'School B',
+      what: 'The whole site',
+      href: null,
+      when: 'Nothing published yet',
+    })
+    expect(oldPage).toEqual({
+      id: 'page-7',
+      site: 'School C',
+      what: 'Home page: Welcome',
+      href: '/admin/collections/pages/7',
+      when: 'Mar 4, 2026',
+    })
+  })
+
+  it('is empty when nothing is stale', () => {
+    expect(freshnessRows([], [], TZ)).toEqual([])
   })
 })
 
