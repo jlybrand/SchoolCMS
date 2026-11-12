@@ -34,6 +34,7 @@ import { ApprovalsNavLink as ApprovalsNavLink_50736d5f53ca3024920ebd70347f12c2 }
 import { DistrictDashboard as DistrictDashboard_edc4519ec276aaac7e06cda8a41f999e } from '../../../admin/Dashboard/DistrictDashboard'
 import { GrantsPanel as GrantsPanel_186d64a3916edf6aa31629c5b61e084c } from '../../../admin/Grants/GrantsPanel'
 import { EverythingElseHeading as EverythingElseHeading_edc4519ec276aaac7e06cda8a41f999e } from '../../../admin/Dashboard/DistrictDashboard'
+import { DashboardNavLink as DashboardNavLink_49bef2258fdd1f6d5ad626fc62acbb33 } from '../../../admin/Nav/DashboardNavLink'
 import { TenantSelector as TenantSelector_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
 import { SchoolNameNav as SchoolNameNav_b0a332a2ac8ea8004fb5781337ffc4fc } from '../../../admin/SchoolPlane/SchoolNameNav'
 import { A11yPatch as A11yPatch_f47d732b0bfe7e156f459bc74057afca } from '../../../admin/A11yPatch/A11yPatch'
@@ -84,6 +85,7 @@ export const importMap = {
   "/admin/Dashboard/DistrictDashboard#DistrictDashboard": DistrictDashboard_edc4519ec276aaac7e06cda8a41f999e,
   "/admin/Grants/GrantsPanel#GrantsPanel": GrantsPanel_186d64a3916edf6aa31629c5b61e084c,
   "/admin/Dashboard/DistrictDashboard#EverythingElseHeading": EverythingElseHeading_edc4519ec276aaac7e06cda8a41f999e,
+  "/admin/Nav/DashboardNavLink#DashboardNavLink": DashboardNavLink_49bef2258fdd1f6d5ad626fc62acbb33,
   "@payloadcms/plugin-multi-tenant/rsc#TenantSelector": TenantSelector_d6d5f193a167989e2ee7d14202901e62,
   "/admin/SchoolPlane/SchoolNameNav#SchoolNameNav": SchoolNameNav_b0a332a2ac8ea8004fb5781337ffc4fc,
   "/admin/A11yPatch/A11yPatch#A11yPatch": A11yPatch_f47d732b0bfe7e156f459bc74057afca,

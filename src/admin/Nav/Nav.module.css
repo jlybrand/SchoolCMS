@@ -1,0 +1,43 @@
+/*
+ * The dashboard link at the top of the side navigation (Jason, 2026-11-12). Payload's theme
+ * variables, as the rest of the admin's own chrome: `--theme-text` on the nav's background passes
+ * in both themes. A 2.5rem square (32.5px at Payload's 13px root), larger than the 24px minimum.
+ * Logical properties only (rule 5).
+ */
+.dashboard {
+  /* Payload's nav is a full-height flex column, which would shrink it: keep it square and at its start. */
+  flex: none;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2.5rem;
+  block-size: 2.5rem;
+  margin-block-end: 0.75rem;
+  border: 1px solid var(--theme-elevation-400);
+  border-radius: 4px;
+  color: var(--theme-text);
+}
+
+.dashboard:hover {
+  background: var(--theme-elevation-100);
+}
+
+.dashboard:focus-visible {
+  outline: 2px solid var(--theme-text);
+  outline-offset: 2px;
+}
+
+/* On the dashboard itself: filled, as a current page is shown elsewhere in the nav. */
+.dashboard[aria-current='page'] {
+  background: var(--theme-elevation-150);
+}
+
+.icon {
+  display: inline-flex;
+}
+
+.icon :global(svg) {
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+}
