@@ -281,6 +281,8 @@ test.describe('the district page toolbar', () => {
       await openForm(page, made.id)
       await page.locator('#page-toolbar').getByText('History', { exact: true }).click()
       await expect(page).toHaveURL(new RegExp(`/admin/collections/pages/${made.id}/versions`))
+      // The publishes of the last year (Jason, 2026-11-12), not Payload's list of every version.
+      await expect(page.locator('#publish-history')).toBeVisible({ timeout: 20_000 })
     } finally {
       await admin.delete(`/api/pages/${made.id}`)
       await admin.dispose()

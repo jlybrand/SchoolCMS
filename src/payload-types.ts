@@ -949,6 +949,7 @@ export interface AuditEvent {
   actorLabel: string;
   summary?: string | null;
   comment?: string | null;
+  versionId?: string | null;
   autoApproved?: boolean | null;
   updatedAt: string;
   createdAt: string;
@@ -1608,6 +1609,7 @@ export interface AuditEventsSelect<T extends boolean = true> {
   actorLabel?: T;
   summary?: T;
   comment?: T;
+  versionId?: T;
   autoApproved?: T;
   updatedAt?: T;
   createdAt?: T;

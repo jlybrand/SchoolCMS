@@ -45,6 +45,7 @@ describe('pages', () => {
         actorLabel: 'm@dd2.org',
         summary: '',
         comment: '',
+        versionId: null,
         autoApproved: false,
       },
     ])
@@ -445,5 +446,21 @@ describe('comments on publish, schedule and send (Jason, 2026-11-12)', () => {
   it('no comment is an empty one', () => {
     const [entry] = auditEntries(pages({ doc: page({ reviewState: 'submitted' }), comment: '   ' }))
     expect(entry?.comment).toBe('')
+  })
+})
+
+describe('a publish names the version it made (Jason, 2026-11-12: History is publishes)', () => {
+  it('on publish, approve, auto-approve and restore; not on a send', () => {
+    const publish = auditEntries(
+      pages({
+        user: district,
+        previous: page({ _status: 'draft' }),
+        doc: page({ _status: 'published' }),
+        versionId: '88',
+      }),
+    )
+    expect(publish[0]).toMatchObject({ action: 'publish', versionId: '88' })
+    const sent = auditEntries(pages({ doc: page({ reviewState: 'submitted' }), versionId: '89' }))
+    expect(sent[0]).toMatchObject({ action: 'submit', versionId: null })
   })
 })

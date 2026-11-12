@@ -26,6 +26,8 @@ import { ListTaskButton as ListTaskButton_914e5ea18819f469db2e9cd0431636b1 } fro
 import { AssignTenantFieldTrigger as AssignTenantFieldTrigger_1d0591e3cf4f332c83a86da13a0de59a } from '@payloadcms/plugin-multi-tenant/client'
 import { SendForApprovalButton as SendForApprovalButton_04ce333b331daae73b75fc6274c29e3a } from '../../../admin/SendForApproval/SendForApprovalButton'
 import { SchoolSaveDraftButton as SchoolSaveDraftButton_cc7b83310c556ae98b1d66c9fab1fdc1 } from '../../../admin/SendForApproval/SchoolSaveDraftButton'
+import { HistoryView as HistoryView_ce0eee06b302982e31ccb86b2ede9295 } from '../../../admin/History/HistoryView'
+import { NoPill as NoPill_56c46c87b506e0bb7f4bac3c5dc041d3 } from '../../../admin/History/NoPill'
 import { AnnouncementsView as AnnouncementsView_424d1d2ce7b62f2a20ccd2961f5c622f } from '../../../admin/Announcements/AnnouncementsView'
 import { BoardsListView as BoardsListView_a022c7e66bfcc000431bd70c768a08d6 } from '../../../admin/Boards/BoardsListView'
 import { EventSaveButton as EventSaveButton_9d8ff44ca1c1d15e1c244354a4498e4a } from '../../../admin/Events/EventSaveButton'
@@ -77,6 +79,8 @@ export const importMap = {
   "@payloadcms/plugin-multi-tenant/client#AssignTenantFieldTrigger": AssignTenantFieldTrigger_1d0591e3cf4f332c83a86da13a0de59a,
   "/admin/SendForApproval/SendForApprovalButton#SendForApprovalButton": SendForApprovalButton_04ce333b331daae73b75fc6274c29e3a,
   "/admin/SendForApproval/SchoolSaveDraftButton#SchoolSaveDraftButton": SchoolSaveDraftButton_cc7b83310c556ae98b1d66c9fab1fdc1,
+  "/admin/History/HistoryView#HistoryView": HistoryView_ce0eee06b302982e31ccb86b2ede9295,
+  "/admin/History/NoPill#NoPill": NoPill_56c46c87b506e0bb7f4bac3c5dc041d3,
   "/admin/Announcements/AnnouncementsView#AnnouncementsView": AnnouncementsView_424d1d2ce7b62f2a20ccd2961f5c622f,
   "/admin/Boards/BoardsListView#BoardsListView": BoardsListView_a022c7e66bfcc000431bd70c768a08d6,
   "/admin/Events/EventSaveButton#EventSaveButton": EventSaveButton_9d8ff44ca1c1d15e1c244354a4498e4a,

@@ -77,6 +77,28 @@ const write = async (req: PayloadRequest, input: AuditInput) => {
 
 const userOf = (req: PayloadRequest) => (req.user as AuditInput['user']) ?? null
 
+/**
+ * The newest version of a page or announcement that is now published — the one this write made —
+ * for its History (Jason, 2026-11-12). Payload saves the version before `afterChange` runs.
+ */
+const newestVersionId = async (
+  req: PayloadRequest,
+  collection: string,
+  doc: Record<string, unknown>,
+): Promise<string | null> => {
+  if ((collection !== 'pages' && collection !== 'posts') || doc._status !== 'published') return null
+  const { docs } = await req.payload.findVersions({
+    collection,
+    where: { parent: { equals: doc.id } },
+    sort: '-updatedAt',
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+    req,
+  })
+  return docs[0] ? String(docs[0].id) : null
+}
+
 export const auditChange =
   (collection: string): CollectionAfterChangeHook =>
   async ({ doc, previousDoc, operation, req }) => {
@@ -90,6 +112,7 @@ export const auditChange =
       autoApproval: autoApprovalOf(req) ?? undefined,
       scheduledRun: scheduledRunOf(req) ?? undefined,
       comment: changeCommentFor(req, collection, doc.id),
+      versionId: await newestVersionId(req, collection, doc),
     })
     return doc
   }

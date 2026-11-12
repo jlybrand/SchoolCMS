@@ -1535,3 +1535,51 @@ note is its comment. Approve takes `comment` in its body and sends it as `change
     - the queue shows the school's note, and approve takes a comment
     - the school's note goes with the send and clears (axe, both themes)
   - `post-dates.spec.ts`: a post's Start is in the dialog
+
+## 35. History: the publishes of the last year (Jason, 2026-11-12)
+
+A page's or announcement's **History** lists the times it was published in the last year, newest
+first. Each row says how it went live (Published, Approved and published, Published at its
+scheduled time, Published by auto-approval, Restored an earlier version), when and who, the
+publisher's comment and, for an approval, **the school's note**. **Open this version** goes to
+Payload's own screen for that version, where Restore lives (published versions only, district
+only: §14 of `04`). It replaces Payload's list of every version, which buried the publishes under
+autosaves. The tab is called History and shows no count, because Payload's counts every version.
+
+**Every version is kept.** `maxPerDoc: 0` on `pages` and `posts` (Jason: "keep as much page/post
+history as possible"). Autosave updates its newest version instead of adding one per keystroke,
+so versions grow by editing session.
+
+**Built from the activity log.** Each publish's entry records the version it made
+(`audit-events.versionId`: the newest version, read in `auditChange` after a write leaves the
+document published). The rows come from the publish entries, plus the sends and schedules that
+lend them their notes: a school's note goes to the publish it led to and is then spent, and a
+publish at its scheduled time carries the comment it was scheduled with.
+
+| File                                   | Does                                                                                                                                     |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/admin/History/publish-history.ts` | pure: `HISTORY_DAYS` (365); `publishHistory(entries, { collection, id, now })` → `{ id, label, who, when, comment, schoolNote, href }[]` |
+| `src/admin/History/history-data.ts`    | `loadPublishHistory(req, collection, id)`: null unless a district admin; reads the doc's entries for the last 395 days                   |
+| `src/admin/History/HistoryView.tsx`    | `#publish-history`, the `versions` edit view of `pages` and `posts`                                                                      |
+| `src/admin/History/NoPill.tsx`         | the tab's count, removed                                                                                                                 |
+| `src/collections/hooks/audit.ts`       | `newestVersionId`: on a write that leaves a page or post published                                                                       |
+| `src/lib/audit.ts`                     | `AuditEntry.versionId`: set for publish, approve, auto-approve and restore only                                                          |
+
+### Tests
+
+- Unit:
+  - `publish-history.test.ts`: publishes only, newest first; the labels; the year; who, when, the
+    comment and the link; a note given to its own publish only; a scheduled publish's comment
+  - `audit.test.ts`: `versionId` on publishes only
+- Integration (`publish-history.test.ts`):
+  - publish, approve and scheduled publish each name the version they made; a send names none
+  - the first published version survives 55 later saves
+  - `loadPublishHistory` for the district, and null for a school
+- E2E (`publish-history.spec.ts`):
+  - two publishes, newest first, with their comments; opens the version, where Restore is; axe in
+    both themes
+  - the empty state
+  - an announcement's History tab
+  - a school sees nothing
+- E2E: `page-history.spec.ts` (the tab is History) and `page-toolbar.spec.ts` (History opens the
+  list)

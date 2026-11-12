@@ -1,0 +1,89 @@
+/*
+ * A page's History (Jason, 2026-11-12). Payload's theme variables, as the queue's: `--theme-
+ * elevation-800` on the admin background passes in both themes. Logical properties only (rule 5).
+ */
+.view {
+  padding-block: 1.5rem 3rem;
+  max-inline-size: 48rem;
+}
+
+.title {
+  margin-block: 0 0.5rem;
+  font-size: 1.5rem;
+}
+
+.lead {
+  margin-block: 0 1.5rem;
+  color: var(--theme-elevation-800);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-block: 1rem;
+  padding-inline: 1.25rem;
+  border: 1px solid var(--theme-elevation-400);
+  border-radius: 4px;
+  background: var(--theme-elevation-50);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  align-items: baseline;
+  margin: 0;
+}
+
+.label {
+  font-weight: 600;
+}
+
+.meta,
+.muted {
+  margin: 0;
+  color: var(--theme-elevation-800);
+}
+
+.note {
+  margin: 0;
+}
+
+.noteLabel {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--theme-elevation-800);
+}
+
+.quote {
+  margin-block: 0.25rem 0;
+  margin-inline: 0;
+  padding-inline-start: 0.75rem;
+  border-inline-start: 4px solid var(--theme-elevation-400);
+  white-space: pre-wrap;
+}
+
+.open {
+  align-self: flex-start;
+  font-weight: 600;
+}
+
+.visuallyHidden {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

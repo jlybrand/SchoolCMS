@@ -52,6 +52,8 @@ export type AuditEntry = {
    * request's note. Empty when nothing was written.
    */
   comment: string
+  /** The version a publish made, so History can open and restore it (2026-11-12). */
+  versionId: string | null
   autoApproved: boolean
 }
 
@@ -71,6 +73,8 @@ export type AuditInput = {
   scheduledRun?: 'publish' | 'expire' | undefined
   /** The optional comment sent with this write (`changeComment`, `src/collections/fields/`). */
   comment?: string | undefined
+  /** The newest version after this write — kept on a PUBLISH's entry only. */
+  versionId?: string | null | undefined
 }
 
 const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '')
@@ -84,7 +88,13 @@ const entry = (
   input: AuditInput,
   doc: NonNullable<Doc>,
   action: AuditAction,
-  fields: { documentTitle: string; tenant: string | null; summary?: string; comment?: string },
+  fields: {
+    documentTitle: string
+    tenant: string | null
+    summary?: string
+    comment?: string
+    versionId?: string | null
+  },
 ): AuditEntry => ({
   action,
   contentType: input.collection,
@@ -94,6 +104,7 @@ const entry = (
   ...who(input.user),
   summary: fields.summary ?? '',
   comment: fields.comment ?? '',
+  versionId: fields.versionId ?? null,
   autoApproved: action === 'auto-approve',
 })
 
@@ -103,6 +114,14 @@ const REVIEWED: Readonly<Record<string, string>> = {
   posts: 'Post',
   events: 'Event',
 }
+
+/** The actions that put a version live — the rows of a page's History (2026-11-12). */
+const PUBLISHES: ReadonlySet<AuditAction> = new Set<AuditAction>([
+  'publish',
+  'approve',
+  'auto-approve',
+  'restore',
+])
 
 const reviewAction = (input: AuditInput): AuditAction | null => {
   const before = input.previous ?? {}
@@ -155,6 +174,7 @@ const forReviewed = (input: AuditInput, noun: string): AuditEntry[] => {
                 : '',
       // A request's note IS its comment; anything else carries what was written with it.
       comment: action === 'request-changes' ? text(doc.reviewNote) : text(input.comment),
+      versionId: PUBLISHES.has(action) ? (input.versionId ?? null) : null,
     }),
   ]
 }
