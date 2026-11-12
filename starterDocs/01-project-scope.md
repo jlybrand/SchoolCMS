@@ -201,7 +201,7 @@ general SIS integration.
 | **Accessibility** | WCAG 2.1 AA for all templates and shipped content. Zero critical/serious axe violations to merge. The **admin interfaces are also in scope** — DD2 staff may author using assistive technology. See `07`. |
 | **Availability** | 99.9% public-site uptime; publishing plane may target 99.5%. Public delivery decoupled from backend (`02`, `09`). |
 | **Performance** | Core Web Vitals "good" (LCP ≤ 2.5s, INP ≤ 200ms, CLS ≤ 0.1) at p75 on 4G/mid device. Cached pages TTFB < 200ms from edge. |
-| **Scalability** | Absorb a 100× traffic spike (weather/closure) via CDN with no origin scaling. ~400k visitors/yr baseline. |
+| **Scalability** | Absorb a 100× traffic spike (weather/closure) via CDN with no origin scaling. Baseline ~700k active users and ~4.35M page views per year across all 28 tenants (≈0.14 views/s average; a 100× spike ≈ 14 views/s at the edge). |
 | **Security** | OWASP ASVS L2 posture; SSO via district Entra ID; least-privilege roles; **tenant isolation enforced in Payload access functions and proven by an adversarial test suite on every build** (`03` §6.4); encrypted at rest and in transit. |
 | **Privacy** | FERPA-aware: no student PII anywhere in the platform. The PowerSchool integration pulls staff data only — enforced in depth (`11` §4). |
 | **Maintainability** | Mainstream stack a competent Next.js developer can pick up. Typed schema-as-code; documented architectural decisions with rationale; no bespoke systems where the framework provides one. Onboarding < 2 days. **The content-access layer (`02` §11) is mandatory** — it is what keeps the CMS replaceable. |
