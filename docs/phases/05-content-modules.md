@@ -1458,3 +1458,26 @@ loaded, approve refuses it ("Reload the page").
   - Request changes with a note: `changes-requested`
   - an announcement's dates behind "Set dates (optional)"
   - no panel on a page not waiting, and none for the school that sent it
+
+## 33. The dashboard icon at the top of the side navigation (Jason, 2026-11-12)
+
+An icon link home, the first thing in the side navigation on both planes. `/admin` is each plane's
+home: the district dashboard, or a school manager's home screen. Jason's choices: an icon that
+signifies dashboard, at the top, district and school alike.
+
+| File                                 | Does                                                                                                                                                                     |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/admin/Nav/DashboardNavLink.tsx` | `#nav-dashboard`, a link to `/admin` with `aria-label="Dashboard"` and `title`; Payload's `GridViewIcon` inside an `aria-hidden` span; `aria-current="page"` on `/admin` |
+| `src/admin/Nav/Nav.module.css`       | a 2.5rem square (`flex: none`, or Payload's full-height flex column shrinks it), a visible focus ring, and a filled look when current                                    |
+| `src/payload.config.ts`              | `admin.components.beforeNav`, NOT `beforeNavLinks`: the multi-tenant plugin appends "Filter by Tenant" to `beforeNav`, so only there does the icon come first            |
+
+The icon sits just before Payload's `<nav>` element, as the tenant filter does. Payload's own logo
+at the top left of every screen already links to `/admin` too, and stays visible when the side
+navigation is closed.
+
+### Tests
+
+- `tests/e2e/dashboard-nav.spec.ts`, for both planes: named "Dashboard"; before the tenant filter
+  and every menu link (school: above "Your school"); leads home and is marked current there; axe in
+  both themes. Payload saves "nav open" per user on the server and other specs flip it, so the spec
+  opens the nav until a trial click on the icon succeeds.

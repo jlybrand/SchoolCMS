@@ -83,6 +83,12 @@ export default buildConfig({
         '/admin/Dashboard/DistrictDashboard#EverythingElseHeading',
       ],
       afterNavLinks: ['/admin/Approvals/ApprovalsNavLink#ApprovalsNavLink'],
+      /**
+       * The way home, at the very top of the side navigation: an icon link to the dashboard, both
+       * planes (Jason, 2026-11-12). `beforeNav`, not `beforeNavLinks`: the multi-tenant plugin
+       * appends its "Filter by Tenant" box to `beforeNav`, so only there does this come first.
+       */
+      beforeNav: ['/admin/Nav/DashboardNavLink#DashboardNavLink'],
       /** A school manager's school, named where a tenant picker would be (Jason, 2026-11-04). */
       beforeNavLinks: ['/admin/SchoolPlane/SchoolNameNav#SchoolNameNav'],
       /** Repairs Payload's own markup where it fails axe — a stopgap; see the component. */
