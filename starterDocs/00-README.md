@@ -114,7 +114,7 @@ Read in order. Each document is self-contained but assumes the ones before it.
 - **Standard:** WCAG 2.1 Level AA. Documents are remediated before upload (`07` §5) — the
   platform records status, it does not remediate.
 - **Availability target:** 99.9% for public sites (`09`).
-- **Scale:** ~400,000 visitors/year across 28 tenants. Low; not the design driver.
+- **Scale:** ~700,000 active users and ~4.35M page views per year across 28 tenants (`01` §6). Low; not the design driver.
 - **Tenant isolation:** the invariants in `03` §6.4 must always hold; release-blocking.
 - **No student data** enters the platform from PowerSchool or anywhere else (`11`).
 - **Compliance timing:** DOJ's April 2026 interim final rule moved entities under 50,000
