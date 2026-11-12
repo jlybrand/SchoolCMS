@@ -12,6 +12,7 @@ import { schoolPalette } from '@/access/school-layout'
 import { districtOnlyField } from '@/access/tenant-scoped'
 import type { AuthUser } from '@/access/types'
 import { documentReviewField } from '@/admin/Approvals/document-review-field'
+import { PREVIEW_BREAKPOINTS } from '@/admin/LivePreview/device-tabs'
 import { changeCommentField } from '@/collections/fields/change-comment'
 import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 import {
@@ -83,11 +84,8 @@ export const Pages: CollectionConfig = {
      */
     livePreview: {
       url: ({ data }) => (data?.id ? `/admin-preview/pages/${String(data.id)}` : null),
-      breakpoints: [
-        { label: 'Phone', name: 'phone', width: 375, height: 667 },
-        { label: 'Tablet', name: 'tablet', width: 768, height: 1024 },
-        { label: 'Desktop', name: 'desktop', width: 1280, height: 800 },
-      ],
+      // Mobile, Tablet, Desktop — shown as tabs with Payload's Responsive (2026-11-12).
+      breakpoints: PREVIEW_BREAKPOINTS.map((b) => ({ ...b })),
     },
     useAsTitle: 'title',
     defaultColumns: ['title', 'linkMode', 'slug', 'visibility', '_status'],
@@ -240,6 +238,15 @@ export const Pages: CollectionConfig = {
     documentReviewField,
     /** The optional comment sent with a publish, schedule or send — never stored (2026-11-12). */
     changeCommentField,
+    {
+      /**
+       * Live Preview's device tabs (Jason, 2026-11-12): draws nothing here, and puts Mobile,
+       * Tablet, Desktop and Responsive in the preview's toolbar. See `src/admin/LivePreview/`.
+       */
+      name: 'previewDevices',
+      type: 'ui',
+      admin: { components: { Field: '/admin/LivePreview/DeviceTabs#DeviceTabs' } },
+    },
     {
       /**
        * The Page settings dialog's heading and Close (Jason, 2026-10-29) — first, so it heads the

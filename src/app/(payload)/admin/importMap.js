@@ -4,6 +4,7 @@ import { YourSchoolField as YourSchoolField_657d17b2c6ca4ee9360b1f3f90ccc600 } f
 import { TenantField as TenantField_1d0591e3cf4f332c83a86da13a0de59a } from '@payloadcms/plugin-multi-tenant/client'
 import { ReviewStatusField as ReviewStatusField_078936fce220cbf8e528e3d7e8fc0dfa } from '../../../admin/SendForApproval/ReviewStatusField'
 import { DocumentReview as DocumentReview_49fe0baadaac961ddb91ea87bec1882f } from '../../../admin/Approvals/DocumentReview'
+import { DeviceTabs as DeviceTabs_57c7c42e5ba5d1d414334b9c062073cc } from '../../../admin/LivePreview/DeviceTabs'
 import { PageSettingsHeader as PageSettingsHeader_db46844617032efcf0d7dec80489bbeb } from '../../../admin/PageToolbar/PageSettingsHeader'
 import { PermalinkField as PermalinkField_f6814ebdf510877580b089f38a229b9a } from '../../../admin/Permalink/PermalinkField'
 import { LinkedPageCell as LinkedPageCell_7356ccf667888eca398b067f1932d5a1 } from '../../../admin/LinkedPage/LinkedPageCell'
@@ -57,6 +58,7 @@ export const importMap = {
   "@payloadcms/plugin-multi-tenant/client#TenantField": TenantField_1d0591e3cf4f332c83a86da13a0de59a,
   "/admin/SendForApproval/ReviewStatusField#ReviewStatusField": ReviewStatusField_078936fce220cbf8e528e3d7e8fc0dfa,
   "/admin/Approvals/DocumentReview#DocumentReview": DocumentReview_49fe0baadaac961ddb91ea87bec1882f,
+  "/admin/LivePreview/DeviceTabs#DeviceTabs": DeviceTabs_57c7c42e5ba5d1d414334b9c062073cc,
   "/admin/PageToolbar/PageSettingsHeader#PageSettingsHeader": PageSettingsHeader_db46844617032efcf0d7dec80489bbeb,
   "/admin/Permalink/PermalinkField#PermalinkField": PermalinkField_f6814ebdf510877580b089f38a229b9a,
   "/admin/LinkedPage/LinkedPageCell#LinkedPageCell": LinkedPageCell_7356ccf667888eca398b067f1932d5a1,
