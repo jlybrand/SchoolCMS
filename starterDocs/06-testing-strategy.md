@@ -161,14 +161,14 @@ Real browser flows, multi-tenant and multi-role:
 
 ```
 typecheck → lint (incl. boundary + logical-properties rules) → unit → integration
-  → build → e2e (full suite, 4 shards) → axe gate → lighthouse budget
+  → build → e2e (full suite, 2 shards) → axe gate → lighthouse budget
                                           │
    (nightly / pre-release) → full e2e matrix · localization matrix · k6 spike
                              · security scan · manual AT
 ```
 
 - **Blocking on every PR:** typecheck, lint, unit, integration, build, the full e2e suite
-  (Chromium, sharded four ways), **axe**. Smoke alone let a regression in an untagged spec
+  (Chromium, sharded across two machines), **axe**. Smoke alone let a regression in an untagged spec
   through (2026-11-12), so smoke stays a local shortcut, not the gate.
 - **Blocking on a PR that can affect them:** the Storybook component axe gate (anything outside
   the admin, collections, access, content layer and tests), the Lighthouse budget (anything
