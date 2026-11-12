@@ -90,6 +90,8 @@ export const AuditEvents: CollectionConfig = {
      * 2026-11-12). The page's history and the queue read it here.
      */
     { name: 'comment', type: 'textarea', admin: { readOnly: true } },
+    /** The version a publish made — History opens and restores it (2026-11-12). */
+    { name: 'versionId', type: 'text', admin: { readOnly: true } },
     {
       name: 'autoApproved',
       label: 'Auto-approved',

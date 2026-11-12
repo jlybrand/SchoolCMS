@@ -105,6 +105,19 @@ export const Pages: CollectionConfig = {
      * line is the `reviewStatus` field below.
      */
     components: {
+      /**
+       * History: the publishes of the last year, each opening its version (Jason, 2026-11-12) —
+       * in place of Payload's list of every version. See `src/admin/History/`.
+       */
+      views: {
+        edit: {
+          versions: {
+            Component: '/admin/History/HistoryView#HistoryView',
+            // No count: Payload's counts every version, not the publishes History lists.
+            tab: { label: 'History', Pill: '/admin/History/NoPill#NoPill' },
+          },
+        },
+      },
       /** A school manager's way to create from the list (Jason, 2026-11-04) — see the component. */
       beforeListTable: [
         {
@@ -148,7 +161,12 @@ export const Pages: CollectionConfig = {
    */
   versions: {
     drafts: { autosave: true, validate: true },
-    maxPerDoc: 50,
+    /**
+     * Every version kept (Jason, 2026-11-12: "keep as much page/post history as possible"), so a
+     * publish in History can always be opened and restored. Autosave updates its newest version
+     * rather than adding one per keystroke, so this grows by editing sessions, not keystrokes.
+     */
+    maxPerDoc: 0,
   },
 
   hooks: {

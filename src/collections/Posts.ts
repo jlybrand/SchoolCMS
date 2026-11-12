@@ -102,7 +102,17 @@ export const Posts: CollectionConfig = {
        * Folders → boards → a board's posts, with "Create post" (Jason, 2026-11-04) — Finalsite's
        * Posts module, for both planes. See src/admin/Announcements/.
        */
-      views: { list: { Component: '/admin/Announcements/AnnouncementsView#AnnouncementsView' } },
+      views: {
+        list: { Component: '/admin/Announcements/AnnouncementsView#AnnouncementsView' },
+        /** History: the publishes of the last year (Jason, 2026-11-12) — `src/admin/History/`. */
+        edit: {
+          versions: {
+            Component: '/admin/History/HistoryView#HistoryView',
+            // No count: Payload's counts every version, not the publishes History lists.
+            tab: { label: 'History', Pill: '/admin/History/NoPill#NoPill' },
+          },
+        },
+      },
       edit: {
         PublishButton: '/admin/SendForApproval/SendForApprovalButton#SendForApprovalButton',
         SaveDraftButton: '/admin/SendForApproval/SchoolSaveDraftButton#SchoolSaveDraftButton',
@@ -121,7 +131,12 @@ export const Posts: CollectionConfig = {
   /** As pages — see src/collections/Pages.ts for why `validate: true` makes autosave safe. */
   versions: {
     drafts: { autosave: true, validate: true },
-    maxPerDoc: 50,
+    /**
+     * Every version kept (Jason, 2026-11-12: "keep as much page/post history as possible"), so a
+     * publish in History can always be opened and restored. Autosave updates its newest version
+     * rather than adding one per keystroke, so this grows by editing sessions, not keystrokes.
+     */
+    maxPerDoc: 0,
   },
 
   hooks: {

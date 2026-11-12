@@ -60,6 +60,7 @@ test.describe('page history — school manager', () => {
   test('@smoke the page form has no Versions tab', async ({ page }) => {
     await openPage(page, fixture.id)
     await expect(page.getByRole('link', { name: 'Versions' })).toHaveCount(0)
+    await expect(page.getByRole('link', { name: 'History', exact: true })).toHaveCount(0)
   })
 
   test('@smoke cannot list or restore a version over REST', async ({ baseURL }) => {
@@ -91,9 +92,10 @@ adminTest.describe('page history — district admin', () => {
     await dropPage(fixture)
   })
 
-  adminTest('@smoke keeps the Versions tab', async ({ page }) => {
+  // Called History since 2026-11-12 (Jason): it lists the publishes of the last year.
+  adminTest('@smoke keeps the History tab', async ({ page }) => {
     await openPage(page, fixture.id)
-    await expect(page.getByRole('link', { name: 'Versions' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'History', exact: true }).first()).toBeVisible()
   })
 
   /**
