@@ -25,7 +25,7 @@ type Row = Record<string, unknown>
 
 const asUser = (user: User) => ({ user, overrideAccess: false, depth: 0 }) as const
 
-/** Everything waiting for approval, with when it was sent. */
+/** Everything waiting for approval, with when it was sent and which kind it is. */
 export const findWaiting = async (payload: Payload, user: User) => {
   const reads = await Promise.all(
     (['pages', 'posts'] as const).map((collection) =>
@@ -39,7 +39,9 @@ export const findWaiting = async (payload: Payload, user: User) => {
       }),
     ),
   )
-  return reads.flatMap((r) => r.docs as Row[])
+  return (['pages', 'posts'] as const).flatMap((collection, i) =>
+    ((reads[i]?.docs ?? []) as Row[]).map((doc): Row => ({ ...doc, collection })),
+  )
 }
 
 /** Every site, by name. */

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   activityRow,
+  approvalCards,
   approvalSummary,
   CONTENT_ACTIONS,
   keyPageKind,
@@ -265,5 +266,33 @@ describe('needsAttention — the banners over the panels (Jason, 2026-11-12)', (
     expect(item?.text).toBe(
       'East Middle · Arts: the calendar feed could not be copied. It will be tried again within the hour.',
     )
+  })
+})
+
+describe('approvalCards — one card per kind, each opening the queue at that kind (2026-11-12)', () => {
+  it('counts pages and announcements, each linking to its part of the queue', () => {
+    expect(
+      approvalCards([{ collection: 'pages' }, { collection: 'posts' }, { collection: 'pages' }]),
+    ).toEqual([
+      {
+        id: 'approval-card-pages',
+        title: '2 pages waiting',
+        href: '/admin/approvals?kind=pages',
+        label: 'Open the 2 pages waiting for approval',
+      },
+      {
+        id: 'approval-card-posts',
+        title: '1 announcement waiting',
+        href: '/admin/approvals?kind=posts',
+        label: 'Open the 1 announcement waiting for approval',
+      },
+    ])
+  })
+
+  it('shows both kinds even when nothing waits, so the cards do not jump about', () => {
+    expect(approvalCards([]).map((c) => [c.title, c.label])).toEqual([
+      ['No pages waiting', 'Open the pages part of the approval queue'],
+      ['No announcements waiting', 'Open the announcements part of the approval queue'],
+    ])
   })
 })

@@ -1,4 +1,4 @@
-import { Banner } from '@payloadcms/ui'
+import { Banner, Card } from '@payloadcms/ui'
 import Link from 'next/link'
 import type { Payload, PayloadRequest } from 'payload'
 
@@ -6,6 +6,7 @@ import { isDistrictAdmin, relationshipIdOf } from '@/access/predicates'
 import type { AuthUser } from '@/access/types'
 import {
   activityRow,
+  approvalCards,
   approvalSummary,
   needsAttention,
   staleKeyPages,
@@ -60,6 +61,7 @@ export const DistrictDashboard = async ({
   ])
 
   const approvals = approvalSummary(waiting, now, tz)
+  const cards = approvalCards(waiting)
   const attention = needsAttention({ overdue: approvals.overdue, feedFailures })
   const quietSites = staleSites(sites, last, now, tz)
   const quietPages = staleKeyPages(keyPages, now, tz)
@@ -111,6 +113,19 @@ export const DistrictDashboard = async ({
             </h2>
             {/* Overdue is said once, in the banner above. */}
             <p className={styles.lead}>{approvals.text}</p>
+            {/* Each kind opens the queue at that kind (`queue-filter.ts`). */}
+            <ul className={styles.cards}>
+              {cards.map((card) => (
+                <li key={card.id}>
+                  <Card
+                    buttonAriaLabel={card.label}
+                    href={card.href}
+                    id={card.id}
+                    title={card.title}
+                  />
+                </li>
+              ))}
+            </ul>
             {/* Always, as the banner it replaces did: the queue is the way in even when empty. */}
             <p className={styles.action}>
               <Link href="/admin/approvals">Open the approval queue</Link>

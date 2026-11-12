@@ -9,6 +9,7 @@ import {
   findSites,
   findWaiting,
 } from '@/admin/Dashboard/dashboard-data'
+import { FEED_SYNC } from '@/collections/hooks/event-hooks'
 import { CONTENT_ACTIONS } from '@/lib/dashboard'
 
 import { getTestPayload, seed, type Fixtures } from '../helpers/payload'
@@ -108,7 +109,7 @@ describe('findKeyPages — each site’s front page, published', () => {
 })
 
 describe('findWaiting and findRecentActivity', () => {
-  it('finds a submitted page with when it was sent', async () => {
+  it('finds a submitted page with when it was sent, and which kind it is', async () => {
     await payload.update({
       collection: 'pages',
       id: f.draftPageA,
@@ -119,6 +120,8 @@ describe('findWaiting and findRecentActivity', () => {
     })
     const waiting = await findWaiting(payload, f.districtAdmin)
     expect(waiting.some((w) => typeof w.submittedAt === 'string')).toBe(true)
+    // The approval cards count by kind (2026-11-12).
+    expect(waiting.find((w) => w.id === f.draftPageA)?.collection).toBe('pages')
   })
 
   it('reads content actions only — the submit above, and no sign-ins', async () => {
@@ -147,18 +150,23 @@ describe('as a school manager — their school, or nothing', () => {
 })
 
 describe('findFeedFailures — feed calendars whose last copy failed (2026-11-12)', () => {
-  /** A feed calendar, its problem recorded as the sync job records it (the field is read-only). */
+  /**
+   * A feed calendar, its problem recorded as the sync job records it (the field is read-only).
+   * Written AS the sync (`FEED_SYNC`), so no copy is queued: a queued job outlives this file in
+   * the test database and is run by the next test that runs the jobs queue.
+   */
+  const asSync = { overrideAccess: true, context: { [FEED_SYNC]: true } } as const
   const feedCalendar = async (tenant: number, name: string, feedError: string | null) => {
     const made = await payload.create({
       collection: 'calendars',
       data: { tenant, name, source: 'feed', feedUrl: 'https://example.invalid/x.ics' } as never,
-      overrideAccess: true,
+      ...asSync,
     })
     await payload.update({
       collection: 'calendars',
       id: made.id,
       data: { feedError } as never,
-      overrideAccess: true,
+      ...asSync,
     })
     return made.id
   }
