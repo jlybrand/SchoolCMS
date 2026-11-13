@@ -441,13 +441,13 @@ Changed: `src/payload.config.ts` (`jobs`), `src/lib/queue-age.ts` (moved from
 
 ### Schedule
 
-| Setting                  | Value                                                                              |
-| ------------------------ | ---------------------------------------------------------------------------------- |
-| Task schedule            | `0 * * * *` on queue `default` — hourly, server clock                              |
-| `jobs.autoRun`           | `*/5 * * * *` — queues each task's next scheduled run and runs what is due         |
-| Crons start              | first `getPayload({ cron: true })` — `src/instrumentation.ts`, or an admin request |
-| Time the task decides by | `job.waitUntil` (the hour it was scheduled for), else now                          |
-| `retries`                | 0                                                                                  |
+| Setting                  | Value                                                                                                                    |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| Task schedule            | `0 * * * *` on queue `default` — hourly, server clock                                                                    |
+| `jobs.autoRun`           | `SCHEDULE_CRON` (`*/5 * * * *`, `src/lib/schedule-step.ts`) — queues each task's next scheduled run and runs what is due |
+| Crons start              | first `getPayload({ cron: true })` — `src/instrumentation.ts`, or an admin request                                       |
+| Time the task decides by | `job.waitUntil` (the hour it was scheduled for), else now                                                                |
+| `retries`                | 0                                                                                                                        |
 
 `districtMail({ pages, at, timeZone: DISTRICT_TIME_ZONE, queueUrl })`:
 

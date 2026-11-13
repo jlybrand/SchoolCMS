@@ -4,6 +4,7 @@ import { expect, type Page } from '@playwright/test'
 import { adminCredentials, adminTest } from './support/admin-session'
 import { dropPage, makePage, openPage, uniqueTitle } from './support/fixture-pages'
 import { openPageSettings } from './support/page-settings'
+import { expectScheduleTime, scheduleTime, setScheduleTime } from './support/schedule-time'
 import { schoolTest } from './support/school-session'
 
 /**
@@ -61,21 +62,24 @@ adminTest.describe('publishing a page', () => {
           await expect(dialog).toBeVisible()
           await expect(dialog.getByLabel('Now')).toBeChecked()
           await expect(dialog.getByLabel('Now')).toBeFocused()
-          await expect(dialog.getByLabel('Goes live on')).toHaveCount(0)
+          await expect(scheduleTime(dialog, 'Goes live on')).toHaveCount(0)
           await expect(dialog.getByRole('button', { name: 'Publish now' })).toBeVisible()
           expect(await blockingViolations(page)).toEqual([])
 
           // "At a set time": a labelled day-and-time, and a refusal for a time gone by.
           await dialog.getByLabel('At a set time').check()
-          const at = dialog.getByLabel('Goes live on')
-          await at.fill(daysAhead(-1))
+          // A day and a Time list in five-minute steps — nothing between them is offered.
+          const at = scheduleTime(dialog, 'Goes live on')
+          await expect(at.getByLabel('Time').locator('option[value="09:05"]')).toHaveCount(1)
+          await expect(at.getByLabel('Time').locator('option[value="09:03"]')).toHaveCount(0)
+          await setScheduleTime(at, daysAhead(-1))
           await dialog.getByRole('button', { name: 'Schedule', exact: true }).click()
           await expect(dialog.getByRole('alert')).toHaveText('Choose a time in the future.')
-          await expect(at).toHaveAttribute('aria-invalid', 'true')
-          await expect(at).toBeFocused()
+          await expect(at.getByLabel('Day')).toHaveAttribute('aria-invalid', 'true')
+          await expect(at.getByLabel('Day')).toBeFocused()
           expect(await blockingViolations(page)).toEqual([])
 
-          await at.fill(daysAhead(3))
+          await setScheduleTime(at, daysAhead(3))
           await dialog.getByRole('button', { name: 'Schedule', exact: true }).click()
           await expect(dialog).toBeHidden()
           await expect(publish).toHaveText(/^Scheduled for /, { timeout: 20_000 })
@@ -90,7 +94,7 @@ adminTest.describe('publishing a page', () => {
           await publish.click()
           const change = page.getByRole('dialog', { name: 'Change when this page goes live' })
           await expect(change.getByLabel('At a set time')).toBeChecked()
-          await expect(change.getByLabel('Goes live on')).toHaveValue(daysAhead(3))
+          await expectScheduleTime(scheduleTime(change, 'Goes live on'), daysAhead(3))
           await expect(change.getByRole('button', { name: 'Save the new time' })).toBeVisible()
           expect(await blockingViolations(page)).toEqual([])
           await change.getByRole('button', { name: 'Cancel the schedule' }).click()
@@ -205,7 +209,7 @@ adminTest.describe('publishing a page', () => {
           await expect(
             dialog.getByText('The page on the site stays as it is until then.', { exact: false }),
           ).toBeVisible()
-          await dialog.getByLabel('Goes live on').fill(daysAhead(2))
+          await setScheduleTime(scheduleTime(dialog, 'Goes live on'), daysAhead(2))
           expect(await blockingViolations(page)).toEqual([])
           await dialog.getByRole('button', { name: 'Schedule', exact: true }).click()
 
@@ -216,7 +220,7 @@ adminTest.describe('publishing a page', () => {
           // Cancelled: still up, the change kept as a draft, nothing scheduled.
           await publish.click()
           const change = page.getByRole('dialog', { name: 'Change when your changes go live' })
-          await expect(change.getByLabel('Goes live on')).toHaveValue(daysAhead(2))
+          await expectScheduleTime(scheduleTime(change, 'Goes live on'), daysAhead(2))
           expect(await blockingViolations(page)).toEqual([])
           await change.getByRole('button', { name: 'Cancel the schedule' }).click()
           await expect(publish).toHaveText('Publish changes', { timeout: 20_000 })

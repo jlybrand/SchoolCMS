@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useId, useRef, useState } from 'react'
 
 import { checkPostDates, type PostDateField } from '@/lib/post-dates'
+import { stepErrors } from '@/lib/schedule-step'
 import { DISTRICT_TIME_ZONE } from '@/lib/queue-age'
 
 import { approvalAnchor } from './anchor'
@@ -113,6 +114,13 @@ export const ApprovalItem = ({
     // The same rules as the server's, so a wrong date is said here, beside the date.
     if (dateCheck && !dateCheck.ok) {
       setDateErrors(dateCheck.errors)
+      return
+    }
+    // And on the five minutes, when the schedule runs (2026-11-13) — said here only: a time
+    // between steps still works, it just waits for the next run.
+    const offStep = hasDates ? stepErrors(isoDates) : {}
+    if (Object.keys(offStep).length > 0) {
+      setDateErrors(offStep)
       return
     }
     setDateErrors({})

@@ -24,6 +24,8 @@ import {
   type PublishNoun,
   type PublishWhen,
 } from './page-publish'
+import { ScheduleTimeInput } from '@/admin/ScheduleTime/ScheduleTimeInput'
+
 import styles from './PagePublishControl.module.css'
 
 const formatTime = (iso: string) =>
@@ -202,25 +204,19 @@ export const PagePublishControl = () => {
           {when === 'later' ? (
             <>
               <p className={styles.hint}>{laterHint(state, noun)}</p>
-              <label className={styles.label} htmlFor={inputId}>
-                Goes live on
-              </label>
-              <input
-                aria-describedby={refusal ? errorId : undefined}
-                aria-invalid={refusal ? true : undefined}
-                className={styles.input}
-                id={inputId}
-                min={toLocalInputValue(new Date().toISOString())}
-                onChange={(event) => {
-                  setValue(event.target.value)
+              {/* A day and a Time list in five-minute steps, when the schedule runs. */}
+              <ScheduleTimeInput
+                dayId={inputId}
+                describedBy={refusal ? errorId : undefined}
+                invalid={Boolean(refusal)}
+                legend="Goes live on"
+                legendClassName={styles.label}
+                minDay={toLocalInputValue(new Date().toISOString()).slice(0, 10)}
+                onChange={(next) => {
+                  setValue(next)
                   setRefusal(null)
                 }}
-                onKeyDown={(event) => {
-                  if (event.key !== 'Enter') return
-                  event.preventDefault()
-                  void confirm()
-                }}
-                type="datetime-local"
+                onEnter={() => void confirm()}
                 value={value}
               />
             </>

@@ -2,6 +2,7 @@
 
 import { useId } from 'react'
 
+import { ScheduleTimeInput } from '@/admin/ScheduleTime/ScheduleTimeInput'
 import type { PostDateField } from '@/lib/post-dates'
 
 import styles from './Approvals.module.css'
@@ -27,7 +28,7 @@ export const inputToIso = (value: string): string | null => {
  * "Set dates" on an announcement in the queue (Jason, 2026-11-04): optional, closed by default,
  * so Approve stays one click. A future Start turns Approve into "Approve and schedule". Plain
  * `datetime-local` inputs — native, labelled, keyboard-operable — rather than Payload's date
- * picker, which this view does not run inside a form for.
+ * picker — a day and a five-minute Time list since 2026-11-13 (`ScheduleTimeInput`), which this view does not run inside a form for.
  */
 export const ApprovalDates = ({
   values,
@@ -51,21 +52,19 @@ export const ApprovalDates = ({
           const errorId = `${inputId}-error`
           const error = errors[field.name]
           return (
-            <div className={styles.dateField} key={field.name}>
-              <label className={styles.noteLabel} htmlFor={inputId}>
-                {field.label}
-              </label>
-              <span className={styles.dateHint} id={hintId}>
-                {field.hint}
-              </span>
-              <input
-                aria-describedby={error ? `${errorId} ${hintId}` : hintId}
-                aria-invalid={error ? true : undefined}
-                className={styles.dateInput}
-                data-field={field.name}
-                id={inputId}
-                onChange={(e) => onChange({ ...values, [field.name]: e.target.value })}
-                type="datetime-local"
+            <div className={styles.dateField} data-field={field.name} key={field.name}>
+              {/* A day and a Time list in five-minute steps, when the schedule runs. */}
+              <ScheduleTimeInput
+                describedBy={error ? `${errorId} ${hintId}` : hintId}
+                hint={
+                  <span className={styles.dateHint} id={hintId}>
+                    {field.hint}
+                  </span>
+                }
+                invalid={Boolean(error)}
+                legend={field.label}
+                legendClassName={styles.noteLabel}
+                onChange={(next) => onChange({ ...values, [field.name]: next })}
                 value={values[field.name]}
               />
               {error ? (
