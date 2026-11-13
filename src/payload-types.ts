@@ -79,6 +79,7 @@ export interface Config {
     navigation: Navigation;
     theme: Theme;
     settings: Setting;
+    alerts: Alert;
     'audit-events': AuditEvent;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
@@ -100,6 +101,7 @@ export interface Config {
     navigation: NavigationSelect<false> | NavigationSelect<true>;
     theme: ThemeSelect<false> | ThemeSelect<true>;
     settings: SettingsSelect<false> | SettingsSelect<true>;
+    alerts: AlertsSelect<false> | AlertsSelect<true>;
     'audit-events': AuditEventsSelect<false> | AuditEventsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
@@ -176,6 +178,11 @@ export interface Tenant {
    */
   type: 'school' | 'district';
   status: 'active' | 'hidden';
+  gradesServed?: {
+    elementary?: boolean | null;
+    middle?: boolean | null;
+    high?: boolean | null;
+  };
   /**
    * Building ID for the staff sync (`11` §5). Unmapped buildings are logged and skipped — never guessed. STAFF ONLY; no student data enters this platform.
    */
@@ -930,6 +937,75 @@ export interface Setting {
   createdAt: string;
 }
 /**
+ * Banners across the top of the websites — closures, delays, emergencies.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "alerts".
+ */
+export interface Alert {
+  id: number;
+  kind?: ('template' | 'custom') | null;
+  template?: ('closure' | 'delay' | 'early-dismissal' | 'lockdown' | 'weather') | null;
+  /**
+   * For example, “Tuesday, January 14” or “today”.
+   */
+  date?: string | null;
+  /**
+   * For example, “snow and ice”.
+   */
+  reason?: string | null;
+  /**
+   * For example, “2 hours”.
+   */
+  delay?: string | null;
+  /**
+   * For example, “12:30 PM”.
+   */
+  time?: string | null;
+  /**
+   * The school or schools affected.
+   */
+  school?: string | null;
+  /**
+   * For example, “heavy rain this afternoon”.
+   */
+  expected?: string | null;
+  message?: string | null;
+  severity?: ('info' | 'warning' | 'emergency') | null;
+  confirmCustom?: boolean | null;
+  /**
+   * A full web address, or a page on the site such as /calendar.
+   */
+  linkUrl?: string | null;
+  /**
+   * What the link says, for example “Read more”.
+   */
+  linkLabel?: string | null;
+  siteScope?: ('all' | 'level' | 'chosen') | null;
+  /**
+   * Every school that serves a ticked level. The district site is not a level.
+   */
+  levels?: {
+    elementary?: boolean | null;
+    middle?: boolean | null;
+    high?: boolean | null;
+  };
+  sites?: (number | Tenant)[] | null;
+  pageScope?: ('every' | 'home' | 'chosen') | null;
+  pages?: (number | Page)[] | null;
+  /**
+   * Leave empty to show it now.
+   */
+  startAt?: string | null;
+  /**
+   * Leave empty to show it until you remove it.
+   */
+  endAt?: string | null;
+  text?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Every send, approval, request for changes, publish, restore and delete, and every change to a user or an auto-approval grant. Read-only.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1128,6 +1204,10 @@ export interface PayloadLockedDocument {
         value: number | Setting;
       } | null)
     | ({
+        relationTo: 'alerts';
+        value: number | Alert;
+      } | null)
+    | ({
         relationTo: 'audit-events';
         value: number | AuditEvent;
       } | null);
@@ -1183,6 +1263,13 @@ export interface TenantsSelect<T extends boolean = true> {
   hostname?: T;
   type?: T;
   status?: T;
+  gradesServed?:
+    | T
+    | {
+        elementary?: T;
+        middle?: T;
+        high?: T;
+      };
   powerSchoolBuildingId?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -1592,6 +1679,41 @@ export interface SettingsSelect<T extends boolean = true> {
         pt?: T;
         ar?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "alerts_select".
+ */
+export interface AlertsSelect<T extends boolean = true> {
+  kind?: T;
+  template?: T;
+  date?: T;
+  reason?: T;
+  delay?: T;
+  time?: T;
+  school?: T;
+  expected?: T;
+  message?: T;
+  severity?: T;
+  confirmCustom?: T;
+  linkUrl?: T;
+  linkLabel?: T;
+  siteScope?: T;
+  levels?:
+    | T
+    | {
+        elementary?: T;
+        middle?: T;
+        high?: T;
+      };
+  sites?: T;
+  pageScope?: T;
+  pages?: T;
+  startAt?: T;
+  endAt?: T;
+  text?: T;
   updatedAt?: T;
   createdAt?: T;
 }

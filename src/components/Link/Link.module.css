@@ -36,3 +36,17 @@
 .button:hover {
   background-color: var(--color-text);
 }
+
+/*
+ * On a dark fill — the alert banners (Jason, 2026-11-12). The underline stays: it is the cue, as
+ * above. The focus ring switches to the inverse one, which is what passes on the fill.
+ */
+.inverse {
+  color: var(--color-surface);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.inverse:focus-visible {
+  outline-color: var(--focus-ring-color-inverse);
+}

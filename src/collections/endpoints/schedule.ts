@@ -6,7 +6,7 @@ import { isDistrictAdmin } from '@/access/predicates'
 import type { AuthUser } from '@/access/types'
 import { latestVersion, publishable } from '@/collections/endpoints/approve'
 import { SCHEDULED_RUN, type ScheduledRun } from '@/collections/hooks/scheduled-dates'
-import { revalidatePost } from '@/collections/hooks/revalidate-on-publish'
+import { revalidateAllSites, revalidatePost } from '@/collections/hooks/revalidate-on-publish'
 import { SCHEDULE_CRON } from '@/lib/schedule-step'
 
 /**
@@ -155,6 +155,26 @@ export const runSchedule = async (req: PayloadRequest, now: Date): Promise<Sched
   for (const doc of ended) {
     await revalidatePost({ doc, previousDoc: doc, req } as never)
     result.refreshed.push(`posts/${String(doc.id)}`)
+  }
+
+  // 4. Alert banners that started or ended since the last run (Jason, 2026-11-12): nothing is
+  //    written as one does, so every site is refreshed — once, however many passed.
+  const { docs: turned } = await payload.find({
+    collection: 'alerts',
+    where: {
+      or: [
+        { and: [{ startAt: { greater_than: since } }, { startAt: { less_than_equal: at } }] },
+        { and: [{ endAt: { greater_than: since } }, { endAt: { less_than_equal: at } }] },
+      ],
+    },
+    pagination: false,
+    depth: 0,
+    overrideAccess: true,
+    req,
+  })
+  if (turned.length > 0) {
+    await revalidateAllSites(req, `${turned.length} alert(s) started or ended`)
+    for (const doc of turned) result.refreshed.push(`alerts/${String(doc.id)}`)
   }
 
   return result

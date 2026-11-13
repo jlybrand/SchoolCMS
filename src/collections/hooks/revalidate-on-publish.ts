@@ -254,3 +254,28 @@ export const revalidateEvent = makeRevalidateOnPublish({
   targetsFor: async (_doc, _previousDoc, req) => allTenantIds(req),
   stillLive: liveStillPublished('events'),
 })
+
+/**
+ * Every site, now (alerts, Jason 2026-11-12): an alert may sit on any page of any site, and which
+ * ones is cheaper to over-cover than to work out — 28 layout revalidations against a closure
+ * banner that is late, or one that will not come down. Never fails the write, as above. Also the
+ * schedule job's, when an alert's start or end passes (`src/collections/endpoints/schedule.ts`).
+ */
+export const revalidateAllSites = async (
+  req: Parameters<CollectionAfterChangeHook>[0]['req'],
+  why: string,
+): Promise<void> => {
+  try {
+    const { revalidatePath } = await import('next/cache')
+    for (const tenantId of await allTenantIds(req)) {
+      const hostname = await tenantHostname(tenantId, req)
+      if (hostname) revalidatePath(tenantSitePath(hostname), 'layout')
+    }
+  } catch (err) {
+    if (OUTSIDE_NEXT.test((err as Error).message)) {
+      req.payload.logger.debug(`revalidateAllSites (${why}): not in a Next request; skipped`)
+      return
+    }
+    req.payload.logger.error(`revalidateAllSites (${why}): ${(err as Error).message}`)
+  }
+}

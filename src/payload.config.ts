@@ -8,6 +8,7 @@ import { buildConfig } from 'payload'
 
 import { isDistrictAdmin } from './access/predicates'
 import type { AuthUser } from './access/types'
+import { Alerts } from './collections/Alerts'
 import { AuditEvents } from './collections/AuditEvents'
 import { Navigation } from './collections/Navigation'
 import { SCHEDULE_CRON } from './lib/schedule-step'
@@ -113,6 +114,7 @@ export default buildConfig({
     Navigation,
     Theme,
     Settings,
+    Alerts,
     AuditEvents,
   ],
 

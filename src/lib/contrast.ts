@@ -274,4 +274,22 @@ export const REQUIRED_CONTRAST_PAIRS: readonly ContrastPair[] = [
     background: '--color-surface',
     requirement: 'bodyText',
   },
+  /**
+   * The alert banners (Jason, 2026-11-12): each severity as a solid FILL with the surface color as
+   * its text, and the inverse focus ring on it for the banner's link and close button.
+   */
+  ...(['info', 'warning', 'emergency'] as const).flatMap((severity): ContrastPair[] => [
+    {
+      label: `${severity} banner text`,
+      foreground: '--color-surface',
+      background: `--color-${severity}`,
+      requirement: 'bodyText',
+    },
+    {
+      label: `focus ring on the ${severity} banner`,
+      foreground: '--focus-ring-color-inverse',
+      background: `--color-${severity}`,
+      requirement: 'nonText',
+    },
+  ]),
 ] as const

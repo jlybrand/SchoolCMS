@@ -562,3 +562,45 @@ describe('a page’s Start', () => {
     expect((await draftPage(created.id)).reviewState).toBe('scheduled')
   })
 })
+
+/**
+ * Alert banners (Jason, 2026-11-12): a start or end passing is not a write, so the sweep refreshes
+ * every site when one passes since its last run — and only then.
+ */
+describe('alerts starting and ending', () => {
+  const MIN = 60 * 1000
+  const alertAt = (data: Record<string, unknown>) =>
+    payload.create({
+      collection: 'alerts',
+      data: {
+        kind: 'template',
+        template: 'weather',
+        expected: 'rain',
+        siteScope: 'all',
+        pageScope: 'every',
+        ...data,
+      } as never,
+      overrideAccess: true,
+    })
+
+  it('refreshes the sites when an alert has just started or just ended', async () => {
+    const now = new Date()
+    const starting = await alertAt({ startAt: new Date(now.getTime() - 2 * MIN).toISOString() })
+    const ending = await alertAt({
+      startAt: new Date(now.getTime() - 60 * MIN).toISOString(),
+      endAt: new Date(now.getTime() - 3 * MIN).toISOString(),
+    })
+    const run = await runSchedule(await system(), now)
+    expect(run.refreshed).toContain(`alerts/${starting.id}`)
+    expect(run.refreshed).toContain(`alerts/${ending.id}`)
+  })
+
+  it('leaves alone one that started long ago, or starts later', async () => {
+    const now = new Date()
+    const old = await alertAt({ startAt: new Date(now.getTime() - 60 * MIN).toISOString() })
+    const later = await alertAt({ startAt: new Date(now.getTime() + 60 * MIN).toISOString() })
+    const run = await runSchedule(await system(), now)
+    expect(run.refreshed).not.toContain(`alerts/${old.id}`)
+    expect(run.refreshed).not.toContain(`alerts/${later.id}`)
+  })
+})

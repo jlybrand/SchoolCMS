@@ -24,7 +24,7 @@ import styles from './Link.module.css'
 
 const ABSOLUTE_HTTP = /^https?:\/\//i
 
-export type LinkVariant = 'inline' | 'button'
+export type LinkVariant = 'inline' | 'button' | 'inverse'
 
 export type LinkProps = {
   readonly href: string
@@ -60,6 +60,9 @@ export type LinkProps = {
    *
    * It is still an `<a>` in both cases: a button-shaped link navigates, so it must announce
    * itself as a link, work on middle-click, and work before hydration.
+   *
+   * `inverse` is an inline link on a dark fill — the alert banners (2026-11-12): the surface color,
+   * still underlined, with the inverse focus ring. The pairs are checked at token level.
    */
   readonly variant?: LinkVariant
   /**
@@ -81,7 +84,9 @@ export const Link = ({
   current = false,
 }: LinkProps) => (
   <a
-    className={variant === 'button' ? styles.button : styles.link}
+    className={
+      variant === 'button' ? styles.button : variant === 'inverse' ? styles.inverse : styles.link
+    }
     href={href}
     lang={lang}
     hrefLang={hrefLang}

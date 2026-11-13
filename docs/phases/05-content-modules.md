@@ -1622,3 +1622,89 @@ sets Payload's zoom away from 100%, the fit steps aside.
     is pressed
   - at Desktop and Tablet the frame fits inside the pane and the page is laid out at 1280 and 768
   - the existing whole-screen axe with the preview open covers the tabs in both themes
+
+## 37. Alert banners (Jason, 2026-11-12)
+
+The district posts **alert banners**, closures, delays and emergencies. They show above a site's header. Only the district can post them, and they bypass approval: every save goes live at once. School managers cannot see the collection, and its API refuses them (`districtOnly` on read, create, update and delete).
+
+**What it says.** Either a **template** or **Write my own message**.
+
+- **Template:** the district picks one, fills its blanks, and the template sets the severity.
+- **Own message:** needs the words, a severity, and an extra confirmation (`confirmCustom`, `04` §3.4).
+
+`beforeChange` works out `text`, which is what visitors read, on every save. It refuses a missing template, an empty blank (naming the blank), and an own message missing its words, severity or confirmation.
+
+There are five starter templates, in English. Their wording is a draft for the district to confirm. Verified translations come in Phase 7 (`08` §7.2).
+
+| Template                     | Severity  | Blanks         |
+| ---------------------------- | --------- | -------------- |
+| School closure               | emergency | Day, Reason    |
+| Delayed opening              | warning   | Day, How late  |
+| Early dismissal              | warning   | Day, Time      |
+| Lockdown or shelter in place | emergency | School         |
+| Weather advisory             | info      | What to expect |
+
+**Where and when.** `alertApplies(rule, site, page, now)` decides each alert's placement.
+
+| Setting | Choices                                                                                                                    |
+| ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Sites   | All sites (the district's included) · By level (any school that serves a ticked level; never the district) · Chosen sites  |
+| Pages   | Every page (screens that are not pages, such as the news list, included) · Home pages only (`path === '/'`) · Chosen pages |
+| Starts  | empty = now                                                                                                                |
+| Ends    | empty = until it is removed                                                                                                |
+
+A school's levels are a new tenant group, **Grades served**: Elementary, Middle and High checkboxes. A K–8 school ticks two. The district's site has no such group.
+
+**On the site.** `site.tsx` reads `getAlerts(ctx, alertPage)` alongside the navigation. The catch-all page passes `{ id, isHome }`; any other screen passes `null`. `getAlerts` reads the alerts that are current now and the site's levels, as the platform, then applies `alertApplies`. It returns `SiteAlert`s sorted emergencies first, then warnings, then info, newest first within each. They are read at render and revalidate time with the page, never per visitor.
+
+`AlertBar` is a `<section aria-label="Alerts">` placed before the header. It is not a live region. Each banner starts with its kind in words: **Emergency:**, **Warning:** or **Notice:**. It can end with a link, `Link variant="inverse"`, labelled "More information" unless the alert says otherwise.
+
+A visitor can close info and warning banners (`DismissibleAlert`, with a "Close: Warning" button) but never an emergency. A closed banner is remembered in `sessionStorage` under `dd2-alert-closed:<id>:<version>`. `version` is the alert's `updatedAt`, so a banner whose words change comes back. If storage is refused, the banner simply stays.
+
+**Refreshing.** An alert can sit on any page of any site, so any change refreshes every site's layout (`revalidateAllSites`):
+
+- saving or deleting an alert (`afterChange`, `afterDelete`);
+- a start or end passing, which writes nothing, so the schedule job's step 4 (`runSchedule`) finds alerts whose start or end fell within the last ten minutes and refreshes every site once.
+
+**Starts** and **Ends** list times in the schedule's five-minute steps (`timeIntervals: SCHEDULE_STEP_MINUTES`), so an alert appears or goes away within seconds of its time.
+
+**Activity log.** `forAlert` in `src/lib/audit.ts` records each save as a **publish** and each removal as a **delete**. The entry is titled by what visitors read and belongs to no one school, since one alert may reach many. The dashboard calls them "alert".
+
+**Colors.** Each severity is a solid fill (`--color-info`, `--color-warning`, `--color-emergency`) with `--color-surface` text and the inverse focus ring. `src/lib/contrast.ts` checks both pairs at token level.
+
+### Files
+
+| File                                                    | Does                                                                                                                                                                                   |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/alerts.ts`                                     | pure: `ALERT_TEMPLATES`, `ALERT_VARIABLES`, `missingVariables`, `alertText`, `templateSeverity`, `alertApplies`, `isDismissible`, `sortAlerts`                                         |
+| `src/collections/Alerts.ts`                             | the collection (`alerts`, admin group "Site", hidden from school managers); the fields above; `beforeChange` (text, refusals); audit and `revalidateAllSites` after a change or delete |
+| `src/content/alerts.ts`                                 | `getAlerts(ctx, page, now)` → `SiteAlert[]`                                                                                                                                            |
+| `src/content/types.ts`                                  | `SiteAlert` `{ id, severity, text, link, dismissible, version }`; `AlertPageRef`                                                                                                       |
+| `src/components/AlertBar/`                              | `AlertBar` (the region, `SEVERITY_WORDS`), `DismissibleAlert` (close and remember), stories                                                                                            |
+| `src/components/Link/`                                  | `variant="inverse"`: surface color, underlined, inverse focus ring                                                                                                                     |
+| `src/app/(frontend)/sites/[hostname]/[locale]/site.tsx` | the `alertPage` prop; `AlertBar` before the header                                                                                                                                     |
+| `src/collections/Tenants.ts`                            | `gradesServed` group (schools only)                                                                                                                                                    |
+| `src/collections/hooks/revalidate-on-publish.ts`        | `revalidateAllSites(req, why)`: every tenant's layout; never fails the write; skipped outside a Next request                                                                           |
+| `src/collections/endpoints/schedule.ts`                 | step 4: alerts whose start or end fell within the last ten minutes → `revalidateAllSites` once; `refreshed` lists `alerts/<id>`                                                        |
+| `src/lib/audit.ts`, `src/lib/dashboard.ts`              | `forAlert`; the "alert" noun                                                                                                                                                           |
+| `src/lib/contrast.ts`                                   | banner text and focus-ring pairs per severity                                                                                                                                          |
+
+### Tests
+
+- `tests/unit/lib/alerts.test.ts`: the five templates and their severities; filling blanks; the
+  shared Day hint; naming empty blanks; `alertApplies` for when (start/end, open-ended), which
+  sites (all, by level never the district, chosen) and which pages (every including page-less
+  screens, home, chosen); emergencies cannot be closed; the sort order
+- `tests/unit/lib/audit.test.ts`: an alert's save and removal in the activity log
+- `tests/integration/alerts.test.ts`: the district can post and a school manager or signed-out
+  visitor cannot; a template's empty blank is named; an own message needs its words, a severity and
+  the confirmation; `getAlerts` by level, chosen sites with home pages only, between start and end,
+  and the banner's fields
+- `tests/integration/schedule.test.ts`: the sweep refreshes the sites for an alert just started or
+  just ended, and not for one that started long ago or starts later
+- `tests/e2e/alerts.spec.ts`: a closure from its template on home pages only (shown above the
+  header, no close button, absent from other pages), with axe in both themes; a warning a visitor
+  closes stays closed on the next page, with axe; Starts and Ends list exactly 288 times; a school
+  manager neither sees the menu item nor reaches the API (403)
+- `src/components/AlertBar/AlertBar.stories.tsx` and the Link `Inverse` story: in the component
+  axe gate, LTR and RTL
