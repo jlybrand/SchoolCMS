@@ -80,6 +80,8 @@ export interface Config {
     theme: Theme;
     settings: Setting;
     alerts: Alert;
+    people: Person;
+    'staff-groups': StaffGroup;
     'audit-events': AuditEvent;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
@@ -102,6 +104,8 @@ export interface Config {
     theme: ThemeSelect<false> | ThemeSelect<true>;
     settings: SettingsSelect<false> | SettingsSelect<true>;
     alerts: AlertsSelect<false> | AlertsSelect<true>;
+    people: PeopleSelect<false> | PeopleSelect<true>;
+    'staff-groups': StaffGroupsSelect<false> | StaffGroupsSelect<true>;
     'audit-events': AuditEventsSelect<false> | AuditEventsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
@@ -129,6 +133,7 @@ export interface Config {
       districtDigest: TaskDistrictDigest;
       publishSchedule: TaskPublishSchedule;
       calendarFeeds: TaskCalendarFeeds;
+      csiStaffSync: TaskCsiStaffSync;
       inline: {
         input: unknown;
         output: unknown;
@@ -300,6 +305,7 @@ export interface Page {
         | ChildPageNavBlock
         | FeedBlockRow
         | CalendarBlockRow
+        | StaffListBlockRow
         | EmbedBlock
         | DividerBlock
         | ColumnsBlock
@@ -582,6 +588,69 @@ export interface Calendar {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "StaffListBlockRow".
+ */
+export interface StaffListBlockRow {
+  /**
+   * A title above the list, like "Our counselors" — it also names this part of the page for screen readers.
+   */
+  heading?: string | null;
+  /**
+   * A school’s group lists everyone there; a sub-group lists the people in it. Groups come from CSI — if none are listed, the CSI sync hasn’t run yet.
+   */
+  group: number | StaffGroup;
+  /**
+   * However many staff there are. Phones show fewer.
+   */
+  maxColumns?: ('1' | '2' | '3' | '4') | null;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'staffList';
+}
+/**
+ * Each school’s group comes from CSI. Make sub-groups inside one — Nurses, Counselors, Teachers — and tick who is in them.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "staff-groups".
+ */
+export interface StaffGroup {
+  id: number;
+  name: string;
+  /**
+   * The school’s group this sits in. Schools come from CSI — if none are listed, the CSI sync hasn’t run yet.
+   */
+  parent?: (number | null) | StaffGroup;
+  members?: (number | Person)[] | null;
+  label?: string | null;
+  csiLocationId?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * From CSI. Names, titles, emails and schools change in CSI; the website shows them as they come.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "people".
+ */
+export interface Person {
+  id: number;
+  name: string;
+  title?: string | null;
+  email?: string | null;
+  group?: (number | null) | StaffGroup;
+  active?: boolean | null;
+  /**
+   * Only if A–Z puts them in the wrong place. Type the name as it should sort, for example “de la Cruz, Maria”.
+   */
+  sortName?: string | null;
+  sortKey?: string | null;
+  csiId?: string | null;
+  syncedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "EmbedBlock".
  */
 export interface EmbedBlock {
@@ -634,6 +703,7 @@ export interface ColumnsBlock {
           | DividerBlock
           | FeedBlockRow
           | CalendarBlockRow
+          | StaffListBlockRow
         )[]
       | null;
     id?: string | null;
@@ -1099,7 +1169,7 @@ export interface PayloadJob {
     | {
         executedAt: string;
         completedAt: string;
-        taskSlug: 'inline' | 'districtDigest' | 'publishSchedule' | 'calendarFeeds';
+        taskSlug: 'inline' | 'districtDigest' | 'publishSchedule' | 'calendarFeeds' | 'csiStaffSync';
         taskID: string;
         input?:
           | {
@@ -1132,7 +1202,7 @@ export interface PayloadJob {
         id?: string | null;
       }[]
     | null;
-  taskSlug?: ('inline' | 'districtDigest' | 'publishSchedule' | 'calendarFeeds') | null;
+  taskSlug?: ('inline' | 'districtDigest' | 'publishSchedule' | 'calendarFeeds' | 'csiStaffSync') | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
@@ -1206,6 +1276,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'alerts';
         value: number | Alert;
+      } | null)
+    | ({
+        relationTo: 'people';
+        value: number | Person;
+      } | null)
+    | ({
+        relationTo: 'staff-groups';
+        value: number | StaffGroup;
       } | null)
     | ({
         relationTo: 'audit-events';
@@ -1339,6 +1417,7 @@ export interface PagesSelect<T extends boolean = true> {
         childPageNav?: T | ChildPageNavBlockSelect<T>;
         feed?: T | FeedBlockRowSelect<T>;
         calendar?: T | CalendarBlockRowSelect<T>;
+        staffList?: T | StaffListBlockRowSelect<T>;
         embed?: T | EmbedBlockSelect<T>;
         divider?: T | DividerBlockSelect<T>;
         columns?: T | ColumnsBlockSelect<T>;
@@ -1452,6 +1531,17 @@ export interface CalendarBlockRowSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "StaffListBlockRow_select".
+ */
+export interface StaffListBlockRowSelect<T extends boolean = true> {
+  heading?: T;
+  group?: T;
+  maxColumns?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "EmbedBlock_select".
  */
 export interface EmbedBlockSelect<T extends boolean = true> {
@@ -1490,6 +1580,7 @@ export interface ColumnsBlockSelect<T extends boolean = true> {
               divider?: T | DividerBlockSelect<T>;
               feed?: T | FeedBlockRowSelect<T>;
               calendar?: T | CalendarBlockRowSelect<T>;
+              staffList?: T | StaffListBlockRowSelect<T>;
             };
         id?: T;
       };
@@ -1719,6 +1810,36 @@ export interface AlertsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "people_select".
+ */
+export interface PeopleSelect<T extends boolean = true> {
+  name?: T;
+  title?: T;
+  email?: T;
+  group?: T;
+  active?: T;
+  sortName?: T;
+  sortKey?: T;
+  csiId?: T;
+  syncedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "staff-groups_select".
+ */
+export interface StaffGroupsSelect<T extends boolean = true> {
+  name?: T;
+  parent?: T;
+  members?: T;
+  label?: T;
+  csiLocationId?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "audit-events_select".
  */
 export interface AuditEventsSelect<T extends boolean = true> {
@@ -1870,6 +1991,14 @@ export interface TaskCalendarFeeds {
   input: {
     calendar?: string | null;
   };
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskCsiStaffSync".
+ */
+export interface TaskCsiStaffSync {
+  input?: unknown;
   output?: unknown;
 }
 /**

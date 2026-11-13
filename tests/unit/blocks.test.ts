@@ -630,6 +630,7 @@ describe('the block library and the mapper agree', () => {
       divider: {},
       feed: { boards: [7] },
       calendar: { calendars: [4] },
+      staffList: { group: 7 },
       columns: {
         columns: [
           { content: [{ blockType: 'richText', content: lexical(paragraph('One')) }] },
@@ -725,5 +726,42 @@ describe('toPageBlocks — links to a page', () => {
     )
     expect(JSON.stringify(text)).toContain('"href":"/enroll"')
     expect(JSON.stringify(accordion)).toContain('"href":"/enroll"')
+  })
+})
+
+/**
+ * A staff list (Jason, 2026-11-13) — its SETTINGS only: the group or sub-group it shows. The
+ * staff are loaded by the resolve pass (`listStaff`), as a calendar's events are.
+ */
+describe('toPageBlocks — staff list', () => {
+  it('maps the heading and the group, by id', () => {
+    expect(
+      toPageBlocks([
+        { blockType: 'staffList', id: 's', heading: '  Our counselors ', group: { id: 7 } },
+      ]),
+    ).toEqual([
+      { kind: 'staffList', id: 's', heading: 'Our counselors', group: '7', maxColumns: 3 },
+    ])
+    expect(toPageBlocks([{ blockType: 'staffList', id: 's', group: 7 }])).toEqual([
+      { kind: 'staffList', id: 's', heading: null, group: '7', maxColumns: 3 },
+    ])
+  })
+
+  // Jason, 2026-11-13: "a maximum of n columns, whether there is one staff member or 500".
+  it('the most people side by side: 1 to 4, 3 unless set, anything else 3', () => {
+    const max = (maxColumns: unknown) =>
+      (
+        toPageBlocks([{ blockType: 'staffList', id: 's', group: 7, maxColumns }])[0] as {
+          maxColumns: number
+        }
+      ).maxColumns
+    expect([max('1'), max('2'), max('3'), max('4')]).toEqual([1, 2, 3, 4])
+    expect([max(1), max(4)]).toEqual([1, 4])
+    expect([max(undefined), max(null), max('5'), max('0'), max('two')]).toEqual([3, 3, 3, 3, 3])
+  })
+
+  it('a staff list with no group is DROPPED — nobody chose whose staff', () => {
+    expect(toPageBlocks([{ blockType: 'staffList', id: 's' }])).toEqual([])
+    expect(toPageBlocks([{ blockType: 'staffList', id: 's', group: null }])).toEqual([])
   })
 })

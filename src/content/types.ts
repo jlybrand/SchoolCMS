@@ -459,6 +459,36 @@ export type ResolvedCalendarBlock = BlockBase & {
  * side on a wide screen, stacked with their contents on a narrow one. One level deep: a column
  * holds any block but another set of columns.
  */
+/**
+ * A staff list (Jason, 2026-11-13): its SETTINGS — the one group or sub-group it shows. The staff
+ * are loaded by the resolve pass into `ResolvedStaffListBlock`.
+ */
+export type StaffListBlock = BlockBase & {
+  kind: 'staffList'
+  heading: string | null
+  group: string
+  /** The most people side by side in a row (Jason, 2026-11-13): 1–4, fewer on narrow screens. */
+  maxColumns: StaffListColumns
+}
+
+export type StaffListColumns = 1 | 2 | 3 | 4
+
+/** A staff member as a page shows them: what CSI gives, and nothing the page does not need. */
+export type StaffMember = {
+  id: string
+  name: string
+  title: string | null
+  email: string | null
+}
+
+/** A staff list READY TO RENDER: A–Z by last name. */
+export type ResolvedStaffListBlock = BlockBase & {
+  kind: 'staffList'
+  heading: string | null
+  maxColumns: StaffListColumns
+  staff: StaffMember[]
+}
+
 export type ColumnsBlock = BlockBase & {
   kind: 'columns'
   heading: string | null
@@ -482,6 +512,7 @@ export type PageBlock =
   | DividerBlock
   | FeedBlock
   | CalendarBlock
+  | StaffListBlock
   | ColumnsBlock
 
 /**
@@ -493,9 +524,10 @@ export type PageBlock =
  * the same way.
  */
 export type ResolvedPageBlock =
-  | Exclude<PageBlock, FeedBlock | CalendarBlock | ColumnsBlock>
+  | Exclude<PageBlock, FeedBlock | CalendarBlock | StaffListBlock | ColumnsBlock>
   | ResolvedFeedBlock
   | ResolvedCalendarBlock
+  | ResolvedStaffListBlock
   | ResolvedColumnsBlock
 
 /**

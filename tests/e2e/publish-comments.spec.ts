@@ -129,6 +129,12 @@ schoolTest.describe('the school’s note', () => {
           const box = page.getByLabel('Note for the district')
           await expect(box).toBeVisible({ timeout: 20_000 })
           await box.fill('New lunch menu.')
+          // Audit only once A11yPatch has named the editor and its toolbar (it runs after Payload
+          // renders) — auditing before it raced, mostly in dark mode under load.
+          await expect(page.locator('.ContentEditable__root[aria-label]').first()).toBeAttached()
+          await expect(
+            page.locator('button.toolbar-popup__button-bold[aria-label="Bold"]').first(),
+          ).toBeAttached()
           expect(await blockingViolations(page)).toEqual([])
           await page.locator('#action-send-for-approval').click()
           await expect

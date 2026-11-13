@@ -1708,3 +1708,201 @@ A visitor can close info and warning banners (`DismissibleAlert`, with a "Close:
   manager neither sees the menu item nor reaches the API (403)
 - `src/components/AlertBar/AlertBar.stories.tsx` and the Link `Inverse` story: in the component
   axe gate, LTR and RTL
+
+## 38. Staff directories, part A: staff, school groups and sub-groups (Jason, 2026-11-13)
+
+Staff data comes from **CSI**, not PowerSchool. Until we have access, it's built against mock data. CSI gives a **name** (one field), an **email**, a **title** (shown as it comes; "Admin/teacher" stays as written) and **one location**. CSI holds no student data. Part A is the two collections and who may write what. The sync is part B, the staff block part C, and the PowerSchool → CSI doc corrections part D.
+
+**Every staff member comes from CSI.** None is added in the dashboard. Only the sync creates a person and writes the CSI fields, which are read-only to everyone else.
+
+**Groups go two levels deep.**
+
+- **A school's group** is its CSI location (`csiLocationId`). The sync creates and names it. Everyone at the location is in it, so it has no members list. The district can't rename or delete it.
+- **A sub-group** sits inside a school's group, for example "SHS › Nurses", Counselors, Teachers, Media Specialist. The district creates, names and deletes it, and ticks who is in it from that school's staff. The sync never touches it. A sub-group can't contain another sub-group.
+
+A staff list on a page will show one group or sub-group (part C).
+
+**Only the district.** School managers neither see the collections nor reach their API. Neither collection is tenant-scoped: a group is a location, not a site. `src/access/people.ts`:
+
+| Who                        | people                                                      | CSI fields (name, title, email, school, active, csiId, syncedAt) | Sort as | groups                                                                          |
+| -------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------- |
+| district                   | read, update, delete; **no create**                         | read-only                                                        | yes     | read; create, name, fill and delete sub-groups (`{ parent: { exists: true } }`) |
+| sync (`system-sync`)       | read, create, update; **no delete** (a departure is hidden) | yes                                                              | no      | creates and names a school's group; never sub-groups or their members           |
+| school manager, signed out | none                                                        | none                                                             | none    | none                                                                            |
+
+Payload drops a write to a field the writer may not touch, rather than refusing the whole save.
+
+**Group checks.** The `beforeChange` hook on `staff-groups` uses `subGroupProblems` from `src/lib/staff-groups.ts`.
+
+- A group with a `csiLocationId` is a school's group. Only the sync can set that field, so a district write that claims one is stripped. A school's group refuses members: "Everyone at the school is in its group. Tick people in a sub-group."
+- Anything else is a sub-group. It needs a school ("Choose the school this group belongs to.") that is a school's group, not another sub-group ("Groups go one level deep."). Its members must be at that school, and anyone who isn't is named ("Bo Diaz isn't at SHS.").
+- `label` is stored on every save and used as the title: "SHS" or "SHS › Nurses".
+
+**The checklist.** `MembersField` replaces Payload's multi-select for `members`, whose chips fail axe (`nested-interactive`). It is a `<fieldset>` titled "Who's in this group" listing the chosen school's active staff A–Z by `sortKey`, with a "Find by name" filter (`membersShown`: every word, ignoring case and accents) and an "N of M ticked" count (`role="status"`). Ticking adds a person and unticking removes them (`toggleMember`). It stores the relationship as Payload's own field would.
+
+**A–Z.** `sortName(name, override)` in `src/lib/people.ts` puts the last word of the name first and skips a suffix (Jr., Sr., II–V). It reads "Last, First" as written, and folds accents and case. The district's **Sort as** wins when set. `beforeChange` stores the result as `sortKey` (indexed, hidden), which lists sort by.
+
+**Mock data.** `scripts/seed.ts` creates "SHS (mock)" (`MOCK-SHS`) and eight mock staff on example.org, each only when absent. They stand in until there is CSI access and part B can sync from a mock source.
+
+### Files
+
+| File                                                   | Does                                                                                                                                                                                    |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/access/people.ts`                                 | `peopleReadAccess`, `peopleWriteAccess`, `peopleCreateAccess` (sync), `peopleDeleteAccess`, `syncOnlyField`, `cmsOwnedField`, `groupNameCreate`, `groupNameUpdate`, `groupDeleteAccess` |
+| `src/lib/people.ts`                                    | pure: `lastName`, `sortName`                                                                                                                                                            |
+| `src/lib/staff-groups.ts`                              | pure: `subGroupProblems`, `groupLabel`                                                                                                                                                  |
+| `src/collections/People.ts`                            | `people` ("Staff", admin group "Staff directory"): `name`, `title`, `email`, `group` ("School"), `active`, `sortName`, `sortKey`, `csiId` (unique), `syncedAt`                          |
+| `src/collections/StaffGroups.ts`                       | `staff-groups`: `name`, `parent` ("School"; set at create, never moved), `members`, `label`, `csiLocationId` (unique); the hook above                                                   |
+| `src/admin/StaffGroups/MembersField.tsx`, `members.ts` | the checklist; pure `membersShown`, `toggleMember`                                                                                                                                      |
+| `src/payload.config.ts`                                | both registered; NOT in the multi-tenant plugin                                                                                                                                         |
+| `scripts/seed.ts`                                      | the mock school and staff                                                                                                                                                               |
+
+### Tests
+
+- `tests/unit/access/people.test.ts`: the table above, role by role
+- `tests/unit/lib/people.test.ts`: last word, suffixes, "Last, First", one word, empty; two
+  Smiths sort by first name; the override; accents
+- `tests/unit/lib/staff-groups.test.ts`: a valid sub-group; no school; one level; someone from
+  another school named; labels
+- `tests/unit/admin/staff-group-members.test.ts`: the filter; tick and untick
+- `tests/integration/people.test.ts`:
+  - the sync creates staff; the district can't, and can't change their CSI fields
+  - the sync can't delete; schools and anyone signed out are refused
+  - the sort name: the district's override wins, the sync can't set it
+  - a school's group can't be renamed, deleted or given members by the district, and can't be
+    made by the district even by claiming a CSI location
+  - a sub-group is made, filled, renamed and deleted; someone from another school is refused by
+    name; one level; the sync can't touch it
+- `tests/e2e/people.spec.ts`:
+  - the district sees the CSI staff read-only, with no "Create new"
+  - the district makes a sub-group in the mock school: the checklist before and after choosing a
+    school, A–Z, the filter, tick and save, then untick and save
+  - a school manager has no menu items and gets 403 from both APIs
+- `tests/e2e/admin-planes-axe.spec.ts`: the staff list, a staff member's form, a sub-group's form
+  with its checklist, and the staff groups list, in both themes; forms wait for the repaired
+  document tabs
+
+## 39. Staff directories, part B: the CSI sync (Jason, 2026-11-13)
+
+The pipeline is: source rows → `mapCsiRows` → `planStaffSync` → `assertStaffOnly` → written **as the sync**. The sync writes through the local API as `system-sync` with `overrideAccess: false`, so the collections' own rules (§38) bound what it can touch. It creates staff and school groups and writes CSI's fields. It never writes a sort name, a sub-group or who is in one, and it never deletes.
+
+**Source.** A `StaffSource` is `{ name, fetchRows() }` returning raw rows in whatever shape CSI sends. The transport is decided later (Jason). `CSI_SOURCE=mock` uses `mockStaffSource` (`src/sync/csi-mock.ts`): one school, "SHS (mock)" (`MOCK-SHS`), with eight plainly fake staff. When `CSI_SOURCE` is unset there is no source, and the sync does nothing. **The row shape is assumed** (`tests/fixtures/csi/README.md`): `employeeId`, `name`, `email`, `title`, `locationId`, `locationName`. When a real export is captured, only `mapCsiRows` changes.
+
+**No student data** (CLAUDE.md rule 4; `11` §4). CSI holds none, and staff and students share one email domain, so the domain proves nothing. The layers that apply:
+
+1. **Source scope:** the source reads staff only.
+2. **Student-marker filter** (`mapCsiRows`): a row whose title, role or type says student or pupil, or that has any non-empty key matching student, grade, guardian, parent, birth, dob, homeroom or enroll, is **dropped and counted**. The counts name no one.
+3. **Field allowlist:** a record is built from the six fields only; anything else in a row is never read.
+4. **Schema:** `people` has nowhere for student data to land.
+5. **`assertStaffOnly`:** checked again just before writing, independently of the mapper. If anything student-like gets that far, the whole run stops and nothing is written.
+
+A real export with a staff field that matches a student key (for example a "grade taught") would drop real staff. The departure guard below would then refuse the run rather than hide them.
+
+**Plan** (`planStaffSync`, pure):
+
+- **Matching:** by CSI ID. Only changed fields are written, and an unchanged feed writes nothing.
+- **Departures:** someone missing from the feed is set `active: false`. Someone back is set `active: true`. Nobody is deleted.
+- **Schools:** a new location gets its school's group, and a renamed location renames it.
+- **Last-known-good:** an empty feed, or one that would hide more than 5 people and more than a quarter of active staff, is **refused whole** with a reason in words.
+
+Records are written one at a time. A failing one is counted in `errors`, and the run goes on. `syncedAt` is set on each record written. Log lines carry CSI IDs, never names.
+
+**Moving school.** The sync changes a person's school but never sub-group membership. A sub-group's hook therefore refuses only people being **added** from another school. Anyone already in it who has since moved is dropped quietly on its next save (`keepAtSchool`).
+
+**Running it.**
+
+- **Nightly:** the `csiStaffSync` task runs at 02:00 (`0 2 * * *`) on Payload's jobs queue. It doesn't retry; the next night is the retry.
+- **Sync now:** `POST /api/staff-sync/run`, district only (403 otherwise). It returns the summary, or 409 with "No CSI connection is set up yet."
+- **Seed:** `scripts/seed.ts` runs the sync from the mock source.
+
+**No "Sync now" button in the dashboard** (Jason, 2026-11-13: skip it). The endpoint stays for the district's own use. A run history (the ops dashboard, `11` §10) is not built. Public pages refresh with the staff block (part C).
+
+### Files
+
+| File                                      | Does                                                                                                                   |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/csi/map.ts`                      | pure: `CSI_STAFF_FIELDS`, `mapCsiRows` → `{ records, dropped: { student, incomplete, duplicate } }`, `assertStaffOnly` |
+| `src/lib/csi/plan.ts`                     | pure: `planStaffSync` → `{ ok, schools, create, update, hide }` or `{ ok: false, reason }`                             |
+| `src/lib/staff-groups.ts`                 | `keepAtSchool`                                                                                                         |
+| `src/sync/staff-sync.ts`                  | `StaffSource`; `runStaffSync(payload, source, now)` → summary                                                          |
+| `src/sync/csi-mock.ts`                    | `MOCK_CSI_ROWS`, `mockStaffSource`, `staffSourceFromEnv`                                                               |
+| `src/collections/endpoints/staff-sync.ts` | `staffSyncEndpoint`, `staffSyncTask`                                                                                   |
+| `src/collections/StaffGroups.ts`          | the hook: only additions refused; moved members pruned                                                                 |
+| `.env.example`                            | `CSI_SOURCE`                                                                                                           |
+
+### Tests
+
+- `tests/fixtures/csi/staff-with-students.json`: four staff, five planted student rows (by
+  title, grade, guardian, role, date of birth), three incomplete rows and a duplicate; extra
+  fields (a home address, a salary)
+- `tests/unit/lib/csi-map.test.ts`: the four staff kept, trimmed and lowercased; only allowlisted
+  fields; every student row dropped and counted, naming no one; incomplete and duplicate rows;
+  `assertStaffOnly`
+- `tests/unit/lib/csi-plan.test.ts`: create; no-op; only changes; a move; hide, no re-hide,
+  re-show; new and renamed schools; empty feed; mass departure refused; a handful allowed
+- `tests/integration/staff-sync.test.ts`:
+  - **the student fixture leaves no student record and no student detail anywhere** (release-blocking)
+  - a first sync makes schools and staff
+  - an unchanged feed rewrites nothing
+  - a change keeps the district's sort name and sub-group
+  - hide and re-show; rename and move
+  - a moved member drops out of the old sub-group on its next save
+  - CSI unreachable, an empty feed and a mass departure each change nothing
+  - "Sync now": the district runs it, no source gives 409, others get 403
+
+## 40. Staff directories, part C: the staff list block (Jason, 2026-11-13)
+
+A **Staff list** (`staffList`) shows **one group or sub-group**: a school's group lists everyone at the school, and a sub-group lists the people ticked in it. There is no title filter; AMS's Administrators, Counselors and Teachers views become sub-groups. **District only** (Jason): it is not in `SCHOOL_BLOCKS`, so `checkSchoolLayout` refuses it from a school on every route. It is offered on a page and inside Columns.
+
+**Settings → data → render.**
+
+1. **Settings:** `toStaffList` (`src/content/blocks.ts`) maps `{ heading, group, maxColumns }` to a `StaffListBlock`. A block with no group is dropped. **People side by side, at most** (`maxColumns`, a radio of 1–4, default 3; Jason 2026-11-13: "a maximum of n columns, whether there is one staff member or 500") reaches the list as `data-max-columns`. The grid gives each card at least 16rem or 1/N of the row, whichever is wider, so a wide screen stops at N and a narrow one shows fewer. **Wider than the text when it must** (Jason, 2026-11-13): the page's reading column (`--measure`, 68ch) holds only two 16rem cards. At 3 or 4 the whole block (heading and cards) widens, centred, to 56rem or `--measure-wide` (72rem). It stays at least `--space-xl` from the screen's edges and is never narrower than the column (`.block` in `StaffList.module.css`). Inside a Columns block's column (`data-column`) it never widens.
+2. **Data:** `resolvePageBlocks` calls `listStaff(group)` (`src/content/people.ts`, read as the platform):
+   - a school's group gives its active staff;
+   - a sub-group gives its members who are active and still at its school;
+   - both are sorted by `sortKey`;
+   - only `{ id, name, title, email }` leaves the content layer.
+
+   No staff means the block is dropped.
+
+3. **Render:** `StaffList` puts a heading, if set, on a named `Section` at the block's level. People are list items, not headings, so the outline gains no levels. `StaffDirectory` (client) renders each person's name, title as CSI gives it, and an email link: `mailto:` with an icon and the visible word "Email", named for the person ("Email Jane Smith") through `VisuallyHidden`. With **10 or more** people, a "Find a staff member" search box filters by every word typed, in the name or title, ignoring case and accents (`staffShown`). An `aria-live` count shows "N of M people". The whole list is server-rendered, so it works without JavaScript. Visitor-facing words are props, ready for Phase 7.
+
+**Refreshing.** A staff list can sit on any page of any site, so a change refreshes every site (`revalidateAllSites`), as alerts do.
+
+- A district edit, such as a sort name or a sub-group change or deletion, refreshes through `revalidateStaffChange` / `revalidateStaffDelete` on both collections.
+- The sync's writes are marked (`STAFF_SYNC` in `req.context`) and skipped. "Sync now" refreshes once at the end when anything changed.
+- The nightly run is outside a request, so its changes show on the pages' hourly refresh.
+
+### Files
+
+| File                                                                | Does                                                                                      |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `src/collections/blocks/index.ts`                                   | `staffListBlock` (`heading`, `group` → `staff-groups`); in the page's blocks and Columns' |
+| `src/content/types.ts`                                              | `StaffListBlock`, `StaffMember`, `ResolvedStaffListBlock`; both block unions              |
+| `src/content/blocks.ts`                                             | `toStaffList`                                                                             |
+| `src/content/people.ts`                                             | `listStaff(groupId)`                                                                      |
+| `src/content/resolve-blocks.ts`                                     | the `staffList` case                                                                      |
+| `src/blocks/StaffList/`                                             | `StaffList`, `StaffDirectory`, `staff-filter.ts` (`staffShown`), CSS, stories             |
+| `src/blocks/BlockList.tsx`                                          | renders it                                                                                |
+| `src/collections/hooks/revalidate-staff.ts`                         | the two refresh hooks                                                                     |
+| `src/sync/staff-sync.ts`, `src/collections/endpoints/staff-sync.ts` | `STAFF_SYNC`; one refresh after "Sync now"                                                |
+
+### Tests
+
+- `tests/unit/blocks.test.ts`: the mapper (heading and group; no group dropped; `maxColumns` 1–4,
+  else 3); the library table
+- `tests/unit/access/school-layout.test.ts`: a school cannot add one
+- `tests/unit/blocks/staff-filter.test.ts`: the filter
+- `tests/integration/staff-directory.test.ts`:
+  - a school's group lists everyone there, A–Z, nobody hidden
+  - a sub-group lists only its active members
+  - only name, title and email leave the content layer
+  - another school's staff never appear; an unknown group lists nobody
+- `tests/e2e/staff-directory.spec.ts`: on a public page, the mock school A–Z, titles as given, an
+  email link named for its person, no filter under ten, exactly 4, 3 and 2 across in the first row when set, the wide list at least
+  24px from both screen edges with no sideways scroll,
+  and a one-person sub-group, with axe in both themes
+- `tests/e2e/admin-planes-axe.spec.ts`: a page holding a staff list, its Group picker, in both
+  themes
+- Storybook `Blocks/StaffList` (sub-group, no heading, a whole school with the filter, one, two and
+  four across): the component axe gate, LTR and RTL

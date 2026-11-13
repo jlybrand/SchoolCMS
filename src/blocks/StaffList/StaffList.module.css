@@ -1,0 +1,133 @@
+/*
+ * A staff list — see `StaffList.tsx`. Tokens only; logical properties only (rule 5). Contrast:
+ * --color-text, --color-text-muted and --color-brand on --color-surface are checked at token
+ * level. Focus rings are the global ones (`src/styles/globals.css`).
+ */
+
+/*
+ * The block's width (Jason, 2026-11-13: "not completely to screen edge, leave some space").
+ * --target is the room N cards of at least 16rem need; the block is the text column's width or
+ * --target, whichever is wider — but never closer than --edge to either side of the screen, and
+ * never narrower than the text column. Equal negative margins keep it centred on the column.
+ * `100%` in both is the column's width (the containing block).
+ */
+.block {
+  --target: 0rem;
+  --edge: var(--space-xl);
+  --width: max(100%, min(var(--target), 100vw - 2 * var(--edge)));
+
+  inline-size: var(--width);
+  margin-inline: calc((100% - var(--width)) / 2);
+}
+
+.block[data-max-columns='3'] {
+  --target: 56rem;
+}
+
+.block[data-max-columns='4'] {
+  --target: var(--measure-wide);
+}
+
+/* In one of a Columns block's columns: never wider than the column, whatever the setting. */
+:global([data-column]) .block {
+  --target: 0rem;
+}
+
+.directory {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.filter {
+  display: grid;
+  gap: var(--space-2xs);
+  max-inline-size: 24rem;
+}
+
+.filterLabel {
+  font-weight: 600;
+}
+
+.filterInput {
+  min-block-size: 2.75rem;
+  padding-inline: var(--space-sm);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.count {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+/*
+ * At most --max people side by side (Jason, 2026-11-13: the block's 1–4 setting, as
+ * `data-max-columns` — an attribute, not an inline style, so stylelint still sees the layout).
+ * Each card is at least 16rem or 1/--max of the row, whichever is wider, so a wide screen stops
+ * at --max and a narrow one drops to fewer; never more than fit, never more than chosen.
+ */
+.list {
+  --max: 3;
+  --gap: var(--space-md);
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(max(min(100%, 16rem), calc((100% - (var(--max) - 1) * var(--gap)) / var(--max))), 1fr)
+  );
+  gap: var(--gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list[data-max-columns='1'] {
+  --max: 1;
+}
+
+.list[data-max-columns='2'] {
+  --max: 2;
+}
+
+.list[data-max-columns='4'] {
+  --max: 4;
+}
+
+.person {
+  display: grid;
+  gap: var(--space-2xs);
+  align-content: start;
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.name {
+  margin: 0;
+  font-weight: 700;
+}
+
+.title {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.email {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  justify-self: start;
+  min-block-size: 2.75rem;
+  color: var(--color-brand);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.icon {
+  inline-size: 1.25em;
+  block-size: 1.25em;
+  flex: none;
+}

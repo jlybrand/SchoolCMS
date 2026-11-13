@@ -13,6 +13,7 @@ import { AuditEvents } from './collections/AuditEvents'
 import { Navigation } from './collections/Navigation'
 import { SCHEDULE_CRON } from './lib/schedule-step'
 import { Pages } from './collections/Pages'
+import { People } from './collections/People'
 import { PostBoards } from './collections/PostBoards'
 import { PostFolders } from './collections/PostFolders'
 import { Posts } from './collections/Posts'
@@ -20,6 +21,7 @@ import { crossTenantRelationships } from './lib/cross-tenant-relationships'
 import { PostTags } from './collections/PostTags'
 import { Calendars } from './collections/Calendars'
 import { Events } from './collections/Events'
+import { StaffGroups } from './collections/StaffGroups'
 import { Settings } from './collections/Settings'
 import { Tenants } from './collections/Tenants'
 import { Theme } from './collections/Theme'
@@ -27,6 +29,7 @@ import { Users } from './collections/Users'
 import { districtDigestTask } from './jobs/district-digest'
 import { calendarFeedsTask } from './jobs/calendar-feeds'
 import { scheduleEndpoint, scheduleTask } from './collections/endpoints/schedule'
+import { staffSyncEndpoint, staffSyncTask } from './collections/endpoints/staff-sync'
 import { constrainedEditor } from './lib/editor'
 import { validationResponse } from './lib/validation-errors'
 
@@ -99,7 +102,7 @@ export default buildConfig({
   },
 
   /** The schedule's sweep, for the job to call inside a request (`src/collections/endpoints/schedule.ts`). */
-  endpoints: [scheduleEndpoint],
+  endpoints: [scheduleEndpoint, staffSyncEndpoint],
 
   collections: [
     Tenants,
@@ -115,6 +118,8 @@ export default buildConfig({
     Theme,
     Settings,
     Alerts,
+    People,
+    StaffGroups,
     AuditEvents,
   ],
 
@@ -162,7 +167,9 @@ export default buildConfig({
         /**
          * Registering here is what injects the `tenant` relationship field — which is why
          * src/collections/Pages.ts does not declare one. The remaining tenant-owned
-         * collections join as they land: events, people, documents, media, alerts, redirects.
+         * collections join as they land: documents, media, redirects. NOT `people` or
+         * `staff-groups` (Jason, 2026-11-13): a staff group is a CSI location, not a site, and a
+         * page shows whichever group it is set to (`src/access/people.ts`).
          */
         pages: {},
         posts: {},
@@ -228,8 +235,11 @@ export default buildConfig({
    * Proven in tests/integration/tenant-isolation.test.ts.
    */
   jobs: {
-    /** The digest; the Start / Expires / Featured-until sweep; feed calendars (hourly). */
-    tasks: [districtDigestTask, scheduleTask, calendarFeedsTask],
+    /**
+     * The digest; the Start / Expires / Featured-until sweep; feed calendars (hourly); the CSI
+     * staff sync (nightly, `src/collections/endpoints/staff-sync.ts`).
+     */
+    tasks: [districtDigestTask, scheduleTask, calendarFeedsTask, staffSyncTask],
     autoRun: [{ cron: SCHEDULE_CRON, queue: 'default' }],
     access: {
       run: ({ req }) => isDistrictAdmin(req.user as AuthUser | null),

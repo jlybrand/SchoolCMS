@@ -113,6 +113,8 @@ describe('checkSchoolLayout — the district’s components, not at all', () => 
 
   it('refuses a component the palette does not know — anything added later is the district’s', () => {
     expect(checkSchoolLayout([], [{ id: 'z', blockType: 'calendar' }]).ok).toBe(false)
+    // A staff list is the district's too (Jason, 2026-11-13: district only).
+    expect(checkSchoolLayout([], [{ id: 'z', blockType: 'staffList' }]).ok).toBe(false)
   })
 
   it('refuses a row without an id where a district component was', () => {

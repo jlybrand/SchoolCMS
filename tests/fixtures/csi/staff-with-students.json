@@ -1,0 +1,114 @@
+[
+  {
+    "employeeId": "E100",
+    "name": "Avery Mockwell",
+    "email": "avery.mockwell@example.org",
+    "title": "Teacher",
+    "locationId": "L-SHS",
+    "locationName": "SHS",
+    "homeAddress": "1 Elm St",
+    "salary": "55000"
+  },
+  {
+    "employeeId": "E101",
+    "name": "Casey Sample",
+    "email": "casey.sample@example.org",
+    "title": "School Counselor",
+    "locationId": "L-SHS",
+    "locationName": "SHS"
+  },
+  {
+    "employeeId": "E102",
+    "name": "Finley Fixture",
+    "email": "finley.fixture@example.org",
+    "title": "Admin/teacher",
+    "locationId": "L-AMS",
+    "locationName": "AMS"
+  },
+  {
+    "employeeId": "E103",
+    "name": "  Dana   Example ",
+    "email": " DANA.EXAMPLE@example.org ",
+    "title": " Nurse ",
+    "locationId": "L-AMS",
+    "locationName": "AMS"
+  },
+
+  {
+    "employeeId": "S900",
+    "name": "Student Mockchild",
+    "email": "s900@example.org",
+    "title": "Student",
+    "locationId": "L-SHS",
+    "locationName": "SHS"
+  },
+  {
+    "employeeId": "S901",
+    "name": "Kid Rowe",
+    "email": "kid.rowe@example.org",
+    "title": "",
+    "locationId": "L-SHS",
+    "locationName": "SHS",
+    "gradeLevel": "9"
+  },
+  {
+    "employeeId": "S902",
+    "name": "Pat Learner",
+    "email": "pat.learner@example.org",
+    "title": "Aide",
+    "locationId": "L-SHS",
+    "locationName": "SHS",
+    "guardianName": "Lee Learner"
+  },
+  {
+    "employeeId": "S903",
+    "name": "Sam Pupil",
+    "email": "sam.pupil@example.org",
+    "title": "Teacher",
+    "locationId": "L-SHS",
+    "locationName": "SHS",
+    "role": "student"
+  },
+  {
+    "employeeId": "S904",
+    "name": "Jo Minor",
+    "email": "jo.minor@example.org",
+    "title": "Teacher",
+    "locationId": "L-SHS",
+    "locationName": "SHS",
+    "dateOfBirth": "2011-04-02"
+  },
+
+  {
+    "employeeId": "",
+    "name": "No Id",
+    "email": "no.id@example.org",
+    "title": "Teacher",
+    "locationId": "L-SHS",
+    "locationName": "SHS"
+  },
+  {
+    "employeeId": "E104",
+    "name": "",
+    "email": "nameless@example.org",
+    "title": "Teacher",
+    "locationId": "L-SHS",
+    "locationName": "SHS"
+  },
+  {
+    "employeeId": "E105",
+    "name": "No Place",
+    "email": "no.place@example.org",
+    "title": "Teacher",
+    "locationId": "",
+    "locationName": ""
+  },
+  {
+    "employeeId": "E100",
+    "name": "Avery Duplicate",
+    "email": "dup@example.org",
+    "title": "Teacher",
+    "locationId": "L-AMS",
+    "locationName": "AMS"
+  }
+]

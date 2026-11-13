@@ -3,6 +3,8 @@ import { getPayload, type PayloadRequest } from 'payload'
 import config from '../src/payload.config'
 import type { Page } from '../src/payload-types'
 import { ensureMainCalendars } from '../src/collections/hooks/event-hooks'
+import { mockStaffSource } from '../src/sync/csi-mock'
+import { runStaffSync } from '../src/sync/staff-sync'
 import { ROOT_SLUG } from '../src/lib/slug'
 
 /**
@@ -428,6 +430,14 @@ const run = async () => {
       payload.logger.info(`created tag ${name}`)
     }
   }
+
+  /**
+   * MOCK CSI STAFF (Jason, 2026-11-13) — until there is CSI access. The real sync, from the
+   * mock source (`src/sync/csi-mock.ts`): one school's group, "SHS (mock)", and its staff,
+   * plainly fake. Safe to re-run — an unchanged feed is a no-op.
+   */
+  const staffSync = await runStaffSync(payload, mockStaffSource, new Date())
+  payload.logger.info(`mock CSI staff: ${JSON.stringify(staffSync)}`)
 
   payload.logger.info('seed complete')
   process.exit(0)

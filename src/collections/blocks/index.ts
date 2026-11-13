@@ -404,6 +404,57 @@ export const calendarBlock: Block = {
  * worked out from where each sits (`columnLevels`), so none is asked for here either. A nested
  * block is stored in the same `pages_blocks_*` table as a top-level one, told apart by its path.
  */
+/**
+ * A staff list (Jason, 2026-11-13) — Finalsite's constituent element. One group or sub-group
+ * (SHS, or SHS › Counselors), its staff A–Z by last name, each with an email link. District only
+ * (Jason), like every data component (`src/access/school-layout.ts`).
+ */
+export const staffListBlock: Block = {
+  slug: 'staffList',
+  interfaceName: 'StaffListBlockRow',
+  labels: { singular: 'Staff list', plural: 'Staff lists' },
+  fields: [
+    {
+      name: 'heading',
+      type: 'text',
+      label: 'Heading',
+      admin: {
+        description:
+          'A title above the list, like "Our counselors" — it also names this part of the page for screen readers.',
+      },
+    },
+    {
+      name: 'group',
+      type: 'relationship',
+      relationTo: 'staff-groups',
+      required: true,
+      label: 'Group',
+      admin: {
+        description:
+          'A school’s group lists everyone there; a sub-group lists the people in it. Groups come from CSI — if none are listed, the CSI sync hasn’t run yet.',
+      },
+    },
+    {
+      /** Jason, 2026-11-13: "a maximum of n columns, whether there is one staff member or 500". */
+      name: 'maxColumns',
+      // A radio, not a select: Payload's select input fails axe (`docs/phases/04` §17).
+      type: 'radio',
+      label: 'People side by side, at most',
+      defaultValue: '3',
+      options: [
+        { label: '1', value: '1' },
+        { label: '2', value: '2' },
+        { label: '3', value: '3' },
+        { label: '4', value: '4' },
+      ],
+      admin: {
+        layout: 'horizontal',
+        description: 'However many staff there are. Phones show fewer.',
+      },
+    },
+  ],
+}
+
 export const columnsBlock: Block = {
   slug: 'columns',
   interfaceName: 'ColumnsBlock',
@@ -453,6 +504,7 @@ export const columnsBlock: Block = {
             dividerBlock,
             feedBlock,
             calendarBlock,
+            staffListBlock,
           ],
         },
       ],
@@ -468,6 +520,7 @@ export const blockLibrary: Block[] = [
   childPageNavBlock,
   feedBlock,
   calendarBlock,
+  staffListBlock,
   embedBlock,
   dividerBlock,
   columnsBlock,

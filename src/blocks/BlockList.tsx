@@ -13,6 +13,7 @@ import { Divider } from './Divider'
 import { Embed } from './Embed'
 import { NewsFeed } from './NewsFeed'
 import { RichTextBlock } from './RichTextBlock'
+import { StaffList } from './StaffList'
 
 /**
  * Renders a composed page's `layout` (`03` §3).
@@ -106,6 +107,9 @@ const Block = ({
     case 'calendar':
       // Already resolved — its events arrived with it (`resolvePageBlocks`).
       return <Calendar baseLevel={baseLevel} block={block} />
+    case 'staffList':
+      // Already resolved — its staff arrived with it (`resolvePageBlocks`).
+      return <StaffList baseLevel={baseLevel} block={block} />
     case 'columns':
       // Its columns hold blocks: this list renders them, one level in (`columnLevels`).
       return (
