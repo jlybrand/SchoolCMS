@@ -17,6 +17,7 @@ import {
   type Fixtures,
   type PostFixtures,
 } from '../helpers/payload'
+import { tinyPng } from '../helpers/files'
 
 /**
  * ADVERSARIAL TENANT-ISOLATION SUITE (`03` §6.4, `06` §2.2).
@@ -2680,3 +2681,150 @@ describe('events and calendars (Jason, 2026-10-28 and 2026-11-11)', () => {
 
 const relationshipId = (value: unknown): number =>
   typeof value === 'object' && value !== null ? (value as { id: number }).id : (value as number)
+
+describe('the file library (Jason, 2026-11-13)', () => {
+  // Schools upload to their own library with no approval, so isolation is the whole guarantee.
+  const r = { fileA: 0, fileB: 0, folderA: 0, folderB: 0 }
+
+  beforeAll(async () => {
+    const make = async (tenant: number, title: string) =>
+      (
+        await payload.create({
+          collection: 'resources',
+          data: { tenant, title, isDecorative: true } as never,
+          file: await tinyPng(),
+          overrideAccess: true,
+        })
+      ).id as number
+    const folder = async (tenant: number, name: string) =>
+      (
+        await payload.create({
+          collection: 'resource-folders',
+          data: { tenant, name } as never,
+          overrideAccess: true,
+        })
+      ).id as number
+    r.fileA = await make(f.tenantA, 'file a')
+    r.fileB = await make(f.tenantB, 'file b')
+    r.folderA = await folder(f.tenantA, 'folder a')
+    r.folderB = await folder(f.tenantB, 'folder b')
+  })
+
+  describe('invariant 1 — a user cannot read another school’s files or folders', () => {
+    it('school-manager A lists and fetches only School A’s', async () => {
+      for (const collection of ['resources', 'resource-folders'] as const) {
+        const { docs } = await payload.find({
+          collection,
+          user: f.managerA,
+          overrideAccess: false,
+          limit: 0,
+          depth: 0,
+        })
+        expect(docs.every((d) => d.tenant === f.tenantA)).toBe(true)
+      }
+      expect(
+        await isDenied(() =>
+          payload.findByID({
+            collection: 'resources',
+            id: r.fileB,
+            user: f.managerA,
+            overrideAccess: false,
+          }),
+        ),
+      ).toBe(true)
+    })
+  })
+
+  describe('invariant 2 — a user cannot write into another school’s library', () => {
+    it('school-manager A cannot upload into School B', async () => {
+      expect(
+        await isDenied(async () =>
+          payload.create({
+            collection: 'resources',
+            data: { tenant: f.tenantB, title: 'Into B', isDecorative: true } as never,
+            file: await tinyPng(),
+            user: f.managerA,
+            overrideAccess: false,
+          }),
+        ),
+      ).toBe(true)
+    })
+
+    it('school-manager A cannot change or remove School B’s file, singly or in bulk', async () => {
+      expect(
+        await isDenied(() =>
+          payload.update({
+            collection: 'resources',
+            id: r.fileB,
+            data: { title: 'Hijacked' } as never,
+            user: f.managerA,
+            overrideAccess: false,
+          }),
+        ),
+      ).toBe(true)
+      await payload.update({
+        collection: 'resources',
+        where: { id: { equals: r.fileB } },
+        data: { title: 'Hijacked' } as never,
+        user: f.managerA,
+        overrideAccess: false,
+      })
+      await payload.delete({
+        collection: 'resources',
+        where: { id: { equals: r.fileB } },
+        user: f.managerA,
+        overrideAccess: false,
+      })
+      const still = await payload.findByID({
+        collection: 'resources',
+        id: r.fileB,
+        overrideAccess: true,
+      })
+      expect(still.title).toBe('file b')
+    })
+
+    it('school-manager A cannot move their own file into School B', async () => {
+      await isDenied(() =>
+        payload.update({
+          collection: 'resources',
+          id: r.fileA,
+          data: { tenant: f.tenantB } as never,
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      )
+      const mine = await payload.findByID({
+        collection: 'resources',
+        id: r.fileA,
+        depth: 0,
+        overrideAccess: true,
+      })
+      expect(mine.tenant).toBe(f.tenantA)
+    })
+
+    it('nor put a file or folder of A’s in School B’s folder', async () => {
+      expect(
+        await isDenied(() =>
+          payload.update({
+            collection: 'resources',
+            id: r.fileA,
+            data: { folder: r.folderB } as never,
+            user: f.managerA,
+            overrideAccess: false,
+          }),
+        ),
+      ).toBe(true)
+      expect(
+        await isDenied(() =>
+          payload.update({
+            collection: 'resource-folders',
+            id: r.folderA,
+            data: { parent: r.folderB } as never,
+            user: f.managerA,
+            overrideAccess: false,
+          }),
+        ),
+      ).toBe(true)
+    })
+  })
+})

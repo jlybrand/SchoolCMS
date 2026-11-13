@@ -78,3 +78,53 @@
 .nav-group__label {
   color: var(--theme-elevation-800);
 }
+
+/**
+ * The upload dropzone's words ("Drag and drop a file", "Or") — 1.4.3 Contrast (Minimum).
+ *
+ * Payload sets both in a light grey that fails 4.5:1. They are the instructions for the file
+ * library's upload (2026-11-13), so they take the same token as the help text. Found by
+ * tests/e2e/admin-planes-axe.spec.ts ("uploading a new file").
+ */
+.file-field__orText,
+.file-field__dragAndDropText {
+  color: var(--theme-elevation-800);
+}
+
+/**
+ * The file library says "Upload a file", not "Create New" (Jason, 2026-11-13). Payload's words
+ * are the same for every collection, so its own button and its "Creating new File" are hidden
+ * on this collection's screens only, and DD2's take their place
+ * (`src/admin/Resources/UploadFileButton.tsx`, `UploadingHeading.tsx`).
+ */
+.collection-list--resources .list-create-new-doc__create-new-button,
+.collection-list--resources .no-results__actions,
+.collection-edit--resources:not(.collection-edit--is-editing)
+  .doc-controls__meta
+  .doc-controls__value {
+  display: none;
+}
+
+/*
+ * The breadcrumb's last step ("Files / Create New") sits in the app header, outside the view's
+ * classes, so it is found with `:has()`, and its words swapped for "Upload a file" — generated
+ * content is read out as the step's text. 13px is Payload's own size for the step.
+ */
+body:has(.collection-edit--resources:not(.collection-edit--is-editing)) .step-nav__last {
+  font-size: 0;
+}
+
+body:has(.collection-edit--resources:not(.collection-edit--is-editing)) .step-nav__last::after {
+  content: 'Upload a file';
+  font-size: 13px;
+}
+
+.upload-file-action {
+  margin-block-end: 1rem;
+}
+
+.uploading-heading {
+  margin: 0;
+  color: var(--theme-elevation-800);
+  font-weight: 600;
+}

@@ -4,7 +4,9 @@ import { fileURLToPath } from 'node:url'
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { resendAdapter } from '@payloadcms/email-resend'
 import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
+import { s3Storage } from '@payloadcms/storage-s3'
 import { buildConfig } from 'payload'
+import sharp from 'sharp'
 
 import { isDistrictAdmin } from './access/predicates'
 import type { AuthUser } from './access/types'
@@ -14,6 +16,8 @@ import { Navigation } from './collections/Navigation'
 import { SCHEDULE_CRON } from './lib/schedule-step'
 import { Pages } from './collections/Pages'
 import { People } from './collections/People'
+import { ResourceFolders } from './collections/ResourceFolders'
+import { Resources } from './collections/Resources'
 import { PostBoards } from './collections/PostBoards'
 import { PostFolders } from './collections/PostFolders'
 import { Posts } from './collections/Posts'
@@ -42,6 +46,8 @@ const dirname = path.dirname(fileURLToPath(import.meta.url))
  * Nothing else is adopted without weighing its contribution to the switching cost.
  */
 export default buildConfig({
+  /** Image sizes and focal-point crops for the file library (`src/collections/Resources.ts`). */
+  sharp,
   admin: {
     /** Browser tabs read "Approvals - DD2 Websites", not Payload's default "- Payload". */
     meta: { titleSuffix: '- DD2 Websites' },
@@ -120,6 +126,8 @@ export default buildConfig({
     Alerts,
     People,
     StaffGroups,
+    Resources,
+    ResourceFolders,
     AuditEvents,
   ],
 
@@ -139,6 +147,26 @@ export default buildConfig({
   editor: constrainedEditor(),
 
   plugins: [
+    /**
+     * Files on Cloudflare R2 (`02`, `09` §1) once it is configured; on local disk (`media/`)
+     * until then. R2 speaks S3. Uploads still pass the collection's access and hooks either way.
+     */
+    ...(process.env.R2_BUCKET && process.env.R2_ACCOUNT_ID
+      ? [
+          s3Storage({
+            collections: { resources: true },
+            bucket: process.env.R2_BUCKET,
+            config: {
+              endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+              region: 'auto',
+              credentials: {
+                accessKeyId: process.env.R2_ACCESS_KEY_ID ?? '',
+                secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? '',
+              },
+            },
+          }),
+        ]
+      : []),
     /**
      * Multi-tenancy (`02` §4.2). The plugin adds the `tenant` relationship to tenant-owned
      * collections and the `tenants` array to users, and applies base filters.
@@ -167,7 +195,8 @@ export default buildConfig({
         /**
          * Registering here is what injects the `tenant` relationship field — which is why
          * src/collections/Pages.ts does not declare one. The remaining tenant-owned
-         * collections join as they land: documents, media, redirects. NOT `people` or
+         * collections join as they land: redirects. (`resources` and `resource-folders` joined
+         * 2026-11-13 — one file library, in place of the spec's separate documents and media.) NOT `people` or
          * `staff-groups` (Jason, 2026-11-13): a staff group is a CSI location, not a site, and a
          * page shows whichever group it is set to (`src/access/people.ts`).
          */
@@ -179,6 +208,9 @@ export default buildConfig({
         /** A site's calendars and their events (Jason, 2026-10-28). */
         calendars: {},
         events: {},
+        /** A site's file library and its folders (Jason, 2026-11-13). */
+        resources: {},
+        'resource-folders': {},
         /**
          * `isGlobal` is how a per-tenant "global" (`03` §5) is expressed under this plugin: a
          * Payload global is one document for the whole install, and there are 28 sites. It

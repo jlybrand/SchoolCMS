@@ -286,6 +286,7 @@ const NOUNS: Readonly<Record<string, string>> = {
   posts: 'announcement',
   events: 'event',
   alerts: 'alert',
+  resources: 'file',
 }
 
 export type ActivityInput = {

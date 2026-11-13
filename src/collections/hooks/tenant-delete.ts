@@ -20,10 +20,14 @@ const CONTENT = [
   { collection: 'pages', one: 'page', many: 'pages' },
   { collection: 'posts', one: 'announcement', many: 'announcements' },
   { collection: 'events', one: 'event', many: 'events' },
+  /** The site's file library (2026-11-13): a file may be in use on another site's page. */
+  { collection: 'resources', one: 'file', many: 'files' },
 ] as const
 
 /** A site's own setup, removed with it — boards before the folders they sit in. */
 const SETUP = [
+  // The library's folders: empty by the time this runs, files being content (above).
+  'resource-folders',
   'calendars',
   'post-boards',
   'post-folders',

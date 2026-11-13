@@ -1,6 +1,7 @@
 import type { Payload } from 'payload'
 import { beforeAll, describe, expect, it } from 'vitest'
 
+import { tinyPdf } from '../helpers/files'
 import { getTestPayload, isDenied, seed, type Fixtures } from '../helpers/payload'
 
 /**
@@ -84,6 +85,42 @@ describe('deleting a site', () => {
     expect(
       await payload.findByID({ collection: 'tenants', id: site, overrideAccess: true }),
     ).toBeTruthy()
+  })
+
+  it('is refused while its file library has files (2026-11-13); its empty folders go with it', async () => {
+    const site = await newSite()
+    const folder = await payload.create({
+      collection: 'resource-folders',
+      data: { tenant: site, name: 'Forms' },
+      overrideAccess: true,
+    })
+    const file = await payload.create({
+      collection: 'resources',
+      data: { tenant: site, title: 'Enrollment form', remediationStatus: 'not-applicable' },
+      file: tinyPdf(),
+      overrideAccess: true,
+    })
+
+    await expect(remove(site)).rejects.toMatchObject({
+      data: {
+        errors: [
+          {
+            message: expect.stringContaining('still has 1 file.'),
+          },
+        ],
+      },
+    })
+
+    await payload.delete({ collection: 'resources', id: file.id, overrideAccess: true })
+    await remove(site)
+    expect(
+      await payload.findByID({
+        collection: 'resource-folders',
+        id: folder.id,
+        overrideAccess: true,
+        disableErrors: true,
+      }),
+    ).toBeNull()
   })
 
   it('is refused while staff accounts are assigned to it', async () => {

@@ -496,3 +496,35 @@ describe('alerts (Jason, 2026-11-12): who posted a banner, changed it, took it d
     expect(auditEntries(alerts({ operation: 'delete', previous: alert }))[0]?.action).toBe('delete')
   })
 })
+
+describe('files in the library (Jason, 2026-11-13): no approval, nothing unseen', () => {
+  const file = { id: 31, tenant: 7, title: 'Lunch menu, November', filename: 'lunch-nov.pdf' }
+  const files = (over: Partial<AuditInput>): AuditInput => ({
+    collection: 'resources',
+    operation: 'create',
+    previous: null,
+    doc: file,
+    user: district,
+    ...over,
+  })
+
+  it('an upload is a publish, named by its title, for its school', () => {
+    expect(auditEntries(files({}))).toEqual([
+      expect.objectContaining({
+        action: 'publish',
+        contentType: 'resources',
+        documentId: '31',
+        documentTitle: 'Lunch menu, November',
+        tenant: '7',
+      }),
+    ])
+  })
+
+  it('a change is a publish; a removal a delete; untitled, it is named by its file', () => {
+    expect(auditEntries(files({ operation: 'update', previous: file }))[0]?.action).toBe('publish')
+    expect(auditEntries(files({ operation: 'delete', previous: file }))[0]?.action).toBe('delete')
+    expect(auditEntries(files({ doc: { ...file, title: '' } }))[0]?.documentTitle).toBe(
+      'lunch-nov.pdf',
+    )
+  })
+})

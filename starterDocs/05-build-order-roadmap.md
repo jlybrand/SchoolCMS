@@ -145,17 +145,23 @@ CSI outage leaves the directory serving last-known-good.**
 
 ## Phase 6 — Media, documents, staff visibility & search *(est. ~2 weeks)*
 
-- **Media library** → R2, derivatives, **required alt enforced at upload** with the
-  decorative escape hatch (`04` §2.5).
-- **Document library**: category, `visibility`, **remediation attestation** and the
-  district `not-attested` work queue (`07` §5). No validation pipeline (`01` §4.4).
-- **`visibility: staff`** on pages and documents, gated by the Entra session (`01` §4.3).
+_(Decided 2026-11-13, Jason: **one Resources library** for images and documents, in each
+school's folders, in place of separate media and document libraries; schools upload with no
+approval; **no video uploads** — YouTube only; **staff-only visibility waits for Entra** and
+moves out of this phase. Built: `docs/phases/06`.)_
+
+- **Resources library** → R2, derivatives, **required alt enforced at upload** with the
+  decorative escape hatch (`04` §2.5); documents carry their **remediation attestation**, and
+  the district has a `not-attested` work queue (`07` §5). No validation pipeline (`01` §4.4).
+- ~~**`visibility: staff`** on pages and documents, gated by the Entra session (`01` §4.3).~~
+  **Moved to the Entra switch** (before the Phase 9 pilot): only school managers have accounts
+  until then.
 - **Search**: Postgres FTS across public content, per-tenant and cross-tenant; results
   templated and accessible. pgvector left switchable.
 
-**Exit:** an image cannot be uploaded without alt or a decorative flag; a staff-visibility
-document is invisible to the public and visible to a signed-in staff member; search returns
-scoped, accessible results.
+**Exit:** an image cannot be uploaded without alt or a decorative flag; ~~a staff-visibility
+document is invisible to the public and visible to a signed-in staff member~~ _(with the Entra
+switch)_; search returns scoped, accessible results.
 
 ## Phase 7 — Localization pipeline *(est. ~2 weeks)*
 

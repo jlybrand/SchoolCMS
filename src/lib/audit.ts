@@ -251,6 +251,7 @@ export const auditEntries = (input: AuditInput): AuditEntry[] => {
   if (noun) return forReviewed(input, noun)
   if (input.collection === 'users') return forUser(input)
   if (input.collection === 'alerts') return forAlert(input)
+  if (input.collection === 'resources') return forResource(input)
   return []
 }
 
@@ -259,6 +260,22 @@ export const auditEntries = (input: AuditInput): AuditEntry[] => {
  * posting or changing one goes live at once (a publish), removing one is a delete. Named by what
  * visitors read; for no one school, since one alert may reach many.
  */
+/**
+ * Files in the library (Jason, 2026-11-13): uploaded with no approval, so every write is live at
+ * once — an upload or a change is a publish, a removal a delete — and the district sees each in
+ * the log. For the file's own school; named by its title, or its filename when it has none.
+ */
+const forResource = (input: AuditInput): AuditEntry[] => {
+  const doc = input.operation === 'delete' ? (input.doc ?? input.previous) : input.doc
+  if (!doc) return []
+  return [
+    entry(input, doc, input.operation === 'delete' ? 'delete' : 'publish', {
+      documentTitle: text(doc.title) || text(doc.filename) || `File ${String(doc.id)}`,
+      tenant: tenantIdOf(doc.tenant as never),
+    }),
+  ]
+}
+
 const forAlert = (input: AuditInput): AuditEntry[] => {
   const doc = input.operation === 'delete' ? (input.doc ?? input.previous) : input.doc
   if (!doc) return []

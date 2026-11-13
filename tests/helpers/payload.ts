@@ -83,6 +83,9 @@ export async function seed(payload: Payload): Promise<Fixtures> {
     // The staff directory (2026-11-13): a sync treats every person as the CSI feed's.
     'people',
     'staff-groups',
+    // A site's file library (2026-11-13): files before the folders they sit in.
+    'resources',
+    'resource-folders',
     'events',
     'calendars',
     'posts',

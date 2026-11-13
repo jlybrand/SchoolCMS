@@ -84,6 +84,7 @@ let event: number
 let feedCalendar: number
 let staffGroup: number
 let staffPage: number
+let imageFile: number
 let person: number
 /** School A's own event, for the school plane's screens. */
 let schoolEvent: number
@@ -313,9 +314,28 @@ adminTest.describe('district plane — whole screens', () => {
     })
     expect(madeStaffPage.ok(), await madeStaffPage.text()).toBe(true)
     staffPage = ((await madeStaffPage.json()).doc as { id: number }).id
+    // The file library (2026-11-13): an image, uploaded with its alt text.
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFElEQVR4nGNkYGD4z8DAwMDAwMAAAAgPAQBJpJ4YAAAAAElFTkSuQmCC',
+      'base64',
+    )
+    const madeImage = await fixture.admin.post('/api/resources?depth=0', {
+      multipart: {
+        file: { name: `axe-${Date.now()}.png`, mimeType: 'image/png', buffer: png },
+        _payload: JSON.stringify({
+          tenant: (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json())
+            .tenant,
+          title: 'Axe image',
+          alt: 'A blue square',
+        }),
+      },
+    })
+    expect(madeImage.ok(), await madeImage.text()).toBe(true)
+    imageFile = ((await madeImage.json()).doc as { id: number }).id
   })
   adminTest.afterAll(async () => {
     await fixture.admin.delete(`/api/pages/${staffPage}`)
+    await fixture.admin.delete(`/api/resources/${imageFile}`)
     await fixture.admin.delete(`/api/staff-groups/${staffGroup}`)
     await fixture.admin.delete(`/api/calendars/${feedCalendar}`)
     await fixture.admin.delete(`/api/events/${event}`)
@@ -469,6 +489,23 @@ adminTest.describe('district plane — whole screens', () => {
       adminTest(`@a11y a feed calendar’s form — ${colorScheme}`, async ({ page }) => {
         await page.goto(`/admin/collections/calendars/${feedCalendar}`)
         await auditScreen(page, '#field-name', '#field-source', '#field-feedUrl')
+      })
+      adminTest(`@a11y files list — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/collections/resources')
+        await auditScreen(page, ...LIST_REPAIRED)
+      })
+      adminTest(`@a11y an image's form — ${colorScheme}`, async ({ page }) => {
+        await page.goto(`/admin/collections/resources/${imageFile}`)
+        await auditScreen(page, '#field-title', '#field-alt', ...TABS_REPAIRED)
+      })
+      adminTest(`@a11y uploading a new file — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/collections/resources/create')
+        await auditScreen(page, '#field-title', 'input[type="file"]')
+      })
+      adminTest(`@a11y folders list — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/collections/resource-folders')
+        await expect(page.locator('h1')).toBeVisible({ timeout: 20_000 })
+        await auditScreen(page)
       })
       adminTest(`@a11y staff list — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/collections/people')
