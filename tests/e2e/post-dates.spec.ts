@@ -9,6 +9,7 @@ import {
   uniqueTitle,
 } from './support/fixture-pages'
 import { dropPost, makePost, type FixturePost } from './support/fixture-posts'
+import { scheduleTime, setScheduleTime } from './support/schedule-time'
 import { schoolTest } from './support/school-session'
 
 /**
@@ -22,9 +23,13 @@ const credentials = adminCredentials()
 const SKIP =
   'No SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD — set them in .env and re-run `pnpm run seed`.'
 
-/** A `datetime-local` value `hours` from now, on this machine's clock — the browser's too. */
+/**
+ * A `datetime-local` value `hours` from now, on this machine's clock — the browser's too. On the
+ * five minutes: the queue refuses a time between the schedule's steps (2026-11-13).
+ */
 const localInput = (hours: number): string => {
-  const d = new Date(Date.now() + hours * 60 * 60 * 1000)
+  const step = 5 * 60 * 1000
+  const d = new Date(Math.ceil((Date.now() + hours * 60 * 60 * 1000) / step) * step)
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
@@ -57,7 +62,7 @@ adminTest.describe('dates in the approval queue', () => {
         await expect(item.getByRole('button', { name: 'Approve and publish' })).toBeVisible()
 
         await item.getByText('Set dates').click()
-        await item.getByLabel('Start').fill(localInput(48))
+        await setScheduleTime(scheduleTime(item, 'Start'), localInput(48))
         const schedule = item.getByRole('button', { name: 'Approve and schedule' })
         await expect(schedule).toBeVisible()
         await schedule.click()
@@ -89,11 +94,14 @@ adminTest.describe('dates in the approval queue', () => {
           const item = page.getByRole('article', { name: new RegExp(title) })
           await expect(item).toBeVisible({ timeout: 20_000 })
           await item.getByText('Set dates').click()
-          await item.getByLabel('Start').fill(localInput(48))
-          await item.getByLabel('Expires').fill(localInput(24))
+          await setScheduleTime(scheduleTime(item, 'Start'), localInput(48))
+          await setScheduleTime(scheduleTime(item, 'Expires'), localInput(24))
           await item.getByRole('button', { name: 'Approve and schedule' }).click()
 
-          await expect(item.getByLabel('Expires')).toHaveAttribute('aria-invalid', 'true')
+          await expect(scheduleTime(item, 'Expires').getByLabel('Day')).toHaveAttribute(
+            'aria-invalid',
+            'true',
+          )
           await expect(item).toContainText('Choose an expiration after the announcement goes live.')
           await expectNoBlockingViolations(page, `[id="${await item.getAttribute('id')}"]`)
 

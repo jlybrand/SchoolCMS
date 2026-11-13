@@ -14,6 +14,7 @@ import {
   scheduleRefusal,
   toLocalInputValue,
 } from '@/admin/PagePublish/page-publish'
+import { STEP_REFUSAL } from '@/lib/schedule-step'
 
 /**
  * A page's Start as a choice made when publishing (Jason, 2026-11-11), in place of a Start field
@@ -150,6 +151,10 @@ describe('scheduleRefusal', () => {
 
   it('is null for a time to come', () => {
     expect(scheduleRefusal('2027-01-05T09:00', NOW)).toBeNull()
+  })
+
+  it('needs a time on the five minutes, when the schedule runs (Jason, 2026-11-13)', () => {
+    expect(scheduleRefusal('2027-01-05T09:03', NOW)).toBe(STEP_REFUSAL)
   })
 })
 

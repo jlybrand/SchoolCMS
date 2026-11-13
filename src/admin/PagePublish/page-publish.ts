@@ -10,6 +10,8 @@
  * the district's own later edits join it, a school's drops it (`src/access/review-state.ts`).
  */
 
+import { onScheduleStep, STEP_REFUSAL } from '@/lib/schedule-step'
+
 export type PublishState = {
   /** The page is on the site now. */
   live: boolean
@@ -101,11 +103,15 @@ export const publishRequest = (
   }
 }
 
-/** Why a typed day and time cannot be scheduled, or null. Same words as the announcement dates. */
+/**
+ * Why a typed day and time cannot be scheduled, or null. Same words as the announcement dates.
+ * On the five minutes too (2026-11-13): the picker offers only those, but a time can be typed.
+ */
 export const scheduleRefusal = (value: string, now: Date): string | null => {
   const at = new Date(value)
   if (value.trim() === '' || Number.isNaN(at.getTime())) return 'Choose a day and time.'
   if (at.getTime() <= now.getTime()) return 'Choose a time in the future.'
+  if (!onScheduleStep(at)) return STEP_REFUSAL
   return null
 }
 

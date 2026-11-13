@@ -10,6 +10,7 @@ import { isDistrictAdmin } from './access/predicates'
 import type { AuthUser } from './access/types'
 import { AuditEvents } from './collections/AuditEvents'
 import { Navigation } from './collections/Navigation'
+import { SCHEDULE_CRON } from './lib/schedule-step'
 import { Pages } from './collections/Pages'
 import { PostBoards } from './collections/PostBoards'
 import { PostFolders } from './collections/PostFolders'
@@ -215,7 +216,7 @@ export default buildConfig({
    * Payload's jobs queue (`02` §2: "Payload admin + REST/GraphQL + jobs") — the district's
    * daily digest and overdue alert (`src/jobs/district-digest.ts`).
    *
-   * `autoRun` every five minutes queues each task's next scheduled run and runs what is due.
+   * `autoRun` every five minutes (`SCHEDULE_CRON` — the steps the schedule pickers offer) queues each task's next scheduled run and runs what is due.
    * It only starts in a process that calls `getPayload({ cron: true })`; `src/instrumentation.ts`
    * does that at server start, so a restart overnight cannot silently skip a morning.
    *
@@ -227,7 +228,7 @@ export default buildConfig({
   jobs: {
     /** The digest; the Start / Expires / Featured-until sweep; feed calendars (hourly). */
     tasks: [districtDigestTask, scheduleTask, calendarFeedsTask],
-    autoRun: [{ cron: '*/5 * * * *', queue: 'default' }],
+    autoRun: [{ cron: SCHEDULE_CRON, queue: 'default' }],
     access: {
       run: ({ req }) => isDistrictAdmin(req.user as AuthUser | null),
       queue: ({ req }) => isDistrictAdmin(req.user as AuthUser | null),

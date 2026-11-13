@@ -35,6 +35,7 @@ import { postDatesHook } from '@/collections/hooks/scheduled-dates'
 import { publishGate } from '@/collections/hooks/publish-gate'
 import { applyReviewState } from '@/collections/hooks/review-state'
 import { SYNDICATION_SCOPES } from '@/content/syndication'
+import { SCHEDULE_STEP_MINUTES } from '@/lib/schedule-step'
 import { slugify } from '@/lib/slug'
 
 /**
@@ -82,7 +83,8 @@ const dateField = (
     description,
     position: 'sidebar',
     hidden,
-    date: { pickerAppearance: 'dayAndTime' },
+    // Five-minute steps, when the schedule runs (`src/lib/schedule-step.ts`).
+    date: { pickerAppearance: 'dayAndTime', timeIntervals: SCHEDULE_STEP_MINUTES },
     condition: (_data, _siblingData, { user }) => !sendsForApproval(user as AuthUser | null),
   },
 })

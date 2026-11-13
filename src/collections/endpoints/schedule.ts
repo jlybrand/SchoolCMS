@@ -7,9 +7,11 @@ import type { AuthUser } from '@/access/types'
 import { latestVersion, publishable } from '@/collections/endpoints/approve'
 import { SCHEDULED_RUN, type ScheduledRun } from '@/collections/hooks/scheduled-dates'
 import { revalidatePost } from '@/collections/hooks/revalidate-on-publish'
+import { SCHEDULE_CRON } from '@/lib/schedule-step'
 
 /**
- * The schedule (Jason, 2026-11-04): every five minutes,
+ * The schedule (Jason, 2026-11-04): every five minutes — on the five, the only times the pickers
+ * offer (`src/lib/schedule-step.ts`, 2026-11-13):
  *
  *   1. posts and pages approved or scheduled for a Start that has come go live — the version
  *      that was scheduled (a page's Start is in Page settings);
@@ -181,7 +183,7 @@ export const scheduleTask: TaskConfig = {
   slug: SCHEDULE_TASK,
   // A retry would only repeat a sweep the next run makes anyway.
   retries: 0,
-  schedule: [{ cron: '*/5 * * * *', queue: 'default' }],
+  schedule: [{ cron: SCHEDULE_CRON, queue: 'default' }],
   handler: async ({ req }) => {
     try {
       const res = await fetch(`${ownServer()}/api/schedule/run`, {
