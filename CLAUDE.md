@@ -356,6 +356,9 @@ design system legible to whoever maintains this next.
   their heading levels — an editor must not be able to produce a heading-order violation by
   reordering.
 - **Migration mappers are built alongside the module they target**, not saved for the end.
+  _Exception (Jason, 2026-11-13):_ Phase 5's announcements, events and alerts have none yet —
+  deferred until a real Finalsite export is captured (template census, `10` §2), because a
+  mapper against an invented shape is the spike the TDD table forbids.
 - **Payload version bumps are a deliberate, separate PR** — never bundled with feature work,
   always with a full a11y and isolation run.
 - Migrations are expand/contract; no destructive change without a two-step migration.
