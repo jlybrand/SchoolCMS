@@ -8,6 +8,7 @@ import { addDays, localDateOf } from '@/lib/recurrence'
 import { subscribeUrl } from '@/lib/ical'
 
 import { listCalendarRefs, listEventOccurrences } from './events'
+import { listStaff } from './people'
 import { listPosts } from './posts'
 import type {
   CalendarBlock,
@@ -112,6 +113,13 @@ export const resolvePageBlocks = async (
           return resolveFeed(ctx, block, options)
         case 'calendar':
           return resolveCalendar(ctx, block, today, options.serverUrl)
+        case 'staffList': {
+          // Nobody to list: the block becomes nothing, as an empty feed does.
+          const staff = await listStaff(block.group)
+          return staff.length === 0
+            ? null
+            : { kind: 'staffList', id: block.id, heading: block.heading, staff }
+        }
         case 'columns':
           // A column's data blocks — a feed in a column — resolve as a page's do.
           return {

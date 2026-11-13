@@ -404,6 +404,38 @@ export const calendarBlock: Block = {
  * worked out from where each sits (`columnLevels`), so none is asked for here either. A nested
  * block is stored in the same `pages_blocks_*` table as a top-level one, told apart by its path.
  */
+/**
+ * A staff list (Jason, 2026-11-13) — Finalsite's constituent element. One group or sub-group
+ * (SHS, or SHS › Counselors), its staff A–Z by last name, each with an email link. District only
+ * (Jason), like every data component (`src/access/school-layout.ts`).
+ */
+export const staffListBlock: Block = {
+  slug: 'staffList',
+  interfaceName: 'StaffListBlockRow',
+  labels: { singular: 'Staff list', plural: 'Staff lists' },
+  fields: [
+    {
+      name: 'heading',
+      type: 'text',
+      label: 'Heading',
+      admin: {
+        description:
+          'A title above the list, like "Our counselors" — it also names this part of the page for screen readers.',
+      },
+    },
+    {
+      name: 'group',
+      type: 'relationship',
+      relationTo: 'staff-groups',
+      required: true,
+      label: 'Group',
+      admin: {
+        description: 'A school’s group lists everyone there; a sub-group lists the people in it.',
+      },
+    },
+  ],
+}
+
 export const columnsBlock: Block = {
   slug: 'columns',
   interfaceName: 'ColumnsBlock',
@@ -453,6 +485,7 @@ export const columnsBlock: Block = {
             dividerBlock,
             feedBlock,
             calendarBlock,
+            staffListBlock,
           ],
         },
       ],
@@ -468,6 +501,7 @@ export const blockLibrary: Block[] = [
   childPageNavBlock,
   feedBlock,
   calendarBlock,
+  staffListBlock,
   embedBlock,
   dividerBlock,
   columnsBlock,

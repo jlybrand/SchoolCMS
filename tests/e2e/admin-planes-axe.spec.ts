@@ -68,6 +68,9 @@ const PAGE_FORM_REPAIRED = [
   'button.toolbar-popup__button-bold[aria-label="Bold"]',
 ]
 
+/** A document's tabs (API, …), once repaired: no longer a list of non-items. */
+const TABS_REPAIRED = ['ul.doc-tabs__tabs[role="none"]']
+
 /** A list view, once repaired: the first row's checkbox is named. */
 const LIST_REPAIRED = ['tbody .select-row input[aria-label^="Select "]']
 
@@ -79,6 +82,9 @@ let linksPage: number
 let event: number
 /** A calendar copied from an outside address (Jason, 2026-11-11). */
 let feedCalendar: number
+let staffGroup: number
+let staffPage: number
+let person: number
 /** School A's own event, for the school plane's screens. */
 let schoolEvent: number
 
@@ -279,8 +285,38 @@ adminTest.describe('district plane — whole screens', () => {
     })
     expect(madeFeed.ok(), await madeFeed.text()).toBe(true)
     feedCalendar = ((await madeFeed.json()).doc as { id: number }).id
+    // The staff directory (2026-11-13): the seed's mock school and one of its staff (staff come
+    // from CSI, never the dashboard), and a sub-group the district makes in it.
+    const schools = await fixture.admin.get(
+      '/api/staff-groups?where[csiLocationId][equals]=MOCK-SHS&depth=0&limit=1',
+    )
+    const school = ((await schools.json()).docs as { id: number }[])[0]
+    expect(school, 'the seed’s mock school — run `pnpm run seed`').toBeTruthy()
+    const staff = await fixture.admin.get(
+      `/api/people?where[group][equals]=${school!.id}&depth=0&limit=1&sort=sortKey`,
+    )
+    person = ((await staff.json()).docs as { id: number }[])[0]!.id
+    const madeGroup = await fixture.admin.post('/api/staff-groups?depth=0', {
+      data: { name: `Axe sub-group ${Date.now()}`, parent: school!.id, members: [person] },
+    })
+    expect(madeGroup.ok(), await madeGroup.text()).toBe(true)
+    staffGroup = ((await madeGroup.json()).doc as { id: number }).id
+    // A page holding a staff list (2026-11-13): its Group picker on screen.
+    const madeStaffPage = await fixture.admin.post('/api/pages?draft=true&depth=0', {
+      data: {
+        tenant: (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json()).tenant,
+        title: 'Axe staff page',
+        slug: `axe-staff-${Date.now()}`,
+        layout: [{ blockType: 'staffList', heading: 'Our staff', group: school!.id }],
+        _status: 'draft',
+      },
+    })
+    expect(madeStaffPage.ok(), await madeStaffPage.text()).toBe(true)
+    staffPage = ((await madeStaffPage.json()).doc as { id: number }).id
   })
   adminTest.afterAll(async () => {
+    await fixture.admin.delete(`/api/pages/${staffPage}`)
+    await fixture.admin.delete(`/api/staff-groups/${staffGroup}`)
     await fixture.admin.delete(`/api/calendars/${feedCalendar}`)
     await fixture.admin.delete(`/api/events/${event}`)
     await fixture.admin.delete(`/api/pages/${feedPage}`)
@@ -344,6 +380,17 @@ adminTest.describe('district plane — whole screens', () => {
           '.collapsible__drag[aria-label="Reorder"]',
           '.array-actions__button[aria-label="Row actions"]',
           '.clipboard-action__popup .popup-button[aria-label="Copy or paste"]',
+        )
+      })
+      adminTest(`@a11y a page with a staff list — ${colorScheme}`, async ({ page }) => {
+        await page.goto(`/admin/collections/pages/${staffPage}`)
+        await auditScreen(
+          page,
+          '#field-title',
+          '#field-layout__0__heading',
+          '#field-layout__0__group input[aria-label="Group"]',
+          '.collapsible__drag[aria-label="Reorder"]',
+          '.array-actions__button[aria-label="Row actions"]',
         )
       })
       adminTest(`@a11y a page with columns holding blocks — ${colorScheme}`, async ({ page }) => {
@@ -422,6 +469,30 @@ adminTest.describe('district plane — whole screens', () => {
       adminTest(`@a11y a feed calendar’s form — ${colorScheme}`, async ({ page }) => {
         await page.goto(`/admin/collections/calendars/${feedCalendar}`)
         await auditScreen(page, '#field-name', '#field-source', '#field-feedUrl')
+      })
+      adminTest(`@a11y staff list — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/collections/people')
+        await auditScreen(page, ...LIST_REPAIRED)
+      })
+      adminTest(`@a11y a staff member's form — ${colorScheme}`, async ({ page }) => {
+        await page.goto(`/admin/collections/people/${person}`)
+        await auditScreen(page, '#field-name', '#field-title', '#field-sortName', ...TABS_REPAIRED)
+      })
+      adminTest(
+        `@a11y a sub-group's form, with its checklist — ${colorScheme}`,
+        async ({ page }) => {
+          await page.goto(`/admin/collections/staff-groups/${staffGroup}`)
+          await auditScreen(
+            page,
+            '#field-name',
+            '#staff-group-members input[type="checkbox"]',
+            ...TABS_REPAIRED,
+          )
+        },
+      )
+      adminTest(`@a11y staff groups list — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/collections/staff-groups')
+        await auditScreen(page, ...LIST_REPAIRED)
       })
       adminTest(`@a11y events list — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/collections/events')

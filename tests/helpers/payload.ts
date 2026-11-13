@@ -80,6 +80,9 @@ export type Fixtures = {
 export async function seed(payload: Payload): Promise<Fixtures> {
   // Order matters: pages, navigation, theme, settings and users all reference tenants.
   for (const collection of [
+    // The staff directory (2026-11-13): a sync treats every person as the CSI feed's.
+    'people',
+    'staff-groups',
     'events',
     'calendars',
     'posts',

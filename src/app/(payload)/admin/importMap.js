@@ -32,6 +32,7 @@ import { NoPill as NoPill_56c46c87b506e0bb7f4bac3c5dc041d3 } from '../../../admi
 import { AnnouncementsView as AnnouncementsView_424d1d2ce7b62f2a20ccd2961f5c622f } from '../../../admin/Announcements/AnnouncementsView'
 import { BoardsListView as BoardsListView_a022c7e66bfcc000431bd70c768a08d6 } from '../../../admin/Boards/BoardsListView'
 import { EventSaveButton as EventSaveButton_9d8ff44ca1c1d15e1c244354a4498e4a } from '../../../admin/Events/EventSaveButton'
+import { MembersField as MembersField_203cc5edbcb2db7244697b1fe62551b0 } from '../../../admin/StaffGroups/MembersField'
 import { GlobalViewRedirect as GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
 import { ApprovalsNavLink as ApprovalsNavLink_50736d5f53ca3024920ebd70347f12c2 } from '../../../admin/Approvals/ApprovalsNavLink'
 import { DistrictDashboard as DistrictDashboard_edc4519ec276aaac7e06cda8a41f999e } from '../../../admin/Dashboard/DistrictDashboard'
@@ -86,6 +87,7 @@ export const importMap = {
   "/admin/Announcements/AnnouncementsView#AnnouncementsView": AnnouncementsView_424d1d2ce7b62f2a20ccd2961f5c622f,
   "/admin/Boards/BoardsListView#BoardsListView": BoardsListView_a022c7e66bfcc000431bd70c768a08d6,
   "/admin/Events/EventSaveButton#EventSaveButton": EventSaveButton_9d8ff44ca1c1d15e1c244354a4498e4a,
+  "/admin/StaffGroups/MembersField#MembersField": MembersField_203cc5edbcb2db7244697b1fe62551b0,
   "@payloadcms/plugin-multi-tenant/rsc#GlobalViewRedirect": GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62,
   "/admin/Approvals/ApprovalsNavLink#ApprovalsNavLink": ApprovalsNavLink_50736d5f53ca3024920ebd70347f12c2,
   "/admin/Dashboard/DistrictDashboard#DistrictDashboard": DistrictDashboard_edc4519ec276aaac7e06cda8a41f999e,
