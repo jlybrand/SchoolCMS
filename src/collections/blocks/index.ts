@@ -430,7 +430,8 @@ export const staffListBlock: Block = {
       required: true,
       label: 'Group',
       admin: {
-        description: 'A school’s group lists everyone there; a sub-group lists the people in it.',
+        description:
+          'A school’s group lists everyone there; a sub-group lists the people in it. Groups come from CSI — if none are listed, the CSI sync hasn’t run yet.',
       },
     },
   ],

@@ -143,7 +143,8 @@ export const StaffGroups: CollectionConfig = {
       access: { create: cmsOwnedField, update: () => false },
       filterOptions: { parent: { exists: false } },
       admin: {
-        description: 'The school’s group this sits in.',
+        description:
+          'The school’s group this sits in. Schools come from CSI — if none are listed, the CSI sync hasn’t run yet.',
         condition: (data) => !data?.csiLocationId,
       },
     },

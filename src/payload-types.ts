@@ -596,7 +596,7 @@ export interface StaffListBlockRow {
    */
   heading?: string | null;
   /**
-   * A school’s group lists everyone there; a sub-group lists the people in it.
+   * A school’s group lists everyone there; a sub-group lists the people in it. Groups come from CSI — if none are listed, the CSI sync hasn’t run yet.
    */
   group: number | StaffGroup;
   id?: string | null;
@@ -613,7 +613,7 @@ export interface StaffGroup {
   id: number;
   name: string;
   /**
-   * The school’s group this sits in.
+   * The school’s group this sits in. Schools come from CSI — if none are listed, the CSI sync hasn’t run yet.
    */
   parent?: (number | null) | StaffGroup;
   members?: (number | Person)[] | null;
