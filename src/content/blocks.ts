@@ -14,6 +14,7 @@ import type {
   EmbedBlock,
   CalendarBlock,
   StaffListBlock,
+  StaffListColumns,
   FeedBlock,
   PageBlock,
   RichTextPageBlock,
@@ -268,7 +269,19 @@ const toCalendar = (row: Row, index: number): CalendarBlock | null => {
 const toStaffList = (row: Row, index: number): StaffListBlock | null => {
   const [group] = ids(row.group === undefined || row.group === null ? [] : [row.group])
   if (!group) return null
-  return { kind: 'staffList', id: idOf(row, index), heading: str(row.heading), group }
+  return {
+    kind: 'staffList',
+    id: idOf(row, index),
+    heading: str(row.heading),
+    group,
+    maxColumns: staffColumns(row.maxColumns),
+  }
+}
+
+/** The most people side by side (Jason, 2026-11-13): 1–4; anything else is the default, 3. */
+const staffColumns = (value: unknown): StaffListColumns => {
+  const n = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN
+  return n === 1 || n === 2 || n === 3 || n === 4 ? n : 3
 }
 
 /** At most this many columns are rendered; the schema allows no more. */

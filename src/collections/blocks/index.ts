@@ -434,6 +434,24 @@ export const staffListBlock: Block = {
           'A school’s group lists everyone there; a sub-group lists the people in it. Groups come from CSI — if none are listed, the CSI sync hasn’t run yet.',
       },
     },
+    {
+      /** Jason, 2026-11-13: "a maximum of n columns, whether there is one staff member or 500". */
+      name: 'maxColumns',
+      // A radio, not a select: Payload's select input fails axe (`docs/phases/04` §17).
+      type: 'radio',
+      label: 'People side by side, at most',
+      defaultValue: '3',
+      options: [
+        { label: '1', value: '1' },
+        { label: '2', value: '2' },
+        { label: '3', value: '3' },
+        { label: '4', value: '4' },
+      ],
+      admin: {
+        layout: 'horizontal',
+        description: 'However many staff there are. Phones show fewer.',
+      },
+    },
   ],
 }
 

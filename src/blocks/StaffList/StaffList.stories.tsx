@@ -35,6 +35,7 @@ const block = (overrides: Partial<ResolvedStaffListBlock> = {}): ResolvedStaffLi
   kind: 'staffList',
   id: 'staff',
   heading: 'Counselors',
+  maxColumns: 3,
   staff: counselors,
   ...overrides,
 })
@@ -66,5 +67,25 @@ export const WholeSchool: Story = {
         return person(name, title, `${name.toLowerCase().replace(/\W+/g, '.')}@example.org`)
       }),
     }),
+  },
+}
+
+/** At most one, two or four side by side — the block's setting (Jason, 2026-11-13). */
+export const OneAcross: Story = {
+  args: { block: block({ heading: 'One across', maxColumns: 1 }), baseLevel: 2 },
+}
+
+export const TwoAcross: Story = {
+  args: { block: block({ heading: 'Two across', maxColumns: 2 }), baseLevel: 2 },
+}
+
+export const FourAcross: Story = {
+  args: {
+    block: block({
+      heading: 'Four across',
+      maxColumns: 4,
+      staff: [...counselors, person('Dana Example', 'Nurse', 'dana.example@example.org')],
+    }),
+    baseLevel: 2,
   },
 }

@@ -64,7 +64,7 @@ const setUp = async (baseURL: string | undefined): Promise<Fixture> => {
       slug,
       visibility: 'public',
       layout: [
-        { blockType: 'staffList', heading: 'All staff', group: school!.id },
+        { blockType: 'staffList', heading: 'All staff', group: school!.id, maxColumns: '2' },
         { blockType: 'staffList', heading: 'Counselors', group },
       ],
       _status: 'published',
@@ -116,6 +116,13 @@ test.describe('a staff list on a page', () => {
         await expect(email).toHaveAttribute('href', /^mailto:.+@example\.org$/)
         // Eight people: no filter yet (it appears from ten).
         await expect(all.getByRole('searchbox')).toHaveCount(0)
+        // At most two side by side (the block's setting): the first two share a row, the
+        // third starts the next.
+        const tops = await all
+          .getByRole('listitem')
+          .evaluateAll((items) => items.slice(0, 3).map((li) => li.getBoundingClientRect().top))
+        expect(tops[0]).toBe(tops[1])
+        expect(tops[2]).toBeGreaterThan(tops[1]!)
 
         const counselors = page.getByRole('region', { name: 'Counselors' })
         await expect(counselors.getByRole('listitem')).toHaveCount(1)

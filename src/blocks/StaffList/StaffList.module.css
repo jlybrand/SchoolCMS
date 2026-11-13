@@ -34,13 +34,36 @@
   color: var(--color-text-muted);
 }
 
+/*
+ * At most --max people side by side (Jason, 2026-11-13: the block's 1–4 setting, as
+ * `data-max-columns` — an attribute, not an inline style, so stylelint still sees the layout).
+ * Each card is at least 16rem or 1/--max of the row, whichever is wider, so a wide screen stops
+ * at --max and a narrow one drops to fewer; never more than fit, never more than chosen.
+ */
 .list {
+  --max: 3;
+  --gap: var(--space-md);
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
-  gap: var(--space-md);
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(max(min(100%, 16rem), calc((100% - (var(--max) - 1) * var(--gap)) / var(--max))), 1fr)
+  );
+  gap: var(--gap);
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.list[data-max-columns='1'] {
+  --max: 1;
+}
+
+.list[data-max-columns='2'] {
+  --max: 2;
+}
+
+.list[data-max-columns='4'] {
+  --max: 4;
 }
 
 .person {

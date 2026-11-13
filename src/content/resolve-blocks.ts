@@ -118,7 +118,13 @@ export const resolvePageBlocks = async (
           const staff = await listStaff(block.group)
           return staff.length === 0
             ? null
-            : { kind: 'staffList', id: block.id, heading: block.heading, staff }
+            : {
+                kind: 'staffList',
+                id: block.id,
+                heading: block.heading,
+                maxColumns: block.maxColumns,
+                staff,
+              }
         }
         case 'columns':
           // A column's data blocks — a feed in a column — resolve as a page's do.

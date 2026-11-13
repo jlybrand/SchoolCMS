@@ -599,6 +599,10 @@ export interface StaffListBlockRow {
    * A school’s group lists everyone there; a sub-group lists the people in it. Groups come from CSI — if none are listed, the CSI sync hasn’t run yet.
    */
   group: number | StaffGroup;
+  /**
+   * However many staff there are. Phones show fewer.
+   */
+  maxColumns?: ('1' | '2' | '3' | '4') | null;
   id?: string | null;
   blockName?: string | null;
   blockType: 'staffList';
@@ -1532,6 +1536,7 @@ export interface CalendarBlockRowSelect<T extends boolean = true> {
 export interface StaffListBlockRowSelect<T extends boolean = true> {
   heading?: T;
   group?: T;
+  maxColumns?: T;
   id?: T;
   blockName?: T;
 }

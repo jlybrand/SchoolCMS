@@ -467,7 +467,11 @@ export type StaffListBlock = BlockBase & {
   kind: 'staffList'
   heading: string | null
   group: string
+  /** The most people side by side in a row (Jason, 2026-11-13): 1–4, fewer on narrow screens. */
+  maxColumns: StaffListColumns
 }
+
+export type StaffListColumns = 1 | 2 | 3 | 4
 
 /** A staff member as a page shows them: what CSI gives, and nothing the page does not need. */
 export type StaffMember = {
@@ -481,6 +485,7 @@ export type StaffMember = {
 export type ResolvedStaffListBlock = BlockBase & {
   kind: 'staffList'
   heading: string | null
+  maxColumns: StaffListColumns
   staff: StaffMember[]
 }
 

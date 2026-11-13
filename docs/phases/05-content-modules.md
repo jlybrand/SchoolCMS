@@ -1856,7 +1856,7 @@ A **Staff list** (`staffList`) shows **one group or sub-group**: a school's grou
 
 **Settings → data → render.**
 
-1. **Settings:** `toStaffList` (`src/content/blocks.ts`) maps `{ heading, group }` to a `StaffListBlock`. A block with no group is dropped.
+1. **Settings:** `toStaffList` (`src/content/blocks.ts`) maps `{ heading, group, maxColumns }` to a `StaffListBlock`. A block with no group is dropped. **People side by side, at most** (`maxColumns`, a radio of 1–4, default 3; Jason 2026-11-13: "a maximum of n columns, whether there is one staff member or 500") reaches the list as `data-max-columns`. The grid gives each card at least 16rem or 1/N of the row, whichever is wider, so a wide screen stops at N and a narrow one shows fewer.
 2. **Data:** `resolvePageBlocks` calls `listStaff(group)` (`src/content/people.ts`, read as the platform):
    - a school's group gives its active staff;
    - a sub-group gives its members who are active and still at its school;
@@ -1889,8 +1889,8 @@ A **Staff list** (`staffList`) shows **one group or sub-group**: a school's grou
 
 ### Tests
 
-- `tests/unit/blocks.test.ts`: the mapper (heading and group; no group dropped); the library
-  table
+- `tests/unit/blocks.test.ts`: the mapper (heading and group; no group dropped; `maxColumns` 1–4,
+  else 3); the library table
 - `tests/unit/access/school-layout.test.ts`: a school cannot add one
 - `tests/unit/blocks/staff-filter.test.ts`: the filter
 - `tests/integration/staff-directory.test.ts`:
@@ -1899,9 +1899,9 @@ A **Staff list** (`staffList`) shows **one group or sub-group**: a school's grou
   - only name, title and email leave the content layer
   - another school's staff never appear; an unknown group lists nobody
 - `tests/e2e/staff-directory.spec.ts`: on a public page, the mock school A–Z, titles as given, an
-  email link named for its person, no filter under ten, and a one-person sub-group, with axe in
-  both themes
+  email link named for its person, no filter under ten, at most two side by side when set to 2,
+  and a one-person sub-group, with axe in both themes
 - `tests/e2e/admin-planes-axe.spec.ts`: a page holding a staff list, its Group picker, in both
   themes
-- Storybook `Blocks/StaffList` (sub-group, no heading, a whole school with the filter): the
-  component axe gate, LTR and RTL
+- Storybook `Blocks/StaffList` (sub-group, no heading, a whole school with the filter, one, two and
+  four across): the component axe gate, LTR and RTL

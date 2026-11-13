@@ -3,7 +3,7 @@
 import { useId, useMemo, useState } from 'react'
 
 import { VisuallyHidden } from '@/components/VisuallyHidden'
-import type { StaffMember } from '@/content/types'
+import type { StaffListColumns, StaffMember } from '@/content/types'
 
 import { staffShown } from './staff-filter'
 import styles from './StaffList.module.css'
@@ -23,6 +23,8 @@ const FILTER_FROM = 10
 export type StaffDirectoryProps = {
   readonly id: string
   readonly staff: readonly StaffMember[]
+  /** The most people side by side (Jason, 2026-11-13); fewer when the space is narrow. */
+  readonly maxColumns?: StaffListColumns
   readonly filterLabel?: string
   readonly emailLabel?: string
   readonly countLabel?: (shown: number, total: number) => string
@@ -44,6 +46,7 @@ const MailIcon = () => (
 export const StaffDirectory = ({
   id,
   staff,
+  maxColumns = 3,
   filterLabel = 'Find a staff member',
   emailLabel = 'Email',
   countLabel = (shown, total) =>
@@ -80,7 +83,7 @@ export const StaffDirectory = ({
       {shown.length === 0 ? (
         <p>{noMatchLabel}</p>
       ) : (
-        <ul className={styles.list}>
+        <ul className={styles.list} data-max-columns={maxColumns}>
           {shown.map((person) => (
             <li className={styles.person} key={person.id}>
               <p className={styles.name}>{person.name}</p>

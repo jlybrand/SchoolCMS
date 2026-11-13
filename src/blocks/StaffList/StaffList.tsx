@@ -27,12 +27,12 @@ export const StaffList = ({ block, baseLevel }: StaffListProps) => {
   if (block.staff.length === 0) return null
 
   if (block.heading === null) {
-    return <StaffDirectory id={block.id} staff={block.staff} />
+    return <StaffDirectory id={block.id} maxColumns={block.maxColumns} staff={block.staff} />
   }
 
   return (
     <Section heading={block.heading} headingId={`${block.id}-heading`} level={baseLevel}>
-      <StaffDirectory id={block.id} staff={block.staff} />
+      <StaffDirectory id={block.id} maxColumns={block.maxColumns} staff={block.staff} />
     </Section>
   )
 }
