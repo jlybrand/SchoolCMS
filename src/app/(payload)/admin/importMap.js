@@ -33,6 +33,8 @@ import { AnnouncementsView as AnnouncementsView_424d1d2ce7b62f2a20ccd2961f5c622f
 import { BoardsListView as BoardsListView_a022c7e66bfcc000431bd70c768a08d6 } from '../../../admin/Boards/BoardsListView'
 import { EventSaveButton as EventSaveButton_9d8ff44ca1c1d15e1c244354a4498e4a } from '../../../admin/Events/EventSaveButton'
 import { MembersField as MembersField_203cc5edbcb2db7244697b1fe62551b0 } from '../../../admin/StaffGroups/MembersField'
+import { UploadFileButton as UploadFileButton_ad11f66107fe2340d535e62868eb7090 } from '../../../admin/Resources/UploadFileButton'
+import { UploadingHeading as UploadingHeading_68858822c70c6bec0b3e5f71e2ad7716 } from '../../../admin/Resources/UploadingHeading'
 import { GlobalViewRedirect as GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
 import { ApprovalsNavLink as ApprovalsNavLink_50736d5f53ca3024920ebd70347f12c2 } from '../../../admin/Approvals/ApprovalsNavLink'
 import { DistrictDashboard as DistrictDashboard_edc4519ec276aaac7e06cda8a41f999e } from '../../../admin/Dashboard/DistrictDashboard'
@@ -88,6 +90,8 @@ export const importMap = {
   "/admin/Boards/BoardsListView#BoardsListView": BoardsListView_a022c7e66bfcc000431bd70c768a08d6,
   "/admin/Events/EventSaveButton#EventSaveButton": EventSaveButton_9d8ff44ca1c1d15e1c244354a4498e4a,
   "/admin/StaffGroups/MembersField#MembersField": MembersField_203cc5edbcb2db7244697b1fe62551b0,
+  "/admin/Resources/UploadFileButton#UploadFileButton": UploadFileButton_ad11f66107fe2340d535e62868eb7090,
+  "/admin/Resources/UploadingHeading#UploadingHeading": UploadingHeading_68858822c70c6bec0b3e5f71e2ad7716,
   "@payloadcms/plugin-multi-tenant/rsc#GlobalViewRedirect": GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62,
   "/admin/Approvals/ApprovalsNavLink#ApprovalsNavLink": ApprovalsNavLink_50736d5f53ca3024920ebd70347f12c2,
   "/admin/Dashboard/DistrictDashboard#DistrictDashboard": DistrictDashboard_edc4519ec276aaac7e06cda8a41f999e,

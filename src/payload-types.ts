@@ -82,6 +82,8 @@ export interface Config {
     alerts: Alert;
     people: Person;
     'staff-groups': StaffGroup;
+    resources: Resource;
+    'resource-folders': ResourceFolder;
     'audit-events': AuditEvent;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
@@ -106,6 +108,8 @@ export interface Config {
     alerts: AlertsSelect<false> | AlertsSelect<true>;
     people: PeopleSelect<false> | PeopleSelect<true>;
     'staff-groups': StaffGroupsSelect<false> | StaffGroupsSelect<true>;
+    resources: ResourcesSelect<false> | ResourcesSelect<true>;
+    'resource-folders': ResourceFoldersSelect<false> | ResourceFoldersSelect<true>;
     'audit-events': AuditEventsSelect<false> | AuditEventsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
@@ -1072,6 +1076,96 @@ export interface Alert {
   createdAt: string;
 }
 /**
+ * A site’s images and documents. Video goes on YouTube.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "resources".
+ */
+export interface Resource {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  title: string;
+  /**
+   * What someone who can’t see it needs to know. Not needed if it’s decorative.
+   */
+  alt?: string | null;
+  isDecorative?: boolean | null;
+  remediationStatus?: ('attested' | 'not-attested' | 'not-applicable') | null;
+  description?: string | null;
+  /**
+   * Separate tags with commas, for example “forms, enrollment”.
+   */
+  tagsText?: string | null;
+  tags?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  folder?: (number | null) | ResourceFolder;
+  kind?: string | null;
+  attestedBy?: (number | null) | User;
+  attestedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+  sizes?: {
+    thumbnail?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    card?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    hero?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+  };
+}
+/**
+ * Folders for a site’s files. Put folders inside folders to keep things tidy.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "resource-folders".
+ */
+export interface ResourceFolder {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  name: string;
+  /**
+   * Leave empty for a folder at the top of the library.
+   */
+  parent?: (number | null) | ResourceFolder;
+  label?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Every send, approval, request for changes, publish, restore and delete, and every change to a user or an auto-approval grant. Read-only.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1280,6 +1374,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'staff-groups';
         value: number | StaffGroup;
+      } | null)
+    | ({
+        relationTo: 'resources';
+        value: number | Resource;
+      } | null)
+    | ({
+        relationTo: 'resource-folders';
+        value: number | ResourceFolder;
       } | null)
     | ({
         relationTo: 'audit-events';
@@ -1830,6 +1932,81 @@ export interface StaffGroupsSelect<T extends boolean = true> {
   members?: T;
   label?: T;
   csiLocationId?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "resources_select".
+ */
+export interface ResourcesSelect<T extends boolean = true> {
+  tenant?: T;
+  title?: T;
+  alt?: T;
+  isDecorative?: T;
+  remediationStatus?: T;
+  description?: T;
+  tagsText?: T;
+  tags?: T;
+  folder?: T;
+  kind?: T;
+  attestedBy?: T;
+  attestedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
+  sizes?:
+    | T
+    | {
+        thumbnail?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        card?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        hero?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+      };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "resource-folders_select".
+ */
+export interface ResourceFoldersSelect<T extends boolean = true> {
+  tenant?: T;
+  name?: T;
+  parent?: T;
+  label?: T;
   updatedAt?: T;
   createdAt?: T;
 }

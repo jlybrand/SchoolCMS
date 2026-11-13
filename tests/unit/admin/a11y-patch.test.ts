@@ -248,3 +248,26 @@ describe('idempotent', () => {
     expect(document.body.innerHTML).toBe(after)
   })
 })
+
+describe('the file library’s upload controls (2026-11-13)', () => {
+  it('names the icon-only copy-address and remove-file buttons', () => {
+    document.body.innerHTML = `
+      <div class="file-details">
+        <button class="copy-to-clipboard" type="button"><svg></svg><div class="tooltip">Copy</div></button>
+        <button class="file-details__remove" type="button"><svg></svg></button>
+      </div>`
+    repairAdminA11y(document)
+    expect(document.querySelector('.copy-to-clipboard')?.getAttribute('aria-label')).toBe(
+      'Copy the file’s address',
+    )
+    expect(document.querySelector('.file-details__remove')?.getAttribute('aria-label')).toBe(
+      'Remove the file',
+    )
+  })
+
+  it('leaves a button that already has words alone', () => {
+    document.body.innerHTML = `<button class="file-details__remove" type="button">Remove</button>`
+    repairAdminA11y(document)
+    expect(document.querySelector('.file-details__remove')?.hasAttribute('aria-label')).toBe(false)
+  })
+})

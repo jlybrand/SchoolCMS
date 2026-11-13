@@ -45,6 +45,14 @@ const words = (key: string) => {
 const all = (root: ParentNode, selector: string) => Array.from(root.querySelectorAll(selector))
 
 export const repairAdminA11y = (root: ParentNode): void => {
+  // 4.1.2 — the file library's upload controls (2026-11-13): icon-only buttons beside a file.
+  // The copy button's only words are its hidden tooltip ("Copy"), which names nothing.
+  for (const button of all(root, 'button.copy-to-clipboard'))
+    name(button, 'Copy the file’s address')
+  for (const button of all(root, 'button.file-details__remove')) {
+    if (button.textContent?.trim() === '') name(button, 'Remove the file')
+  }
+
   // 4.1.2 — the document controls' "⋯" menu: three dots, no words.
   for (const button of all(root, '.doc-controls .popup-button')) {
     if (button.textContent?.trim() === '') name(button, 'More actions')

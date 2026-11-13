@@ -184,23 +184,30 @@ email, title and location — `11` §3. Built: `docs/phases/05` §38–§40.)_
   named, filled and deleted in the dashboard. One level deep; members must be at its school.
 - `label` ("SHS › Nurses") is worked out on save. Not tenant-scoped; district only.
 
-### `media`
+### `resources` and `resource-folders` — the file library (replaces `media` and `documents`)
 
-Payload upload collection → R2.
+_(Revised 2026-11-13, Jason: **one** library, as Finalsite's Resources, in place of separate
+`media` and `documents`. Built: `docs/phases/06` §1.)_
 
-- `tenant`, `alt`, `isDecorative` (bool), focal point, generated derivatives.
-- **`alt` is required unless `isDecorative` is true** — enforced by validation and by a
-  `beforeValidate` hook, not only by the form.
-
-### `documents`
-
-- `tenant`, `title`, `category`, `file` (relation to `media`), `visibility`
-  (`public` | `staff`), `remediationStatus` (`attested` | `not-attested` |
-  `not-applicable`), `attestedBy`, `attestedAt`, `localeOf` (nullable — links a translated
-  document to its English original, `08` §9).
-- Upload requires explicit attestation that the document was remediated before upload
-  (`07` §5). `not-attested` documents appear on the district dashboard as a work queue.
-  **The platform records status; it does not remediate.**
+- **`resources`** — a Payload upload collection (local disk in development, R2 when
+  configured): `tenant`, `title`, `description`, `tagsText` → `tags`, `folder`, `kind` (`image`
+  | `document`, from the file's type), focal point, derivatives (`thumbnail` 400, `card` 800,
+  `hero` 1600, webp).
+  - **Images:** `alt` is required unless `isDecorative` — enforced by field validation **and** a
+    `beforeValidate` hook, not only by the form (CLAUDE.md rule 7).
+  - **Documents:** `remediationStatus` (`attested` | `not-attested` | `not-applicable`) is
+    required at upload; `attestedBy` / `attestedAt` are recorded when attested (`07` §5).
+    `not-attested` documents are the district's work queue. **The platform records status; it
+    does not remediate.**
+  - Accepted: JPEG, PNG, GIF, WebP; PDF and Office documents. **No video** (YouTube only —
+    Jason) and **no SVG** (it can carry script).
+  - Not yet: `visibility` (`public` | `staff`) waits for Entra sign-in (Jason, 2026-11-13);
+    `localeOf` joins with Phase 7 (`08` §9).
+- **`resource-folders`** — `tenant`, `name`, `parent` (nests, same school only, never inside
+  itself), `label` ("Forms › Enrollment").
+- **Access:** the public reads every file; a school manager reads, uploads, changes and removes
+  their own school's — **no approval** (Jason: a file is not on the site until an approved page
+  uses it); the district works across every site. Every change is in the activity log.
 
 ### `alerts`
 
