@@ -33,7 +33,7 @@ Read `starterDocs/00-README.md` first. The others in order:
 | `08-localization-pipeline.md`             | Render-layer translation; locale tiers; RTL/CJK handling           |
 | `09-deployment-operations.md`             | CI/CD, hosting, DR, monitoring, runbooks, dependency governance    |
 | `10-migration-cutover.md`                 | Template census, extraction, per-tenant wave cutover               |
-| `11-integrations-powerschool.md`          | Read-only staff sync; **no student data, ever**                    |
+| `11-integrations-csi.md`                  | Read-only CSI staff sync; **no student data, ever**                |
 
 ## Stack
 
@@ -184,9 +184,9 @@ These are release-blocking. Do not weaken, skip, or mark flaky-and-ignored.
    publishes, changes and removes their **own school's** events directly; the district sees them
    in the activity log. Pages and announcements keep the rule. See `src/access/events.ts`; the
    isolation suite proves the exception is no wider than their own school.
-4. **No student data enters the platform.** The PowerSchool sync is staff-only, enforced in
-   five independent layers (`11` §4). The `people` collection has no fields where student
-   data could land. Proven by a test seeded with student records (`11` §9).
+4. **No student data enters the platform.** The CSI staff sync (formerly specified as
+   PowerSchool) is staff-only, enforced in five independent layers (`11` §4). The `people`
+   collection has no fields where student data could land. Proven by a test seeded with student records (`11` §9).
 5. **CSS logical properties only.** No `margin-left`, no `text-align: left`, anywhere — RTL
    correctness is structural. Stylelint bans physical properties and direction keywords.
 6. **Zero critical/serious axe violations to merge** — on public templates _and_ both admin
@@ -302,7 +302,7 @@ deliverable, not after it (`05`, `06`).
 
 - Access-control and tenant-isolation functions (table-driven: role × tenant × collection)
 - The publish gate — a `school-manager` cannot publish by any route
-- The PowerSchool no-student-data invariant, driven from a fixture seeded with student records
+- The CSI no-student-data invariant, driven from a fixture seeded with student records
 - The auto-approval grant boundary — nothing auto-approves without an explicit grant
 - The **paste normalizer** — the highest-value unit suite in the project; fixtures of real
   Word and Google Docs payloads come first, the normalizer second
@@ -319,7 +319,7 @@ writing a test you will delete:
 | Custom Payload admin React views (task plane, diff viewer, block list) | Layout and interaction shape are discovered by looking at them; test-first yields brittle assertions rewritten each iteration | Build, then lock behaviour with a Playwright flow + axe assertion in the same PR — non-negotiable before merge           |
 | Payload collection configs and field declarations                      | Largely declarative; asserting "this field exists" restates the schema                                                        | TDD the access functions, hooks, and validators attached to them — that is where the behaviour lives                     |
 | Theme tokens, visual and typographic work                              | No meaningful failing test to write                                                                                           | Contrast validated at token level; visual regression + RTL check                                                         |
-| First contact with an external API (OneRoster, Entra OIDC)             | You cannot write an honest test before seeing a real payload                                                                  | **Spike → capture the response as a fixture → delete the spike → TDD against the fixture.** No spike code reaches `main` |
+| First contact with an external API (CSI, Entra OIDC)                   | You cannot write an honest test before seeing a real payload                                                                  | **Spike → capture the response as a fixture → delete the spike → TDD against the fixture.** No spike code reaches `main` |
 
 The caveat that makes this stick: a TDD rule with no stated exceptions gets cargo-culted on
 the surfaces it fits badly, then quietly abandoned everywhere. The table above is the

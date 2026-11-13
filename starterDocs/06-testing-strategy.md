@@ -5,7 +5,7 @@ unit, integration, e2e smoke, or the accessibility gate.
 
 **Two suites in this document are load-bearing rather than routine.** Tenant isolation
 (§2.2) is the *only* thing standing where database row-level security would have stood
-(`02` §4.2), and the PowerSchool no-student-data gate (§2.2) is release-blocking. Neither
+(`02` §4.2), and the CSI no-student-data gate (§2.2) is release-blocking. Neither
 may be skipped, weakened, or marked flaky-and-ignored.
 
 ## 1. Test pyramid (with the axes this project needs)
@@ -65,12 +65,13 @@ may be skipped, weakened, or marked flaky-and-ignored.
   account cannot authenticate; the break-glass account is excluded from normal login paths.
 - **Hooks:** publish → revalidate/purge with correct tags; COPE syndication purges every
   surface rendering the item; `alt` cannot be null unless `isDecorative`.
-- **PowerSchool staff sync (`11`):** against a **mocked OneRoster fixture seeded with
-  student records**, assert the **release-blocking no-student-data invariant** (zero
-  student records ever persisted; only staff-role, allowlisted fields mapped); upsert
-  idempotency; building→tenant routing; merge policy (CMS-owned `bio`/`visibility`/local
-  photo survive; source fields overwrite); soft-hide on departure; resilience (simulated
-  API failure keeps last-known-good, never wipes; logs contain no PII).
+- **CSI staff sync (`11`):** against a **mock CSI export seeded with student-like records**,
+  assert the **release-blocking no-student-data invariant** (zero student records ever
+  persisted, no student detail in records, summaries or logs; only allowlisted fields mapped);
+  upsert idempotency (an unchanged feed writes nothing); locations → school groups, made and
+  renamed; merge policy (the district's sort name and sub-groups survive; CSI fields
+  overwrite); soft-hide on departure, re-show on return; resilience (an unreachable source, an
+  empty feed or a mass departure keeps last-known-good, never wipes; logs carry CSI ids only).
 - **Localization pipeline (`08`):** override precedence over machine output; Payload
   localized value precedence for verification-flagged content; glossary terms untranslated
   and wrapped with `lang`; cache hit on unchanged source; **cache miss on changed source**
@@ -198,7 +199,8 @@ Deterministic seed, code-generated, reset between runs:
 - Sample content per module; cross-tenant content for isolation tests.
 - **Word and Google Docs paste payloads** captured from real DD2 content — the paste
   normalizer's fixture corpus.
-- A **mocked OneRoster feed containing student records**, to prove they are rejected.
+- A **mock CSI export containing student-like records** (`tests/fixtures/csi/`), to prove they
+  are rejected.
 - Content in each Tier 1 locale, including a long Arabic string and a CJK string, for
   layout and font testing.
 - A document with and without attestation.
@@ -219,7 +221,7 @@ Coverage targets are a signal, not a goal. **Mandatory 100%-intent coverage on f
 1. Access-control and tenant-isolation functions (`03` §6.4)
 2. The publish gate — school managers cannot publish by any route
 3. Accessibility of shipped components and both admin planes
-4. The PowerSchool no-student-data invariant (`11` §4)
+4. The CSI no-student-data invariant (`11` §4)
 5. The auto-approval grant boundary — nothing auto-approves without an explicit grant
 
 Elsewhere, test behaviour and edges over lines.

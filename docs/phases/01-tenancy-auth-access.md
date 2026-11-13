@@ -177,14 +177,14 @@ Details that matter mechanically:
 
 One document per site. Nothing in the collection encodes the count of 28.
 
-| Field                   | Type     | Attributes                                          |
-| ----------------------- | -------- | --------------------------------------------------- |
-| `name`                  | `text`   | required                                            |
-| `slug`                  | `text`   | required, unique, indexed                           |
-| `hostname`              | `text`   | required, unique, indexed — the routing key         |
-| `type`                  | `select` | required, default `school`; `school` \| `district`  |
-| `status`                | `select` | required, default `active`; `active` \| `hidden`    |
-| `powerSchoolBuildingId` | `text`   | indexed, optional — seam for the Phase 5 staff sync |
+| Field                       | Type     | Attributes                                                    |
+| --------------------------- | -------- | ------------------------------------------------------------- |
+| `name`                      | `text`   | required                                                      |
+| `slug`                      | `text`   | required, unique, indexed                                     |
+| `hostname`                  | `text`   | required, unique, indexed — the routing key                   |
+| `type`                      | `select` | required, default `school`; `school` \| `district`            |
+| `status`                    | `select` | required, default `active`; `active` \| `hidden`              |
+| ~~`powerSchoolBuildingId`~~ | —        | removed 2026-11-13: staff groups are CSI locations (`05` §38) |
 
 Access: `create`/`update`/`delete` are `districtOnly`. `read` is written inline rather than
 reusing `tenantReadAccess`, because the scoping field is `id`, not `tenant`:
@@ -503,7 +503,7 @@ Local API, bypassing the admin form entirely.
 | `multiTenantPlugin.collections`           | Phase 3+ — each content collection registers as it lands                                           |
 | `tenantReadAccess` and siblings           | Phase 3+ — attached to each content collection; a separate public-read function is added alongside |
 | `users.autoApprove`                       | Phase 4 — the grant mechanism reads it                                                             |
-| `tenants.powerSchoolBuildingId`           | Phase 5 — building → tenant mapping for the staff sync                                             |
+| ~~`tenants.powerSchoolBuildingId`~~       | Removed 2026-11-13 — not needed: staff groups are CSI locations (`05` §38)                         |
 | `users.entraObjectId`, `entra-mapping.ts` | The Entra switch — the OIDC strategy calls `mapEntraGroupsToRoles` and populates `entraObjectId`   |
 | `password-policy.ts` + the hook           | Deleted at the Entra switch                                                                        |
 

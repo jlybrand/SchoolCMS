@@ -104,7 +104,7 @@ lines look like headings. Mark them as headings?"* and click yes.
 ### 2.7 What school managers cannot do
 
 Theme, navigation structure, syndication scope, alerts, blocks, page-type conversion,
-PowerSchool-sourced person fields, other tenants, user management, translation values,
+staff data, other tenants, user management, translation values,
 publishing anything.
 
 ## 3. The district plane
@@ -116,7 +116,7 @@ The district admin's landing view answers the questions actually asked on login:
 1. **Approval queue** — count and the oldest pending item's age.
 2. **Freshness** — tenants whose content has not changed in 90+ days, and key pages
    (homepage, calendar, contact) that are stale.
-3. **Sync status** — last PowerSchool run, counts, errors (`11` §10).
+3. **Sync status** — last CSI run, counts, errors (`11` §10). _(Not built: runs are logged; no history on the dashboard yet.)_
 4. **Live alerts** — what is currently displaying, on which tenants.
 5. **Work queues** — documents marked `not-attested`; media flagged decorative in bulk;
    pages awaiting translation verification (`08` §8.1).

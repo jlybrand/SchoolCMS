@@ -188,10 +188,6 @@ export interface Tenant {
     middle?: boolean | null;
     high?: boolean | null;
   };
-  /**
-   * Building ID for the staff sync (`11` §5). Unmapped buildings are logged and skipped — never guessed. STAFF ONLY; no student data enters this platform.
-   */
-  powerSchoolBuildingId?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -207,7 +203,7 @@ export interface User {
    */
   entraObjectId?: string | null;
   /**
-   * Refreshed from Entra group membership at login (`02` §7). system-sync is a non-human actor for the PowerSchool sync — never assign it to a person (`11` §8).
+   * Refreshed from Entra group membership at login (`02` §7). system-sync is a non-human actor for the CSI staff sync — never assign it to a person (`11` §8).
    */
   roles?: ('district-admin' | 'school-manager' | 'system-sync')[] | null;
   /**
@@ -1348,7 +1344,6 @@ export interface TenantsSelect<T extends boolean = true> {
         middle?: T;
         high?: T;
       };
-  powerSchoolBuildingId?: T;
   updatedAt?: T;
   createdAt?: T;
 }

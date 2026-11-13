@@ -85,7 +85,7 @@ describe('the boundary — domain types only', () => {
     expect(Object.keys(tenant!).sort()).toEqual(['hostname', 'id', 'name', 'slug', 'type'])
 
     // Explicitly assert the Payload-isms that would signal a widened boundary.
-    for (const leaked of ['createdAt', 'updatedAt', '_status', 'powerSchoolBuildingId', 'status']) {
+    for (const leaked of ['createdAt', 'updatedAt', '_status', 'gradesServed', 'status']) {
       expect(tenant).not.toHaveProperty(leaked)
     }
   })

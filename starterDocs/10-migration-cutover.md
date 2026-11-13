@@ -52,8 +52,8 @@ Before migrating a tenant, produce an inventory:
 - **Language content** — any existing Spanish or other translated pages, and whether they
   are current. Stale translations are not migrated; the pipeline regenerates from English
   (`08`).
-- **Staff directory is NOT inventoried** — it is seeded from PowerSchool (`11`). Capture only
-  supplementary bios/photos worth preserving into CMS-owned fields.
+- **Staff directory is NOT inventoried** — it is seeded from CSI (`11`). CSI holds no bios or
+  photos and the platform has no fields for them, so there is nothing supplementary to capture.
 - Flag content that is unused or duplicated. Migration is the cheapest opportunity to drop
   cruft the district will otherwise carry for another decade.
 
@@ -83,9 +83,9 @@ to the target schema (`03` §8):
 - **Meeting agendas → `events.agendaBody`**, same normalization.
 - News → `posts`; events → `events`; athletics → `events` with `category: athletics`; files
   → `media` + `documents`; alerts → `alerts`.
-- **Staff directory is NOT migrated** — seeded from the PowerSchool sync (`11`) so it starts
-  authoritative and current. Finalsite-only supplementary fields (bios, photos) import into
-  the CMS-owned fields the sync preserves.
+- **Staff directory is NOT migrated** — seeded from the CSI sync (`11`) so it starts
+  authoritative and current. Finalsite's sub-groups (Counselors, Nurses…) are rebuilt as
+  sub-groups in the dashboard.
 - **Media:** alt captured from source where present; **flagged for editor completion where
   missing.** No silent empty alts on meaningful images.
 - **Documents:** loaded with `remediationStatus: not-attested` unless evidence exists

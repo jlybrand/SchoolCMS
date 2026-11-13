@@ -15,8 +15,8 @@ export type EntraGroupMap = Record<string, Role>
 /**
  * Roles that a human login may NEVER be granted, regardless of directory configuration.
  *
- * `system-sync` is a non-human actor for the PowerSchool staff sync, scoped to upserting
- * source-owned `people` fields in mapped tenants and nothing else (`11` §8). If someone
+ * `system-sync` is a non-human actor for the CSI staff sync, scoped to writing the staff
+ * directory's CSI fields and nothing else (`11` §8). If someone
  * creates a matching group in Entra — by accident or otherwise — that must not become a
  * login path into a service identity.
  */

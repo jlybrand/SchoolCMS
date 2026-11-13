@@ -131,16 +131,17 @@ audit → block/feed → template → migration mapper stub → tests):
 1. **News/announcements** (`posts`) + `FeedBlock` + COPE syndication.
 2. **Calendars & events** (`events`) + iCal feeds + recurrence + **`agendaBody` with paste
    normalization**; athletics as a category.
-3. **Directories** (`people`), **then the PowerSchool staff sync** on top: system actor →
-   OneRoster client → staff role-filter + mapper → building→tenant mapping → merge/upsert →
-   nightly job → tests **including the release-blocking no-student-data gate** (`11`).
+3. **Directories** (`people`, `staff-groups`), **then the CSI staff sync** on top: system actor →
+   source interface (mock until CSI access) → student-marker filter + mapper → locations → school
+   groups → upsert → nightly job → tests **including the release-blocking no-student-data gate**
+   (`11`). _(Was PowerSchool; corrected 2026-11-13.)_
 4. **Alerts** (`alerts` + `alertTemplates`) as a short-TTL edge fragment, with the
    template-driven emergency path (`04` §3.4).
 
 **Exit:** every approval-path action is in the audit trail; all four modules author,
-syndicate, render, revalidate, and route through approval; district syndication reaches a school tenant; **a PowerSchool sync populates the
-correct tenants' directories, student records are provably rejected, and a simulated
-PowerSchool outage leaves the directory serving last-known-good.**
+syndicate, render, revalidate, and route through approval; district syndication reaches a school tenant; **a CSI sync populates the
+schools' staff groups, student records are provably rejected, and a simulated
+CSI outage leaves the directory serving last-known-good.**
 
 ## Phase 6 — Media, documents, staff visibility & search *(est. ~2 weeks)*
 

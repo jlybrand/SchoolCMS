@@ -1,183 +1,183 @@
-# 11 — Integration: PowerSchool Staff Sync
+# 11 — Integration: CSI Staff Sync
 
-Authoritative spec for pulling **staff** data from PowerSchool into the staff directory
-(`people`). **No student data is pulled, ever.** One-way, read-only: PowerSchool is the
-source of truth for staff facts; the CMS owns presentation and supplementary fields.
+Authoritative spec for pulling **staff** data from **CSI** into the staff directory (`people`,
+`staff-groups`). **No student data is pulled, ever.** One-way and read-only. CSI is the source of
+truth for staff facts. The CMS owns presentation and the groups it builds on top of them.
 
-*(Carried forward from v1.0 with role and cross-reference updates. The design was sound and
-survived every reconsideration of the stack.)*
+_(Rewritten 2026-11-13. Until then this document specified a **PowerSchool** sync. Jason corrected
+that on 2026-11-11: DD2's staff data comes from **CSI**, not PowerSchool. The design carried over
+except where CSI differs: what it holds, how locations become groups, and the transport.
+Implementation: `docs/phases/05` §38–§40.)_
 
 ## 1. Purpose & hard constraint
 
-- **Purpose:** keep each school's staff directory current automatically, sourced from the
-  district's system of record instead of hand-maintained lists. This also removes one of the
-  highest-frequency manual tasks from school staff who barely have time for the website
-  (`01` §2).
-- **Hard constraint (non-negotiable):** the integration reads **staff/employee records
-  only**. It never requests, ingests, stores, logs, or renders student records or any student
-  PII. Enforced in depth (§4), tested (§9), and treated as a **release-blocking invariant**
-  (`06` §7).
+- **Purpose:** keep each school's staff directory current automatically, from the district's
+  system of record, instead of hand-maintained lists. This removes one of the most frequent
+  manual tasks from school staff who barely have time for the website (`01` §2).
+- **Hard constraint (non-negotiable):** the integration reads **staff/employee records only**. It
+  never requests, ingests, stores, logs, or renders student records or any student PII. CSI
+  holds no student data (Jason, 2026-11-13), but the constraint is enforced in depth (§4), tested
+  (§9) and treated as a **release-blocking invariant** (`06` §7) regardless.
 
 ## 2. Integration approach
 
-Prefer the standard, role-scoped path; fall back only if DD2's PowerSchool doesn't expose it.
-
-| Priority | Method | Why | Staff scoping |
-|---|---|---|---|
-| **1 (preferred)** | **OneRoster 1.1+ API** | Standard, stable, role-typed; clean staff/teacher endpoints | Query `/users`/`/teachers` filtered to staff roles; **exclude `student` role** |
-| 2 (fallback) | **PowerSchool SIS REST API** | Native, broadly available | `/staff` resources or a **staff-scoped named PowerQuery** |
-| 3 (last resort) | Scheduled **staff-only export** (SFTP/CSV) | Works where APIs are locked down | Query authored to emit staff rows only |
-
-- **Auth:** OAuth 2.0 client-credentials. **Read-only** scope, provisioned with the narrowest
-  data access the district can grant — ideally a plugin scoped to staff resources so student
-  data is not even reachable by the token.
-- **Direction:** strictly inbound. The CMS never writes back.
+- **Transport: not yet decided** (Jason, 2026-11-13: "build behind an interface, so the mapper
+  takes rows regardless of transport, and decide later"). It could be a database view, a file
+  drop, or an API. The sync reads through a `StaffSource`, `{ name, fetchRows() }`, which returns
+  raw rows in whatever shape CSI sends. Choosing the transport adds one source; nothing
+  downstream changes.
+- **No CSI access yet.** Until there is, the sync runs from a **mock source**
+  (`CSI_SOURCE=mock`). This stands in for the "spike, then capture a real payload" rule (CLAUDE.md
+  TDD table). **The row shape is assumed** (`tests/fixtures/csi/README.md`). When a real export is
+  captured, the mapper (`src/lib/csi/map.ts`) is the one place that changes.
+- **Credentials**, when the transport needs them: read-only, staff-scoped, the narrowest access
+  the district can grant, kept in the platform secret store (§8).
+- **Direction:** strictly inbound. The CMS never writes back to CSI.
 
 ## 3. Data scope — exactly what is mapped
 
-**Allowlisted staff fields (the only fields ingested):**
+CSI holds little per person: a **name** (one field), an **email**, a **title** (which is the
+role), and **one location** (Jason, 2026-11-13). The mapper builds a record from these fields
+alone:
 
-| Source (staff) | `people` field | Notes |
-|---|---|---|
-| Given/family name | `name` | |
-| Job title / role | `title` | e.g. "5th Grade Teacher", "Assistant Principal" |
-| Department / subject | `department` | where available |
-| Work email | `email` | district email only |
-| Work phone/extension | `phone` | work only |
-| School/building assignment | → tenant mapping (§5) | drives which directory they appear in |
-| Staff photo *(if provided)* | `photo` (→ `media`, alt required) | optional; many districts don't expose it |
-| Stable staff identifier | `powerSchoolId` | external key for upsert matching |
-| Active/employment status | `active` | drives visibility on departure (§6) |
+| CSI (assumed row field)       | Stored as                                  | Notes                                                    |
+| ----------------------------- | ------------------------------------------ | -------------------------------------------------------- |
+| Employee id (`employeeId`)    | `people.csiId`                             | the match key across syncs; unique                       |
+| Name (`name`, one field)      | `people.name`                              | trimmed; A–Z uses the last word (§6)                     |
+| Email (`email`)               | `people.email`                             | work email, lowercased                                   |
+| Title (`title`)               | `people.title`                             | **shown exactly as CSI gives it** ("Admin/teacher" stays) |
+| Location (`locationId`, `locationName`) | `people.group` → that location's group | each location is a school's group (§5)                   |
 
-**Explicitly excluded (never requested or stored):** any student record; SSN/government IDs;
-date of birth; home address; personal contact info; demographic data; compensation;
-evaluation data; any student associations or class rosters. The `people` collection has **no
-fields** for these, so there is nowhere for such data to land even if returned.
+There is **no** phone, department, photo or bio. CSI does not hold them, and the CMS does not ask
+for them. **Explicitly excluded (never read into a record):** any student record; government
+IDs; date of birth; home address; personal contact information; demographics; compensation;
+evaluations; any student association. Whatever else a row carries is never read. `people` has no
+fields for any of it, so there is nowhere for such data to land.
 
 ## 4. "No student data" — defense in depth
 
-Five independent layers; any one failing does not breach the constraint:
+CSI holds no students, and staff and students share **one email domain**, so the domain proves
+nothing. These layers apply, each independent of the others:
 
-1. **Credential scope:** the OAuth client is provisioned for staff resources only; student
-   endpoints are not authorized to the token where PowerSchool permits this.
-2. **Endpoint/query scope:** only staff/teacher endpoints or a staff-only named query are
-   called. Student endpoints are never invoked.
-3. **Role allowlist filter:** on ingest, every record's role/type is checked against a staff
-   role allowlist; anything with a student role, or an unknown/unmapped role, is **dropped
-   and counted**, never persisted.
-4. **Schema constraint:** `people` has no student fields; the mapper maps only the §3
-   allowlist; unmapped source fields are discarded.
-5. **Assertion + test gate:** an ingest-time assertion fails the run if any record with a
-   student marker reaches the persistence step; a standing test (§9) proves student records
-   are never created. Logs redact PII and never contain student data.
+1. **Source scope:** a source reads staff records only.
+2. **Student-marker filter** (`mapCsiRows`): a row whose title, role or type says *student* or
+   *pupil*, or that has any non-empty field named like *student, grade, guardian, parent, birth,
+   dob, homeroom* or *enroll*, is **dropped and counted**. The counts name no one, and no log
+   carries a name or an email.
+3. **Field allowlist:** a record is built from the §3 fields alone.
+4. **Schema:** `people` has nowhere for student data to land.
+5. **Last check before writing** (`assertStaffOnly`): independent of the mapper. If anything
+   student-like reaches the write step, the whole run stops and nothing is written.
 
-## 5. Tenant / building mapping
+A real export whose staff rows carry a field matching a student key (for example a "grade
+taught") would drop real staff. The departure guard (§7) then refuses the run rather than hiding
+them. Fix the mapper when that happens.
 
-- PowerSchool building IDs map to CMS `tenants` via a **building→tenant map** (config).
-  `tenants.powerSchoolBuildingId` holds the link (`03` §2).
-- Staff are placed in the directory of each mapped building they're assigned to; district
-  office staff → district tenant.
-- Multi-building staff appear in each relevant tenant's directory, or are flagged for editor
-  decision per config.
-- **Unmapped buildings are logged and skipped** — fail safe, no guessing.
+## 5. Locations → groups
+
+- **Each CSI location is a school's group** (`staff-groups` with a `csiLocationId`). The sync
+  creates the group when it first sees the location and renames it when the location is renamed.
+  Everyone at the location is in it; it has no members list of its own.
+- **Sub-groups** sit inside a school's group, for example SHS › Nurses, Counselors, Teachers,
+  Media Specialist. **The district** makes them, names them and ticks who is in them, from that
+  school's staff, in the dashboard. They go one level deep. The sync never touches them.
+- A group is a location, not a site: neither collection is tenant-scoped. A staff list on a page
+  shows whichever group or sub-group it is set to (`03` §3.3).
+- One location per person (Jason). Someone who moves location drops out of their old school's
+  sub-groups the next time that sub-group is saved.
 
 ## 6. Sync mechanics
 
-- **Schedule:** nightly (configurable) background job in the Payload backend; manual "sync
-  now" for district admins. Off the public request path entirely.
-- **Upsert by `powerSchoolId`** scoped to the mapped tenant(s).
-- **Field ownership (merge policy):**
-  - *Source-owned (read-only in the CMS, overwritten each sync):* `name`, `title`,
-    `department`, `email`, `phone`, building assignment, `active`.
-  - *CMS-owned (preserved across syncs, editable):* `bio`, `visibility`, display overrides,
-    and `photo` where locally set (a source photo only fills when none exists locally).
-  - The admin marks source-owned fields as sync-managed and non-editable, so edits are never
-    silently overwritten.
-- **Departures:** a staff record absent from the feed is marked **`active: false` → hidden**
-  (soft), **not hard-deleted**, so profiles don't vanish unexpectedly mid-cycle. Hard removal
-  is a separate deliberate action. Grace threshold configurable.
-- **Idempotency:** re-running with unchanged data is a no-op — no version churn, no spurious
-  audit entries. Changes produce a clean diff and one version entry.
-- **Photos:** stored to R2 with **required alt** (defaulting to the staff name), under the
-  same media rules as everything else (`07` §4.3).
-- **The sync bypasses the approval workflow.** It runs as a system actor writing
-  source-owned fields only; there is no human submission to review (`04` §4). CMS-owned
-  field edits by school staff follow the normal approval path.
+- **Schedule:** nightly at 02:00 on Payload's jobs queue. There is also a district-only
+  `POST /api/staff-sync/run`. **There is no "Sync now" button** (Jason, 2026-11-13). It runs off
+  the public request path.
+- **Matching:** by CSI id.
+- **Field ownership:**
+  - _From CSI, read-only in the dashboard, written only by the sync:_ name, title, email,
+    location (`group`), `active`, `csiId`, `syncedAt`.
+  - _The dashboard's own, preserved across syncs, district only:_ a person's **Sort as** (for A–Z
+    by last name when the last word is wrong, for example "de la Cruz"), the sub-groups, and who
+    is in them.
+  - **No staff member is created in the dashboard** (Jason): they all come from CSI.
+- **Departures:** someone missing from the feed is set `active: false`, hidden from every staff
+  list. They are **not deleted**. Someone back in the feed is shown again. The sync cannot delete.
+- **Idempotency:** only changed fields are written. An unchanged feed writes nothing.
+- **The sync bypasses the approval workflow.** It writes as `system-sync`, with the collections'
+  access rules **on**, so it can touch only what those rules allow (§8). Staff data is district
+  only: schools neither see nor edit it.
 
 ## 7. Resilience & failure handling
 
-- **Last-known-good:** a failed or partial sync **never wipes or blanks** the directory. It
-  keeps existing data and alerts. Stale-but-present beats empty.
-- **Partial failure:** per-record errors are collected; good records apply, bad ones are
-  logged and skipped; the run reports created/updated/skipped/errored counts.
-- **Directory availability is independent of PowerSchool:** the public directory renders from
-  `people` via Postgres and the edge cache, so a PowerSchool outage has **zero public
-  impact** (`09` §4.1).
-- **Rate/backoff:** respect API limits; paginate; exponential backoff on transient errors.
+**Last-known-good:** a run that looks wrong changes **nothing**, and says why in words.
+
+- CSI is unreachable.
+- The feed is empty.
+- The feed would hide **more than 5 people and more than a quarter** of the active staff.
+
+Stale-but-present beats empty. Per-record errors are counted, and the rest of the run goes on. A
+run reports created / updated / hidden / schools created and renamed / dropped (student,
+incomplete, duplicate) / errors.
+
+The public directory renders from Postgres and the edge cache, so a CSI outage has no public
+impact (`09` §4.1).
 
 ## 8. Security, privacy & access
 
-- **Secrets:** OAuth client id/secret in the platform secret store; never in the repo;
-  rotated, with **expiry dates on the calendar** (`09` §7).
-- **Least privilege:** read-only, staff-scoped credential.
-- **FERPA posture:** by never touching student records, the integration stays entirely
-  outside FERPA-protected student data. Staff directory fields are work-contact
-  ("directory") information.
-- **Access control:** the sync runs as a dedicated **`system-sync` actor** with rights limited
-  to upserting `people` source-owned fields in mapped tenants; it cannot touch any other
-  collection (`03` §6.1). Human roles cannot edit source-owned fields — those change in
-  PowerSchool.
-- **Auditability:** each run records actor `system`, timestamp, and per-tenant counts;
-  source-owned field changes are attributable to a specific sync run (`03` §7).
+- **Secrets:** transport credentials, when there are any, live in the platform secret store,
+  never in the repo. They rotate, with **expiry dates on the calendar** (`09` §7).
+- **FERPA posture:** by never touching student records, the integration stays outside
+  FERPA-protected student data. Staff directory fields are work-contact ("directory")
+  information.
+- **Access control:** the sync runs as the **`system-sync`** role (`03` §6.1). It may:
+  - create and update `people` and school groups;
+  - write only the fields that come from CSI;
+  - never write a sort name, a sub-group or its members;
+  - never delete;
+  - never touch any other collection.
+  
+  Humans cannot edit the CSI fields; those change in CSI.
+- **Logs:** CSI ids only, never a name or an email.
 
 ## 9. Testing (mechanics in `06`; integration-specific here)
 
-- **No-student-data invariant (must pass to release):** given a feed containing student-role
-  records, assert **zero** student records are ever persisted, and only staff-role,
-  allowlisted fields are mapped.
-- **Mapping:** source staff fields → `people` fields correct; unmapped fields discarded.
-- **Upsert/idempotency:** re-sync is a no-op; changes produce a single clean diff; new and
-  removed staff handled (soft-hide on departure).
-- **Tenant mapping:** building→tenant routing correct; multi-building and unmapped-building
-  handling.
-- **Merge policy:** CMS-owned fields (`bio`, `visibility`, local photo) survive a sync;
-  source fields overwrite.
-- **Access scope:** the `system-sync` actor cannot write to any collection other than
-  `people`, and cannot write CMS-owned fields.
-- **Resilience:** simulated API failure and partial feed keep last-known-good and alert;
-  never wipe.
-- **Security:** credential-scope and read-only behaviour; logs contain no PII.
-- Uses a **mocked OneRoster fixture with deliberately-seeded student records**, to prove
-  rejection rather than assume it.
+- **No-student-data invariant (must pass to release):** a mock export with planted student rows
+  (by title, grade, guardian, role, date of birth) creates **zero** student records and leaves no
+  student detail anywhere: stored records, the run summary, the logs.
+- **Mapping:** the allowlist; trimming; incomplete and duplicate rows; extra fields never read.
+- **Plan:** create; no-op on unchanged; only what changed; a move; hide, no re-hide, re-show; new
+  and renamed schools; an empty feed; a mass departure refused, a handful allowed.
+- **Over the real stack:** the sync writes as `system-sync` with access on; the district's sort
+  name and sub-groups survive a sync; a moved member drops out of the old sub-group; an
+  unreachable source, an empty feed and a mass departure each change nothing; the endpoint is the
+  district's alone.
+- Files: `tests/fixtures/csi/`, `tests/unit/lib/csi-map.test.ts`,
+  `tests/unit/lib/csi-plan.test.ts`, `tests/integration/staff-sync.test.ts`.
 
 ## 10. Operations (general ops in `09`)
 
-- **Scheduling & monitoring:** nightly job with success/failure alerting; a sync dashboard
-  showing last run, counts, and errors on the district dashboard (`04` §3.1). Failures alert
-  the maintainer but do not affect the site.
-- **Runbook — sync failure:** confirm the public directory is still serving (it will); check
-  credential expiry and PowerSchool API status; re-run manually. Last-known-good remains live
-  throughout.
-- **Runbook — credential rotation:** rotate in PowerSchool + secret store; verify with a
-  manual sync.
-- **Config:** API base URL and method, OAuth credentials (secret), building→tenant map, staff
-  role allowlist, schedule, departure grace threshold.
+- **Config:** `CSI_SOURCE` (`mock` today; unset means no sync, and the directory keeps what it
+  has). Transport settings join it when the transport is chosen.
+- **Monitoring:** each run logs its summary. A run history on the district dashboard is **not
+  built**.
+- **Runbook — sync failure:** confirm the public directory is still serving (it will be). Check
+  the source's reachability and credentials, then run again (`POST /api/staff-sync/run`).
+  Last-known-good stays live throughout.
 
 ## 11. Build placement
 
-Built as a slice on top of the Directories module (`05`, Phase 5): schema fields + system
-actor → API client → role-filter + mapper → tenant mapping → merge/upsert → scheduled job →
-tests (including the no-student-data gate) → ops dashboard and alerts.
+Built as Phase 5's directories slice (`05`):
 
-**The directory is seeded from PowerSchool at migration** rather than migrated from Finalsite
-(`10` §5), so it starts authoritative and current rather than importing a stale
-hand-maintained list.
+- **Part A:** staff, groups and access.
+- **Part B:** the sync (source interface, mapper, plan, writes, job).
+- **Part C:** the staff list block.
+- **Part D:** these corrections.
+
+The directory is **seeded from CSI** at migration, not migrated from Finalsite (`10` §5).
 
 ## 12. Explicit non-goals
 
-- No student data, rosters, grades, attendance, or scheduling — now or later under this
-  integration.
-- No write-back to PowerSchool.
-- Not a general SIS integration; staff directory only.
-- SSO to the district IdP is **already handled separately** via Entra ID (`02` §7) and is
-  not part of this integration.
+- No student data, rosters, grades, attendance, or scheduling, now or later.
+- No write-back to CSI.
+- Not a general HR or SIS integration; staff directory only.
+- Staff photos, bios, phones and departments are not part of this sync. CSI does not hold them.
+- SSO to the district IdP is handled separately via Entra ID (`02` §7), not here.

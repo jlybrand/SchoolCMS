@@ -176,7 +176,7 @@ export const Users: CollectionConfig = {
       admin: {
         condition: notForSchoolManagers,
         description:
-          'Refreshed from Entra group membership at login (`02` §7). system-sync is a non-human actor for the PowerSchool sync — never assign it to a person (`11` §8).',
+          'Refreshed from Entra group membership at login (`02` §7). system-sync is a non-human actor for the CSI staff sync — never assign it to a person (`11` §8).',
       },
     },
     {

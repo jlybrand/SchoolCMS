@@ -51,8 +51,8 @@ describe('mapEntraGroupsToRoles', () => {
 
   it('never grants system-sync, whatever the directory says', () => {
     /**
-     * `11` §8 — system-sync is a NON-HUMAN actor for the PowerSchool sync, with rights to
-     * upsert `people` source-owned fields and nothing else. It must never be reachable by
+     * `11` §8 — system-sync is a NON-HUMAN actor for the CSI sync, with rights to write the
+     * staff directory's CSI fields and nothing else. It must never be reachable by
      * human login, even if someone creates a matching group in Entra by mistake.
      */
     const hostileMap = {
