@@ -50,6 +50,7 @@ import { UpdatePageView as UpdatePageView_0f1d98940f2489de43ebc550e3e4a561 } fro
 import { NewPageView as NewPageView_75d5b0676850069cc52fd8659e0483db } from '../../../admin/SchoolPlane/NewPageView'
 import { NewPostView as NewPostView_77e93fa34962fc9debb861b64f9a1c69 } from '../../../admin/SchoolPlane/NewPostView'
 import { NewEventView as NewEventView_2bf2c031e47ebf55ba21b803e08fdd96 } from '../../../admin/SchoolPlane/NewEventView'
+import { UploadFileView as UploadFileView_b874b44d70a837a4c4c39977426847f4 } from '../../../admin/SchoolPlane/UploadFileView'
 import { ApprovalsView as ApprovalsView_24670674c7de4661a804a1c4ad51ba6b } from '../../../admin/Approvals/ApprovalsView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
@@ -107,6 +108,7 @@ export const importMap = {
   "/admin/SchoolPlane/NewPageView#NewPageView": NewPageView_75d5b0676850069cc52fd8659e0483db,
   "/admin/SchoolPlane/NewPostView#NewPostView": NewPostView_77e93fa34962fc9debb861b64f9a1c69,
   "/admin/SchoolPlane/NewEventView#NewEventView": NewEventView_2bf2c031e47ebf55ba21b803e08fdd96,
+  "/admin/SchoolPlane/UploadFileView#UploadFileView": UploadFileView_b874b44d70a837a4c4c39977426847f4,
   "/admin/Approvals/ApprovalsView#ApprovalsView": ApprovalsView_24670674c7de4661a804a1c4ad51ba6b,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }

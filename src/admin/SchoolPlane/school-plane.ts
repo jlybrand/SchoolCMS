@@ -40,6 +40,12 @@ export const SCHOOL_TASKS: readonly SchoolTask[] = [
     description: 'Start a new page. The district places it on the site when they approve it.',
     href: '/admin/new-page',
   },
+  {
+    // "Upload", never "create" (Jason, 2026-11-13).
+    label: 'Upload a file',
+    description: 'Add an image or a document to your school’s library.',
+    href: '/admin/upload-file',
+  },
 ]
 
 export type ListTask = { label: string; href: string }
@@ -49,6 +55,7 @@ const LIST_TASK_HREFS: Readonly<Record<string, string>> = {
   // Not `posts`: News and announcements is its own screen, with "Create post" on each board.
   pages: '/admin/new-page',
   events: '/admin/new-event',
+  resources: '/admin/upload-file',
 }
 
 /**

@@ -30,6 +30,7 @@ describe('SCHOOL_TASKS — verbs, not collections (`04` §2.2)', () => {
       'Add an event',
       'Update a page',
       'Add a page',
+      'Upload a file',
     ])
   })
 
@@ -53,6 +54,10 @@ describe('listTaskFor — the create button a school manager gets on a list (Jas
 
   it('is one of the landing view’s own tasks, so the two never drift apart', () => {
     expect(SCHOOL_TASKS.map((t) => t.href)).toContain(listTaskFor('pages')?.href)
+  })
+
+  it('offers the upload task on Files — "upload", never "create" (Jason, 2026-11-13)', () => {
+    expect(listTaskFor('resources')).toEqual({ label: 'Upload a file', href: '/admin/upload-file' })
   })
 
   it('offers the new-event task on Events (Jason, 2026-11-11)', () => {

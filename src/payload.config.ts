@@ -16,6 +16,7 @@ import { Navigation } from './collections/Navigation'
 import { SCHEDULE_CRON } from './lib/schedule-step'
 import { Pages } from './collections/Pages'
 import { People } from './collections/People'
+import { MAX_UPLOAD_BYTES } from './admin/SchoolPlane/upload-file'
 import { ResourceFolders } from './collections/ResourceFolders'
 import { Resources } from './collections/Resources'
 import { PostBoards } from './collections/PostBoards'
@@ -48,6 +49,8 @@ const dirname = path.dirname(fileURLToPath(import.meta.url))
 export default buildConfig({
   /** Image sizes and focal-point crops for the file library (`src/collections/Resources.ts`). */
   sharp,
+  /** The file library takes nothing over 25 MB (`MAX_UPLOAD_BYTES`, the school's form says so). */
+  upload: { limits: { fileSize: MAX_UPLOAD_BYTES } },
   admin: {
     /** Browser tabs read "Approvals - DD2 Websites", not Payload's default "- Payload". */
     meta: { titleSuffix: '- DD2 Websites' },
@@ -77,6 +80,11 @@ export default buildConfig({
         newEvent: {
           Component: '/admin/SchoolPlane/NewEventView#NewEventView',
           path: '/new-event',
+        },
+        /** "Upload a file" — a school's upload to its own library (Jason, 2026-11-13). */
+        uploadFile: {
+          Component: '/admin/SchoolPlane/UploadFileView#UploadFileView',
+          path: '/upload-file',
         },
         /** The district's approval queue (`04` §4.2). See src/admin/Approvals/. */
         approvals: {
