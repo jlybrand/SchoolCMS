@@ -105,6 +105,21 @@ export const Tenants: CollectionConfig = {
       ],
     },
     {
+      /**
+       * Which levels a school serves (Jason, 2026-11-12) — for alerts placed "by level". Ticks, not
+       * one choice: a K–8 serves elementary and middle. The district site serves none.
+       */
+      name: 'gradesServed',
+      type: 'group',
+      label: 'Grades served',
+      admin: { condition: (data) => data?.type !== 'district' },
+      fields: [
+        { name: 'elementary', type: 'checkbox', label: 'Elementary' },
+        { name: 'middle', type: 'checkbox', label: 'Middle' },
+        { name: 'high', type: 'checkbox', label: 'High' },
+      ],
+    },
+    {
       name: 'powerSchoolBuildingId',
       type: 'text',
       index: true,

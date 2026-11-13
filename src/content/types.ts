@@ -633,3 +633,20 @@ export type EventOccurrence = {
   /** E.g. "6:00 – 8:00 PM", "All day", "Dec 1, 9:00 AM – Dec 3, 3:00 PM". Null for several whole days. */
   timeLabel: string | null
 }
+
+/**
+ * An alert banner as the public site shows it (Jason, 2026-11-12) — `getAlerts` has already
+ * decided it belongs on this page now. `version` changes when the alert is edited, so a banner a
+ * visitor closed comes back if its words change.
+ */
+export type SiteAlert = {
+  id: string
+  severity: 'info' | 'warning' | 'emergency'
+  text: string
+  link: { href: string; label: string } | null
+  dismissible: boolean
+  version: string
+}
+
+/** The page an alert is being placed on, or null for a screen that is not a page. */
+export type AlertPageRef = { id: string; isHome: boolean } | null

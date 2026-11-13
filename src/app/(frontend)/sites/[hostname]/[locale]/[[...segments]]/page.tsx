@@ -162,6 +162,7 @@ export default async function SitePage({ params }: { params: Promise<Params> }) 
       site={resolved}
       currentPath={page.path}
       cacheTags={`${tenantTag(resolved.tenant.id)} ${documentTag('pages', page.id)}`}
+      alertPage={{ id: String(page.id), isHome: page.path === '/' }}
     >
       <Container>
         <Stack space="lg">

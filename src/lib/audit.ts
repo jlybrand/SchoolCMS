@@ -250,5 +250,22 @@ export const auditEntries = (input: AuditInput): AuditEntry[] => {
   const noun = REVIEWED[input.collection]
   if (noun) return forReviewed(input, noun)
   if (input.collection === 'users') return forUser(input)
+  if (input.collection === 'alerts') return forAlert(input)
   return []
+}
+
+/**
+ * Alert banners (Jason, 2026-11-12): the district posts them directly, so every write is one —
+ * posting or changing one goes live at once (a publish), removing one is a delete. Named by what
+ * visitors read; for no one school, since one alert may reach many.
+ */
+const forAlert = (input: AuditInput): AuditEntry[] => {
+  const doc = input.operation === 'delete' ? (input.doc ?? input.previous) : input.doc
+  if (!doc) return []
+  return [
+    entry(input, doc, input.operation === 'delete' ? 'delete' : 'publish', {
+      documentTitle: text(doc.text) || `Alert ${String(doc.id)}`,
+      tenant: null,
+    }),
+  ]
 }

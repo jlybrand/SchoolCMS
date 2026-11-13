@@ -1,0 +1,60 @@
+/*
+ * The alert banners (Jason, 2026-11-12). Each severity is a solid fill with the surface color as
+ * text — the pairs are in REQUIRED_CONTRAST_PAIRS, so a palette that fails cannot ship. Never color
+ * alone: the kind is said in words (`AlertBar.tsx`). Logical properties only (rule 5).
+ */
+
+.bar {
+  display: flex;
+  flex-direction: column;
+}
+
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  padding-block: var(--space-sm);
+  padding-inline: var(--space-lg);
+  color: var(--color-surface);
+}
+
+.alert[data-severity='emergency'] {
+  background-color: var(--color-emergency);
+}
+
+.alert[data-severity='warning'] {
+  background-color: var(--color-warning);
+}
+
+.alert[data-severity='info'] {
+  background-color: var(--color-info);
+}
+
+.message {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.kind {
+  font-weight: 700;
+}
+
+.close {
+  flex: none;
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  margin-block: calc(-1 * var(--space-xs));
+  border: 1px solid currentColor;
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.close:focus-visible {
+  outline-color: var(--focus-ring-color-inverse);
+}

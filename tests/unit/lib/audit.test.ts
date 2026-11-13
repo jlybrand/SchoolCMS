@@ -464,3 +464,35 @@ describe('a publish names the version it made (Jason, 2026-11-12: History is pub
     expect(sent[0]).toMatchObject({ action: 'submit', versionId: null })
   })
 })
+
+describe('alerts (Jason, 2026-11-12): who posted a banner, changed it, took it down', () => {
+  const alert = { id: 12, text: 'Schools are closed on Tuesday because of snow.' }
+  const alerts = (over: Partial<AuditInput>): AuditInput => ({
+    collection: 'alerts',
+    operation: 'create',
+    previous: null,
+    doc: alert,
+    user: district,
+    ...over,
+  })
+
+  it('posting one is a publish, named by its words, for no one school', () => {
+    expect(auditEntries(alerts({}))).toEqual([
+      expect.objectContaining({
+        action: 'publish',
+        contentType: 'alerts',
+        documentId: '12',
+        documentTitle: 'Schools are closed on Tuesday because of snow.',
+        tenant: null,
+        actor: '3',
+      }),
+    ])
+  })
+
+  it('changing one is a publish too; removing one is a delete', () => {
+    expect(auditEntries(alerts({ operation: 'update', previous: alert }))[0]?.action).toBe(
+      'publish',
+    )
+    expect(auditEntries(alerts({ operation: 'delete', previous: alert }))[0]?.action).toBe('delete')
+  })
+})

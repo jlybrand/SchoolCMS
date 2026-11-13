@@ -1,12 +1,20 @@
 import type { ReactNode } from 'react'
 
+import { AlertBar } from '@/components/AlertBar'
 import { SiteFooter } from '@/components/SiteFooter'
 import { SiteHeader } from '@/components/SiteHeader'
 import { MAIN_CONTENT_ID } from '@/components/SkipLink'
+import { getAlerts } from '@/content/alerts'
 import { getNavigation } from '@/content/navigation'
 import { getSettings } from '@/content/settings'
 import { getTenantByHostname } from '@/content/tenants'
-import type { ContentContext, Navigation, SiteSettings, Tenant } from '@/content/types'
+import type {
+  AlertPageRef,
+  ContentContext,
+  Navigation,
+  SiteSettings,
+  Tenant,
+} from '@/content/types'
 
 /**
  * What every public page of a site shares: finding the site, and the frame around its content.
@@ -64,16 +72,25 @@ export const SiteFrame = async ({
   site,
   currentPath,
   cacheTags,
+  alertPage = null,
   children,
 }: {
   site: Site
   currentPath: string
   cacheTags: string
+  /**
+   * The page being shown, for alerts placed on home pages or chosen pages (Jason, 2026-11-12).
+   * Null for a screen that is not a page — it shows only the alerts placed on every page.
+   */
+  alertPage?: AlertPageRef
   children: ReactNode
 }) => {
-  const navigation: Navigation = await getNavigation(site.ctx)
+  const [navigation, alerts]: [Navigation, Awaited<ReturnType<typeof getAlerts>>] =
+    await Promise.all([getNavigation(site.ctx), getAlerts(site.ctx, alertPage)])
   return (
     <>
+      {/* Above the header: what a visitor must know first (`04` §3.4). */}
+      <AlertBar alerts={alerts} />
       <SiteHeader
         siteName={site.siteName}
         primary={navigation.primary}

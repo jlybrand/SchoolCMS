@@ -60,3 +60,15 @@ export const ButtonWithALongLabel: Story = {
     variant: 'button',
   },
 }
+
+/** On a dark fill, as in an alert banner. */
+export const Inverse: Story = {
+  args: { href: '/calendar', children: 'See the calendar', variant: 'inverse' },
+  decorators: [
+    (Story) => (
+      <div style={{ background: 'var(--color-emergency)', padding: '1rem' }}>
+        <Story />
+      </div>
+    ),
+  ],
+}
