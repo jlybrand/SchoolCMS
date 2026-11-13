@@ -250,3 +250,21 @@
 .listTask {
   margin-block-end: 1.5rem;
 }
+
+/* "Upload a file" (2026-11-13): the short line under the title, and the uploaded message. */
+.intro {
+  margin-block: 0 1.5rem;
+  color: var(--theme-elevation-800);
+}
+
+.done {
+  margin: 0;
+  padding-block: 0.75rem;
+  padding-inline: 1rem;
+  border: 1px solid var(--theme-elevation-400);
+  border-inline-start: 4px solid var(--theme-success-500);
+  border-radius: 4px;
+  background: var(--theme-elevation-50);
+  color: var(--theme-text);
+  font-weight: 600;
+}

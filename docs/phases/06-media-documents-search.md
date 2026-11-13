@@ -136,3 +136,74 @@ school's folder. The isolation suite proves both.
   once it's described
 - `tests/e2e/admin-planes-axe.spec.ts`: the files list, an image's form, a new upload and the
   folders list, in both themes
+
+---
+
+## 2. "Upload a file" on the school plane (Jason, 2026-11-13)
+
+A school manager's upload to their own library, with **no approval**. Payload's own upload
+screen refuses school managers: its access check runs before a school is known
+(`resourcesCreateAccess` needs the target site). So the school plane has its own task, like
+"Add an event".
+
+- **Where it starts:**
+  - the start screen's fifth task, **Upload a file** ("Add an image or a document to your
+    school's library.", `SCHOOL_TASKS`);
+  - the Files list's **Upload a file** button, which sends a school manager to `/admin/upload-file`
+    and the district to Payload's screen (`UploadFileButton`, by `sendsForApproval`);
+  - `listTaskFor('resources')`.
+
+  The district visiting `/admin/upload-file` is redirected to Payload's screen.
+
+- **The form** (`UploadFileForm`) asks:
+  - the school, only when the manager has several;
+  - the file, through a native picker limited to the library's types;
+  - a title, which starts from the file's name (`titleFromFilename`) and can be changed;
+  - then **only what the file's kind needs**, read from its type in the browser:
+    - an image: "Describe the image", or "This image is decorative", which disables the box;
+    - a document: "Has this document been checked for accessibility?" with three answers;
+  - a folder, a native `<select>` of the chosen school's folders, shown only if it has any;
+  - a description and tags.
+- **Checked before sending** by `checkUpload` (`upload-file.ts`), in the library's own words
+  (`resourceProblems`):
+  - a file, at most **25 MB** (`MAX_UPLOAD_BYTES`; Payload's `upload.limits.fileSize` refuses
+    bigger too);
+  - a title and a school;
+  - the folder must be the school's;
+  - the kind's own question answered.
+
+  Each error sits beside its field, linked by `aria-describedby`, and focus moves to the first.
+
+- **Sent** as `POST /api/resources` multipart: the file, plus `_payload` holding `checkUpload`'s
+  data. A server refusal goes back to its fields (`explainUploadError` reads Payload's
+  `errors[].data.errors`); anything else is one plain sentence.
+- **On success:** "Uploaded "…" to your school's library. You can upload another." (`role=status`,
+  focused), and the form clears.
+
+### Files
+
+| File                                       | Does                                                                                               |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| `src/admin/SchoolPlane/upload-file.ts`     | pure: `checkUpload`, `titleFromFilename`, `explainUploadError`, `MAX_UPLOAD_BYTES`, `FolderOption` |
+| `src/admin/SchoolPlane/UploadFileView.tsx` | `/admin/upload-file` (school plane; the district is redirected)                                    |
+| `src/admin/SchoolPlane/UploadFileForm.tsx` | the form                                                                                           |
+| `src/admin/SchoolPlane/school-data.ts`     | `listMyFolders(req)`, read as the user                                                             |
+| `src/admin/SchoolPlane/school-plane.ts`    | the task; `listTaskFor('resources')`                                                               |
+| `src/admin/Resources/UploadFileButton.tsx` | by role: the school's task or Payload's screen                                                     |
+| `src/payload.config.ts`                    | the `uploadFile` view; `upload.limits.fileSize`                                                    |
+
+### Tests
+
+- `tests/unit/admin/upload-file.test.ts`:
+  - an image with alt, a decorative image, a document with everything;
+  - each missing answer in the library's words;
+  - video and over-size refused;
+  - several schools; another school's folder; no school;
+  - the starting title; server errors placed beside their fields
+- `tests/unit/admin/school-plane.test.ts`: the fifth task; `listTaskFor('resources')`
+- `tests/e2e/school-upload.spec.ts`:
+  - from the start screen: an empty send shows what's missing, with focus on the file;
+  - an image starts its title from its name, asks for alt text and uploads to School A, with
+    axe in both themes at each step;
+  - a document asks the accessibility question and uploads;
+  - the Files list's button leads to the school's task

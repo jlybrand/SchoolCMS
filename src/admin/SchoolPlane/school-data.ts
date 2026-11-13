@@ -3,6 +3,8 @@ import type { Payload, PayloadRequest } from 'payload'
 import { relationshipIdOf, tenantIdsFor } from '@/access/predicates'
 import type { AuthUser } from '@/access/types'
 
+import type { FolderOption } from './upload-file'
+
 /**
  * Server-side reads for the school plane's views.
  *
@@ -188,6 +190,35 @@ export const listMyCalendars = async (req: PayloadRequest): Promise<CalendarOpti
     const name = typeof doc.name === 'string' && doc.name !== '' ? doc.name : String(doc.id)
     const label =
       schools.size > 1 && typeof doc.label === 'string' && doc.label !== '' ? doc.label : name
+    return [{ id: doc.id, tenant: Number.isNaN(Number(tenant)) ? tenant : Number(tenant), label }]
+  })
+}
+
+/**
+ * The folders the user may upload into — their schools' — read AS THE USER, so the list is what
+ * access allows (Jason, 2026-11-13). Each labelled with its path ("Forms › Enrollment").
+ */
+export const listMyFolders = async (req: PayloadRequest): Promise<FolderOption[]> => {
+  if (!req.user) return []
+  const { docs } = await req.payload.find({
+    collection: 'resource-folders',
+    req,
+    user: req.user,
+    overrideAccess: false,
+    depth: 0,
+    pagination: false,
+    sort: 'label',
+    select: { label: true, name: true, tenant: true },
+  })
+  return docs.flatMap((doc) => {
+    const tenant = relationshipIdOf((doc as { tenant?: unknown }).tenant as never)
+    if (tenant === null) return []
+    const label =
+      typeof doc.label === 'string' && doc.label !== ''
+        ? doc.label
+        : typeof doc.name === 'string'
+          ? doc.name
+          : String(doc.id)
     return [{ id: doc.id, tenant: Number.isNaN(Number(tenant)) ? tenant : Number(tenant), label }]
   })
 }
