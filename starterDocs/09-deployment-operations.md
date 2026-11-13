@@ -123,7 +123,7 @@ is not a public incident.
 - **Core Web Vitals** field monitoring per tenant **and per Tier 1 locale**.
 - **Per-tenant audit trail** (publishes, approvals, auto-approvals, deletes, user and grant
   changes) for accountability and defensibility.
-- **PowerSchool sync monitoring (`11`):** last run, per-tenant counts, errors. Failure alerts
+- **CSI sync monitoring (`11`):** each run's summary (created, updated, hidden, dropped, errors) is logged; a dashboard history is not built. Failure alerts
   the maintainer but does not affect the site (directory serves last-known-good).
 - **Translation monitoring:** API error rate, cache hit ratio, unverified strings on
   review-flagged pages, monthly spend, and an **anomalous-volume alert** (usually a bulk
@@ -164,10 +164,11 @@ These measure whether the *workflow* is working, not whether the servers are up:
   predictable gap** (`04` §5).
 - **Translation API failure:** cached translations continue serving; new strings fall back
   to source and retry on next revalidation. No public impact; no action usually required.
-- **PowerSchool sync failure (`11`):** confirm the public directory is still serving (it
-  will — last-known-good); check credential expiry and API status; re-run manually. No data
+- **CSI sync failure (`11`):** confirm the public directory is still serving (it
+  will — last-known-good); check the source's reachability and credentials; re-run
+  (`POST /api/staff-sync/run`). No data
   is wiped on failure.
-- **Credential rotation** (PowerSchool, Azure Translator, Entra client secret): rotate in
+- **Credential rotation** (CSI, when its transport has credentials; Azure Translator; Entra client secret): rotate in
   source system + secret store; verify with a manual run. **Calendar the expiry dates** —
   silent secret expiry is the most common avoidable outage in this stack.
 - **Security event:** rotate secrets, review WAF/logs, patch dependency, post-mortem.

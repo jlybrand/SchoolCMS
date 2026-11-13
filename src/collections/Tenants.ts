@@ -119,14 +119,5 @@ export const Tenants: CollectionConfig = {
         { name: 'high', type: 'checkbox', label: 'High' },
       ],
     },
-    {
-      name: 'powerSchoolBuildingId',
-      type: 'text',
-      index: true,
-      admin: {
-        description:
-          'Building ID for the staff sync (`11` §5). Unmapped buildings are logged and skipped — never guessed. STAFF ONLY; no student data enters this platform.',
-      },
-    },
   ],
 }

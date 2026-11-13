@@ -70,7 +70,7 @@ flowchart TD
     ENTRA[Microsoft Entra ID - OIDC]
     MT[Azure AI Translator]
     MAIL[Resend]
-    PS[(PowerSchool - staff data, read-only)]
+    PS[(CSI - staff data, read-only)]
 
     Visitor[[Public visitor]] --> CDN --> NEXT
     NEXT --> MW --> CAL
@@ -180,7 +180,7 @@ emergency updates propagate in seconds without a rebuild.
 | Entra ID | Down | Staff cannot log in; **public unaffected** | Break-glass account; no public dependency. |
 | R2 | Down | New uploads fail; existing media edge-cached | CDN-cached assets; retry. |
 | Translation API | Down | Cached translations still served; only new strings fall back to source | Translations cached in Postgres, not fetched per request (`08` §10). |
-| PowerSchool | Down | Directory serves last-known-good | Sync is off the public path; never wipes (`11`). |
+| CSI | Down | Directory serves last-known-good | Sync is off the public path; never wipes (`11`). |
 
 Composite public availability is governed by the CDN, not the serial product of every
 service. This is how 99.9%+ is achieved without enterprise-tier SLAs on each layer.
@@ -260,5 +260,5 @@ This layer costs a few days and is the difference between "we could move if we h
 | ADR-12 | MS Forms in v1; native forms deferred | Building the form module now; permanent exclusion | 4 forms, no student data, already licensed. **The embed seam costs nothing and the form-builder plugin remains available** (`01` §4.2). Avoids maintaining an unused PII store. |
 | ADR-13 | Documents remediated before upload | In-platform PDF/UA pipeline | Validation cannot remediate; a Java sidecar is real ops for information a policy plus attestation already provides (`07` §5). |
 | ADR-14 | Postgres FTS at launch | Dedicated search service | Less infrastructure; pgvector upgrade path preserved. |
-| ADR-15 | PowerSchool staff sync via OneRoster, read-only, inbound | SIS REST first; two-way sync; live per-request calls | Role-typed API cleanly excludes students; inbound-only plus last-known-good keeps the directory resilient and off the public path (`11`). |
+| ADR-15 | Staff sync from **CSI** (revised 2026-11-13; was PowerSchool via OneRoster), read-only, inbound, behind a source interface — transport not yet chosen | Two-way sync; live per-request calls; hand-maintained lists | DD2's staff data is in CSI (Jason, 2026-11-11). CSI holds no students and shares the email domain, so exclusion is by a student-marker filter, a field allowlist and a last check before writing; inbound-only plus last-known-good keeps the directory resilient and off the public path (`11`). |
 | ADR-16 | Repair Payload's admin markup in place where it fails axe — attribute-only, removed as upstream fixes land (`docs/phases/04` §18) | Fork or `pnpm patch` Payload; exclude Payload's chrome from the axe gate | The admin planes must pass the gate (`04` §6); a patch on a pinned dependency is redone at every bump, and an exclusion weakens rule 6. Attributes only, so React's reconciliation is untouched and the swap cost (§11) does not grow. |

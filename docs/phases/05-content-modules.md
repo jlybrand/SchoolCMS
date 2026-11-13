@@ -2,14 +2,14 @@
 
 How the content modules work mechanically, and the audit trail they write to. Phase 5 opens
 with the audit trail (`05`, scheduled at the Phase 4 close); the modules — posts, events, people
-and the PowerSchool sync, alerts — follow, each writing to it.
+and the CSI sync, alerts — follow, each writing to it.
 
 | Slice                        | State                                                             |
 | ---------------------------- | ----------------------------------------------------------------- |
 | Audit trail                  | Merged (#42) — §1                                                 |
 | News/announcements (`posts`) | §2–§6 (#43–#47); **this PR** — §7 `posts.routine`. Slice complete |
 | Calendars and events         | —                                                                 |
-| Directories + PowerSchool    | —                                                                 |
+| Directories + CSI sync       | §38–§40 (#97)                                                     |
 | Alerts                       | —                                                                 |
 
 ---
@@ -116,7 +116,7 @@ can restore a version a SCHOOL saved".
   the 30-day post-hoc list of auto-approvals and the grant history (`04` §4.3), an activity
   feed on the district dashboard.
 - Auto-approve entries: written when the first scope acts (Phase 5 posts).
-- Sync runs (`03` §7): with the PowerSchool sync.
+- Sync runs (`03` §7): not written — each CSI sync run logs its summary instead (§39).
 - New collections join by adding `auditChange(slug)` / `auditDelete(slug)` and a branch in
   `auditEntries`.
 

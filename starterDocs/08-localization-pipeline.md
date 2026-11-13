@@ -209,7 +209,7 @@ path — the one with real safety consequence — is never machine-translated un
 ## 9. Glossary & overrides
 
 - **`translation_glossary`** — per-locale do-not-translate list: school names, mascot
-  names, staff names, PowerSchool-sourced job titles, district programme names, and
+  names, staff names, CSI-sourced job titles, district programme names, and
   acronyms. Passed to the translation engine as a glossary and used to emit `lang`
   attributes on untranslated spans (§5).
 - **`translation_overrides`** — a human correction keyed by `(source_hash, locale)`,

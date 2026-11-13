@@ -39,7 +39,7 @@ erDiagram
 The spine. One document per site (district + 27 schools).
 
 - `name`, `slug`, `hostname` (unique, drives routing), `type` (`district` | `school`),
-  `status` (`active` | `hidden`), `powerSchoolBuildingId` (nullable, for `11` §5).
+  `status` (`active` | `hidden`). _(`powerSchoolBuildingId` removed 2026-11-13: staff groups are CSI locations, not mapped to tenants — `11` §5.)_
 - **Adding a tenant = creating a document.** DNS is already wildcarded. No deploy.
 
 ### `users`
@@ -162,16 +162,27 @@ Finalsite calendar events").**
 
 ### `people` (staff directories)
 
-- `tenant`, `name`, `title`, `department`, `email`, `phone`, `photo` (relation to `media`,
-  alt required), `bio` (rich text), `visibility` (`public` | `staff`), `active`.
-- **Sync provenance (`11`):** `source` (`manual` | `powerschool`), `powerSchoolId`
-  (unique per tenant), `syncedAt`.
-- **Field ownership:** source-owned fields (`name`, `title`, `department`, `email`,
-  `phone`, building assignment, `active`) are **read-only in the admin** for
-  `source: powerschool` records. CMS-owned fields (`bio`, `visibility`, local `photo`) are
-  editable and **preserved across syncs**. `manual` records remain fully editable.
+_(Revised 2026-11-13: staff come from **CSI**, not PowerSchool, and CSI holds only a name,
+email, title and location — `11` §3. Built: `docs/phases/05` §38–§40.)_
+
+- `name` (one field), `title` (as CSI gives it), `email`, `group` (the person's location — a
+  school's group in `staff-groups`), `active`, `csiId` (unique), `syncedAt`; `sortName` (the
+  district's "Sort as") and `sortKey` (the A–Z key, worked out on save).
+- **Every record comes from CSI:** only the sync (`system-sync`) creates one or writes the CSI
+  fields, which are read-only in the dashboard. The district edits only `sortName`. A departure
+  is hidden (`active: false`), never deleted.
+- **Not tenant-scoped, district only:** schools neither see nor reach staff data.
+- No `department`, `phone`, `photo`, `bio` or `visibility`: CSI holds none of them.
 - **No student fields exist on this collection** — there is nowhere for student data to
   land.
+
+### `staff-groups`
+
+- A **school's group** is a CSI location (`csiLocationId`): the sync makes and names it, and
+  everyone at the location is in it.
+- A **sub-group** (`parent` → a school's group; `members` → its staff) is the district's: made,
+  named, filled and deleted in the dashboard. One level deep; members must be at its school.
+- `label` ("SHS › Nurses") is worked out on save. Not tenant-scoped; district only.
 
 ### `media`
 
@@ -254,7 +265,7 @@ bypasses `media` would also bypass alt-required-at-upload (rule 7).
 | ------------- | ------------------------------------------------------- |
 | `FeedBlock`   | `posts` (built 2026-10-28); honours syndication scope (`02` §6) |
 | `Calendar`    | `events` (built 2026-11-11): chosen calendars from any site, as a list (number of events) or a month grid; an event's notes open on click |
-| `StaffList`   | `people`, filtered by school or department              |
+| `StaffList`   | `people` (built 2026-11-13): one group or sub-group, A–Z, 1–4 side by side |
 | `AlertInline` | `alerts`                                                |
 
 **Batch 4 — requires Phase 6 collections**
@@ -340,7 +351,7 @@ marked; a feed narrows, and each announcement's own sharing still decides reach.
 | Captions attestation on `Embed`                 | Not added (2026-08-28). YouTube captions are configured on YouTube, so a CMS field would record a claim rather than enforce a state. `07` §6's captions requirement stands as **policy**, owned by whoever publishes the video — not as a schema constraint                                                                                                                                                                                                                                                                                                                                  |
 | `FormBlock`                                     | Deferred add-on (§4). MS Forms embedding deferred with it (2026-08-28)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | Calendar Tools (subscription/aggregation feeds) | **Corrected 2026-11-11 (Jason):** both directions are built. Out — each calendar is an iCal feed (`/calendars/<id>.ics`). In — a calendar may be a **feed calendar**, copied hourly from an outside iCal or Google address, read-only here (`docs/phases/05` §29) |
-| **Constituent**                                 | DD2's use would be **public staff data only**, which is already `people` — seeded read-only from PowerSchool (`11`) and rendered by `StaffList`. The module therefore has no distinct role here and is likely not needed at all (2026-08-28). The wider Finalsite feature set it belongs to — families, households, mailing lists, portal accounts — stays out regardless: no student data enters the platform (§6.4, `11` §4), and portal auth is a deferred add-on (§4). If a need surfaces beyond public staff data, that is a FERPA question for counsel before it is a feature question |
+| **Constituent**                                 | DD2's use would be **public staff data only**, which is already `people` — seeded read-only from CSI (`11`) and rendered by `StaffList`. The module therefore has no distinct role here and is likely not needed at all (2026-08-28). The wider Finalsite feature set it belongs to — families, households, mailing lists, portal accounts — stays out regardless: no student data enters the platform (§6.4, `11` §4), and portal auth is a deferred add-on (§4). If a need surfaces beyond public staff data, that is a FERPA question for counsel before it is a feature question |
 
 ### 3.5 Provenance and what the register replaces
 
@@ -432,8 +443,8 @@ merely reflects it.
 | Role              | Scope              | Capabilities                                                                                                                                                                                                                                                |
 | ----------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `district-admin`  | All tenants        | Everything: composed pages, blocks, syndication, alerts, theme, navigation, approvals, user/tenant assignment, translation verification.                                                                                                                    |
-| `school-manager`  | Assigned tenant(s) | Create and edit fixed-type pages, posts, events; upload media and documents in their tenant. **Cannot publish** — changes are submitted for approval (`04` §5). Cannot touch theme, navigation, syndication, alerts, blocks, or PowerSchool-sourced fields. |
-| `system-sync`     | Mapped tenant(s)   | Non-human actor for the PowerSchool sync. May **only** upsert `people` source-owned fields in mapped tenants; no access to any other collection (`11`).                                                                                                     |
+| `school-manager`  | Assigned tenant(s) | Create and edit fixed-type pages, posts, events; upload media and documents in their tenant. **Cannot publish** — changes are submitted for approval (`04` §5). Cannot touch theme, navigation, syndication, alerts, blocks, or staff data. |
+| `system-sync`     | None (not tenant-scoped) | Non-human actor for the CSI sync. May **only** create and update `people` and school groups, writing CSI's fields; never a sort name or a sub-group, never a delete, no other collection (`11` §8). |
 | _(public)_        | Resolved tenant    | Read published, public-visibility content plus content syndicated to that tenant. Nothing else.                                                                                                                                                             |
 | _(staff session)_ | Resolved tenant    | As public, plus `visibility: staff` pages and documents (`01` §4).                                                                                                                                                                                          |
 
@@ -463,8 +474,8 @@ export const access = {
   Drafts, staff-visibility content, and version history are never publicly readable.
 - **Publish gate:** the draft → published transition is permitted for `district-admin`
   only. `school-manager` submissions become change requests (`04` §5).
-- **Field-level:** PowerSchool source-owned fields are read-only for
-  `source: powerschool` records; in `layout`, the district's components are district-only
+- **Field-level:** CSI fields on `people` and school groups are the sync's alone (read-only to
+  everyone else); in `layout`, the district's components are district-only
   and schools compose with the simple ones (`src/access/school-layout.ts`).
 
 ### 6.3 Localization access
@@ -509,7 +520,7 @@ guarantee, not a secondary check.
 | Calendar event                          | `events`                                                                                                 |
 | Meeting agenda (pasted content element) | `events.agendaBody` — **re-normalized through the paste pipeline, not carried over as markup** (`07` §4) |
 | Athletics team/schedule                 | `events` with `category: athletics`; third-party schedule embeds preserved                               |
-| Constituent/staff directory             | `people` — **seeded from PowerSchool (`11`)**, not migrated from Finalsite                               |
+| Constituent/staff directory             | `people` — **seeded from CSI (`11`)**, not migrated from Finalsite                               |
 | Form                                    | Microsoft Forms embed (`01` §5)                                                                          |
 | File/document                           | `media` + `documents` with remediation attestation                                                       |
 | Alert                                   | `alerts` (+ `alertTemplates` for emergency messages)                                                     |

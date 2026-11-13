@@ -41,8 +41,8 @@ Derived from **observed DD2 usage**, not from the Composer feature list.
    constrained rich text pasted from Word or Google Docs. **Paste normalization is a
    first-class feature** (`07` §4), because pasted document markup is DD2's single largest
    source of inaccessible content today.
-6. **Directories** — staff/faculty directories, **sourced from PowerSchool via a read-only
-   staff sync** (staff only; no student data — see `11`).
+6. **Directories** — staff/faculty directories, **sourced from CSI via a read-only
+   staff sync** (staff only; no student data — see `11`). _(PowerSchool until 2026-11-11 — Jason: DD2's staff data is in CSI.)_
 7. **Document library** — uploads with category, visibility, and a remediation attestation
    (`07` §5). The platform records accessibility status; it does not remediate.
 8. **Media library** — images with derivative generation, **required alt text enforced at
@@ -190,7 +190,7 @@ in a year should be considered dead, not pending.
 - **Native mobile apps** — sites are responsive; a native app is a separate project.
 - **Social-media publishing out** to third parties (social embeds *in* are in scope).
 
-**One integration is in scope:** a read-only **PowerSchool staff sync** for the staff
+**One integration is in scope:** a read-only **CSI staff sync** for the staff
 directory (`11`). It pulls **staff records only — never student data**. This is not a
 general SIS integration.
 
@@ -203,7 +203,7 @@ general SIS integration.
 | **Performance** | Core Web Vitals "good" (LCP ≤ 2.5s, INP ≤ 200ms, CLS ≤ 0.1) at p75 on 4G/mid device. Cached pages TTFB < 200ms from edge. |
 | **Scalability** | Absorb a 100× traffic spike (weather/closure) via CDN with no origin scaling. Baseline ~700k active users and ~4.35M page views per year across all 28 tenants (≈0.14 views/s average; a 100× spike ≈ 14 views/s at the edge). |
 | **Security** | OWASP ASVS L2 posture; SSO via district Entra ID; least-privilege roles; **tenant isolation enforced in Payload access functions and proven by an adversarial test suite on every build** (`03` §6.4); encrypted at rest and in transit. |
-| **Privacy** | FERPA-aware: no student PII anywhere in the platform. The PowerSchool integration pulls staff data only — enforced in depth (`11` §4). |
+| **Privacy** | FERPA-aware: no student PII anywhere in the platform. The CSI integration pulls staff data only — enforced in depth (`11` §4). |
 | **Maintainability** | Mainstream stack a competent Next.js developer can pick up. Typed schema-as-code; documented architectural decisions with rationale; no bespoke systems where the framework provides one. Onboarding < 2 days. **The content-access layer (`02` §11) is mandatory** — it is what keeps the CMS replaceable. |
 | **Portability** | Standard Postgres (never Mongo), open formats, full content and media export that is **import-ready and proven so once**. No single-vendor dependency for core function. |
 | **Usability** | A school manager who last logged in five months ago, attended no training, and reads no documentation completes their task unaided. This is the *actual* bar — see §7.4. |

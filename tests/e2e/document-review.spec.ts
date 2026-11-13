@@ -61,6 +61,12 @@ adminTest.describe('reviewing on the page itself', () => {
             panel.getByRole('link', { name: 'Review in the approval queue' }),
           ).toHaveAttribute('href', `/admin/approvals#approval-pages-${fixture.id}`)
           await expect(page.locator('#action-review-in-queue')).toBeVisible()
+          // Audit only once A11yPatch has named the editor and its toolbar (it runs after Payload
+          // renders) — auditing before it raced under load.
+          await expect(page.locator('.ContentEditable__root[aria-label]').first()).toBeAttached()
+          await expect(
+            page.locator('button.toolbar-popup__button-bold[aria-label="Bold"]').first(),
+          ).toBeAttached()
           expect(await blockingViolations(page)).toEqual([])
 
           await panel.getByRole('button', { name: 'Approve and publish' }).click()

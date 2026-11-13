@@ -10,9 +10,9 @@ import type { AuthUser } from './types'
  * three rules apply here that the generic tenant-scoped functions do not express.
  *
  *   1. **`system-sync` is denied outright.** The generic functions would hand it a tenant
- *      constraint, but `03` §6.1 and `11` limit that actor to `people` source-owned fields
- *      in mapped tenants and NOTHING else. A non-human actor with page-write access is
- *      exactly the blast radius the PowerSchool integration is scoped to avoid.
+ *      constraint, but `03` §6.1 and `11` limit that actor to the staff directory's CSI
+ *      fields and NOTHING else. A non-human actor with page-write access is exactly the
+ *      blast radius the CSI integration is scoped to avoid.
  *
  *   2. **The publish gate.** A `school-manager` cannot transition a page to published by
  *      any route (CLAUDE.md rule 3, `03` §6.4 invariant 5).

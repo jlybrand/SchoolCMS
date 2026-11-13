@@ -89,7 +89,7 @@ Read in order. Each document is self-contained but assumes the ones before it.
 | 08 | [Localization Pipeline](08-localization-pipeline.md) | How is content served in many languages without a translation vendor? |
 | 09 | [Deployment & Operations](09-deployment-operations.md) | How is it *run* — CI/CD, environments, monitoring, backups, DR, dependency governance? |
 | 10 | [Migration & Cutover](10-migration-cutover.md) | How do we move off Finalsite *without a service gap*? |
-| 11 | [Integration: PowerSchool Staff Sync](11-integrations-powerschool.md) | How does the staff directory pull from PowerSchool — *staff only, never students*? |
+| 11 | [Integration: CSI Staff Sync](11-integrations-csi.md) | How does the staff directory pull from CSI — *staff only, never students*? |
 
 ## Design principles
 
@@ -116,7 +116,7 @@ Read in order. Each document is self-contained but assumes the ones before it.
 - **Availability target:** 99.9% for public sites (`09`).
 - **Scale:** ~700,000 active users and ~4.35M page views per year across 28 tenants (`01` §6). Low; not the design driver.
 - **Tenant isolation:** the invariants in `03` §6.4 must always hold; release-blocking.
-- **No student data** enters the platform from PowerSchool or anywhere else (`11`).
+- **No student data** enters the platform from CSI or anywhere else (`11`).
 - **Compliance timing:** DOJ's April 2026 interim final rule moved entities under 50,000
   population and special district governments to **April 26, 2028**; larger entities to
   April 26, 2027. DD2's bracket is almost certainly 2028 — **confirm with counsel**.
