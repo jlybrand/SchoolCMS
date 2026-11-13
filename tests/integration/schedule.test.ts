@@ -88,7 +88,14 @@ describe('approving with a future Start schedules', () => {
 
     const { totalDocs } = await payload.count({
       collection: 'audit-events',
-      where: { and: [{ documentId: { equals: String(id) } }, { action: { equals: 'schedule' } }] },
+      // By content type too: a page and an announcement can share an id.
+      where: {
+        and: [
+          { contentType: { equals: 'posts' } },
+          { documentId: { equals: String(id) } },
+          { action: { equals: 'schedule' } },
+        ],
+      },
       overrideAccess: true,
     })
     expect(totalDocs).toBe(1)
@@ -261,7 +268,13 @@ describe('Expires', () => {
     expect((await live(id))._status).toBe('draft')
     const { totalDocs } = await payload.count({
       collection: 'audit-events',
-      where: { and: [{ documentId: { equals: String(id) } }, { action: { equals: 'expire' } }] },
+      where: {
+        and: [
+          { contentType: { equals: 'posts' } },
+          { documentId: { equals: String(id) } },
+          { action: { equals: 'expire' } },
+        ],
+      },
       overrideAccess: true,
     })
     expect(totalDocs).toBe(1)
