@@ -41,7 +41,8 @@ export const Columns = ({ block, baseLevel, renderBlocks }: ColumnsProps) => (
           columnHeading: column.heading !== null,
         })
         return (
-          <div className={styles.column} key={index}>
+          // `data-column`: a stable hook for a block that must stay inside its column (StaffList).
+          <div className={styles.column} data-column key={index}>
             {column.heading === null ? null : (
               <Heading level={levels.column} size="lg">
                 {column.heading}

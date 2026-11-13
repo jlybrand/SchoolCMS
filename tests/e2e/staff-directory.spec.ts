@@ -64,8 +64,10 @@ const setUp = async (baseURL: string | undefined): Promise<Fixture> => {
       slug,
       visibility: 'public',
       layout: [
-        { blockType: 'staffList', heading: 'All staff', group: school!.id, maxColumns: '2' },
+        { blockType: 'staffList', heading: 'All staff', group: school!.id, maxColumns: '4' },
         { blockType: 'staffList', heading: 'Counselors', group },
+        { blockType: 'staffList', heading: 'Three across', group: school!.id, maxColumns: '3' },
+        { blockType: 'staffList', heading: 'Two across', group: school!.id, maxColumns: '2' },
       ],
       _status: 'published',
     },
@@ -116,13 +118,33 @@ test.describe('a staff list on a page', () => {
         await expect(email).toHaveAttribute('href', /^mailto:.+@example\.org$/)
         // Eight people: no filter yet (it appears from ten).
         await expect(all.getByRole('searchbox')).toHaveCount(0)
-        // At most two side by side (the block's setting): the first two share a row, the
-        // third starts the next.
-        const tops = await all
-          .getByRole('listitem')
-          .evaluateAll((items) => items.slice(0, 3).map((li) => li.getBoundingClientRect().top))
-        expect(tops[0]).toBe(tops[1])
-        expect(tops[2]).toBeGreaterThan(tops[1]!)
+        // At most N side by side, at desktop width (Jason, 2026-11-13): exactly N share the
+        // first row and the next person starts the second. 3 and 4 need more room than the text
+        // column, so those lists widen — short of the screen's edges, never scrolling sideways.
+        for (const [name, n] of [
+          ['All staff', 4],
+          ['Three across', 3],
+          ['Two across', 2],
+        ] as const) {
+          const tops = await page
+            .getByRole('region', { name })
+            .getByRole('listitem')
+            .evaluateAll((items) => items.map((li) => Math.round(li.getBoundingClientRect().top)))
+          expect(tops.slice(0, n), `${name}: the first row`).toEqual(Array(n).fill(tops[0]))
+          expect(tops[n], `${name}: the next row`).toBeGreaterThan(tops[0]!)
+        }
+        const edges = await all.evaluate((el) => {
+          const box = el.getBoundingClientRect()
+          const page = document.documentElement
+          return {
+            start: box.left,
+            end: page.clientWidth - box.right,
+            sideways: page.scrollWidth - page.clientWidth,
+          }
+        })
+        expect(edges.start).toBeGreaterThanOrEqual(24)
+        expect(edges.end).toBeGreaterThanOrEqual(24)
+        expect(edges.sideways).toBe(0)
 
         const counselors = page.getByRole('region', { name: 'Counselors' })
         await expect(counselors.getByRole('listitem')).toHaveCount(1)

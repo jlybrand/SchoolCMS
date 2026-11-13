@@ -4,6 +4,35 @@
  * level. Focus rings are the global ones (`src/styles/globals.css`).
  */
 
+/*
+ * The block's width (Jason, 2026-11-13: "not completely to screen edge, leave some space").
+ * --target is the room N cards of at least 16rem need; the block is the text column's width or
+ * --target, whichever is wider — but never closer than --edge to either side of the screen, and
+ * never narrower than the text column. Equal negative margins keep it centred on the column.
+ * `100%` in both is the column's width (the containing block).
+ */
+.block {
+  --target: 0rem;
+  --edge: var(--space-xl);
+  --width: max(100%, min(var(--target), 100vw - 2 * var(--edge)));
+
+  inline-size: var(--width);
+  margin-inline: calc((100% - var(--width)) / 2);
+}
+
+.block[data-max-columns='3'] {
+  --target: 56rem;
+}
+
+.block[data-max-columns='4'] {
+  --target: var(--measure-wide);
+}
+
+/* In one of a Columns block's columns: never wider than the column, whatever the setting. */
+:global([data-column]) .block {
+  --target: 0rem;
+}
+
 .directory {
   display: grid;
   gap: var(--space-md);

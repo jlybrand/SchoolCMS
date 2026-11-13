@@ -3,6 +3,7 @@ import { Section } from '@/components/Section'
 import type { ResolvedStaffListBlock } from '@/content/types'
 
 import { StaffDirectory } from './StaffDirectory'
+import styles from './StaffList.module.css'
 
 /**
  * A staff list on a page (Jason, 2026-11-13) — a school's staff, or a sub-group of them (SHS ›
@@ -26,13 +27,22 @@ export type StaffListProps = {
 export const StaffList = ({ block, baseLevel }: StaffListProps) => {
   if (block.staff.length === 0) return null
 
-  if (block.heading === null) {
-    return <StaffDirectory id={block.id} maxColumns={block.maxColumns} staff={block.staff} />
-  }
+  const list = <StaffDirectory id={block.id} maxColumns={block.maxColumns} staff={block.staff} />
 
+  /*
+   * WIDER THAN THE TEXT WHEN IT NEEDS TO BE (Jason, 2026-11-13). Three or four across do not fit
+   * the page's reading column, so the whole block — heading with its cards — widens, centred,
+   * short of the screen's edges (`.block` in the stylesheet). One or two across stay put.
+   */
   return (
-    <Section heading={block.heading} headingId={`${block.id}-heading`} level={baseLevel}>
-      <StaffDirectory id={block.id} maxColumns={block.maxColumns} staff={block.staff} />
-    </Section>
+    <div className={styles.block} data-max-columns={block.maxColumns}>
+      {block.heading === null ? (
+        list
+      ) : (
+        <Section heading={block.heading} headingId={`${block.id}-heading`} level={baseLevel}>
+          {list}
+        </Section>
+      )}
+    </div>
   )
 }

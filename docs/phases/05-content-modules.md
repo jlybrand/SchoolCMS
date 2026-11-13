@@ -1856,7 +1856,7 @@ A **Staff list** (`staffList`) shows **one group or sub-group**: a school's grou
 
 **Settings → data → render.**
 
-1. **Settings:** `toStaffList` (`src/content/blocks.ts`) maps `{ heading, group, maxColumns }` to a `StaffListBlock`. A block with no group is dropped. **People side by side, at most** (`maxColumns`, a radio of 1–4, default 3; Jason 2026-11-13: "a maximum of n columns, whether there is one staff member or 500") reaches the list as `data-max-columns`. The grid gives each card at least 16rem or 1/N of the row, whichever is wider, so a wide screen stops at N and a narrow one shows fewer.
+1. **Settings:** `toStaffList` (`src/content/blocks.ts`) maps `{ heading, group, maxColumns }` to a `StaffListBlock`. A block with no group is dropped. **People side by side, at most** (`maxColumns`, a radio of 1–4, default 3; Jason 2026-11-13: "a maximum of n columns, whether there is one staff member or 500") reaches the list as `data-max-columns`. The grid gives each card at least 16rem or 1/N of the row, whichever is wider, so a wide screen stops at N and a narrow one shows fewer. **Wider than the text when it must** (Jason, 2026-11-13): the page's reading column (`--measure`, 68ch) holds only two 16rem cards. At 3 or 4 the whole block (heading and cards) widens, centred, to 56rem or `--measure-wide` (72rem). It stays at least `--space-xl` from the screen's edges and is never narrower than the column (`.block` in `StaffList.module.css`). Inside a Columns block's column (`data-column`) it never widens.
 2. **Data:** `resolvePageBlocks` calls `listStaff(group)` (`src/content/people.ts`, read as the platform):
    - a school's group gives its active staff;
    - a sub-group gives its members who are active and still at its school;
@@ -1899,7 +1899,8 @@ A **Staff list** (`staffList`) shows **one group or sub-group**: a school's grou
   - only name, title and email leave the content layer
   - another school's staff never appear; an unknown group lists nobody
 - `tests/e2e/staff-directory.spec.ts`: on a public page, the mock school A–Z, titles as given, an
-  email link named for its person, no filter under ten, at most two side by side when set to 2,
+  email link named for its person, no filter under ten, exactly 4, 3 and 2 across in the first row when set, the wide list at least
+  24px from both screen edges with no sideways scroll,
   and a one-person sub-group, with axe in both themes
 - `tests/e2e/admin-planes-axe.spec.ts`: a page holding a staff list, its Group picker, in both
   themes
