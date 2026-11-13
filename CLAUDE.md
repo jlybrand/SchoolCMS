@@ -8,13 +8,14 @@ Guidance for Claude Code working in this repository.
 district domain and 27 school subdomains (**28 tenants**) from a single codebase and
 deployment. It replaces the rented Finalsite Composer CMS.
 
-**Status: Phases 0–4 complete; Phase 5 next.** Phase 0 (scaffold + guardrails), Phase 1
+**Status: Phases 0–5 complete; Phase 6 next.** Phase 0 (scaffold + guardrails), Phase 1
 (tenancy, roles, access control, the adversarial isolation suite), Phase 2 (edge tenant
 routing, locale plumbing, the content-access layer, cache tags), Phase 3 (components,
-`pages`, the block library, navigation, theme, SEO, settings) and Phase 4 (review state, the
+`pages`, the block library, navigation, theme, SEO, settings), Phase 4 (review state, the
 school and district planes, the approval queue, auto-approval grants with none issued,
-notifications, whole-screen axe on both planes) have landed. Phase 4's close-out, with what
-it carries forward, is `docs/phases/04-approval-and-admin-planes.md` §19. Authentication
+notifications, whole-screen axe on both planes) and Phase 5 (the audit trail, announcements,
+calendars and events, alerts, staff directories with the CSI sync) have landed. Phase 5's
+close-out, with what it carries forward, is `docs/phases/05-content-modules.md` §41. Authentication
 is on an **interim local-auth posture** — see "Authentication" below. `starterDocs/` holds the 12-document
 design suite (v2.1, August 2026) and is the specification. Treat it as authoritative; when
 code and docs disagree, that is a bug in one of them — say which.

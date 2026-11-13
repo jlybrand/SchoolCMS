@@ -4,13 +4,17 @@ How the content modules work mechanically, and the audit trail they write to. Ph
 with the audit trail (`05`, scheduled at the Phase 4 close); the modules — posts, events, people
 and the CSI sync, alerts — follow, each writing to it.
 
-| Slice                        | State                                                             |
-| ---------------------------- | ----------------------------------------------------------------- |
-| Audit trail                  | Merged (#42) — §1                                                 |
-| News/announcements (`posts`) | §2–§6 (#43–#47); **this PR** — §7 `posts.routine`. Slice complete |
-| Calendars and events         | —                                                                 |
-| Directories + CSI sync       | §38–§40 (#97)                                                     |
-| Alerts                       | —                                                                 |
+| Slice                        | State                                                    |
+| ---------------------------- | -------------------------------------------------------- |
+| Audit trail                  | Merged (#42) — §1                                        |
+| News/announcements (`posts`) | Complete — §2–§8, §15–§19 (#43–#49 and later)            |
+| Calendars and events         | Complete — §26–§29 (#73 and later)                       |
+| Alerts                       | Complete — §37 (#96)                                     |
+| Directories + CSI sync       | Complete — §38–§40 (#97, #98)                            |
+| Phase 5                      | **Complete** — exit check and close-out §41 (2026-11-13) |
+
+Sections §9–§14, §20–§25 and §30–§36 are page and admin work done during Phase 5 (permalinks,
+linked pages, Page settings, page types and composition, Live Preview, publishing, history).
 
 ---
 
@@ -1906,3 +1910,59 @@ A **Staff list** (`staffList`) shows **one group or sub-group**: a school's grou
   themes
 - Storybook `Blocks/StaffList` (sub-group, no heading, a whole school with the filter, one, two and
   four across): the component axe gate, LTR and RTL
+
+## 41. Phase 5 exit check and close-out (2026-11-13)
+
+### Files
+
+| File                                     | Holds                                                                                                                                                                                                                        |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tests/integration/phase-5-exit.test.ts` | The audit trail over the real stack for each Phase 5 type. Announcements: send, send back, resend, approve, delete. A school's own event: publish, delete. An alert: publish, delete.                                        |
+| `tests/e2e/phase-5-exit.spec.ts`         | Two journeys no other spec walks end to end: an emergency alert from its template reaching a school's site (`alert-to-live`), and a school's announcement approved from the queue's diff and on its site (`approve-to-live`) |
+
+Measured locally: **alert-to-live 472 ms** (`04` §9.7 asks for under 60 s) and
+**approve-to-live 419 ms**.
+
+### Exit criterion (`05`)
+
+| Clause                                                              | Where it is proven                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Every approval-path action is in the audit trail                    | Pages: `audit-trail.test.ts`. Announcements, events and alerts: `phase-5-exit.test.ts`. Auto-approval recorded as `auto-approve`: `auto-approval.test.ts`. Staff are not on the approval path: each sync run logs its summary (§39)                                                                                                                   |
+| All four modules **author**                                         | Announcements: `announcements.spec.ts`, `school-plane.spec.ts`. Events: `events-school.spec.ts`, `calendar.spec.ts`. Alerts: `alerts.spec.ts`. Staff: from CSI, with sub-groups in `people.spec.ts`                                                                                                                                                   |
+| … **syndicate**                                                     | Announcements: COPE, `news-pages.spec.ts`, `news-feed.spec.ts`. Events: a calendar block shows any site's calendars (`calendar.spec.ts`). Alerts: placed by sites, by level or chosen, and by pages (`alerts.test.ts`). Staff: any group on any site's page (`staff-directory.spec.ts`)                                                               |
+| … **render**                                                        | `news-pages.spec.ts`, `news-feed.spec.ts`, `calendar.spec.ts`, `alerts.spec.ts`, `staff-directory.spec.ts`, each with axe in both themes                                                                                                                                                                                                              |
+| … **revalidate**                                                    | Announcements: `news-pages.spec.ts` "@smoke … within seconds", and `approve-to-live` above. Alerts: `alert-to-live` above. Start and end passing: `schedule.test.ts`. Staff: district edits refresh every site; sync runs refresh once (§40)                                                                                                          |
+| … **route through approval**                                        | **Announcements** go through it (`approve.test.ts`, `approval-queue.spec.ts`, `phase-5-exit.spec.ts`). **By Jason's decisions** the other three don't: events skip approval (2026-11-11; CLAUDE.md rule 3's exception, proven no wider than the school's own by the isolation suite), and alerts and staff are district only (2026-11-12, 2026-11-13) |
+| District syndication reaches a school tenant                        | `news-pages.spec.ts` "@smoke a district announcement reaches a school's list within seconds", `news-feed.spec.ts`                                                                                                                                                                                                                                     |
+| A CSI sync populates the schools' staff groups                      | `staff-sync.test.ts` "a first sync makes each school's group and puts its staff in it". The seed runs the sync (`MOCK-SHS`)                                                                                                                                                                                                                           |
+| Student records are provably rejected                               | `staff-sync.test.ts` "NO STUDENT DATA (release-blocking)", `csi-map.test.ts`. The planted student rows leave no record and no detail anywhere                                                                                                                                                                                                         |
+| A simulated CSI outage leaves the directory serving last-known-good | `staff-sync.test.ts` "CSI unreachable"; also an empty feed and a mass departure                                                                                                                                                                                                                                                                       |
+
+### Definition of done (`05`)
+
+| Item                                         | State                                                                                                                                                                                                                                                          |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Types; unit, integration, e2e                | Green 2026-11-13: unit 1835, integration 482, e2e 323/323 (fresh database)                                                                                                                                                                                     |
+| Zero critical/serious axe — public and admin | Component gate (LTR + RTL), including AlertBar, StaffList (1–4 across), the calendar and the news feed. Whole-screen admin axe, both themes, including the staff screens, a sub-group with its checklist, and pages holding a feed, a calendar or a staff list |
+| RTL for new layout                           | Public blocks run through the RTL component gate. All CSS is logical properties only (stylelint), including the staff list's breakout                                                                                                                          |
+| Isolation tests                              | Green. Extended to events (a school's own only), alerts, people and staff groups (district and sync only; the sync's limits)                                                                                                                                   |
+| New surfaces against `07`                    | Automated axe; keyboard and labelled native controls (the staff checklist, the day-and-time picker). The screen-reader smoke test is a manual release check, not yet run                                                                                       |
+| Content-access boundary lint                 | Green. Staff lists and alerts read through `src/content/`                                                                                                                                                                                                      |
+| ADRs and docs                                | ADR-15 revised (CSI, `02` §12); `11` rewritten for CSI (#98); this document §1–§41; `CLAUDE.md` status                                                                                                                                                         |
+| Add-on register (`01` §4.4)                  | Reviewed 2026-11-13: school page composition was requested and adopted at level B (Jason, 2026-11-04); nothing else requested; none dead                                                                                                                       |
+| Migration mapper stub per slice              | **Not built — gap.** No Finalsite export has been captured, so a stub would map an invented shape (CLAUDE.md: capture a real payload first). Carried to the template census (`10` §2). Staff need none (seeded from CSI)                                       |
+| Behind preview until acceptance              | Nothing is deployed; applies from the pilot (Phase 9)                                                                                                                                                                                                          |
+
+### Carried forward
+
+| Item                                                                                                     | Where it lands / who decides                                                                            |
+| -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Migration mappers** for announcements, events and alerts (`05` per slice; CLAUDE.md "built alongside") | With the template census / first Finalsite export capture (`10` §2) — **Jason to confirm the deferral** |
+| **CSI transport** and the **real row shape** (`11` §2; `tests/fixtures/csi/README.md`)                   | When CSI access arrives                                                                                 |
+| **Alert template wording** (an emergency message is policy)                                              | The district to confirm (`ALERT_TEMPLATES`)                                                             |
+| `04` §9.7 "to all Tier 1 locales" and the `alertTemplates` collection with verified translations         | Phase 7 (`08` §7.2); English proven here                                                                |
+| Alerts as a "short-TTL edge fragment" (`03` §2)                                                          | Built as revalidate-every-site (472 ms locally); the edge purge comes with the hosting work (`09` §4.2) |
+| Sync status and run history on the district dashboard (`04` §3.1, `11` §10)                              | Not built; runs are logged. No "Sync now" button (Jason, 2026-11-13)                                    |
+| Announcement `heroImage`, staff photos                                                                   | Phase 6 (media); staff photos only if CSI ever holds them                                               |
+| Screen-reader smoke test of the new admin screens                                                        | Manual release check; Phase 8 AT audit                                                                  |
+| Earlier phases' open items (`04` §19)                                                                    | Unchanged unless noted above                                                                            |
