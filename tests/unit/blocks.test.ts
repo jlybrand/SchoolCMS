@@ -633,6 +633,7 @@ describe('the block library and the mapper agree', () => {
       staffList: { group: 7 },
       image: { image: 12 },
       hero: { image: 12 },
+      documentList: { folder: 4 },
       columns: {
         columns: [
           { content: [{ blockType: 'richText', content: lexical(paragraph('One')) }] },
@@ -784,6 +785,22 @@ describe('toPageBlocks — image', () => {
 
   it('no image chosen: dropped', () => {
     expect(toPageBlocks([{ blockType: 'image', id: 'i', caption: 'x' }])).toEqual([])
+  })
+})
+
+/** A document list (Jason, 2026-11-16): one library folder; its documents come from the resolve pass. */
+describe('toPageBlocks — document list', () => {
+  it('its heading and folder, by id', () => {
+    expect(
+      toPageBlocks([{ blockType: 'documentList', id: 'd', heading: ' Forms ', folder: { id: 4 } }]),
+    ).toEqual([{ kind: 'documentList', id: 'd', heading: 'Forms', folder: '4' }])
+    expect(toPageBlocks([{ blockType: 'documentList', id: 'd', folder: 4 }])).toEqual([
+      { kind: 'documentList', id: 'd', heading: null, folder: '4' },
+    ])
+  })
+
+  it('no folder chosen: dropped', () => {
+    expect(toPageBlocks([{ blockType: 'documentList', id: 'd', heading: 'Forms' }])).toEqual([])
   })
 })
 

@@ -306,6 +306,7 @@ export interface Page {
         | FeedBlockRow
         | CalendarBlockRow
         | StaffListBlockRow
+        | DocumentListBlockRow
         | ImageBlockRow
         | HeroBlockRow
         | EmbedBlock
@@ -653,6 +654,41 @@ export interface Person {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "DocumentListBlockRow".
+ */
+export interface DocumentListBlockRow {
+  /**
+   * A title above the list, like "Enrollment forms" — it also names this part of the page for screen readers.
+   */
+  heading?: string | null;
+  /**
+   * Every document in this folder of the site’s library is listed, A–Z. Add or remove files there and the list follows.
+   */
+  folder: number | ResourceFolder;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'documentList';
+}
+/**
+ * Folders for a site’s files. Put folders inside folders to keep things tidy.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "resource-folders".
+ */
+export interface ResourceFolder {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  name: string;
+  /**
+   * Leave empty for a folder at the top of the library.
+   */
+  parent?: (number | null) | ResourceFolder;
+  label?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "ImageBlockRow".
  */
 export interface ImageBlockRow {
@@ -741,24 +777,6 @@ export interface Resource {
   };
 }
 /**
- * Folders for a site’s files. Put folders inside folders to keep things tidy.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "resource-folders".
- */
-export interface ResourceFolder {
-  id: number;
-  tenant?: (number | null) | Tenant;
-  name: string;
-  /**
-   * Leave empty for a folder at the top of the library.
-   */
-  parent?: (number | null) | ResourceFolder;
-  label?: string | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "HeroBlockRow".
  */
@@ -842,6 +860,7 @@ export interface ColumnsBlock {
           | FeedBlockRow
           | CalendarBlockRow
           | StaffListBlockRow
+          | DocumentListBlockRow
           | ImageBlockRow
         )[]
       | null;
@@ -1568,6 +1587,7 @@ export interface PagesSelect<T extends boolean = true> {
         feed?: T | FeedBlockRowSelect<T>;
         calendar?: T | CalendarBlockRowSelect<T>;
         staffList?: T | StaffListBlockRowSelect<T>;
+        documentList?: T | DocumentListBlockRowSelect<T>;
         image?: T | ImageBlockRowSelect<T>;
         hero?: T | HeroBlockRowSelect<T>;
         embed?: T | EmbedBlockSelect<T>;
@@ -1694,6 +1714,16 @@ export interface StaffListBlockRowSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "DocumentListBlockRow_select".
+ */
+export interface DocumentListBlockRowSelect<T extends boolean = true> {
+  heading?: T;
+  folder?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "ImageBlockRow_select".
  */
 export interface ImageBlockRowSelect<T extends boolean = true> {
@@ -1759,6 +1789,7 @@ export interface ColumnsBlockSelect<T extends boolean = true> {
               feed?: T | FeedBlockRowSelect<T>;
               calendar?: T | CalendarBlockRowSelect<T>;
               staffList?: T | StaffListBlockRowSelect<T>;
+              documentList?: T | DocumentListBlockRowSelect<T>;
               image?: T | ImageBlockRowSelect<T>;
             };
         id?: T;

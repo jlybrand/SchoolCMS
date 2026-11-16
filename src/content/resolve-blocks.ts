@@ -9,7 +9,7 @@ import { subscribeUrl } from '@/lib/ical'
 
 import { listCalendarRefs, listEventOccurrences } from './events'
 import { listStaff } from './people'
-import { getImageAsset } from './resources'
+import { getImageAsset, listFolderDocuments } from './resources'
 import { listPosts } from './posts'
 import type {
   CalendarBlock,
@@ -134,6 +134,19 @@ export const resolvePageBlocks = async (
                 heading: block.heading,
                 maxColumns: block.maxColumns,
                 staff,
+              }
+        }
+        case 'documentList': {
+          // An empty folder, or one that is gone, lists nothing — and the block goes.
+          const documents = await listFolderDocuments(ctx.tenant.id, block.folder)
+          return documents.length === 0
+            ? null
+            : {
+                kind: 'documentList',
+                id: block.id,
+                heading: block.heading,
+                documents,
+                contactName: ctx.tenant.name,
               }
         }
         case 'columns':

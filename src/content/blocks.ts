@@ -14,6 +14,7 @@ import type {
   EmbedBlock,
   CalendarBlock,
   StaffListBlock,
+  DocumentListBlock,
   ImageBlock,
   HeroBlock,
   StaffListColumns,
@@ -280,6 +281,16 @@ const toStaffList = (row: Row, index: number): StaffListBlock | null => {
   }
 }
 
+/**
+ * A document list's SETTINGS (Jason, 2026-11-16): the one library folder it shows. The documents
+ * are loaded by `resolvePageBlocks`. No folder: dropped.
+ */
+const toDocumentList = (row: Row, index: number): DocumentListBlock | null => {
+  const [folder] = ids(row.folder === undefined || row.folder === null ? [] : [row.folder])
+  if (!folder) return null
+  return { kind: 'documentList', id: idOf(row, index), heading: str(row.heading), folder }
+}
+
 /** The most people side by side (Jason, 2026-11-13): 1–4; anything else is the default, 3. */
 const staffColumns = (value: unknown): StaffListColumns => {
   const n = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN
@@ -357,6 +368,7 @@ const MAPPERS: Record<string, (row: Row, index: number, paths: PagePaths) => Pag
   feed: toFeed,
   calendar: toCalendar,
   staffList: toStaffList,
+  documentList: toDocumentList,
   image: toImage,
   hero: toHero,
   columns: toColumns,

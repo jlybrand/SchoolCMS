@@ -280,7 +280,7 @@ bypasses `media` would also bypass alt-required-at-upload (rule 7).
 
 | Block          | Requires                                            |
 | -------------- | --------------------------------------------------- |
-| `DocumentList` | `documents`; surfaces `remediationStatus` (`07` §5) |
+| `DocumentList` | `resources` (built 2026-11-16): one folder of the site's library, A–Z; a not-attested document is listed with a note offering an accessible copy (`07` §5) |
 
 ### 3.2 The block contract
 

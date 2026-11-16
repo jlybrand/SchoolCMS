@@ -23,6 +23,8 @@ export const SCHOOL_BLOCKS: ReadonlySet<string> = new Set([
   'divider',
   // Jason, 2026-11-13: a school picks from its own library, where alt text is already required.
   'image',
+  // Jason, 2026-11-16: one of the school's own library folders (checked on save).
+  'documentList',
 ])
 
 export type SchoolLayoutCheck = { ok: true } | { ok: false; reason: string }

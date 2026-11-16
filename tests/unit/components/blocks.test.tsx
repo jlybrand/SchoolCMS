@@ -9,6 +9,7 @@ import type {
   ChildPageNavBlock,
   EmbedBlock,
   PageLink,
+  ResolvedDocumentListBlock,
   ResolvedFeedBlock,
   ResolvedPageBlock,
   RichTextPageBlock,
@@ -470,5 +471,73 @@ describe('NewsFeed', () => {
       <BlockList blocks={[feed({ items: [] })]} childPages={[]} />,
     )
     expect(container.innerHTML).toBe('')
+  })
+})
+
+/**
+ * A document list (Jason, 2026-11-16): one folder's documents, each link naming its type and size;
+ * one not checked for accessibility carries the note offering an accessible copy (`07` §5).
+ */
+describe('DocumentList', () => {
+  const list = (overrides: Partial<ResolvedDocumentListBlock> = {}): ResolvedDocumentListBlock => ({
+    kind: 'documentList',
+    id: 'docs',
+    heading: 'Forms',
+    contactName: 'School A',
+    documents: [
+      {
+        id: '1',
+        title: 'Allergy plan',
+        href: '/api/resources/file/allergy.pdf',
+        fileType: 'PDF',
+        fileSize: '240 KB',
+        description: null,
+        unchecked: true,
+      },
+      {
+        id: '2',
+        title: 'Bus request',
+        href: '/api/resources/file/bus.docx',
+        fileType: 'Word',
+        fileSize: null,
+        description: 'Return it to the office.',
+        unchecked: false,
+      },
+    ],
+    ...overrides,
+  })
+
+  it('a named region: the heading at the block level, each document a list item', () => {
+    const { container } = renderComponent(<BlockList blocks={[list()]} childPages={[]} />)
+    const section = container.querySelector('section')!
+    expect(section.getAttribute('aria-labelledby')).toBe(container.querySelector('h2')!.id)
+    expect(container.querySelectorAll('li')).toHaveLength(2)
+    expect(container.querySelector('h3')).toBeNull()
+  })
+
+  it('each link names what it opens — title, type and size', () => {
+    const { container } = renderComponent(<BlockList blocks={[list()]} childPages={[]} />)
+    const links = [...container.querySelectorAll('li a')]
+    expect(links.map((a) => a.textContent)).toEqual([
+      'Allergy plan (PDF, 240 KB)',
+      'Bus request (Word)',
+    ])
+    expect(links[0]!.getAttribute('href')).toBe('/api/resources/file/allergy.pdf')
+  })
+
+  it('only the unchecked document carries the note, naming whom to ask', () => {
+    const { container } = renderComponent(<BlockList blocks={[list()]} childPages={[]} />)
+    const [first, second] = [...container.querySelectorAll('li')]
+    expect(first!.textContent).toContain('Contact School A for an accessible copy.')
+    expect(second!.textContent).not.toContain('accessible copy')
+    expect(second!.textContent).toContain('Return it to the office.')
+  })
+
+  it('without a heading, just the list; with no documents, nothing', () => {
+    const bare = renderComponent(<BlockList blocks={[list({ heading: null })]} childPages={[]} />)
+    expect(bare.container.querySelector('section')).toBeNull()
+    expect(bare.container.querySelector('ul')).not.toBeNull()
+    const empty = renderComponent(<BlockList blocks={[list({ documents: [] })]} childPages={[]} />)
+    expect(empty.container.innerHTML).toBe('')
   })
 })

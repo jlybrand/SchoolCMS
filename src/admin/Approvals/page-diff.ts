@@ -317,6 +317,7 @@ const KINDS: Record<string, string> = {
   childPageNav: 'Section menu',
   calendar: 'Calendar',
   staffList: 'Staff list',
+  documentList: 'Document list',
   image: 'Image',
   hero: 'Hero',
 }

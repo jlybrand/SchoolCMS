@@ -15,6 +15,7 @@ import { Hero } from './Hero'
 import { LibraryImage } from './LibraryImage'
 import { NewsFeed } from './NewsFeed'
 import { RichTextBlock } from './RichTextBlock'
+import { DocumentList } from './DocumentList'
 import { StaffList } from './StaffList'
 
 /**
@@ -117,6 +118,9 @@ const Block = ({
     case 'staffList':
       // Already resolved — its staff arrived with it (`resolvePageBlocks`).
       return <StaffList baseLevel={baseLevel} block={block} />
+    case 'documentList':
+      // Already resolved — the folder's documents arrived with it (`resolvePageBlocks`).
+      return <DocumentList baseLevel={baseLevel} block={block} />
     case 'columns':
       // Its columns hold blocks: this list renders them, one level in (`columnLevels`).
       return (
@@ -170,6 +174,8 @@ export const BlockList = ({
       (block.kind !== 'childPageNav' || childPages.length > 0) &&
       // The resolve pass drops an empty feed; a directly-built one is filtered for the same reason.
       (block.kind !== 'feed' || block.items.length > 0) &&
+      // A document list of an empty folder, likewise (Jason, 2026-11-16).
+      (block.kind !== 'documentList' || block.documents.length > 0) &&
       // An empty LIST is dropped the same way; a grid always shows (an empty month is a calendar).
       (block.kind !== 'calendar' || block.display === 'grid' || block.events.length > 0),
   )

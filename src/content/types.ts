@@ -490,6 +490,40 @@ export type ResolvedStaffListBlock = BlockBase & {
 }
 
 /**
+ * A document list (Jason, 2026-11-16): its SETTINGS — one folder of this site's library. The
+ * documents are loaded by the resolve pass into `ResolvedDocumentListBlock`.
+ */
+export type DocumentListBlock = BlockBase & {
+  kind: 'documentList'
+  heading: string | null
+  folder: string
+}
+
+/** A library document as a list shows it (`toDocumentItem`). */
+export type DocumentItem = {
+  id: string
+  title: string
+  /** The file itself. */
+  href: string
+  /** "PDF", "Word", "Excel", "PowerPoint" — or "File". */
+  fileType: string
+  /** "240 KB", or null when not known. */
+  fileSize: string | null
+  description: string | null
+  /** Not checked for accessibility (`not-attested`): listed, with a note (`07` §5). */
+  unchecked: boolean
+}
+
+/** A document list READY TO RENDER: the folder's documents, A–Z by title. */
+export type ResolvedDocumentListBlock = BlockBase & {
+  kind: 'documentList'
+  heading: string | null
+  documents: DocumentItem[]
+  /** Who to ask for an accessible copy — the site's name, in the note. */
+  contactName: string
+}
+
+/**
  * A library image, ready for a page (Jason, 2026-11-13): the hero size as `src`, every size Payload
  * made in `srcSet`, and the library's alt text — empty for a decorative image. Never re-entered on
  * a page.
@@ -555,6 +589,7 @@ export type PageBlock =
   | FeedBlock
   | CalendarBlock
   | StaffListBlock
+  | DocumentListBlock
   | ImageBlock
   | HeroBlock
   | ColumnsBlock
@@ -570,11 +605,18 @@ export type PageBlock =
 export type ResolvedPageBlock =
   | Exclude<
       PageBlock,
-      FeedBlock | CalendarBlock | StaffListBlock | ImageBlock | HeroBlock | ColumnsBlock
+      | FeedBlock
+      | CalendarBlock
+      | StaffListBlock
+      | DocumentListBlock
+      | ImageBlock
+      | HeroBlock
+      | ColumnsBlock
     >
   | ResolvedFeedBlock
   | ResolvedCalendarBlock
   | ResolvedStaffListBlock
+  | ResolvedDocumentListBlock
   | ResolvedImageBlock
   | ResolvedHeroBlock
   | ResolvedColumnsBlock

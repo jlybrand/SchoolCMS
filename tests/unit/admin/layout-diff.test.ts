@@ -113,6 +113,7 @@ describe('the sections added in Phases 5 and 6 are named, not "Section"', () => 
         { id: 'h', blockType: 'hero', image: 12, heading: 'Welcome' },
         { id: 'c', blockType: 'calendar', heading: 'Upcoming events', calendars: [1] },
         { id: 's', blockType: 'staffList', heading: 'Our counselors', group: 3 },
+        { id: 'd', blockType: 'documentList', heading: 'Forms', folder: 4 },
       ],
     )
     expect(changes.map((c) => [c.kind, c.summary])).toEqual([
@@ -120,6 +121,7 @@ describe('the sections added in Phases 5 and 6 are named, not "Section"', () => 
       ['Hero', 'Welcome'],
       ['Calendar', 'Upcoming events'],
       ['Staff list', 'Our counselors'],
+      ['Document list', 'Forms'],
     ])
   })
 })
