@@ -6,3 +6,32 @@ allowBuilds:
   sharp: true # image derivatives for the media library (`03` §2)
   esbuild: true # transitive: vite/vitest
   unrs-resolver: true # transitive: eslint-import-resolver-typescript
+
+# Security overrides (2026-11-16): each pins a TRANSITIVE dependency to the smallest patched
+# release, at least a week old, so `pnpm audit --audit-level high` passes in CI. Every one stays
+# inside its parent's major unless noted. Remove an entry once the parent ships the fix itself —
+# check with `pnpm why <name>` after a bump. The audit job then flags anything new.
+overrides:
+  # Runtime, via @payloadcms/ui and richtext-lexical (the admin). XSS in sanitising.
+  dompurify@<3.4.17: 3.4.17
+  # Runtime, via Payload (ajv) and stylelint.
+  fast-uri@>=3.0.0 <3.1.7: 3.1.8
+  # Runtime, via Payload and eslint.
+  js-yaml@>=4.0.0 <4.3.2: 4.3.2
+  # Runtime, via next > postcss and the tooling.
+  nanoid@<3.3.18: 3.3.19
+  source-map-js@<1.2.2: 1.2.2
+  # A MAJOR (20 → 21): no 20.x fix exists. Installed by @lexical/headless but loaded only from its
+  # `./dom` entry, which Payload never imports; DD2's tests use jsdom. So nothing executes it.
+  happy-dom@<21.0.4: 21.0.4
+  # Dev-only: vitest and Storybook's builder.
+  vite@>=8.2.0 <8.2.4: 8.2.4
+  # Dev-only: eslint, Storybook.
+  brace-expansion@<1.1.20: 1.1.21
+  brace-expansion@>=4.0.0 <5.0.11: 5.0.12
+  # Dev-only: Lighthouse CI (@lhci/cli) and eslint-config-next.
+  proxy-addr@<2.0.8: 2.0.8
+  body-parser@<1.20.9: 1.20.9
+  zod@<4.6.6: 4.6.7
+  # A MAJOR (5 → 6), dev-only: Lighthouse's proxy agent. No 5.x fix exists.
+  basic-ftp@<6.2.1: 6.2.3
