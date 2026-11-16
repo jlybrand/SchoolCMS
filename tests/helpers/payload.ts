@@ -80,6 +80,9 @@ export type Fixtures = {
 export async function seed(payload: Payload): Promise<Fixtures> {
   // Order matters: pages, navigation, theme, settings and users all reference tenants.
   for (const collection of [
+    // The site search index (2026-11-16): content deletes remove their entries; this clears any
+    // a crashed run left behind.
+    'search',
     // The staff directory (2026-11-13): a sync treats every person as the CSI feed's.
     'people',
     'staff-groups',

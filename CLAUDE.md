@@ -104,7 +104,9 @@ catch divergence. **Revisit trigger:** typescript-eslint ships TS 7 support, or 
 slow enough to hurt the dev loop. Neither is true today.
 
 **Plugins are deliberately minimal:** `plugin-multi-tenant`,
-`plugin-cloud-storage` (R2). Nothing else without weighing swap cost (`02` §11).
+`plugin-cloud-storage` (R2), and `plugin-search` (adopted 2026-11-16 for site search — it keeps the
+synced index; the full-text query is ours, `src/content/search.ts`; see
+`src/collections/search-index.ts`). Nothing else without weighing swap cost (`02` §11).
 `plugin-form-builder` is a _deferred add-on_, not adopted in v1. `plugin-seo` was evaluated
 and **not adopted** (2026-09-21): its admin fields fail the axe gate with hardcoded inline
 colors. The SEO fields are a plain `meta` group that keeps the plugin's stored shape — see

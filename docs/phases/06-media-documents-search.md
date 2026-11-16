@@ -16,8 +16,9 @@ decisions:
 | B1. Image and Hero blocks              | §3 (#103)    |
 | B2. An announcement's image            | §4 (#104)    |
 | C1. The Document list block            | §5 (#106)    |
-| C2. The not-attested work queue        | §6 (this PR) |
-| D. Search                              | —            |
+| C2. The not-attested work queue        | §6 (#107)    |
+| D1. The search index and query         | §8 (this PR) |
+| D2. The search page and header box     | —            |
 
 ---
 
@@ -476,3 +477,117 @@ someone checks it.
 - **Tests:** `tests/unit/lib/resources.test.ts` and `tests/integration/resources.test.ts` refuse
   `not-applicable`. Fixtures that used it as a stand-in now use `attested`.
   `tests/e2e/school-upload.spec.ts` answers "No — not checked yet".
+
+## 8. The search index and query (Jason, 2026-11-16)
+
+Site search runs on Postgres full-text search (ADR-14) over an index of every public, published
+page, announcement, event and document. This slice (D1) is the index and the query; D2 adds the
+`/search` page and the header box.
+
+**What is searched** (Jason): pages, with all their words; announcements; events; documents by
+title and description (not the words inside the file). A school searches **its own site**, and can
+re-run across **every DD2 site**. An announcement shared to a school is found there, labelled with
+its home site and linking home.
+
+### The index: `@payloadcms/plugin-search`
+
+`src/collections/search-index.ts` configures the plugin for `pages`, `posts`, `events` and
+`resources`. It keeps one `search` row per published document: written on publish, removed on
+unpublish or delete (`syncDrafts: false`, `deleteDrafts: true`). CLAUDE.md lists it among the
+adopted plugins.
+
+- **Each row** gets `toSearchEntry(collection, doc)` (`src/content/search-entry.ts`, pure), set
+  through `beforeSync`:
+
+  | Field                    | Holds                                                                                                                                                                                                                                              |
+  | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `title`, `text`          | the words: a page's sections, Columns included (Text, Button, Cards, Accordion, Image caption, Hero words, data sections' headings); a post's summary and body; an event's location and notes; a document's description. At most 50,000 characters |
+  | `tenant`, `kind`         | the site; `page`, `post`, `event` or `document`                                                                                                                                                                                                    |
+  | `excluded`               | true for a staff-only page or post, a page with "Hide from site search", an image, or anything with no site or title                                                                                                                               |
+  | `reachAll`, `reachSites` | an announcement's sharing: district-wide, or the chosen sites                                                                                                                                                                                      |
+  | `lastDate`               | an event's last day: `repeatUntil`, else `end`, else `start`                                                                                                                                                                                       |
+  | `href`                   | a document's file                                                                                                                                                                                                                                  |
+
+- **`excluded`, not `skipSync`.** The plugin's `skipSync` returns before touching an existing
+  row, so a live post switched to staff-only would stay findable. The row is rewritten, marked.
+- **Closed to every route.** The collection's access is `false` for read, create, update and
+  delete, and its admin is hidden. The plugin writes as the platform; `searchSite` reads with
+  access overridden and scopes itself. So the plugin's own reindex endpoint also refuses everyone.
+- **Not registered with the tenant plugin.** A site can't be deleted while it has content, and
+  deleting content removes its rows.
+- **A row must always be valid.** The plugin catches and logs its own errors, but a failed
+  statement inside the save's transaction still aborts the save. `tenant` is passed as a number
+  for this reason: the relationship refused the string id.
+- **Auto-approved announcements** are indexed: the publish inside the send runs the sync first.
+
+### The backfill: `pnpm search:reindex`
+
+`reindexSearch(payload)` clears the index and writes a row for every published page, post and
+event and every library file, with the same `entryFields` as `beforeSync`. It writes directly
+rather than re-saving documents, which would fire the audit log, revalidation and review state.
+It is safe to re-run. **Run it once** on `dd2_dev`, and on production at the deploy that brings
+search. The seed needs no backfill: it publishes through Payload, so the hooks index as it goes.
+
+### The query: `searchSite(ctx, { query, scope, page })`
+
+`src/content/search.ts`, on the Payload side of the boundary, returns `SearchResults` (hand-written
+types in `src/content/types.ts`).
+
+1. `normalizeQuery` (`src/lib/search.ts`, pure): trimmed, one space between words, control
+   characters removed, at most 200 characters. Nothing left means no query is run.
+2. **One parameterized statement** through Payload's own Drizzle connection (`sql` from
+   `@payloadcms/db-postgres/drizzle`). The visitor's words are a bound value.
+   - matches `websearch_to_tsquery('english', q)` against the title (weight A) and text (weight B);
+   - **scope in the WHERE clause:** not `excluded`; events no older than a year; and either "every
+     site", or this site's own rows, or posts shared district-wide or to this site by name;
+   - ranked by `ts_rank_cd`, then title; 10 a page with the total; a `ts_headline` snippet whose
+     matches are marked with control characters.
+3. **Shaping:**
+   - a **page** links to its path, read from the site's published path index at query time, so
+     a moved parent never leaves a stale link;
+   - a **post** uses `postHref`, so it links home when shared;
+   - a **document** links to its file, with its type and size;
+   - an **event** shows its next time (or its last), and its location, and links to the first
+     published page of its site whose Calendar section shows its calendar (found in
+     `pages_rels`, Columns included), or to nothing;
+   - another site's result is labelled with that site's name, and its link is that site's
+     address (`publicUrlFor`);
+   - `splitSnippet` turns the snippet into parts, so a match is rendered in `<mark>` as text,
+     never as HTML.
+
+**No index on the vectors yet.** Push mode can't create an expression index, and 28 sites' content
+is small. Add a GIN index on the weighted vector in Phase 8 hardening, when migrations start.
+
+### Files
+
+| File                              | Does                                           |
+| --------------------------------- | ---------------------------------------------- |
+| `src/collections/search-index.ts` | the plugin's config; `reindexSearch`           |
+| `src/content/search-entry.ts`     | pure `toSearchEntry`                           |
+| `src/content/search.ts`           | `searchSite`                                   |
+| `src/lib/search.ts`               | pure `normalizeQuery`, `splitSnippet`          |
+| `scripts/reindex-search.ts`       | `pnpm search:reindex`                          |
+| `src/content/types.ts`            | `SearchResult`, `SearchResults`, `SearchScope` |
+
+### Tests
+
+- `tests/unit/content/search-entry.test.ts`: every block's words, Columns, lists; staff-only and
+  hidden excluded; sharing; an event's last day; documents only; the cap
+- `tests/unit/lib/search.test.ts`: the query's cleaning and cap; snippet parts, markup kept as text
+- `tests/integration/search.test.ts`:
+  - **the index:** published in, draft out; unpublish and delete remove; staff marks excluded; a
+    document with its file; an image excluded
+  - **the query:**
+    - found by its words and linked;
+    - **this site never returns another site's content**, while every site does, labelled;
+    - drafts, staff-only, hidden pages and images are never found;
+    - a title ranks above the words;
+    - a shared post is found where it's shared and nowhere else;
+    - an auto-approved post is found;
+    - an event's details, with a link once a page shows its calendar;
+    - a year-old event is left out;
+    - an empty query searches nothing; ten to a page;
+    - typed search syntax and SQL never error
+  - **the backfill:** rebuilds from published content; running it twice gives the same result
+- `tests/integration/tenant-isolation.test.ts`: nobody reads the index through Payload's access
+  (a visitor, a manager, the district), and a manager can't write or change a row

@@ -2828,3 +2828,70 @@ describe('the file library (Jason, 2026-11-13)', () => {
     })
   })
 })
+
+/**
+ * Site search (Jason, 2026-11-16; Phase 6 D). The index holds every site's public words, so it is
+ * read ONLY by the content layer's scoped query (`searchSite`, its own adversarial cases in
+ * tests/integration/search.test.ts). Through Payload's access — REST, GraphQL, the admin — nobody
+ * reads, writes or reindexes it: not a visitor, not a school manager, not the district.
+ */
+describe('the site search index', () => {
+  beforeAll(async () => {
+    await payload.create({
+      collection: 'pages',
+      data: {
+        tenant: f.tenantB,
+        title: 'B’s indexed page',
+        slug: `b-indexed-${Date.now()}`,
+        visibility: 'public',
+        layout: [],
+        _status: 'published',
+      } as never,
+      overrideAccess: true,
+      user: f.districtAdmin,
+    })
+  })
+
+  it('there is something in it to protect', async () => {
+    const { totalDocs } = await payload.count({ collection: 'search', overrideAccess: true })
+    expect(totalDocs).toBeGreaterThan(0)
+  })
+
+  it.each([
+    ['a visitor', undefined],
+    ['a school manager', 'managerA'],
+    ['the district', 'districtAdmin'],
+  ] as const)('%s reads none of it through Payload’s access', async (_label, who) => {
+    const user = who === undefined ? undefined : f[who]
+    expect(
+      await readsNothing(() =>
+        payload.find({ collection: 'search', ...(user ? { user } : {}), overrideAccess: false }),
+      ),
+    ).toBe(true)
+  })
+
+  it('a school manager can neither write an entry nor change one', async () => {
+    expect(
+      await isDenied(() =>
+        payload.create({
+          collection: 'search',
+          data: { title: 'Planted', tenant: f.tenantA } as never,
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      ),
+    ).toBe(true)
+    const { docs } = await payload.find({ collection: 'search', limit: 1, overrideAccess: true })
+    expect(
+      await isDenied(() =>
+        payload.update({
+          collection: 'search',
+          id: docs[0]!.id,
+          data: { excluded: false, tenant: f.tenantA } as never,
+          user: f.managerA,
+          overrideAccess: false,
+        }),
+      ),
+    ).toBe(true)
+  })
+})
