@@ -1,8 +1,11 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, type Page } from '@playwright/test'
+import { expect, request as playwrightRequest, type Page } from '@playwright/test'
 
-import { adminCredentials, adminTest } from './support/admin-session'
+import { tinyPdf } from '../helpers/files'
+
+import { ADMIN_STORAGE_STATE, adminCredentials, adminTest } from './support/admin-session'
 import { dropPage, makePage, schoolRequest, uniqueTitle } from './support/fixture-pages'
+import { tenantIdFor } from './support/school-session'
 
 /**
  * The district dashboard (`04` §3.1; layout decided by Jason, 2026-11-04): approvals, what needs
@@ -42,6 +45,7 @@ adminTest.describe('the district dashboard', () => {
     expect(headings).toEqual([
       'Approvals',
       'Needs freshening',
+      'Documents to check',
       'Recent activity',
       'Auto-approval grants',
       'Everything else',
@@ -238,6 +242,60 @@ adminTest.describe('the district dashboard', () => {
         } finally {
           if (calendar !== null) await fixture.admin.delete(`/api/calendars/${calendar}`)
           await dropPage(fixture)
+        }
+      },
+    )
+  }
+
+  /**
+   * Documents not yet checked for accessibility (Jason, 2026-11-16; `07` §5): the district's work
+   * queue, oldest first, each linking to the file where it is marked checked.
+   */
+  for (const colorScheme of ['light', 'dark'] as const) {
+    adminTest(
+      `@a11y a document not checked for accessibility is listed, linking to its file — ${colorScheme}`,
+      async ({ page, baseURL }) => {
+        await page.emulateMedia({ colorScheme })
+        const admin = await playwrightRequest.newContext({
+          ...(baseURL ? { baseURL } : {}),
+          storageState: ADMIN_STORAGE_STATE,
+        })
+        const title = uniqueTitle('Unchecked form')
+        const pdf = tinyPdf()
+        const made = await admin.post('/api/resources?depth=0', {
+          multipart: {
+            file: { name: pdf.name, mimeType: pdf.mimetype, buffer: pdf.data },
+            _payload: JSON.stringify({
+              tenant: await tenantIdFor(admin, 'a.localhost'),
+              title,
+              remediationStatus: 'not-attested',
+            }),
+          },
+        })
+        expect(made.ok(), await made.text()).toBe(true)
+        const id = ((await made.json()).doc as { id: number }).id
+        try {
+          await page.goto('/admin')
+          const panel = page.locator('#unchecked-panel')
+          await expect(panel.getByRole('heading', { name: 'Documents to check' })).toBeVisible({
+            timeout: 20_000,
+          })
+          await expect(panel).toContainText(/haven’t|hasn’t/)
+          // Other specs may leave more than ten waiting: the newest may be past the shown ten.
+          const link = panel.getByRole('link', { name: title })
+          const seeAll = panel.getByRole('link', { name: /^See all \d+$/ })
+          if ((await link.count()) > 0) {
+            await expect(link).toHaveAttribute('href', `/admin/collections/resources/${id}`)
+          } else {
+            await expect(seeAll).toHaveAttribute(
+              'href',
+              '/admin/collections/resources?where[remediationStatus][equals]=not-attested',
+            )
+          }
+          expect(await blockingViolations(page)).toEqual([])
+        } finally {
+          await admin.delete(`/api/resources/${id}`)
+          await admin.dispose()
         }
       },
     )

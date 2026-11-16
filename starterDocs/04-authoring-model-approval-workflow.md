@@ -119,7 +119,8 @@ The district admin's landing view answers the questions actually asked on login:
 3. **Sync status** — last CSI run, counts, errors (`11` §10). _(Not built: runs are logged; no history on the dashboard yet.)_
 4. **Live alerts** — what is currently displaying, on which tenants.
 5. **Work queues** — documents marked `not-attested`; media flagged decorative in bulk;
-   pages awaiting translation verification (`08` §8.1).
+   pages awaiting translation verification (`08` §8.1). _(Built 2026-11-16: "Documents to check", the `not-attested`
+   documents, oldest first — `docs/phases/06` §6. The other two queues are not built.)_
 6. **Auto-approval grants** — who currently holds which scopes, and auto-approved changes
    from the last 30 days for spot-checking (`04` §4.3).
 

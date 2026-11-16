@@ -11,6 +11,8 @@ import {
   STALE_DAYS,
   staleKeyPages,
   staleSites,
+  UNCHECKED_SHOWN,
+  uncheckedDocuments,
 } from '@/lib/dashboard'
 
 /**
@@ -376,5 +378,84 @@ describe('approvalCards — one card per kind, each opening the queue at that ki
       ['No pages waiting', 'Open the pages part of the approval queue'],
       ['No announcements waiting', 'Open the announcements part of the approval queue'],
     ])
+  })
+})
+
+/**
+ * Documents not yet checked for accessibility (Jason, 2026-11-16; `07` §5): the district's
+ * standing work queue. District only. Oldest first, each with its school and a link to the file,
+ * where it is marked checked.
+ */
+describe('uncheckedDocuments — the work queue (`04` §3.1 item 5)', () => {
+  const sites = new Map([
+    ['3', 'School A'],
+    ['4', 'School B'],
+  ])
+  const doc = (id: number, title: string, tenant: number, createdAt: string) => ({
+    id,
+    title,
+    tenant,
+    createdAt,
+  })
+
+  it('nothing waiting says so', () => {
+    expect(uncheckedDocuments([], 0, sites, TZ)).toEqual({
+      text: 'Every document has been checked for accessibility.',
+      rows: [],
+      more: null,
+    })
+  })
+
+  it('counts, oldest first, each with its school, the file and when it was uploaded', () => {
+    const panel = uncheckedDocuments(
+      [doc(8, 'Bus routes', 4, daysAgo(2)), doc(5, 'Allergy plan', 3, daysAgo(30))],
+      2,
+      sites,
+      TZ,
+    )
+    expect(panel.text).toBe('2 documents haven’t been checked for accessibility. Oldest first.')
+    expect(panel.rows).toEqual([
+      {
+        id: '5',
+        site: 'School A',
+        title: 'Allergy plan',
+        href: '/admin/collections/resources/5',
+        when: 'Oct 5, 2026',
+      },
+      {
+        id: '8',
+        site: 'School B',
+        title: 'Bus routes',
+        href: '/admin/collections/resources/8',
+        when: 'Nov 2, 2026',
+      },
+    ])
+    expect(panel.more).toBeNull()
+  })
+
+  it('one is one', () => {
+    expect(uncheckedDocuments([doc(5, 'Allergy plan', 3, daysAgo(1))], 1, sites, TZ).text).toBe(
+      '1 document hasn’t been checked for accessibility. Oldest first.',
+    )
+  })
+
+  it('more than it shows: a link to every one, in the Files list', () => {
+    const shown = Array.from({ length: UNCHECKED_SHOWN }, (_, i) =>
+      doc(i + 1, `Form ${i + 1}`, 3, daysAgo(40 - i)),
+    )
+    const panel = uncheckedDocuments(shown, 37, sites, TZ)
+    expect(panel.rows).toHaveLength(UNCHECKED_SHOWN)
+    expect(panel.text).toBe(
+      `37 documents haven’t been checked for accessibility. The oldest ${UNCHECKED_SHOWN} are shown.`,
+    )
+    expect(panel.more).toEqual({
+      text: 'See all 37',
+      href: '/admin/collections/resources?where[remediationStatus][equals]=not-attested',
+    })
+  })
+
+  it('a file with no title or an unknown school still shows, in words', () => {
+    const [row] = uncheckedDocuments([doc(9, '  ', 99, daysAgo(3))], 1, sites, TZ).rows
+    expect(row).toMatchObject({ title: 'Untitled document', site: 'Unknown site' })
   })
 })

@@ -1,3 +1,4 @@
+import { relationshipIdOf } from '@/access/predicates'
 import { kindWords, type QueueKind } from '@/admin/Approvals/queue-filter'
 import { DAY, describeWait, localDay, OVERDUE_BUSINESS_DAYS } from '@/lib/queue-age'
 
@@ -388,5 +389,68 @@ export const activityRow = (
         ? null
         : `/admin/collections/${type}/${String(event.documentId)}`,
     when: ago(event.createdAt, now, timeZone),
+  }
+}
+
+/**
+ * DOCUMENTS NOT YET CHECKED FOR ACCESSIBILITY (Jason, 2026-11-16; `07` §5, `04` §3.1 item 5) —
+ * the district's standing work queue. District only. Oldest first, each with its school and a
+ * link to the file, where it is marked checked. The platform records the status; it does not
+ * remediate.
+ *
+ * The read takes the oldest `UNCHECKED_SHOWN` and the total; beyond that, a link to every one in
+ * the Files list, filtered.
+ */
+export const UNCHECKED_SHOWN = 10
+
+export const UNCHECKED_LIST_HREF =
+  '/admin/collections/resources?where[remediationStatus][equals]=not-attested'
+
+export type UncheckedRow = { id: string; site: string; title: string; href: string; when: string }
+
+export type UncheckedPanel = {
+  text: string
+  rows: UncheckedRow[]
+  more: { text: string; href: string } | null
+}
+
+export const uncheckedDocuments = (
+  docs: readonly { id?: unknown; title?: unknown; tenant?: unknown; createdAt?: unknown }[],
+  total: number,
+  siteNames: ReadonlyMap<string, string>,
+  timeZone: string,
+): UncheckedPanel => {
+  if (total === 0 || docs.length === 0) {
+    return { text: 'Every document has been checked for accessibility.', rows: [], more: null }
+  }
+  const day = (iso: string) =>
+    new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(new Date(iso))
+  const rows = [...docs]
+    .map((doc) => ({ doc, at: typeof doc.createdAt === 'string' ? doc.createdAt : '' }))
+    .sort((a, b) => a.at.localeCompare(b.at))
+    .slice(0, UNCHECKED_SHOWN)
+    .map(({ doc, at }): UncheckedRow => {
+      const id = String(doc.id)
+      const site = relationshipIdOf(doc.tenant as never)
+      const title = typeof doc.title === 'string' ? doc.title.trim() : ''
+      return {
+        id,
+        site: (site && siteNames.get(site)) || 'Unknown site',
+        title: title || 'Untitled document',
+        href: `/admin/collections/resources/${id}`,
+        when: at ? day(at) : '',
+      }
+    })
+  const count = total === 1 ? '1 document hasn’t' : `${total} documents haven’t`
+  const tail = total > rows.length ? `The oldest ${rows.length} are shown.` : 'Oldest first.'
+  return {
+    text: `${count} been checked for accessibility. ${tail}`,
+    rows,
+    more: total > rows.length ? { text: `See all ${total}`, href: UNCHECKED_LIST_HREF } : null,
   }
 }
