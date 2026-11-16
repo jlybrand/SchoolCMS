@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
+import { LibraryImage } from '@/blocks/LibraryImage'
 import { Container } from '@/components/Container'
 import { Heading, PAGE_TITLE_LEVEL } from '@/components/Heading'
 import { Link } from '@/components/Link'
@@ -74,6 +75,13 @@ export default async function PostPage({ params }: { params: Promise<Params> }) 
               <PublishedDate iso={post.publishedDate} label={date} />
             ) : null}
           </Stack>
+          {/* Its image (Jason, 2026-11-13), under the headline, with the library's alt text. */}
+          {post.image ? (
+            <LibraryImage
+              block={{ kind: 'image', id: 'post-image', image: post.image, caption: null }}
+              priority
+            />
+          ) : null}
           <RichText content={post.body} />
           <p>
             <Link href={localizedPath(NEWS_PATH, site.ctx.locale)}>All news</Link>

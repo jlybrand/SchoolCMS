@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { findGrantHolders, findRecentAutoApprovals } from '@/admin/Grants/grant-data'
 
+import { tinyPng } from '../helpers/files'
 import { getTestPayload, isDenied, seed, type Fixtures } from '../helpers/payload'
 
 /**
@@ -253,6 +254,36 @@ describe('posts.routine', () => {
       expect((await trail(sent.id)).map((e) => e.action)).toEqual(['submit'])
     },
   )
+
+  /** An upload is on the never list (`04` §4.3) — now a real field (Phase 6 B2, 2026-11-13). */
+  const schoolImage = async () =>
+    (
+      await payload.create({
+        collection: 'resources',
+        data: { tenant: f.tenantA, title: 'Picture day', alt: 'Students in line' } as never,
+        file: await tinyPng(800, 600),
+        overrideAccess: true,
+      })
+    ).id
+
+  it('a new announcement with an image waits in the queue', async () => {
+    const sent = await send({ heroImage: await schoolImage() })
+    expect(sent._status).toBe('draft')
+    expect(sent.reviewState).toBe('submitted')
+  })
+
+  it('adding an image to a live announcement waits, and the live one is untouched', async () => {
+    const sent = await send()
+    await payload.update({
+      collection: 'posts',
+      id: sent.id,
+      data: { heroImage: await schoolImage(), reviewState: 'submitted' } as never,
+      draft: true,
+      user: await managerWithGrants(),
+      overrideAccess: false,
+    })
+    expect((await live(sent.id)).heroImage ?? null).toBeNull()
+  })
 
   it('moving a live announcement to a new address waits in the queue', async () => {
     const sent = await send()

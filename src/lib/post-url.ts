@@ -1,4 +1,4 @@
-import type { Locale, Post } from '@/content/types'
+import type { ImageAsset, Locale, Post } from '@/content/types'
 import { DEFAULT_LOCALE, localizedPath } from '@/lib/locales'
 import { DISTRICT_TIME_ZONE } from '@/lib/queue-age'
 import { publicUrlFor } from '@/lib/review-emails'
@@ -61,6 +61,11 @@ export type NewsItem = {
   date: { iso: string; label: string } | null
   /** The editor's summary, else the first paragraph, else none. */
   summary: string | null
+  /**
+   * The announcement's image as a thumbnail, with EMPTY alt text: the headline beside it already
+   * says what it is (Jason, 2026-11-13; WCAG 1.1.1). Null when it has none.
+   */
+  thumbnail: ImageAsset | null
 }
 
 export const toNewsItems = (
@@ -75,5 +80,6 @@ export const toNewsItems = (
       href: postHref(post, where),
       date: label && post.publishedDate ? { iso: post.publishedDate, label } : null,
       summary: post.excerpt ?? excerptOf(post.body),
+      thumbnail: post.image ? { ...post.image, alt: '' } : null,
     }
   })

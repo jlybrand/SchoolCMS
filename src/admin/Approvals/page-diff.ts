@@ -239,6 +239,13 @@ const POST_FIELDS: FieldSpec[] = [
   },
   { field: 'excerpt', label: 'Summary', key: (d) => textOf(d.excerpt) },
   {
+    /** The image (Jason, 2026-11-13), named by its library title as the queue hands it over. */
+    field: 'heroImage',
+    label: 'Image',
+    key: (d) => named(d.heroImage)?.id ?? null,
+    show: (d) => named(d.heroImage)?.name ?? null,
+  },
+  {
     field: 'visibility',
     label: 'Who can see it',
     key: (d) => textOf(d.visibility),

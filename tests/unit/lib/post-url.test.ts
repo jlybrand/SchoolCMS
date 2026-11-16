@@ -76,6 +76,7 @@ describe('toNewsItems — a list of announcements, ready to render', () => {
     publishedDate: '2026-10-28T15:00:00.000Z',
     boardId: '5',
     tagIds: [],
+    image: null,
     homeHostname: 'a.localhost',
   }
   const where = { siteTenantId: '3', locale: 'en', serverUrl: 'http://localhost:3000' }
@@ -88,8 +89,18 @@ describe('toNewsItems — a list of announcements, ready to render', () => {
         href: '/news/picture-day',
         date: { iso: '2026-10-28T15:00:00.000Z', label: 'October 28, 2026' },
         summary: 'Thursday, in the gym.',
+        thumbnail: null,
       },
     ])
+  })
+
+  /**
+   * A list's thumbnail (Jason, 2026-11-13) is decoration: the headline beside it already says
+   * what the announcement is, so its alt text is empty, whatever the library says (WCAG 1.1.1).
+   */
+  it('an image is a thumbnail with empty alt text — the headline beside it says it', () => {
+    const image = { src: '/gym.webp', width: 1600, height: 1067, alt: 'The gym', srcSet: 'x 400w' }
+    expect(toNewsItems([{ ...post, image }], where)[0]!.thumbnail).toEqual({ ...image, alt: '' })
   })
 
   it('the editor’s summary wins over the first paragraph', () => {

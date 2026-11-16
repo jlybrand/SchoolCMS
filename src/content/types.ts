@@ -665,6 +665,11 @@ export type Post = {
   /** The district tags ticked on it. */
   tagIds: string[]
   /**
+   * Its image (Jason, 2026-11-13) — a file from its home site's library, shown at the top of the
+   * announcement and as the thumbnail in news lists. Null when none is chosen.
+   */
+  image: ImageAsset | null
+  /**
    * The hostname of its home site — where its page is (`/news/{slug}`). A site it is shared with
    * links there. Null where it is not known.
    */

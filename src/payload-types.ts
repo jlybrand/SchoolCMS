@@ -880,6 +880,10 @@ export interface Post {
    */
   excerpt?: string | null;
   /**
+   * Shown at the top of the announcement and beside it in news lists. Upload it to this site’s library first.
+   */
+  heroImage?: (number | null) | Resource;
+  /**
    * The announcement itself.
    */
   body?: {
@@ -1774,6 +1778,7 @@ export interface PostsSelect<T extends boolean = true> {
   board?: T;
   tags?: T;
   excerpt?: T;
+  heroImage?: T;
   body?: T;
   visibility?: T;
   publishedDate?: T;

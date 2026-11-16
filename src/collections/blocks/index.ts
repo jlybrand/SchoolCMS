@@ -6,6 +6,7 @@ import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 
 import { toEmbedTarget } from '@/lib/embed-url'
 import { linkFields } from '@/collections/fields/link'
+import { libraryImageField } from '@/collections/fields/library-image'
 
 /**
  * THE PAYLOAD SIDE of the block library (`03` §3).
@@ -455,39 +456,12 @@ export const staffListBlock: Block = {
   ],
 }
 
-/**
- * An image from the site's library (Jason, 2026-11-13) — the file it shows, chosen from THIS
- * site's images; its alt text is the library's, never re-entered here (rule 7 holds at upload).
- * In the school palette (`src/access/school-layout.ts`).
- */
-const libraryImage = (description: string) =>
-  ({
-    name: 'image',
-    type: 'upload',
-    relationTo: 'resources',
-    required: true,
-    label: 'Image',
-    // This site's images only. Payload checks it on save too, not only in the picker.
-    filterOptions: ({ data }: { data?: { tenant?: unknown } }) => {
-      const tenant = data?.tenant
-      const image = { kind: { equals: 'image' } }
-      return tenant === undefined || tenant === null
-        ? image
-        : { and: [image, { tenant: { equals: tenant } }] }
-    },
-    admin: {
-      description,
-      // Files are uploaded in the library ("Upload a file"), not made here.
-      allowCreate: false,
-    },
-  }) as const
-
 export const imageBlock: Block = {
   slug: 'image',
   interfaceName: 'ImageBlockRow',
   labels: { singular: 'Image', plural: 'Images' },
   fields: [
-    libraryImage('An image from this site’s library. Upload it there first.'),
+    libraryImageField({ description: 'An image from this site’s library. Upload it there first.' }),
     {
       name: 'caption',
       type: 'text',
@@ -507,7 +481,9 @@ export const heroBlock: Block = {
   interfaceName: 'HeroBlockRow',
   labels: { singular: 'Hero', plural: 'Heroes' },
   fields: [
-    libraryImage('The large image across the top. Upload it to this site’s library first.'),
+    libraryImageField({
+      description: 'The large image across the top. Upload it to this site’s library first.',
+    }),
     { name: 'heading', type: 'text', label: 'Heading' },
     { name: 'subheading', type: 'text', label: 'Subheading' },
     ...linkFields({

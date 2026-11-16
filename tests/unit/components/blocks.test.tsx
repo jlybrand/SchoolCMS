@@ -410,6 +410,7 @@ describe('NewsFeed', () => {
         href: 'https://dd2.org/news/snow-day',
         date: { iso: '2026-10-28T15:00:00.000Z', label: 'October 28, 2026' },
         summary: 'Schools are closed.',
+        thumbnail: null,
       },
     ],
     moreHref: '/news',
@@ -438,6 +439,30 @@ describe('NewsFeed', () => {
     const { container } = renderComponent(<BlockList blocks={[feed()]} childPages={[]} />)
     const more = [...container.querySelectorAll('a')].find((a) => a.textContent === 'More news')
     expect(more?.getAttribute('href')).toBe('/news')
+  })
+
+  /** Jason, 2026-11-13: a thumbnail beside an announcement with an image, skipped by a screen reader. */
+  it('an announcement’s image is a thumbnail with empty alt text, beside its headline', () => {
+    const thumbnail = {
+      src: '/gym.webp',
+      width: 1600,
+      height: 900,
+      alt: '',
+      srcSet: '/gym.webp 1600w',
+    }
+    const [item] = feed().items
+    const { container } = renderComponent(
+      <BlockList blocks={[feed({ items: [{ ...item!, thumbnail }] })]} childPages={[]} />,
+    )
+    const img = container.querySelector('li img')!
+    expect(img.getAttribute('alt')).toBe('')
+    expect(img.getAttribute('srcset')).toBe('/gym.webp 1600w')
+    expect(container.querySelector('li h3 a')!.textContent).toBe('Snow day')
+  })
+
+  it('no image, no img — never an empty one', () => {
+    const { container } = renderComponent(<BlockList blocks={[feed()]} childPages={[]} />)
+    expect(container.querySelector('img')).toBeNull()
   })
 
   it('renders nothing with no items — the resolve pass drops it, and the renderer agrees', () => {

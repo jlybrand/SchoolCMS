@@ -2,7 +2,7 @@ import { relationshipIdOf, tenantIdOf } from '@/access/predicates'
 
 import { NO_PAGE_PATHS, type PagePaths } from './page-tree'
 import { toRichText } from './rich-text'
-import type { Post } from './types'
+import type { ImageAsset, Post } from './types'
 
 /**
  * A Payload `posts` row to a DD2 `Post` (`02` §11). Pure, so the Phase 9 migration mappers can
@@ -18,12 +18,22 @@ const text = (value: unknown): string | null => {
   return trimmed === '' ? null : trimmed
 }
 
+/** No images to hand over — a caller that renders none. */
+export const NO_IMAGES: ReadonlyMap<string, ImageAsset> = new Map()
+
 /**
  * `paths` is the post's HOME site's page id -> current path, for links to a page in its words
  * (Jason, 2026-10-29). Only `getPostBySlug` passes it — it is the one caller that renders the
  * body, and it renders it on the home site, where those paths are.
+ *
+ * `images` is library file id -> image, read by the content layer (`imagesFor` in posts.ts), so
+ * this stays pure. A file it does not hold — gone, or not an image — is no image.
  */
-export const toPost = (row: unknown, paths: PagePaths = NO_PAGE_PATHS): Post | null => {
+export const toPost = (
+  row: unknown,
+  paths: PagePaths = NO_PAGE_PATHS,
+  images: ReadonlyMap<string, ImageAsset> = NO_IMAGES,
+): Post | null => {
   if (typeof row !== 'object' || row === null) return null
   const doc = row as Record<string, unknown>
 
@@ -45,6 +55,7 @@ export const toPost = (row: unknown, paths: PagePaths = NO_PAGE_PATHS): Post | n
     tagIds: Array.isArray(doc.tags)
       ? doc.tags.map((t) => relationshipIdOf(t as never)).filter((t): t is string => t !== null)
       : [],
+    image: images.get(relationshipIdOf(doc.heroImage as never) ?? '') ?? null,
     // Filled by the content layer, which reads the tenants; this mapper is pure.
     homeHostname: null,
   }

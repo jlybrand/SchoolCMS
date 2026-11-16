@@ -81,7 +81,12 @@ let columnsPage: number
 let linksPage: number
 let event: number
 /** A calendar copied from an outside address (Jason, 2026-11-11). */
-let feedCalendar: number
+/**
+ * One feed calendar PER COLOR SCHEME: the light and dark runs open the form together, and Payload's
+ * document lock showed the second one its locked, unrepaired view (axe failed 2026-11-12, twice on
+ * 2026-11-16; see the e2e flake notes).
+ */
+const feedCalendars: Record<'light' | 'dark', number> = { light: 0, dark: 0 }
 let staffGroup: number
 let staffPage: number
 let imageFile: number
@@ -277,16 +282,19 @@ adminTest.describe('district plane — whole screens', () => {
     expect(madeEvent.ok(), await madeEvent.text()).toBe(true)
     event = ((await madeEvent.json()).doc as { id: number }).id
     // `.invalid` never resolves: if the job runner copies it, the form shows the problem in words.
-    const madeFeed = await fixture.admin.post('/api/calendars?depth=0', {
-      data: {
-        tenant: (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json()).tenant,
-        name: 'Axe feed calendar',
-        source: 'feed',
-        feedUrl: 'https://example.invalid/athletics.ics',
-      },
-    })
-    expect(madeFeed.ok(), await madeFeed.text()).toBe(true)
-    feedCalendar = ((await madeFeed.json()).doc as { id: number }).id
+    for (const scheme of ['light', 'dark'] as const) {
+      const madeFeed = await fixture.admin.post('/api/calendars?depth=0', {
+        data: {
+          tenant: (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json())
+            .tenant,
+          name: `Axe feed calendar (${scheme})`,
+          source: 'feed',
+          feedUrl: 'https://example.invalid/athletics.ics',
+        },
+      })
+      expect(madeFeed.ok(), await madeFeed.text()).toBe(true)
+      feedCalendars[scheme] = ((await madeFeed.json()).doc as { id: number }).id
+    }
     // The staff directory (2026-11-13): the seed's mock school and one of its staff (staff come
     // from CSI, never the dashboard), and a sub-group the district makes in it.
     const schools = await fixture.admin.get(
@@ -348,13 +356,19 @@ adminTest.describe('district plane — whole screens', () => {
     })
     expect(madePictures.ok(), await madePictures.text()).toBe(true)
     picturesPage = ((await madePictures.json()).doc as { id: number }).id
+    // The announcement's image (Phase 6 B2): the same picker, filled, on the post form.
+    const withImage = await fixture.admin.patch(`/api/posts/${post.id}?draft=true&depth=0`, {
+      data: { heroImage: imageFile },
+    })
+    expect(withImage.ok(), await withImage.text()).toBe(true)
   })
   adminTest.afterAll(async () => {
     await fixture.admin.delete(`/api/pages/${staffPage}`)
     await fixture.admin.delete(`/api/pages/${picturesPage}`)
     await fixture.admin.delete(`/api/resources/${imageFile}`)
     await fixture.admin.delete(`/api/staff-groups/${staffGroup}`)
-    await fixture.admin.delete(`/api/calendars/${feedCalendar}`)
+    for (const id of Object.values(feedCalendars))
+      await fixture.admin.delete(`/api/calendars/${id}`)
     await fixture.admin.delete(`/api/events/${event}`)
     await fixture.admin.delete(`/api/pages/${feedPage}`)
     await fixture.admin.delete(`/api/pages/${columnsPage}`)
@@ -504,7 +518,7 @@ adminTest.describe('district plane — whole screens', () => {
         await auditScreen(page, ...LIST_REPAIRED)
       })
       adminTest(`@a11y a feed calendar’s form — ${colorScheme}`, async ({ page }) => {
-        await page.goto(`/admin/collections/calendars/${feedCalendar}`)
+        await page.goto(`/admin/collections/calendars/${feedCalendars[colorScheme]}`)
         await auditScreen(page, '#field-name', '#field-source', '#field-feedUrl')
       })
       adminTest(`@a11y a page with a hero and an image — ${colorScheme}`, async ({ page }) => {
@@ -611,7 +625,7 @@ adminTest.describe('district plane — whole screens', () => {
         },
       )
       adminTest(
-        `@a11y the post form, shared with chosen sites — ${colorScheme}`,
+        `@a11y the post form, shared with chosen sites, with an image — ${colorScheme}`,
         async ({ page }) => {
           await page.goto(`/admin/collections/posts/${post.id}`)
           // Payload renders a field only once it scrolls into view, and the dates (Jason,
@@ -625,6 +639,8 @@ adminTest.describe('district plane — whole screens', () => {
             '#field-syndication__syndicatedTo .clear-indicator[aria-hidden="true"][tabindex="-1"]',
             '#field-board input[aria-label="Board"]',
             '#field-tags input[aria-label="Tags"]',
+            // The chosen image's buttons, named by the patch (Phase 6 B1).
+            '#field-heroImage button.upload-relationship-details__remove[aria-label]',
           )
         },
       )

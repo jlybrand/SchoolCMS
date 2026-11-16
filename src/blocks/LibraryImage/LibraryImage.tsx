@@ -9,20 +9,28 @@ import styles from './LibraryImage.module.css'
  * empty for a decorative image (`toImageAsset`). Never fetched or re-described here (rule 1;
  * rule 7 holds at upload). Width and height are set so the page doesn't jump as it loads.
  */
-export type LibraryImageProps = { readonly block: ResolvedImageBlock }
+export type LibraryImageProps = {
+  readonly block: ResolvedImageBlock
+  /**
+   * At the top of the page (an announcement's image, Jason 2026-11-13): load it first, not lazily,
+   * as the Hero does — it is what the visitor sees first.
+   */
+  readonly priority?: boolean
+}
 
 /** The text column is at most ~42rem; a phone takes the full width. */
 const SIZES = '(min-width: 48rem) 42rem, 100vw'
 
-export const LibraryImage = ({ block }: LibraryImageProps) => (
+export const LibraryImage = ({ block, priority = false }: LibraryImageProps) => (
   <figure className={styles.figure}>
     {/* eslint-disable-next-line @next/next/no-img-element -- library files, sized by srcSet; next/image would re-route them */}
     <img
       alt={block.image.alt}
       className={styles.image}
       decoding="async"
+      fetchPriority={priority ? 'high' : undefined}
       height={block.image.height ?? undefined}
-      loading="lazy"
+      loading={priority ? 'eager' : 'lazy'}
       sizes={SIZES}
       src={block.image.src}
       srcSet={block.image.srcSet}

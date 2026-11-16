@@ -11,6 +11,7 @@ import { districtOnlyField } from '@/access/tenant-scoped'
 import type { AuthUser } from '@/access/types'
 import { documentReviewField } from '@/admin/Approvals/document-review-field'
 import { changeCommentField } from '@/collections/fields/change-comment'
+import { libraryImageField } from '@/collections/fields/library-image'
 import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 import { makeApproveEndpoint } from '@/collections/endpoints/approve'
 import { auditChange, auditDelete } from '@/collections/hooks/audit'
@@ -49,8 +50,6 @@ import { slugify } from '@/lib/slug'
  *
  * DELIBERATELY ABSENT, and where each lands:
  *
- *   - **`heroImage`.** An upload, and `media` is Phase 6 — the same reason pages have no share
- *     image yet (CLAUDE.md rule 7).
  *   - **`category`.** `03` §2 names the field but not its values, and a fixed list is a
  *     taxonomy DD2 has not chosen. Open with the template census (`10` §2); it is a nullable
  *     column to add, not a migration to undo.
@@ -266,6 +265,19 @@ export const Posts: CollectionConfig = {
         description:
           'Optional. One or two sentences shown in news lists. Leave it empty and the first paragraph is used.',
       },
+    },
+    {
+      /**
+       * The announcement's image (Jason, 2026-11-13; Phase 6 B2): at the top of the announcement
+       * and as its thumbnail in news lists. From the post's own site's library, checked on save.
+       * Schools choose it too — it goes through approval with the rest of the post.
+       */
+      ...libraryImageField({
+        name: 'heroImage',
+        required: false,
+        description:
+          'Shown at the top of the announcement and beside it in news lists. Upload it to this site’s library first.',
+      }),
     },
     {
       /**
