@@ -165,12 +165,33 @@ const shape = async (ctx: ContentContext, rows: readonly Row[]): Promise<SearchR
     }),
   ])
 
+  // A site is named as its own pages name it: its settings' title, else the tenant's name.
+  const { docs: titled } = await payload.find({
+    collection: 'settings',
+    where: { tenant: { in: tenantIds } },
+    pagination: false,
+    depth: 0,
+    overrideAccess: true,
+    select: { siteTitle: true, tenant: true },
+  })
+  const siteTitles = new Map(
+    (titled as unknown as { siteTitle?: unknown; tenant?: unknown }[]).flatMap((row) => {
+      const id =
+        row.tenant && typeof row.tenant === 'object'
+          ? (row.tenant as { id: unknown }).id
+          : row.tenant
+      return typeof row.siteTitle === 'string' && row.siteTitle.trim() !== ''
+        ? [[String(id), row.siteTitle.trim()] as const]
+        : []
+    }),
+  )
+
   const tenantById = new Map(
     tenants.docs.map((t) => [
       String(t.id),
       {
         id: String(t.id),
-        name: String(t.name ?? ''),
+        name: siteTitles.get(String(t.id)) ?? String(t.name ?? ''),
         slug: String(t.slug ?? ''),
         hostname: String(t.hostname ?? ''),
         type: t.type === 'district' ? 'district' : 'school',

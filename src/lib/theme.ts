@@ -29,6 +29,7 @@ export const DEFAULT_COLOR_TOKENS: Readonly<Record<string, string>> = {
   '--color-border-strong': '#828893',
   '--color-text': '#14171c',
   '--color-text-muted': '#4d5563',
+  '--color-highlight': '#fff2a8',
   '--color-brand': '#0f4c81',
   '--color-brand-contrast': '#ffffff',
   '--color-info': '#0f4c81',

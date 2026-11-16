@@ -1,0 +1,24 @@
+/* The search results page — see `page.tsx`. Tokens only; logical properties only (rule 5). */
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-xs) var(--space-lg);
+}
+
+.summary p {
+  margin-block: 0;
+}
+
+.count {
+  font-weight: 700;
+}
+
+.pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-lg);
+}

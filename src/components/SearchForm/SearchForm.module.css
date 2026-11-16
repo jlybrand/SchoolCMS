@@ -1,0 +1,50 @@
+/*
+ * The search box — see `SearchForm.tsx`. Tokens only; logical properties only (rule 5): the
+ * button follows the field in the writing direction, so the row mirrors for Arabic with no rule.
+ * Contrast: the field's border is --color-border-strong (3:1 for a control, 1.4.11); the button is
+ * the brand pair, checked at token level. Focus rings are the global ones.
+ */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.label {
+  font-weight: 700;
+}
+
+.row {
+  display: flex;
+  gap: var(--space-xs);
+  inline-size: 100%;
+  max-inline-size: 32rem;
+}
+
+.input {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  flex: 1 1 auto;
+  font: inherit;
+  min-inline-size: 0;
+  padding-block: var(--space-xs);
+  padding-inline: var(--space-sm);
+}
+
+.button {
+  background-color: var(--color-brand);
+  border: 0;
+  border-radius: var(--radius);
+  color: var(--color-brand-contrast);
+  cursor: pointer;
+  font: inherit;
+  padding-block: var(--space-xs);
+  padding-inline: var(--space-md);
+}
+
+.button:hover {
+  background-color: var(--color-text);
+}

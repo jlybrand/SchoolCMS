@@ -193,6 +193,12 @@ export const REQUIRED_CONTRAST_PAIRS: readonly ContrastPair[] = [
     requirement: 'bodyText',
   },
   {
+    label: 'search-match text on its highlight',
+    foreground: '--color-text',
+    background: '--color-highlight',
+    requirement: 'bodyText',
+  },
+  {
     label: 'link text on surface',
     foreground: '--color-brand',
     background: '--color-surface',
