@@ -489,6 +489,48 @@ export type ResolvedStaffListBlock = BlockBase & {
   staff: StaffMember[]
 }
 
+/**
+ * A library image, ready for a page (Jason, 2026-11-13): the hero size as `src`, every size Payload
+ * made in `srcSet`, and the library's alt text — empty for a decorative image. Never re-entered on
+ * a page.
+ */
+export type ImageAsset = {
+  src: string
+  width: number | null
+  height: number | null
+  alt: string
+  srcSet: string
+}
+
+/** An image block's SETTINGS: the library file it shows, by id; the resolve pass loads it. */
+export type ImageBlock = BlockBase & {
+  kind: 'image'
+  image: string
+  caption: string | null
+}
+
+export type ResolvedImageBlock = BlockBase & {
+  kind: 'image'
+  image: ImageAsset
+  caption: string | null
+}
+
+/**
+ * A hero (Jason, 2026-11-13): an image, and — optionally — a heading, a subheading and a button.
+ * "Images will not always have a heading."
+ */
+export type HeroBlock = BlockBase & {
+  kind: 'hero'
+  image: string
+  heading: string | null
+  subheading: string | null
+  href: string | null
+  linkLabel: string | null
+  newTab: boolean
+}
+
+export type ResolvedHeroBlock = Omit<HeroBlock, 'image'> & { image: ImageAsset }
+
 export type ColumnsBlock = BlockBase & {
   kind: 'columns'
   heading: string | null
@@ -513,6 +555,8 @@ export type PageBlock =
   | FeedBlock
   | CalendarBlock
   | StaffListBlock
+  | ImageBlock
+  | HeroBlock
   | ColumnsBlock
 
 /**
@@ -524,10 +568,15 @@ export type PageBlock =
  * the same way.
  */
 export type ResolvedPageBlock =
-  | Exclude<PageBlock, FeedBlock | CalendarBlock | StaffListBlock | ColumnsBlock>
+  | Exclude<
+      PageBlock,
+      FeedBlock | CalendarBlock | StaffListBlock | ImageBlock | HeroBlock | ColumnsBlock
+    >
   | ResolvedFeedBlock
   | ResolvedCalendarBlock
   | ResolvedStaffListBlock
+  | ResolvedImageBlock
+  | ResolvedHeroBlock
   | ResolvedColumnsBlock
 
 /**

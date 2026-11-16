@@ -1,0 +1,60 @@
+/*
+ * A hero (Jason, 2026-11-13). Logical properties only (rule 5).
+ *
+ * WIDER THAN THE TEXT, short of the screen's edges — the staff list's breakout
+ * (`src/blocks/StaffList/StaffList.module.css`): the wide measure, never closer than --space-xl to
+ * either edge, never narrower than the column, centred on it.
+ *
+ * The words sit on a band under the image; on a wide screen, beside it.
+ */
+.hero {
+  --edge: var(--space-xl);
+  --width: max(100%, min(var(--measure-wide), 100vw - 2 * var(--edge)));
+
+  display: grid;
+  inline-size: var(--width);
+  margin-inline: calc((100% - var(--width)) / 2);
+  overflow: hidden;
+  border-radius: var(--radius);
+}
+
+.image {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  max-block-size: 32rem;
+  object-fit: cover;
+}
+
+.band {
+  display: grid;
+  gap: var(--space-sm);
+  align-content: center;
+  padding-block: var(--space-lg);
+  padding-inline: var(--space-lg);
+  background-color: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+.subheading {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 1.125rem;
+}
+
+.action {
+  margin: 0;
+  margin-block-start: var(--space-xs);
+}
+
+/* Wide enough: the words beside the image, which then fills its half. */
+@media (min-width: 60rem) {
+  .hero[data-words] {
+    grid-template-columns: 3fr 2fr;
+  }
+
+  .hero[data-words] .image {
+    block-size: 100%;
+    max-block-size: 28rem;
+  }
+}

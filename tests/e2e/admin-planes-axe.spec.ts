@@ -85,6 +85,7 @@ let feedCalendar: number
 let staffGroup: number
 let staffPage: number
 let imageFile: number
+let picturesPage: number
 let person: number
 /** School A's own event, for the school plane's screens. */
 let schoolEvent: number
@@ -332,9 +333,25 @@ adminTest.describe('district plane — whole screens', () => {
     })
     expect(madeImage.ok(), await madeImage.text()).toBe(true)
     imageFile = ((await madeImage.json()).doc as { id: number }).id
+    // A page holding a hero and an image (2026-11-13): Payload's upload picker on screen.
+    const madePictures = await fixture.admin.post('/api/pages?draft=true&depth=0', {
+      data: {
+        tenant: (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json()).tenant,
+        title: 'Axe pictures page',
+        slug: `axe-pictures-${Date.now()}`,
+        layout: [
+          { blockType: 'hero', image: imageFile, heading: 'Welcome', linkType: 'none' },
+          { blockType: 'image', image: imageFile, caption: 'A caption' },
+        ],
+        _status: 'draft',
+      },
+    })
+    expect(madePictures.ok(), await madePictures.text()).toBe(true)
+    picturesPage = ((await madePictures.json()).doc as { id: number }).id
   })
   adminTest.afterAll(async () => {
     await fixture.admin.delete(`/api/pages/${staffPage}`)
+    await fixture.admin.delete(`/api/pages/${picturesPage}`)
     await fixture.admin.delete(`/api/resources/${imageFile}`)
     await fixture.admin.delete(`/api/staff-groups/${staffGroup}`)
     await fixture.admin.delete(`/api/calendars/${feedCalendar}`)
@@ -489,6 +506,17 @@ adminTest.describe('district plane — whole screens', () => {
       adminTest(`@a11y a feed calendar’s form — ${colorScheme}`, async ({ page }) => {
         await page.goto(`/admin/collections/calendars/${feedCalendar}`)
         await auditScreen(page, '#field-name', '#field-source', '#field-feedUrl')
+      })
+      adminTest(`@a11y a page with a hero and an image — ${colorScheme}`, async ({ page }) => {
+        await page.goto(`/admin/collections/pages/${picturesPage}`)
+        await auditScreen(
+          page,
+          '#field-title',
+          '#field-layout__0__heading',
+          '#field-layout__1__caption',
+          '.collapsible__drag[aria-label="Reorder"]',
+          ...TABS_REPAIRED,
+        )
       })
       adminTest(`@a11y files list — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/collections/resources')

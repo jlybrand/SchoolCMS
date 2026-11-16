@@ -308,6 +308,10 @@ const KINDS: Record<string, string> = {
   feed: 'News feed',
   embed: 'Video',
   childPageNav: 'Section menu',
+  calendar: 'Calendar',
+  staffList: 'Staff list',
+  image: 'Image',
+  hero: 'Hero',
 }
 
 type Section = Record<string, unknown>
@@ -336,6 +340,8 @@ const summaryOf = (section: Section): string => {
       return shorten(textOf(section.heading) ?? items('items', 'heading').join(' · '))
     case 'embed':
       return shorten(textOf(section.title) ?? '')
+    case 'image':
+      return shorten(textOf(section.caption) ?? '')
     case 'columns':
       return shorten(textOf(section.heading) ?? `${sectionsOf(section.columns).length} columns`)
     case 'divider':

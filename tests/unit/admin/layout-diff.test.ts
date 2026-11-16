@@ -103,3 +103,23 @@ describe('diffLayout', () => {
     expect(diffLayout('nonsense', [words('a', 'Hi')]).changes).toHaveLength(1)
   })
 })
+
+describe('the sections added in Phases 5 and 6 are named, not "Section"', () => {
+  it('an image by its caption; a hero by its heading; a calendar and a staff list by kind', () => {
+    const { changes } = diffLayout(
+      [],
+      [
+        { id: 'i', blockType: 'image', image: 12, caption: 'The science fair' },
+        { id: 'h', blockType: 'hero', image: 12, heading: 'Welcome' },
+        { id: 'c', blockType: 'calendar', heading: 'Upcoming events', calendars: [1] },
+        { id: 's', blockType: 'staffList', heading: 'Our counselors', group: 3 },
+      ],
+    )
+    expect(changes.map((c) => [c.kind, c.summary])).toEqual([
+      ['Image', 'The science fair'],
+      ['Hero', 'Welcome'],
+      ['Calendar', 'Upcoming events'],
+      ['Staff list', 'Our counselors'],
+    ])
+  })
+})

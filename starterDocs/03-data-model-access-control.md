@@ -255,8 +255,8 @@ before the collection it reads. 16 blocks; 8 have no unmet dependency.
 
 | Block       | Holds                                                                             |
 | ----------- | --------------------------------------------------------------------------------- |
-| `Hero`      | Heading, optional subheading, image, optional link                                |
-| `Image`     | Single image with optional caption; `alt` sourced from `media` (never re-entered) |
+| `Hero`      | Image, and optional heading, subheading and button — "images will not always have a heading" (Jason). **Built 2026-11-13**, district only |
+| `Image`     | Single image with optional caption; `alt` sourced from the library (never re-entered). **Built 2026-11-13**, in the school palette |
 | `ImageText` | Image beside rich text, side selectable                                           |
 | `Gallery`   | Grouped images                                                                    |
 

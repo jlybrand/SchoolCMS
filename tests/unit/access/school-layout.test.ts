@@ -50,10 +50,15 @@ const columns = (id: string, cols: { id: string; heading?: string; content: unkn
 const ok = { ok: true }
 
 describe('SCHOOL_BLOCKS — the simple palette', () => {
-  it('is Text, Button, Cards, Accordion and Divider — nothing that carries data or layout', () => {
+  it('is Text, Button, Cards, Accordion, Divider and Image — nothing that carries data or layout', () => {
+    // Image joined 2026-11-13 (Jason): a school picks from its own library, alt already required.
     expect([...SCHOOL_BLOCKS].sort()).toEqual(
-      ['accordion', 'callToAction', 'cardGrid', 'divider', 'richText'].sort(),
+      ['accordion', 'callToAction', 'cardGrid', 'divider', 'image', 'richText'].sort(),
     )
+  })
+
+  it('the Hero is the district’s (Jason, 2026-11-13)', () => {
+    expect(SCHOOL_BLOCKS.has('hero')).toBe(false)
   })
 })
 

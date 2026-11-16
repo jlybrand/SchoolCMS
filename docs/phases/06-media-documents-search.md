@@ -207,3 +207,75 @@ screen refuses school managers: its access check runs before a school is known
     axe in both themes at each step;
   - a document asks the accessibility question and uploads;
   - the Files list's button leads to the school's task
+
+## 3. The Image and Hero blocks (Jason, 2026-11-13)
+
+Two blocks that show a file from **this site's library**. The alt text is the library's, never
+re-entered on a page, so rule 7 holds at upload. A decorative image gets empty alt text.
+
+| Block   | Fields                                                                                                                  | Who                                                         |
+| ------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `image` | `image` (required), `caption`                                                                                           | **In the school palette** (`SCHOOL_BLOCKS`), and in Columns |
+| `hero`  | `image` (required); optional `heading`, `subheading`, and a button (`linkFields` with "Nothing", `linkLabel`, `newTab`) | **District only**                                           |
+
+- **The picker** (`libraryImage`) is Payload's upload field on `resources`. It is filtered to
+  images **of the page's own site**, and Payload checks the same filter on save. With
+  `allowCreate: false` it can't make files: they are uploaded in the library ("Upload a file").
+- **Settings → data → render.**
+  1. **Settings:** `toImage` / `toHero` keep the file's ID; a block without one is dropped. A hero's
+     button needs both its address and its words, or there is none.
+  2. **Data:** the resolve pass calls `getImageAsset(id)` (`src/content/resources.ts`, read as
+     the platform) → `toImageAsset`:
+     - `src` is the largest size (`hero`, 1600);
+     - `srcSet` lists every size with its width, the original last;
+     - `alt` is the library's, or empty if decorative.
+
+     A missing file, or one that isn't an image, drops the block.
+
+  3. **Render:**
+     - `LibraryImage` (named so the alt lint doesn't take it for an `<img>`) is a `<figure>`
+       with a lazy `<img>` (width and height set, `sizes` for the text column) and a
+       `<figcaption>`.
+     - `Hero` breaks out to the wide measure, at least `--space-xl` from the screen's edges (the
+       staff list's breakout), with a priority-loaded image.
+- **The hero's words** (Jason: "images will not always have a heading") sit on a
+  `--color-surface-raised` band **under** the image, or **beside** it from 60rem. So they meet
+  contrast whatever the photo, and the button is `Link`'s button. With no words, the hero is the
+  image alone. The heading takes the block's level.
+- **Files load on every site's own hostname:** `/api` is outside the edge rewrite (`proxy.ts`).
+- **The approval diff** names them: "Image" with its caption, and "Hero" with its heading. It also
+  now names "Calendar" and "Staff list", which were shown as "Section".
+- **Admin accessibility:**
+  - A11yPatch names the chosen file's icon-only buttons: "Edit the file's details" and "Take
+    the file out of this section". Remove only clears the field; the file stays in the library.
+  - `admin-overrides.css` darkens its size/type line.
+
+### Files
+
+| File                                                     | Does                                                                               |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `src/collections/blocks/index.ts`                        | `imageBlock`, `heroBlock`, the shared `libraryImage` picker                        |
+| `src/access/school-layout.ts`                            | `image` in `SCHOOL_BLOCKS`                                                         |
+| `src/content/types.ts`                                   | `ImageAsset`, `ImageBlock`, `ResolvedImageBlock`, `HeroBlock`, `ResolvedHeroBlock` |
+| `src/content/blocks.ts`                                  | `toImage`, `toHero`                                                                |
+| `src/content/image-asset.ts`, `src/content/resources.ts` | pure `toImageAsset`; `getImageAsset`                                               |
+| `src/content/resolve-blocks.ts`                          | the `image` and `hero` cases                                                       |
+| `src/blocks/LibraryImage/`, `src/blocks/Hero/`           | components, CSS, stories                                                           |
+| `src/admin/Approvals/page-diff.ts`                       | the four section names                                                             |
+
+### Tests
+
+- `tests/unit/blocks.test.ts`: both mappers (no image dropped; optional words; the button rule)
+- `tests/unit/content/image-asset.test.ts`: `src`, `srcSet`, alt, decorative, no sizes, not an
+  image
+- `tests/unit/access/school-layout.test.ts`: Image in the palette, Hero not
+- `tests/unit/admin/layout-diff.test.ts`, `a11y-patch.test.ts`: the names; the picker's buttons
+- `tests/integration/image-blocks.test.ts`:
+  - resolved sizes and alt; decorative gives empty alt; a hero resolves the same way
+  - a missing file or a document drops the block
+  - another school's image is refused on save
+  - a school may add an Image but not a Hero
+- `tests/e2e/image-blocks.spec.ts`: a public page with a hero with words, a captioned image and
+  an image-only hero — alt text, the heading level, the button — with axe in both themes
+- `tests/e2e/admin-planes-axe.spec.ts`: a page holding a hero and an image, in both themes
+- Storybook `Blocks/Image`, `Blocks/Hero`: the component axe gate, LTR and RTL

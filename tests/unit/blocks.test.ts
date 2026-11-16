@@ -631,6 +631,8 @@ describe('the block library and the mapper agree', () => {
       feed: { boards: [7] },
       calendar: { calendars: [4] },
       staffList: { group: 7 },
+      image: { image: 12 },
+      hero: { image: 12 },
       columns: {
         columns: [
           { content: [{ blockType: 'richText', content: lexical(paragraph('One')) }] },
@@ -763,5 +765,85 @@ describe('toPageBlocks — staff list', () => {
   it('a staff list with no group is DROPPED — nobody chose whose staff', () => {
     expect(toPageBlocks([{ blockType: 'staffList', id: 's' }])).toEqual([])
     expect(toPageBlocks([{ blockType: 'staffList', id: 's', group: null }])).toEqual([])
+  })
+})
+
+/**
+ * An image and a hero (Jason, 2026-11-13) — their SETTINGS: the library file they show, by id.
+ * The image itself (address, sizes, alt) is loaded by the resolve pass. No image: dropped.
+ */
+describe('toPageBlocks — image', () => {
+  it('maps the file and the caption', () => {
+    expect(
+      toPageBlocks([{ blockType: 'image', id: 'i', image: { id: 12 }, caption: '  The gym  ' }]),
+    ).toEqual([{ kind: 'image', id: 'i', image: '12', caption: 'The gym' }])
+    expect(toPageBlocks([{ blockType: 'image', id: 'i', image: 12 }])).toEqual([
+      { kind: 'image', id: 'i', image: '12', caption: null },
+    ])
+  })
+
+  it('no image chosen: dropped', () => {
+    expect(toPageBlocks([{ blockType: 'image', id: 'i', caption: 'x' }])).toEqual([])
+  })
+})
+
+describe('toPageBlocks — hero', () => {
+  it('an image alone is a hero — the words are optional (Jason)', () => {
+    expect(toPageBlocks([{ blockType: 'hero', id: 'h', image: 12 }])).toEqual([
+      {
+        kind: 'hero',
+        id: 'h',
+        image: '12',
+        heading: null,
+        subheading: null,
+        href: null,
+        linkLabel: null,
+        newTab: false,
+      },
+    ])
+  })
+
+  it('with a heading, a subheading and a button', () => {
+    expect(
+      toPageBlocks([
+        {
+          blockType: 'hero',
+          id: 'h',
+          image: 12,
+          heading: ' Welcome ',
+          subheading: 'Home of the Hawks',
+          linkType: 'address',
+          href: '/enroll',
+          linkLabel: 'Start enrollment',
+          newTab: true,
+        },
+      ]),
+    ).toEqual([
+      {
+        kind: 'hero',
+        id: 'h',
+        image: '12',
+        heading: 'Welcome',
+        subheading: 'Home of the Hawks',
+        href: '/enroll',
+        linkLabel: 'Start enrollment',
+        newTab: true,
+      },
+    ])
+  })
+
+  it('a button needs both its address and its words, or there is none', () => {
+    const [noWords] = toPageBlocks([
+      { blockType: 'hero', id: 'h', image: 12, linkType: 'address', href: '/enroll' },
+    ])
+    expect(noWords).toMatchObject({ href: null, linkLabel: null })
+    const [nothing] = toPageBlocks([
+      { blockType: 'hero', id: 'h', image: 12, linkType: 'none', linkLabel: 'Go' },
+    ])
+    expect(nothing).toMatchObject({ href: null, linkLabel: null })
+  })
+
+  it('no image: dropped', () => {
+    expect(toPageBlocks([{ blockType: 'hero', id: 'h', heading: 'Welcome' }])).toEqual([])
   })
 })

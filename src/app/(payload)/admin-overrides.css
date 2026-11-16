@@ -128,3 +128,12 @@ body:has(.collection-edit--resources:not(.collection-edit--is-editing)) .step-na
   color: var(--theme-elevation-800);
   font-weight: 600;
 }
+
+/**
+ * An upload field's chosen file — its size, dimensions and type ("78 bytes — 2x2 — image/png")
+ * — 1.4.3 Contrast (Minimum). Payload's grey fails 4.5:1; it takes the help-text token. Found
+ * 2026-11-13 by tests/e2e/admin-planes-axe.spec.ts ("a page with a hero and an image").
+ */
+.upload-relationship-details__meta {
+  color: var(--theme-elevation-800);
+}

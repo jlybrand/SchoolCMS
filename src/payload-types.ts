@@ -306,6 +306,8 @@ export interface Page {
         | FeedBlockRow
         | CalendarBlockRow
         | StaffListBlockRow
+        | ImageBlockRow
+        | HeroBlockRow
         | EmbedBlock
         | DividerBlock
         | ColumnsBlock
@@ -651,6 +653,142 @@ export interface Person {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ImageBlockRow".
+ */
+export interface ImageBlockRow {
+  /**
+   * An image from this site’s library. Upload it there first.
+   */
+  image: number | Resource;
+  /**
+   * Shown under the image, for everyone to read.
+   */
+  caption?: string | null;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'image';
+}
+/**
+ * A site’s images and documents. Video goes on YouTube.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "resources".
+ */
+export interface Resource {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  title: string;
+  /**
+   * What someone who can’t see it needs to know. Not needed if it’s decorative.
+   */
+  alt?: string | null;
+  isDecorative?: boolean | null;
+  remediationStatus?: ('attested' | 'not-attested' | 'not-applicable') | null;
+  description?: string | null;
+  /**
+   * Separate tags with commas, for example “forms, enrollment”.
+   */
+  tagsText?: string | null;
+  tags?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  folder?: (number | null) | ResourceFolder;
+  kind?: string | null;
+  attestedBy?: (number | null) | User;
+  attestedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+  sizes?: {
+    thumbnail?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    card?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    hero?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+  };
+}
+/**
+ * Folders for a site’s files. Put folders inside folders to keep things tidy.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "resource-folders".
+ */
+export interface ResourceFolder {
+  id: number;
+  tenant?: (number | null) | Tenant;
+  name: string;
+  /**
+   * Leave empty for a folder at the top of the library.
+   */
+  parent?: (number | null) | ResourceFolder;
+  label?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "HeroBlockRow".
+ */
+export interface HeroBlockRow {
+  /**
+   * The large image across the top. Upload it to this site’s library first.
+   */
+  image: number | Resource;
+  heading?: string | null;
+  subheading?: string | null;
+  linkType?: ('none' | 'page' | 'address') | null;
+  /**
+   * Keeps working if the page is renamed or moved.
+   */
+  page?: (number | null) | Page;
+  /**
+   * A path on this site, like /enroll, or a full web address.
+   */
+  href?: string | null;
+  /**
+   * What the button says. Describe the destination — "Start enrollment", never "Click here".
+   */
+  linkLabel?: string | null;
+  newTab?: boolean | null;
+  id?: string | null;
+  blockName?: string | null;
+  blockType: 'hero';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "EmbedBlock".
  */
 export interface EmbedBlock {
@@ -704,6 +842,7 @@ export interface ColumnsBlock {
           | FeedBlockRow
           | CalendarBlockRow
           | StaffListBlockRow
+          | ImageBlockRow
         )[]
       | null;
     id?: string | null;
@@ -1076,96 +1215,6 @@ export interface Alert {
   createdAt: string;
 }
 /**
- * A site’s images and documents. Video goes on YouTube.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "resources".
- */
-export interface Resource {
-  id: number;
-  tenant?: (number | null) | Tenant;
-  title: string;
-  /**
-   * What someone who can’t see it needs to know. Not needed if it’s decorative.
-   */
-  alt?: string | null;
-  isDecorative?: boolean | null;
-  remediationStatus?: ('attested' | 'not-attested' | 'not-applicable') | null;
-  description?: string | null;
-  /**
-   * Separate tags with commas, for example “forms, enrollment”.
-   */
-  tagsText?: string | null;
-  tags?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  folder?: (number | null) | ResourceFolder;
-  kind?: string | null;
-  attestedBy?: (number | null) | User;
-  attestedAt?: string | null;
-  updatedAt: string;
-  createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-  focalX?: number | null;
-  focalY?: number | null;
-  sizes?: {
-    thumbnail?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-    card?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-    hero?: {
-      url?: string | null;
-      width?: number | null;
-      height?: number | null;
-      mimeType?: string | null;
-      filesize?: number | null;
-      filename?: string | null;
-    };
-  };
-}
-/**
- * Folders for a site’s files. Put folders inside folders to keep things tidy.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "resource-folders".
- */
-export interface ResourceFolder {
-  id: number;
-  tenant?: (number | null) | Tenant;
-  name: string;
-  /**
-   * Leave empty for a folder at the top of the library.
-   */
-  parent?: (number | null) | ResourceFolder;
-  label?: string | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
  * Every send, approval, request for changes, publish, restore and delete, and every change to a user or an auto-approval grant. Read-only.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1515,6 +1564,8 @@ export interface PagesSelect<T extends boolean = true> {
         feed?: T | FeedBlockRowSelect<T>;
         calendar?: T | CalendarBlockRowSelect<T>;
         staffList?: T | StaffListBlockRowSelect<T>;
+        image?: T | ImageBlockRowSelect<T>;
+        hero?: T | HeroBlockRowSelect<T>;
         embed?: T | EmbedBlockSelect<T>;
         divider?: T | DividerBlockSelect<T>;
         columns?: T | ColumnsBlockSelect<T>;
@@ -1639,6 +1690,32 @@ export interface StaffListBlockRowSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ImageBlockRow_select".
+ */
+export interface ImageBlockRowSelect<T extends boolean = true> {
+  image?: T;
+  caption?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "HeroBlockRow_select".
+ */
+export interface HeroBlockRowSelect<T extends boolean = true> {
+  image?: T;
+  heading?: T;
+  subheading?: T;
+  linkType?: T;
+  page?: T;
+  href?: T;
+  linkLabel?: T;
+  newTab?: T;
+  id?: T;
+  blockName?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "EmbedBlock_select".
  */
 export interface EmbedBlockSelect<T extends boolean = true> {
@@ -1678,6 +1755,7 @@ export interface ColumnsBlockSelect<T extends boolean = true> {
               feed?: T | FeedBlockRowSelect<T>;
               calendar?: T | CalendarBlockRowSelect<T>;
               staffList?: T | StaffListBlockRowSelect<T>;
+              image?: T | ImageBlockRowSelect<T>;
             };
         id?: T;
       };

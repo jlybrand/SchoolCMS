@@ -11,6 +11,8 @@ import { ChildPageNav } from './ChildPageNav'
 import { Columns } from './Columns'
 import { Divider } from './Divider'
 import { Embed } from './Embed'
+import { Hero } from './Hero'
+import { LibraryImage } from './LibraryImage'
 import { NewsFeed } from './NewsFeed'
 import { RichTextBlock } from './RichTextBlock'
 import { StaffList } from './StaffList'
@@ -107,6 +109,11 @@ const Block = ({
     case 'calendar':
       // Already resolved — its events arrived with it (`resolvePageBlocks`).
       return <Calendar baseLevel={baseLevel} block={block} />
+    case 'image':
+      // Already resolved — its library image arrived with it (`resolvePageBlocks`).
+      return <LibraryImage block={block} />
+    case 'hero':
+      return <Hero baseLevel={baseLevel} block={block} />
     case 'staffList':
       // Already resolved — its staff arrived with it (`resolvePageBlocks`).
       return <StaffList baseLevel={baseLevel} block={block} />
