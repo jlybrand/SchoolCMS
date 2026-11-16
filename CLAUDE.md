@@ -8,14 +8,16 @@ Guidance for Claude Code working in this repository.
 district domain and 27 school subdomains (**28 tenants**) from a single codebase and
 deployment. It replaces the rented Finalsite Composer CMS.
 
-**Status: Phases 0–5 complete; Phase 6 next.** Phase 0 (scaffold + guardrails), Phase 1
+**Status: Phases 0–6 complete; Phase 7 next.** Phase 0 (scaffold + guardrails), Phase 1
 (tenancy, roles, access control, the adversarial isolation suite), Phase 2 (edge tenant
 routing, locale plumbing, the content-access layer, cache tags), Phase 3 (components,
 `pages`, the block library, navigation, theme, SEO, settings), Phase 4 (review state, the
 school and district planes, the approval queue, auto-approval grants with none issued,
-notifications, whole-screen axe on both planes) and Phase 5 (the audit trail, announcements,
-calendars and events, alerts, staff directories with the CSI sync) have landed. Phase 5's
-close-out, with what it carries forward, is `docs/phases/05-content-modules.md` §41. Authentication
+notifications, whole-screen axe on both planes), Phase 5 (the audit trail, announcements,
+calendars and events, alerts, staff directories with the CSI sync) and Phase 6 (the Resources
+library, image and document blocks, the not-checked work queue, site search) have landed. Phase
+6's close-out, with what it carries forward, is `docs/phases/06-media-documents-search.md` §10;
+Phase 5's is `docs/phases/05-content-modules.md` §41. Authentication
 is on an **interim local-auth posture** — see "Authentication" below. `starterDocs/` holds the 12-document
 design suite (v2.1, August 2026) and is the specification. Treat it as authoritative; when
 code and docs disagree, that is a bug in one of them — say which.
@@ -358,7 +360,8 @@ design system legible to whoever maintains this next.
   their heading levels — an editor must not be able to produce a heading-order violation by
   reordering.
 - **Migration mappers are built alongside the module they target**, not saved for the end.
-  _Exception (Jason, 2026-11-13):_ Phase 5's announcements, events and alerts have none yet —
+  _Exception (Jason, 2026-11-13; extended 2026-11-16 to Phase 6's library files):_ Phase 5's
+  announcements, events and alerts, and Phase 6's Resources library, have none yet —
   deferred until a real Finalsite export is captured (template census, `10` §2), because a
   mapper against an invented shape is the spike the TDD table forbids.
 - **Payload version bumps are a deliberate, separate PR** — never bundled with feature work,

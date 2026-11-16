@@ -9,16 +9,17 @@ decisions:
 - **YouTube only**, so no video uploads.
 - **Staff-only visibility waits for Entra.**
 
-| Slice                                  | State        |
-| -------------------------------------- | ------------ |
-| A1. The library: files, folders, rules | §1 (#101)    |
-| A2. The school's "Upload a file" task  | §2 (#102)    |
-| B1. Image and Hero blocks              | §3 (#103)    |
-| B2. An announcement's image            | §4 (#104)    |
-| C1. The Document list block            | §5 (#106)    |
-| C2. The not-attested work queue        | §6 (#107)    |
-| D1. The search index and query         | §8 (#109)    |
-| D2. The search page and header box     | §9 (this PR) |
+| Slice                                  | State         |
+| -------------------------------------- | ------------- |
+| A1. The library: files, folders, rules | §1 (#101)     |
+| A2. The school's "Upload a file" task  | §2 (#102)     |
+| B1. Image and Hero blocks              | §3 (#103)     |
+| B2. An announcement's image            | §4 (#104)     |
+| C1. The Document list block            | §5 (#106)     |
+| C2. The not-attested work queue        | §6 (#107)     |
+| D1. The search index and query         | §8 (#109)     |
+| D2. The search page and header box     | §9 (#110)     |
+| E. Exit check and close-out            | §10 (this PR) |
 
 ---
 
@@ -662,3 +663,66 @@ request because it reads the query, and `noindex, follow`. `search` is a reserve
   - nothing found offers every site, and no words shows the hint, with both landmarks named apart;
   - the results page in Arabic (RTL), with axe
 - Storybook `Components/SearchForm` and `Components/SearchResults`: the component axe gate, LTR and RTL
+
+## 10. Phase 6 exit check and close-out (2026-11-16)
+
+### Files
+
+| File                             | Holds                                                                                                                                                                                                                                                                                                                                                             |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tests/e2e/phase-6-exit.spec.ts` | (1) The REST API, over real HTTP, refuses an image with no alt, or blank alt, from the district **and** from a school; alt or "decorative" passes. (2) One search journey: a school publishes; its own site's search finds it; another school's doesn't; every-site search does, labelled with its site; axe on each results page. Timed as `publish-to-findable` |
+
+Measured locally: **publish-to-findable 328–355 ms** over three runs. That's the time from
+publish to the page appearing in its site's results.
+
+### Exit criterion (`05`)
+
+| Clause                                                                                             | Where it is proven                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **An image cannot be uploaded without alt or a decorative flag**                                   | **The rule, every route:** `resources.test.ts`. It is refused even with access overridden, and removing alt later is refused too; field validation and a `beforeValidate` hook ask the same `resourceProblems` (CLAUDE.md rule 7). **The REST API:** `phase-6-exit.spec.ts`, for the district and a school. **The district's Files form:** `resources.spec.ts`. **The school's "Upload a file":** `school-upload.spec.ts`                                                                 |
+| ~~A staff-visibility document is invisible to the public and visible to a signed-in staff member~~ | **Moved to the Entra switch** (Jason, 2026-11-13): only school managers have accounts until then. Before the Phase 9 pilot                                                                                                                                                                                                                                                                                                                                                                |
+| **Search returns scoped, accessible results**                                                      | **Scoped:** `search.test.ts`. This site never returns another site's content, and every site does, labelled; drafts, staff-only, hidden pages and images are never found; shared announcements reach only their sites. `tenant-isolation.test.ts`: nobody reads the index through Payload's access. **Accessible:** `site-search.spec.ts` (axe in both themes and in Arabic RTL); the Storybook gate (`SearchForm`, `SearchResults`, LTR and RTL). **End to end:** `phase-6-exit.spec.ts` |
+
+The roadmap's other Phase 6 bullets:
+
+| Item                               | Proof                                                                                                                                      |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| The Resources library, derivatives | `resources.test.ts` (400/800/1600 webp sizes). §1                                                                                          |
+| R2                                 | Wired through `@payloadcms/storage-s3` when `R2_*` is set; local disk otherwise. **Not exercised against a real bucket** (carried forward) |
+| Remediation attestation            | `resources.test.ts` (required; who and when recorded). Two answers since 2026-11-16 (§7)                                                   |
+| The `not-attested` work queue      | `dashboard.test.ts` (unit and integration), `district-dashboard.spec.ts`. §6                                                               |
+| No validation pipeline (`01` §4.4) | None built; the attestation records the status                                                                                             |
+| pgvector left switchable           | Nothing in the index or query prevents it; ADR-14 unchanged                                                                                |
+
+### Definition of done (`05`)
+
+| Item                                        | State                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Types; unit, integration, e2e               | Green on 2026-11-16: typecheck and lint clean; unit 1949, integration 540, e2e **353/353** on a fresh database, no flakes; Storybook gate green; `pnpm audit --audit-level high` clean                                                                                                                                                                                                                                |
+| Zero critical/serious axe, public and admin | **Component gate**, LTR and RTL: Image, Hero, Document list, NewsList thumbnails, SearchForm, SearchResults. **Whole-screen admin**, both themes: the Files list and form, uploading, a page with a hero, an image and a document list, a post with an image, the dashboard with "Documents to check", the school's "Upload a file". **Public**, both themes: images, a hero, a post's image, a document list, search |
+| RTL for new layout                          | The component gate's RTL pass; Arabic search results in e2e. All CSS uses logical properties only (stylelint)                                                                                                                                                                                                                                                                                                         |
+| Isolation tests                             | Green. Extended to the library (A1), and to the search index, which nobody reads through Payload's access                                                                                                                                                                                                                                                                                                             |
+| New surfaces against `07`                   | Automated axe; labelled native controls (the upload form, the search box); link text that names a document's type and size; `<mark>` as text. The screen-reader smoke test is a manual release check, not yet run                                                                                                                                                                                                     |
+| Content-access boundary lint                | Green. Search and the library are read through `src/content/`                                                                                                                                                                                                                                                                                                                                                         |
+| ADRs and docs                               | ADR-14 as built (`05` note); CLAUDE.md's plugin list (`plugin-search`); `03`, `04`, `07` updated where Phase 6 changed them; this document §1–§10; CLAUDE.md status                                                                                                                                                                                                                                                   |
+| Add-on register (`01` §4.4)                 | Reviewed 2026-11-16: none requested, none dead                                                                                                                                                                                                                                                                                                                                                                        |
+| Migration mapper stub per slice             | **Deferred (Jason, 2026-11-16)**, as Phase 5's were (2026-11-13): built once a real Finalsite export is captured (`10` §2), since a stub would map an invented shape of Finalsite's Resources                                                                                                                                                                                                                         |
+| Behind preview until acceptance             | Nothing is deployed; applies from the pilot (Phase 9)                                                                                                                                                                                                                                                                                                                                                                 |
+| Dependency audit                            | Green at `--audit-level high` since #105                                                                                                                                                                                                                                                                                                                                                                              |
+
+### Carried forward
+
+| Item                                                                                                                                                                                         | Where it lands / who decides                                                                      |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| **Staff-only visibility** on pages and documents                                                                                                                                             | The Entra switch, before the Phase 9 pilot                                                        |
+| **Replace a file** with one of the same kind, keeping its place (Jason, 2026-11-16): confirm alt, reset the accessibility answer, no approval for schools, a school "Replace this file" task | Pinned; next feature work                                                                         |
+| **R2 against a real bucket**                                                                                                                                                                 | Hosting work (`09` §1)                                                                            |
+| **A GIN index** on the weighted search vector                                                                                                                                                | Phase 8 hardening, when migrations start (§8)                                                     |
+| **Search UI words**, and stemming beyond English                                                                                                                                             | Phase 7 (`08`): the results page's labels are English; the index uses the `english` configuration |
+| An event's search link is the **first** page, by path, showing its calendar                                                                                                                  | As built; revisit if a school has several calendar pages                                          |
+| The other two **work queues** in `04` §3.1 item 5 (bulk-decorative images, translation verification)                                                                                         | Not built; translation verification with Phase 7                                                  |
+| **The feed calendar's admin form (dark)** still flakes under full-suite load, despite one calendar per scheme                                                                                | Test fix, separately                                                                              |
+| **The dev server rewrites `importMap.js`** mid-branch switch (twice on 2026-11-16)                                                                                                           | Check `git status` before each commit; restore from main                                          |
+| Migration mapper for library files                                                                                                                                                           | See the definition of done above                                                                  |
+| Screen-reader smoke test of the new screens                                                                                                                                                  | Manual release check; Phase 8 AT audit                                                            |
+| Earlier phases' open items (`05` §41, `04` §19)                                                                                                                                              | Unchanged unless noted above                                                                      |

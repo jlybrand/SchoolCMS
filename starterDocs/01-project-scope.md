@@ -167,6 +167,7 @@ in a year should be considered dead, not pending.
 |---|---|---|
 | Phase 4 close (2026-10-27) | None | None — the oldest is under a year from this design (Aug 2026) |
 | Phase 5 close (2026-11-13) | **School page composition** — adopted at "level B": schools compose with the simple components (Jason, 2026-11-04) | None |
+| Phase 6 close (2026-11-16) | None. (In-platform PDF/UA validation still unrequested; the attestation records status, `07` §5) | None |
 
 ## 5. Explicitly out of scope
 
