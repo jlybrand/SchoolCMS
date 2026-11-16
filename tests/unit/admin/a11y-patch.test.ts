@@ -271,3 +271,20 @@ describe('the file library’s upload controls (2026-11-13)', () => {
     expect(document.querySelector('.file-details__remove')?.hasAttribute('aria-label')).toBe(false)
   })
 })
+
+describe('an upload field’s chosen file (2026-11-13: the Image and Hero blocks)', () => {
+  it('names its icon-only edit and remove buttons', () => {
+    document.body.innerHTML = `
+      <div class="upload-relationship-details__actions">
+        <button class="btn upload-relationship-details__edit btn--icon-only" type="button"><svg></svg></button>
+        <button class="btn upload-relationship-details__remove btn--icon-only" type="button"><svg></svg></button>
+      </div>`
+    repairAdminA11y(document)
+    expect(
+      document.querySelector('.upload-relationship-details__edit')?.getAttribute('aria-label'),
+    ).toBe('Edit the file’s details')
+    expect(
+      document.querySelector('.upload-relationship-details__remove')?.getAttribute('aria-label'),
+    ).toBe('Take the file out of this section')
+  })
+})

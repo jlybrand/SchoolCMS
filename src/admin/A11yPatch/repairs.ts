@@ -53,6 +53,15 @@ export const repairAdminA11y = (root: ParentNode): void => {
     if (button.textContent?.trim() === '') name(button, 'Remove the file')
   }
 
+  // 4.1.2 — an upload field's chosen file (the Image and Hero blocks): two icon-only buttons.
+  // "Remove" takes the file out of the field; the file itself stays in the library.
+  for (const button of all(root, 'button.upload-relationship-details__edit')) {
+    if (button.textContent?.trim() === '') name(button, 'Edit the file’s details')
+  }
+  for (const button of all(root, 'button.upload-relationship-details__remove')) {
+    if (button.textContent?.trim() === '') name(button, 'Take the file out of this section')
+  }
+
   // 4.1.2 — the document controls' "⋯" menu: three dots, no words.
   for (const button of all(root, '.doc-controls .popup-button')) {
     if (button.textContent?.trim() === '') name(button, 'More actions')

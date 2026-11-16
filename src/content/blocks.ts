@@ -14,6 +14,8 @@ import type {
   EmbedBlock,
   CalendarBlock,
   StaffListBlock,
+  ImageBlock,
+  HeroBlock,
   StaffListColumns,
   FeedBlock,
   PageBlock,
@@ -284,6 +286,43 @@ const staffColumns = (value: unknown): StaffListColumns => {
   return n === 1 || n === 2 || n === 3 || n === 4 ? n : 3
 }
 
+/** The one library file a block shows, by id — or null. */
+const fileOf = (value: unknown): string | null =>
+  ids(value === undefined || value === null ? [] : [value])[0] ?? null
+
+/**
+ * An image's SETTINGS (Jason, 2026-11-13): the library file, by id, and a caption. The image is
+ * loaded by `resolvePageBlocks`. No image: dropped.
+ */
+const toImage = (row: Row, index: number): ImageBlock | null => {
+  const image = fileOf(row.image)
+  if (image === null) return null
+  return { kind: 'image', id: idOf(row, index), image, caption: str(row.caption) }
+}
+
+/**
+ * A hero's SETTINGS (Jason, 2026-11-13): its image, by id — required — and, optionally, a
+ * heading, a subheading and a button. A button needs both its address and its words, or there is
+ * none. No image: dropped.
+ */
+const toHero = (row: Row, index: number, paths: PagePaths): HeroBlock | null => {
+  const image = fileOf(row.image)
+  if (image === null) return null
+  const href = hrefOf(row, paths)
+  const linkLabel = str(row.linkLabel)
+  const button = href !== null && linkLabel !== null
+  return {
+    kind: 'hero',
+    id: idOf(row, index),
+    image,
+    heading: str(row.heading),
+    subheading: str(row.subheading),
+    href: button ? href : null,
+    linkLabel: button ? linkLabel : null,
+    newTab: button && row.newTab === true,
+  }
+}
+
 /** At most this many columns are rendered; the schema allows no more. */
 const MAX_COLUMNS = 3
 
@@ -318,6 +357,8 @@ const MAPPERS: Record<string, (row: Row, index: number, paths: PagePaths) => Pag
   feed: toFeed,
   calendar: toCalendar,
   staffList: toStaffList,
+  image: toImage,
+  hero: toHero,
   columns: toColumns,
 }
 

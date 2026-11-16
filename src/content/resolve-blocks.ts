@@ -9,6 +9,7 @@ import { subscribeUrl } from '@/lib/ical'
 
 import { listCalendarRefs, listEventOccurrences } from './events'
 import { listStaff } from './people'
+import { getImageAsset } from './resources'
 import { listPosts } from './posts'
 import type {
   CalendarBlock,
@@ -113,6 +114,15 @@ export const resolvePageBlocks = async (
           return resolveFeed(ctx, block, options)
         case 'calendar':
           return resolveCalendar(ctx, block, today, options.serverUrl)
+        case 'image': {
+          // The library's image; gone, or not an image, and the block goes too.
+          const image = await getImageAsset(block.image)
+          return image ? { ...block, image } : null
+        }
+        case 'hero': {
+          const image = await getImageAsset(block.image)
+          return image ? { ...block, image } : null
+        }
         case 'staffList': {
           // Nobody to list: the block becomes nothing, as an empty feed does.
           const staff = await listStaff(block.group)

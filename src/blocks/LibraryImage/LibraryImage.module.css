@@ -1,0 +1,17 @@
+/* An image block — logical properties only (rule 5). */
+
+.figure {
+  margin: 0;
+}
+
+.image {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  border-radius: var(--radius);
+}
+
+.caption {
+  margin-block-start: var(--space-xs);
+  color: var(--color-text-muted);
+}

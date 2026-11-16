@@ -455,6 +455,90 @@ export const staffListBlock: Block = {
   ],
 }
 
+/**
+ * An image from the site's library (Jason, 2026-11-13) — the file it shows, chosen from THIS
+ * site's images; its alt text is the library's, never re-entered here (rule 7 holds at upload).
+ * In the school palette (`src/access/school-layout.ts`).
+ */
+const libraryImage = (description: string) =>
+  ({
+    name: 'image',
+    type: 'upload',
+    relationTo: 'resources',
+    required: true,
+    label: 'Image',
+    // This site's images only. Payload checks it on save too, not only in the picker.
+    filterOptions: ({ data }: { data?: { tenant?: unknown } }) => {
+      const tenant = data?.tenant
+      const image = { kind: { equals: 'image' } }
+      return tenant === undefined || tenant === null
+        ? image
+        : { and: [image, { tenant: { equals: tenant } }] }
+    },
+    admin: {
+      description,
+      // Files are uploaded in the library ("Upload a file"), not made here.
+      allowCreate: false,
+    },
+  }) as const
+
+export const imageBlock: Block = {
+  slug: 'image',
+  interfaceName: 'ImageBlockRow',
+  labels: { singular: 'Image', plural: 'Images' },
+  fields: [
+    libraryImage('An image from this site’s library. Upload it there first.'),
+    {
+      name: 'caption',
+      type: 'text',
+      label: 'Caption',
+      admin: { description: 'Shown under the image, for everyone to read.' },
+    },
+  ],
+}
+
+/**
+ * A hero (Jason, 2026-11-13) — a large image at the top of a page and, optionally, a heading, a
+ * subheading and a button: "images will not always have a heading". The words sit on a band
+ * under the image, so they always meet contrast. District only.
+ */
+export const heroBlock: Block = {
+  slug: 'hero',
+  interfaceName: 'HeroBlockRow',
+  labels: { singular: 'Hero', plural: 'Heroes' },
+  fields: [
+    libraryImage('The large image across the top. Upload it to this site’s library first.'),
+    { name: 'heading', type: 'text', label: 'Heading' },
+    { name: 'subheading', type: 'text', label: 'Subheading' },
+    ...linkFields({
+      owner: 'pages',
+      optional: true,
+      hrefDescription: 'A path on this site, like /enroll, or a full web address.',
+    }),
+    {
+      name: 'linkLabel',
+      type: 'text',
+      label: 'Button words',
+      admin: {
+        description:
+          'What the button says. Describe the destination — "Start enrollment", never "Click here".',
+        condition: (_data, siblingData) =>
+          (siblingData as { linkType?: unknown } | undefined)?.linkType !== 'none',
+      },
+    },
+    {
+      name: 'newTab',
+      type: 'checkbox',
+      defaultValue: false,
+      label: 'Open in a new tab',
+      admin: {
+        condition: (_data, siblingData) =>
+          (siblingData as { linkType?: unknown } | undefined)?.linkType !== 'none',
+      },
+    },
+  ],
+}
+
 export const columnsBlock: Block = {
   slug: 'columns',
   interfaceName: 'ColumnsBlock',
@@ -505,6 +589,7 @@ export const columnsBlock: Block = {
             feedBlock,
             calendarBlock,
             staffListBlock,
+            imageBlock,
           ],
         },
       ],
@@ -521,6 +606,8 @@ export const blockLibrary: Block[] = [
   feedBlock,
   calendarBlock,
   staffListBlock,
+  imageBlock,
+  heroBlock,
   embedBlock,
   dividerBlock,
   columnsBlock,

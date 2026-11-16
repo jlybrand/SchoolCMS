@@ -21,6 +21,8 @@ export const SCHOOL_BLOCKS: ReadonlySet<string> = new Set([
   'cardGrid',
   'accordion',
   'divider',
+  // Jason, 2026-11-13: a school picks from its own library, where alt text is already required.
+  'image',
 ])
 
 export type SchoolLayoutCheck = { ok: true } | { ok: false; reason: string }
