@@ -19,6 +19,7 @@ import { People } from './collections/People'
 import { MAX_UPLOAD_BYTES } from './admin/SchoolPlane/upload-file'
 import { ResourceFolders } from './collections/ResourceFolders'
 import { Resources } from './collections/Resources'
+import { siteSearch } from './collections/search-index'
 import { PostBoards } from './collections/PostBoards'
 import { PostFolders } from './collections/PostFolders'
 import { Posts } from './collections/Posts'
@@ -231,6 +232,8 @@ export default buildConfig({
         settings: { isGlobal: true },
       },
     }),
+    /** The site search index (Phase 6 D) — see src/collections/search-index.ts. */
+    siteSearch,
     /**
      * LAST, after the tenant plugin: gives a relationship marked `custom.crossTenant` — only the
      * news feed's boards — back its own filter. See src/lib/cross-tenant-relationships.ts.

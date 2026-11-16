@@ -85,6 +85,7 @@ export interface Config {
     resources: Resource;
     'resource-folders': ResourceFolder;
     'audit-events': AuditEvent;
+    search: Search;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
     'payload-locked-documents': PayloadLockedDocument;
@@ -111,6 +112,7 @@ export interface Config {
     resources: ResourcesSelect<false> | ResourcesSelect<true>;
     'resource-folders': ResourceFoldersSelect<false> | ResourceFoldersSelect<true>;
     'audit-events': AuditEventsSelect<false> | AuditEventsSelect<true>;
+    search: SearchSelect<false> | SearchSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -1263,6 +1265,52 @@ export interface AuditEvent {
   createdAt: string;
 }
 /**
+ * This is a collection of automatically created search results. These results are used by the global site search and will be updated automatically as documents in the CMS are created or updated.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "search".
+ */
+export interface Search {
+  id: number;
+  title?: string | null;
+  priority?: number | null;
+  doc:
+    | {
+        relationTo: 'pages';
+        value: number | Page;
+      }
+    | {
+        relationTo: 'posts';
+        value: number | Post;
+      }
+    | {
+        relationTo: 'events';
+        value: number | Event;
+      }
+    | {
+        relationTo: 'resources';
+        value: number | Resource;
+      };
+  tenant?: (number | null) | Tenant;
+  kind?: string | null;
+  text?: string | null;
+  excluded?: boolean | null;
+  reachAll?: boolean | null;
+  reachSites?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  lastDate?: string | null;
+  href?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -1458,6 +1506,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'audit-events';
         value: number | AuditEvent;
+      } | null)
+    | ({
+        relationTo: 'search';
+        value: number | Search;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -2140,6 +2192,25 @@ export interface AuditEventsSelect<T extends boolean = true> {
   comment?: T;
   versionId?: T;
   autoApproved?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "search_select".
+ */
+export interface SearchSelect<T extends boolean = true> {
+  title?: T;
+  priority?: T;
+  doc?: T;
+  tenant?: T;
+  kind?: T;
+  text?: T;
+  excluded?: T;
+  reachAll?: T;
+  reachSites?: T;
+  lastDate?: T;
+  href?: T;
   updatedAt?: T;
   createdAt?: T;
 }

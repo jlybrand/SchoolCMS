@@ -778,3 +778,35 @@ export type SiteAlert = {
 
 /** The page an alert is being placed on, or null for a screen that is not a page. */
 export type AlertPageRef = { id: string; isHome: boolean } | null
+
+/**
+ * SITE SEARCH (Jason, 2026-11-16; Phase 6 D) — a result as the search page shows it. Only public,
+ * published content becomes one; the content layer decides, so a page cannot show a draft.
+ */
+export type SearchScope = 'site' | 'all'
+
+export type SearchResult = {
+  /** Unique in the results: the kind and the document's id. */
+  id: string
+  kind: 'page' | 'post' | 'event' | 'document'
+  title: string
+  /** Where it is. Null for an event whose calendar no page shows. */
+  href: string | null
+  /** The site it belongs to, when that is not the site searched from. */
+  siteName: string | null
+  /** A few words around the match, the matched words marked. */
+  snippet: { text: string; match: boolean }[]
+  /** An event's next time (or its last, if it is past) and place. */
+  event: { when: string; location: string | null } | null
+  /** A document's type and size, e.g. "PDF, 240 KB". */
+  file: string | null
+}
+
+export type SearchResults = {
+  query: string | null
+  scope: SearchScope
+  total: number
+  page: number
+  pageCount: number
+  results: SearchResult[]
+}

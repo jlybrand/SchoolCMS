@@ -157,7 +157,8 @@ moves out of this phase. Built: `docs/phases/06`.)_
   **Moved to the Entra switch** (before the Phase 9 pilot): only school managers have accounts
   until then.
 - **Search**: Postgres FTS across public content, per-tenant and cross-tenant; results
-  templated and accessible. pgvector left switchable.
+  templated and accessible. pgvector left switchable. _(As built, 2026-11-16: the index is
+  `plugin-search`'s, the query ours — `docs/phases/06` §8.)_
 
 **Exit:** an image cannot be uploaded without alt or a decorative flag; ~~a staff-visibility
 document is invisible to the public and visible to a signed-in staff member~~ _(with the Entra
