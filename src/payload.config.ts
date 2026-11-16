@@ -87,6 +87,11 @@ export default buildConfig({
           Component: '/admin/SchoolPlane/UploadFileView#UploadFileView',
           path: '/upload-file',
         },
+        /** "Replace a file" — a new version in the old one's place (Jason, 2026-11-16). */
+        replaceFile: {
+          Component: '/admin/SchoolPlane/ReplaceFileView#ReplaceFileView',
+          path: '/replace-file',
+        },
         /** The district's approval queue (`04` §4.2). See src/admin/Approvals/. */
         approvals: {
           Component: '/admin/Approvals/ApprovalsView#ApprovalsView',

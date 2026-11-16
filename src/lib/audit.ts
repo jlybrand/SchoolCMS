@@ -268,10 +268,14 @@ export const auditEntries = (input: AuditInput): AuditEntry[] => {
 const forResource = (input: AuditInput): AuditEntry[] => {
   const doc = input.operation === 'delete' ? (input.doc ?? input.previous) : input.doc
   if (!doc) return []
+  // A new file in the old one's place (Jason, 2026-11-16): say so, old → new.
+  const was = input.operation === 'update' ? text(input.previous?.filename) : ''
+  const now = text(doc.filename)
   return [
     entry(input, doc, input.operation === 'delete' ? 'delete' : 'publish', {
       documentTitle: text(doc.title) || text(doc.filename) || `File ${String(doc.id)}`,
       tenant: tenantIdOf(doc.tenant as never),
+      ...(was && now && was !== now ? { summary: `Replaced the file: ${was} → ${now}` } : {}),
     }),
   ]
 }

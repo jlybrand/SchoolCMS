@@ -15,7 +15,14 @@ import {
   resourcesWriteAccess,
 } from '@/access/resources'
 import { auditChange, auditDelete } from '@/collections/hooks/audit'
-import { ACCEPTED_MIME_TYPES, kindOf, parseTags, resourceProblems } from '@/lib/resources'
+import { revalidateFile } from '@/collections/hooks/revalidate-on-publish'
+import {
+  ACCEPTED_MIME_TYPES,
+  kindOf,
+  parseTags,
+  replacementProblems,
+  resourceProblems,
+} from '@/lib/resources'
 
 /**
  * A site's file library (Jason, 2026-11-13; Finalsite's Resources): ONE library of images and
@@ -41,17 +48,29 @@ const merged = (data: Data | undefined, originalDoc: Data | undefined): Data => 
   ...(data ?? {}),
 })
 
-/** Rule 7, and the attestation — on every route, before anything is stored. */
-const checkFile: CollectionBeforeValidateHook = ({ data, originalDoc, req }) => {
+/** A save that puts a NEW file in an existing entry's place. */
+const replacing = (operation: string, req: { file?: unknown }) =>
+  operation === 'update' && req.file !== undefined && req.file !== null
+
+/**
+ * Rule 7, and the attestation — on every route, before anything is stored. A replacement keeps
+ * its kind (Jason, 2026-11-16): an image for an image, a document for a document.
+ */
+const checkFile: CollectionBeforeValidateHook = ({ data, operation, originalDoc, req }) => {
   const all = merged(data as Data, originalDoc as Data)
-  const mimeType = (all.mimeType as string | undefined) ?? req.file?.mimetype
-  const problems = resourceProblems({ ...all, mimeType })
+  const mimeType = req.file?.mimetype ?? (all.mimeType as string | undefined)
+  const problems = [
+    ...(replacing(operation, req)
+      ? replacementProblems(originalDoc?.mimeType as string | undefined, req.file?.mimetype)
+      : []),
+    ...resourceProblems({ ...all, mimeType }),
+  ]
   if (problems.length > 0) throw new ValidationError({ errors: problems })
   return data
 }
 
 /** Kind, tags, the folder's school, and who attested when. */
-const settle: CollectionBeforeChangeHook = async ({ data, originalDoc, req }) => {
+const settle: CollectionBeforeChangeHook = async ({ data, operation, originalDoc, req }) => {
   const all = merged(data as Data, originalDoc as Data)
   const next: Data = { ...data, kind: kindOf(all.mimeType as string) }
   if (data?.tagsText !== undefined) next.tags = parseTags(data.tagsText)
@@ -81,6 +100,17 @@ const settle: CollectionBeforeChangeHook = async ({ data, originalDoc, req }) =>
     next.attestedBy = attested ? (req.user?.id ?? null) : null
     next.attestedAt = attested ? new Date().toISOString() : null
   }
+
+  /**
+   * A new file in an old one's place (Jason, 2026-11-16). A DOCUMENT is not checked, whoever
+   * checked the old one — unconditionally, since the admin form re-sends the old answer — so it
+   * joins the district's "Documents to check".
+   */
+  if (replacing(operation, req) && next.kind === 'document') {
+    next.remediationStatus = 'not-attested'
+    next.attestedBy = null
+    next.attestedAt = null
+  }
   return next
 }
 
@@ -104,7 +134,13 @@ export const Resources: CollectionConfig = {
     /** "Upload a file", not Payload's "Create New" (Jason, 2026-11-13). */
     components: {
       beforeListTable: ['/admin/Resources/UploadFileButton#UploadFileButton'],
-      edit: { beforeDocumentControls: ['/admin/Resources/UploadingHeading#UploadingHeading'] },
+      edit: {
+        beforeDocumentControls: [
+          '/admin/Resources/UploadingHeading#UploadingHeading',
+          /** A school's way to its replace form (Jason, 2026-11-16). */
+          '/admin/Resources/ReplaceFileLink#ReplaceFileLink',
+        ],
+      },
     },
   },
   access: {
@@ -127,8 +163,15 @@ export const Resources: CollectionConfig = {
   hooks: {
     beforeValidate: [checkFile],
     beforeChange: [settle],
-    afterChange: [auditChange('resources')],
-    afterDelete: [auditDelete('resources')],
+    /**
+     * The log first, as everywhere; then the sites showing the file are refreshed (Jason,
+     * 2026-11-16) — a replaced file's old one is deleted, so a cached page would break.
+     */
+    afterChange: [auditChange('resources'), revalidateFile],
+    afterDelete: [
+      auditDelete('resources'),
+      ({ doc, req }) => revalidateFile({ doc, req } as Parameters<typeof revalidateFile>[0]),
+    ],
   },
   fields: [
     { name: 'title', type: 'text', label: 'Title', required: true },

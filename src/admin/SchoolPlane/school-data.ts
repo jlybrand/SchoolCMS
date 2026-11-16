@@ -222,3 +222,82 @@ export const listMyFolders = async (req: PayloadRequest): Promise<FolderOption[]
     return [{ id: doc.id, tenant: Number.isNaN(Number(tenant)) ? tenant : Number(tenant), label }]
   })
 }
+
+/** A file of the user's schools, as "Replace a file" shows it (Jason, 2026-11-16). */
+export type MyFile = {
+  id: number | string
+  title: string
+  kind: 'image' | 'document'
+  mimeType: string
+  filesize: number | null
+  url: string | null
+  /** The smallest size, for an image's preview. */
+  thumbnail: string | null
+  alt: string
+  isDecorative: boolean
+  folder: string | null
+}
+
+const toMyFile = (doc: Record<string, unknown>, folders: Map<string, string>): MyFile | null => {
+  const kind = doc.kind === 'image' || doc.kind === 'document' ? doc.kind : null
+  if (kind === null) return null
+  const folder = relationshipIdOf(doc.folder as never)
+  const sizes = (doc.sizes ?? {}) as { thumbnail?: { url?: unknown } }
+  return {
+    id: doc.id as number | string,
+    title:
+      typeof doc.title === 'string' && doc.title !== '' ? doc.title : String(doc.filename ?? ''),
+    kind,
+    mimeType: String(doc.mimeType ?? ''),
+    filesize: typeof doc.filesize === 'number' ? doc.filesize : null,
+    url: typeof doc.url === 'string' ? doc.url : null,
+    thumbnail: typeof sizes.thumbnail?.url === 'string' ? sizes.thumbnail.url : null,
+    alt: typeof doc.alt === 'string' ? doc.alt : '',
+    isDecorative: doc.isDecorative === true,
+    folder: folder === null ? null : (folders.get(folder) ?? null),
+  }
+}
+
+/**
+ * The files of the user's schools, by title — read AS THE USER, so a school sees its own and
+ * nothing else (`src/access/resources.ts`). For "Replace a file".
+ */
+export const listMyFiles = async (req: PayloadRequest): Promise<MyFile[]> => {
+  if (!req.user) return []
+  const [{ docs }, folders] = await Promise.all([
+    req.payload.find({
+      collection: 'resources',
+      req,
+      user: req.user,
+      overrideAccess: false,
+      depth: 0,
+      pagination: false,
+      sort: 'title',
+    }),
+    listMyFolders(req),
+  ])
+  const labels = new Map(folders.map((f) => [String(f.id), f.label]))
+  return docs
+    .map((doc) => toMyFile(doc as unknown as Record<string, unknown>, labels))
+    .filter((f): f is MyFile => f !== null)
+}
+
+/** One file of the user's schools, or null — another school's is null too, as unknown. */
+export const getMyFile = async (req: PayloadRequest, id: string): Promise<MyFile | null> => {
+  if (!req.user || !/^\d+$/.test(id)) return null
+  const doc = await req.payload.findByID({
+    collection: 'resources',
+    id,
+    req,
+    user: req.user,
+    overrideAccess: false,
+    depth: 0,
+    disableErrors: true,
+  })
+  if (!doc) return null
+  const folders = await listMyFolders(req)
+  return toMyFile(
+    doc as unknown as Record<string, unknown>,
+    new Map(folders.map((f) => [String(f.id), f.label])),
+  )
+}

@@ -268,3 +268,12 @@
   color: var(--theme-text);
   font-weight: 600;
 }
+
+/* "Replace a file": the current image, small, before the new one is chosen (2026-11-16). */
+.preview {
+  display: block;
+  max-inline-size: 12rem;
+  block-size: auto;
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: var(--style-radius-s, 4px);
+}

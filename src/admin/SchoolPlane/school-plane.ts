@@ -46,6 +46,13 @@ export const SCHOOL_TASKS: readonly SchoolTask[] = [
     description: 'Add an image or a document to your school’s library.',
     href: '/admin/upload-file',
   },
+  {
+    // Jason, 2026-11-16: a new version in the old one's place, the same kind only.
+    label: 'Replace a file',
+    description:
+      'Put up a new version of a menu, form or image. Pages using it update by themselves.',
+    href: '/admin/replace-file',
+  },
 ]
 
 export type ListTask = { label: string; href: string }

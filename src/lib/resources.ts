@@ -26,6 +26,10 @@ const DOCUMENTS = [
 /** What an upload may be — Payload refuses anything else before it is stored. */
 export const ACCEPTED_MIME_TYPES: readonly string[] = [...IMAGES, ...DOCUMENTS]
 
+/** The types a file of this kind may be replaced with (Jason, 2026-11-16). */
+export const mimeTypesFor = (kind: ResourceKind): readonly string[] =>
+  kind === 'image' ? IMAGES : DOCUMENTS
+
 export const kindOf = (mimeType: string | null | undefined): ResourceKind | null => {
   if (!mimeType) return null
   if ((IMAGES as readonly string[]).includes(mimeType)) return 'image'
@@ -40,6 +44,23 @@ export const kindOf = (mimeType: string | null | undefined): ResourceKind | null
 export const REMEDIATION_STATUSES = ['attested', 'not-attested'] as const
 
 export type Problem = { path: string; message: string }
+
+/**
+ * Replacing a file (Jason, 2026-11-16): an image for an image, a document for a document, so
+ * every page using it still makes sense — an Image section never gets a PDF. A type the library
+ * doesn't take at all is left to `resourceProblems`' own refusal.
+ */
+export const replacementProblems = (
+  originalMimeType: string | null | undefined,
+  newMimeType: string | null | undefined,
+): Problem[] => {
+  const was = kindOf(originalMimeType)
+  const now = kindOf(newMimeType)
+  if (was === null || now === null || was === now) return []
+  return [
+    { path: 'file', message: 'Replace an image with an image, or a document with a document.' },
+  ]
+}
 
 const filled = (value: unknown) => typeof value === 'string' && value.trim() !== ''
 

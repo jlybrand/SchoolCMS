@@ -527,4 +527,16 @@ describe('files in the library (Jason, 2026-11-13): no approval, nothing unseen'
       'lunch-nov.pdf',
     )
   })
+
+  /** Replace a file (Jason, 2026-11-16): the log says so, naming the old file and the new. */
+  it('a new file in its place says “Replaced the file”, old → new', () => {
+    const [entry] = auditEntries(
+      files({ operation: 'update', previous: file, doc: { ...file, filename: 'lunch-dec.pdf' } }),
+    )
+    expect(entry).toMatchObject({
+      action: 'publish',
+      summary: 'Replaced the file: lunch-nov.pdf → lunch-dec.pdf',
+    })
+    expect(auditEntries(files({ operation: 'update', previous: file }))[0]?.summary).toBe('')
+  })
 })
