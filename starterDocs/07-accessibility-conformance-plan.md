@@ -119,7 +119,9 @@ remediate** (`01` §4.4).
 
 - Upload requires an explicit attestation checkbox with plain-language text, recorded with
   actor and timestamp (`03` §2).
-- `remediationStatus`: `attested` | `not-attested` | `not-applicable`.
+- `remediationStatus`: `attested` | `not-attested`. _(Jason, 2026-11-16: there is no
+  `not-applicable`. A form to print is a document like any other, so it is listed for checking —
+  with the public note offering an accessible copy — until someone checks it.)_
 - `not-attested` documents appear on the district dashboard as a standing work queue.
 - **Validation cannot remediate.** A checker tells you a PDF fails; someone still has to fix
   it in Acrobat or an equivalent tool. Automated validation is a deferred add-on (`01`

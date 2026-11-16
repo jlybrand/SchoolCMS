@@ -33,7 +33,11 @@ export const kindOf = (mimeType: string | null | undefined): ResourceKind | null
   return null
 }
 
-export const REMEDIATION_STATUSES = ['attested', 'not-attested', 'not-applicable'] as const
+/**
+ * Two answers (Jason, 2026-11-16): checked, or not checked yet. There is no "not needed" — a form
+ * to print is a document like any other, and is listed for checking until someone checks it.
+ */
+export const REMEDIATION_STATUSES = ['attested', 'not-attested'] as const
 
 export type Problem = { path: string; message: string }
 

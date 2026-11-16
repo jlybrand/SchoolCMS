@@ -218,14 +218,13 @@ describe('findUncheckedDocuments — the not-checked work queue', () => {
     const older = await upload(f.tenantA, { title: 'Older', remediationStatus: 'not-attested' })
     const newer = await upload(f.tenantB, { title: 'Newer', remediationStatus: 'not-attested' })
     await upload(f.tenantA, { title: 'Checked', remediationStatus: 'attested' })
-    await upload(f.tenantA, { title: 'Form', remediationStatus: 'not-applicable' })
     await upload(f.tenantA, { title: 'Photo', alt: 'Students' }, true)
 
     const after = await findUncheckedDocuments(payload, f.districtAdmin)
     expect(after.total).toBe(before.total + 2)
     expect(after.docs.length).toBeLessThanOrEqual(UNCHECKED_SHOWN)
     const titles = (await findUncheckedDocuments(payload, f.districtAdmin)).docs.map((d) => d.title)
-    for (const t of ['Checked', 'Form', 'Photo']) expect(titles).not.toContain(t)
+    for (const t of ['Checked', 'Photo']) expect(titles).not.toContain(t)
     // Oldest first: when both fit, the older one comes before the newer one.
     if (before.total + 2 <= UNCHECKED_SHOWN) {
       expect(titles.indexOf('Older')).toBeLessThan(titles.indexOf('Newer'))

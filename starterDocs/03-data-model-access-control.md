@@ -196,7 +196,8 @@ _(Revised 2026-11-13, Jason: **one** library, as Finalsite's Resources, in place
   `hero` 1600, webp).
   - **Images:** `alt` is required unless `isDecorative` — enforced by field validation **and** a
     `beforeValidate` hook, not only by the form (CLAUDE.md rule 7).
-  - **Documents:** `remediationStatus` (`attested` | `not-attested` | `not-applicable`) is
+  - **Documents:** `remediationStatus` (`attested` | `not-attested`; Jason removed
+    `not-applicable` on 2026-11-16) is
     required at upload; `attestedBy` / `attestedAt` are recorded when attested (`07` §5).
     `not-attested` documents are the district's work queue. **The platform records status; it
     does not remediate.**

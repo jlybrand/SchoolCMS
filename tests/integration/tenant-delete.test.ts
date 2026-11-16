@@ -96,7 +96,7 @@ describe('deleting a site', () => {
     })
     const file = await payload.create({
       collection: 'resources',
-      data: { tenant: site, title: 'Enrollment form', remediationStatus: 'not-applicable' },
+      data: { tenant: site, title: 'Enrollment form', remediationStatus: 'attested' },
       file: tinyPdf(),
       overrideAccess: true,
     })

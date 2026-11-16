@@ -32,9 +32,9 @@ describe('toDocumentItem', () => {
     })
   })
 
-  it('not checked for accessibility: listed, with the note; not needed: no note', () => {
+  it('not checked for accessibility: listed, with the note; checked: no note', () => {
     expect(toDocumentItem({ ...doc, remediationStatus: 'not-attested' })?.unchecked).toBe(true)
-    expect(toDocumentItem({ ...doc, remediationStatus: 'not-applicable' })?.unchecked).toBe(false)
+    expect(toDocumentItem({ ...doc, remediationStatus: 'attested' })?.unchecked).toBe(false)
   })
 
   it('an image, a file with no address, or no title is nothing', () => {

@@ -103,7 +103,7 @@ describe('its own site’s images only', () => {
 
     const doc = await payload.create({
       collection: 'resources',
-      data: { tenant: f.tenantA, title: 'A form', remediationStatus: 'not-applicable' } as never,
+      data: { tenant: f.tenantA, title: 'A form', remediationStatus: 'attested' } as never,
       file: tinyPdf(),
       overrideAccess: true,
     })
