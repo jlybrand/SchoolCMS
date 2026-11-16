@@ -119,7 +119,8 @@ and adds editor guardrails; it does not require new collections, blocks, or temp
 - **`syndication`:** `scope` (`this-tenant` | `district-wide` | `selected`),
   `syndicatedTo` (relationship to `tenants`). Drives COPE feeds.
 - _As built (2026-10-28):_ `heroImage` waits for `media` (Phase 6), as the pages share image
-  does. `publishedDate` is display only and district-only; it is stamped on first publish and
+  does. _Built (2026-11-16, Phase 6 B2):_ a relation to `resources` (the one library), this
+  site's images only, with the library's alt text; see `docs/phases/06` §4. `publishedDate` is display only and district-only; it is stamped on first publish and
   never holds a post back, since a date a school set that withheld a post would be a scheduled
   publish. `syndication` is district-only at field level, read included (`04` §2.7). `body` is
   required to send or publish, not to create, so a post can start from its headline.

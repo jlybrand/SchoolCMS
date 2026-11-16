@@ -4,8 +4,11 @@ import config from '@payload-config'
 
 import { postPath } from '@/lib/post-url'
 
+import { relationshipIdOf } from '@/access/predicates'
+
 import { listPagePathIndex } from './pages'
 import { toPost } from './post-mapper'
+import { getImageAssets } from './resources'
 import { feedConstraint, type FeedFilter } from './syndication'
 import type { ContentContext, Post } from './types'
 
@@ -54,6 +57,17 @@ const withHomes = async (payload: PayloadClient, posts: Post[]): Promise<Post[]>
   return posts.map((post) => ({ ...post, homeHostname: hosts.get(post.tenantId) ?? null }))
 }
 
+/**
+ * The images the posts name (Jason, 2026-11-13), in one read. Files are public: read as the
+ * platform, like a syndicated post's image from its home site's library.
+ */
+const imagesFor = (docs: readonly { heroImage?: unknown }[]) =>
+  getImageAssets(
+    docs
+      .map((doc) => relationshipIdOf(doc.heroImage as never))
+      .filter((id): id is string => id !== null),
+  )
+
 /** A site's own posts, published and public. Shared posts are listed elsewhere, never paged. */
 const ownPublic = (ctx: ContentContext) => ({
   and: [
@@ -80,7 +94,8 @@ export const getPostBySlug = async (ctx: ContentContext, slug: string): Promise<
     depth: 0,
     overrideAccess: true,
   })
-  const post = toPost(docs[0], await listPagePathIndex(ctx))
+  const [paths, images] = await Promise.all([listPagePathIndex(ctx), imagesFor(docs)])
+  const post = toPost(docs[0], paths, images)
   if (!post) return null
   return { ...post, homeHostname: ctx.tenant.hostname }
 }
@@ -135,8 +150,10 @@ export const listPosts = async (
     cap - featured.length,
   )
 
+  const docs = [...featured, ...rest]
+  const images = await imagesFor(docs)
   return withHomes(
     payload,
-    [...featured, ...rest].map((doc) => toPost(doc)).filter((post): post is Post => post !== null),
+    docs.map((doc) => toPost(doc, undefined, images)).filter((post): post is Post => post !== null),
   )
 }

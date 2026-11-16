@@ -21,3 +21,28 @@ export const getImageAsset = async (id: string): Promise<ImageAsset | null> => {
   })
   return toImageAsset(doc)
 }
+
+/**
+ * Several library images at once — an announcement list's thumbnails (Jason, 2026-11-13) — in one
+ * read, as id -> image. Ids that are missing or are not images are absent from the map.
+ */
+export const getImageAssets = async (
+  ids: readonly string[],
+): Promise<ReadonlyMap<string, ImageAsset>> => {
+  const unique = [...new Set(ids)]
+  if (unique.length === 0) return new Map()
+  const payload = await getPayload({ config })
+  const { docs } = await payload.find({
+    collection: 'resources',
+    where: { and: [{ id: { in: unique } }, { kind: { equals: 'image' } }] },
+    limit: unique.length,
+    depth: 0,
+    overrideAccess: true,
+  })
+  return new Map(
+    docs.flatMap((doc) => {
+      const asset = toImageAsset(doc)
+      return asset ? [[String(doc.id), asset] as const] : []
+    }),
+  )
+}

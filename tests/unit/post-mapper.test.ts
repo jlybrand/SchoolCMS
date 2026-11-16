@@ -42,6 +42,7 @@ describe('toPost', () => {
       publishedDate: '2026-10-01T12:00:00.000Z',
       boardId: '5',
       tagIds: ['1', '2'],
+      image: null,
       // Filled by `listPosts`, which knows the tenants; the mapper does not.
       homeHostname: null,
     })
@@ -57,6 +58,28 @@ describe('toPost', () => {
       publishedDate: null,
       boardId: null,
       tagIds: [],
+    })
+  })
+
+  /**
+   * The announcement's image (Jason, 2026-11-13): a library file, by id. The content layer reads
+   * the files and hands them over by id, so the mapper stays pure.
+   */
+  describe('its image', () => {
+    const gym = { src: '/gym.webp', width: 1600, height: 1067, alt: 'The gym', srcSet: '' }
+    const images = new Map([['12', gym]])
+
+    it('is the library file it names, as a bare id or a populated row', () => {
+      const row = { id: 1, tenant: 3, title: 'T', slug: 't' }
+      expect(toPost({ ...row, heroImage: 12 }, undefined, images)?.image).toEqual(gym)
+      expect(toPost({ ...row, heroImage: { id: 12 } }, undefined, images)?.image).toEqual(gym)
+    })
+
+    it('none chosen, or a file that is gone or is not an image: no image', () => {
+      const row = { id: 1, tenant: 3, title: 'T', slug: 't' }
+      expect(toPost(row, undefined, images)?.image).toBeNull()
+      expect(toPost({ ...row, heroImage: null }, undefined, images)?.image).toBeNull()
+      expect(toPost({ ...row, heroImage: 99 }, undefined, images)?.image).toBeNull()
     })
   })
 

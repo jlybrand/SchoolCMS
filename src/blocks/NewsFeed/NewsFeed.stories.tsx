@@ -29,6 +29,7 @@ const block = (overrides: Partial<ResolvedFeedBlock> = {}): ResolvedFeedBlock =>
       href: 'https://dd2.org/news/snow-day',
       date: { iso: '2026-10-28T15:00:00.000Z', label: 'October 28, 2026' },
       summary: 'All schools and offices are closed. Meals are available at the high school.',
+      thumbnail: null,
     },
     {
       id: '2',
@@ -36,6 +37,7 @@ const block = (overrides: Partial<ResolvedFeedBlock> = {}): ResolvedFeedBlock =>
       href: '/news/picture-day',
       date: { iso: '2026-10-27T15:00:00.000Z', label: 'October 27, 2026' },
       summary: null,
+      thumbnail: null,
     },
   ],
   moreHref: '/news',

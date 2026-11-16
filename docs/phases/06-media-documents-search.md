@@ -11,9 +11,10 @@ decisions:
 
 | Slice                                  | State        |
 | -------------------------------------- | ------------ |
-| A1. The library: files, folders, rules | §1 (this PR) |
-| A2. The school's "Add a file" task     | —            |
-| B. Image and Hero blocks; `heroImage`  | —            |
+| A1. The library: files, folders, rules | §1 (#101)    |
+| A2. The school's "Upload a file" task  | §2 (#102)    |
+| B1. Image and Hero blocks              | §3 (#103)    |
+| B2. An announcement's image            | §4 (this PR) |
 | C. Document list; not-attested queue   | —            |
 | D. Search                              | —            |
 
@@ -218,7 +219,7 @@ re-entered on a page, so rule 7 holds at upload. A decorative image gets empty a
 | `image` | `image` (required), `caption`                                                                                           | **In the school palette** (`SCHOOL_BLOCKS`), and in Columns |
 | `hero`  | `image` (required); optional `heading`, `subheading`, and a button (`linkFields` with "Nothing", `linkLabel`, `newTab`) | **District only**                                           |
 
-- **The picker** (`libraryImage`) is Payload's upload field on `resources`. It is filtered to
+- **The picker** (`libraryImageField`, `src/collections/fields/library-image.ts`) is Payload's upload field on `resources`. It is filtered to
   images **of the page's own site**, and Payload checks the same filter on save. With
   `allowCreate: false` it can't make files: they are uploaded in the library ("Upload a file").
 - **Settings → data → render.**
@@ -254,7 +255,7 @@ re-entered on a page, so rule 7 holds at upload. A decorative image gets empty a
 
 | File                                                     | Does                                                                               |
 | -------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `src/collections/blocks/index.ts`                        | `imageBlock`, `heroBlock`, the shared `libraryImage` picker                        |
+| `src/collections/blocks/index.ts`                        | `imageBlock`, `heroBlock`, using the shared `libraryImageField` picker             |
 | `src/access/school-layout.ts`                            | `image` in `SCHOOL_BLOCKS`                                                         |
 | `src/content/types.ts`                                   | `ImageAsset`, `ImageBlock`, `ResolvedImageBlock`, `HeroBlock`, `ResolvedHeroBlock` |
 | `src/content/blocks.ts`                                  | `toImage`, `toHero`                                                                |
@@ -279,3 +280,68 @@ re-entered on a page, so rule 7 holds at upload. A decorative image gets empty a
   an image-only hero — alt text, the heading level, the button — with axe in both themes
 - `tests/e2e/admin-planes-axe.spec.ts`: a page holding a hero and an image, in both themes
 - Storybook `Blocks/Image`, `Blocks/Hero`: the component axe gate, LTR and RTL
+
+## 4. An announcement's image (Jason, 2026-11-13)
+
+An announcement may have one image from **its own site's library**. It shows at the top of the
+announcement and as the thumbnail in news lists. The alt text is the library's, as in §3.
+
+- **The field:** `heroImage` on `posts`, labelled "Image" and not required. It is the §3 picker
+  (`libraryImageField`) under another name: this site's images only, checked on save, with no
+  uploading from the picker. Schools choose it too, and it goes through approval with the rest of
+  the post.
+- **Data:**
+  1. `listPosts` and `getPostBySlug` collect the posts' `heroImage` ids and read them in **one**
+     query: `getImageAssets(ids)` (`src/content/resources.ts`, as the platform) →
+     `toImageAsset` → id → `ImageAsset`. A shared post's image is from its home site's library;
+     files are public.
+  2. `toPost(row, paths, images)` stays pure: `Post.image` is the image the map holds for that
+     id. No image chosen, a file that is gone or one that isn't an image is `null`.
+- **Render:**
+  - **The announcement's page** (`/news/{slug}`): `LibraryImage`, under the headline and date
+    and above the body, with the library's alt text. `priority` loads it eagerly with
+    `fetchPriority="high"`, because it is at the top of the page.
+  - **News lists** (the `/news` page and the News feed block): `toNewsItems` makes `thumbnail`,
+    the image with **empty alt text**, because the headline beside it says what it is.
+    `NewsList` puts it at the inline start, 6rem wide on a phone and 8rem from 40rem, cropped to
+    4:3. An announcement without an image keeps the plain layout.
+- **Auto-approval:** `heroImage` is on `posts`' never list (`src/access/auto-approval.ts`, since
+  Phase 4), so under a `posts.routine` grant a submission that sets or changes the image queues
+  in full (`04` §4.3).
+- **The approval diff:** an "Image" row, named by the file's library title. The queue reads the
+  titles with the boards and tags (`withPostNames`).
+
+### Files
+
+| File                                                        | Does                                             |
+| ----------------------------------------------------------- | ------------------------------------------------ |
+| `src/collections/fields/library-image.ts`                   | `libraryImageField`, shared with §3's blocks     |
+| `src/collections/Posts.ts`                                  | the `heroImage` field                            |
+| `src/content/types.ts`, `src/content/post-mapper.ts`        | `Post.image`; `toPost`'s `images` map            |
+| `src/content/resources.ts`, `src/content/posts.ts`          | `getImageAssets`; `imagesFor` in both reads      |
+| `src/lib/post-url.ts`                                       | `NewsItem.thumbnail`, alt emptied                |
+| `src/components/NewsList/`                                  | the thumbnail layout; the `WithThumbnails` story |
+| `src/blocks/LibraryImage/LibraryImage.tsx`                  | the `priority` prop                              |
+| `src/app/(frontend)/sites/[hostname]/[locale]/news/[slug]/` | the image on the announcement's page             |
+| `src/admin/Approvals/page-diff.ts`, `queue-data.ts`         | the "Image" row; resource titles                 |
+
+### Tests
+
+- `tests/unit/post-mapper.test.ts`: the image by bare id or populated row; none, gone, or not
+  an image is null
+- `tests/unit/lib/post-url.test.ts`: the thumbnail has empty alt; no image means no thumbnail
+- `tests/unit/admin/page-diff.test.ts`: the image named by its title; the same file is no change
+- `tests/unit/components/blocks.test.tsx`: a feed's thumbnail has empty alt beside its headline;
+  no image means no `<img>`
+- `tests/integration/post-image.test.ts`:
+  - the post page and the list receive sizes and alt
+  - none chosen, or a deleted file, means no image, and the post still shows
+  - another school's image, or a document, is refused on save
+  - a school manager may choose their own school's image
+- `tests/integration/auto-approval.test.ts`: under `posts.routine`, a new announcement with an
+  image and an image added to a live one both wait in the queue. `heroImage` was already on the
+  never list (`04` §4.3); these cases prove it with a real field.
+- `tests/e2e/post-image.spec.ts`: the image under the headline (eager), the list's thumbnail
+  with `alt=""`, and axe on both pages in both themes
+- `tests/e2e/admin-planes-axe.spec.ts`: the district's post form with an image chosen
+- Storybook `Components/NewsList` → `WithThumbnails`: the component axe gate, LTR and RTL

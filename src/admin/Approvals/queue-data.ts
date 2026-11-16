@@ -53,7 +53,7 @@ const titleOf = (doc: Doc, noun: QueueItem['noun'] = 'page'): string =>
 /** id -> display string, for a handful of related rows read as the platform. */
 const namesFor = async (
   req: PayloadRequest,
-  collection: 'tenants' | 'users' | 'pages' | 'post-boards' | 'post-tags',
+  collection: 'tenants' | 'users' | 'pages' | 'post-boards' | 'post-tags' | 'resources',
   ids: string[],
   name: (doc: Doc) => string,
 ): Promise<Map<string, string>> => {
@@ -80,14 +80,16 @@ const withParentTitle = (doc: Doc, titles: Map<string, string>): Doc => {
 /** Not events: they skip approval (Jason, 2026-11-11). */
 const REVIEWED: readonly ReviewedCollection[] = ['pages', 'posts']
 
-/** A post's board and tags as `{ id, title }`, so the diff names them (`diffPost`). */
-const withBoardAndTags = (
+/** A post's board, tags and image as `{ id, title }`, so the diff names them (`diffPost`). */
+const withPostNames = (
   doc: Doc | null,
   boards: Map<string, string>,
   tags: Map<string, string>,
+  images: Map<string, string>,
 ): Doc | null => {
   if (!doc) return null
   const board = relationshipIdOf(doc.board as never)
+  const image = relationshipIdOf(doc.heroImage as never)
   const tagIds = (Array.isArray(doc.tags) ? doc.tags : [])
     .map((t) => relationshipIdOf(t as never))
     .filter((t): t is string => t !== null)
@@ -95,6 +97,7 @@ const withBoardAndTags = (
     ...doc,
     board: board === null ? null : { id: board, title: boards.get(board) ?? null },
     tags: tagIds.map((id) => ({ id, title: tags.get(id) ?? null })),
+    heroImage: image === null ? null : { id: image, title: images.get(image) ?? null },
   }
 }
 
@@ -189,14 +192,14 @@ const buildItems = async (
       .filter((v): v is string => v !== null)
 
   const posts = present.filter((r) => r.collection === 'posts')
-  const postRefs = (key: 'board' | 'tags') =>
+  const postRefs = (key: 'board' | 'tags' | 'heroImage') =>
     posts
       .flatMap((r) => [r.latest.version[key], r.live?.[key]])
       .flatMap((v) => (Array.isArray(v) ? v : [v]))
       .map((v) => relationshipIdOf(v as never))
       .filter((v): v is string => v !== null)
 
-  const [schools, submitters, parents, boards, tagNames, comments] = await Promise.all([
+  const [schools, submitters, parents, boards, tagNames, imageNames, comments] = await Promise.all([
     namesFor(
       req,
       'tenants',
@@ -224,6 +227,7 @@ const buildItems = async (
     ),
     namesFor(req, 'post-boards', postRefs('board'), (d) => String(d.title ?? d.name ?? d.id)),
     namesFor(req, 'post-tags', postRefs('tags'), (d) => String(d.name ?? d.id)),
+    namesFor(req, 'resources', postRefs('heroImage'), (d) => String(d.title ?? d.filename ?? d.id)),
     sentComments(
       req,
       present.map((r) => ({ collection: r.collection, id: r.id })),
@@ -248,8 +252,8 @@ const buildItems = async (
       diff:
         collection === 'posts'
           ? diffPost(
-              withBoardAndTags(live, boards, tagNames),
-              withBoardAndTags(proposed, boards, tagNames)!,
+              withPostNames(live, boards, tagNames, imageNames),
+              withPostNames(proposed, boards, tagNames, imageNames)!,
             )
           : diffPage(
               live ? withParentTitle(live, parents) : null,

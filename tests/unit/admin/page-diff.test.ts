@@ -259,6 +259,19 @@ describe('diffPost', () => {
     ])
   })
 
+  /** The image (Jason, 2026-11-13), named by the library file's title, as the board is. */
+  it('names a changed image by its title', () => {
+    const before = { ...post, heroImage: { id: 12, title: 'Gym' } }
+    const after = { ...post, heroImage: { id: 13, title: 'Field' } }
+    expect(diffPost(before, after).fields).toEqual([
+      { field: 'heroImage', label: 'Image', before: 'Gym', after: 'Field' },
+    ])
+    expect(diffPost(post, { ...post, heroImage: 13 }).fields).toEqual([
+      { field: 'heroImage', label: 'Image', before: null, after: '#13' },
+    ])
+    expect(diffPost(before, { ...before, heroImage: 12 }).fields).toEqual([])
+  })
+
   it('the order tags were ticked in is not a change', () => {
     const one = {
       ...post,
