@@ -289,7 +289,6 @@ export const UploadFileForm = ({
             [
               ['attested', 'Yes — checked and fixed'],
               ['not-attested', 'No — not checked yet'],
-              ['not-applicable', 'Not needed — it’s a form to print, or similar'],
             ] as const
           ).map(([value, label], index) => (
             <div className={styles.choice} key={value}>

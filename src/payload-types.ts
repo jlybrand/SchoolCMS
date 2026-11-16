@@ -719,7 +719,7 @@ export interface Resource {
    */
   alt?: string | null;
   isDecorative?: boolean | null;
-  remediationStatus?: ('attested' | 'not-attested' | 'not-applicable') | null;
+  remediationStatus?: ('attested' | 'not-attested') | null;
   description?: string | null;
   /**
    * Separate tags with commas, for example “forms, enrollment”.

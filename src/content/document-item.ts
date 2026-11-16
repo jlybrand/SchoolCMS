@@ -6,8 +6,8 @@ import type { DocumentItem } from './types'
  * - The link names the file's TYPE and SIZE ("PDF, 240 KB"), so nobody opens a 12 MB spreadsheet
  *   expecting a page (WCAG 2.4.4, link purpose).
  * - A document nobody has checked for accessibility (`not-attested`) is still listed, and
- *   `unchecked` says to add the note offering an accessible copy (`07` §5). A form marked "not
- *   needed" and a checked document get no note.
+ *   `unchecked` says to add the note offering an accessible copy (`07` §5). A checked document
+ *   gets no note.
  * - Anything that is not a document, or has no address or title, is nothing.
  */
 

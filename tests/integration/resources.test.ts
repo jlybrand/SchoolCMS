@@ -91,6 +91,13 @@ describe('documents: the accessibility attestation (`07` §5)', () => {
     )
   })
 
+  /** Jason, 2026-11-16: two answers only — checked, or not checked yet. */
+  it('"not needed" is refused on every route, as no answer is', async () => {
+    expect(await refusal(upload({ remediationStatus: 'not-applicable' }, tinyPdf()))).toMatch(
+      /checked for accessibility|not a valid|invalid/i,
+    )
+  })
+
   it('attesting records who and when; anything else records neither', async () => {
     const checked = (await upload({ remediationStatus: 'attested' }, tinyPdf())) as unknown as Row
     expect(checked).toMatchObject({ kind: 'document', remediationStatus: 'attested' })
@@ -230,7 +237,7 @@ describe('folders', () => {
   it('a file goes in its own school’s folder only', async () => {
     const theirs = await folder({ tenant: f.tenantB, name: 'B forms' })
     expect(
-      await refusal(upload({ folder: theirs.id, remediationStatus: 'not-applicable' }, tinyPdf())),
+      await refusal(upload({ folder: theirs.id, remediationStatus: 'attested' }, tinyPdf())),
     ).toContain('Choose a folder from this school’s library.')
   })
 })
@@ -241,7 +248,7 @@ describe('tags and the activity log', () => {
       {
         title: 'Lunch menu',
         tagsText: ' Lunch, menus ,lunch,',
-        remediationStatus: 'not-applicable',
+        remediationStatus: 'attested',
       },
       tinyPdf(),
     )) as unknown as Row

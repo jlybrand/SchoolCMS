@@ -75,9 +75,21 @@ describe('resourceProblems', () => {
         message: 'Say whether this document has been checked for accessibility.',
       },
     ])
-    for (const remediationStatus of ['attested', 'not-attested', 'not-applicable']) {
+    for (const remediationStatus of ['attested', 'not-attested']) {
       expect(resourceProblems({ mimeType: 'application/pdf', remediationStatus })).toEqual([])
     }
+  })
+
+  /** Jason, 2026-11-16: no "Not needed" — a document is checked, or not checked yet. */
+  it('"not needed" is not an answer: it is refused like no answer', () => {
+    expect(
+      resourceProblems({ mimeType: 'application/pdf', remediationStatus: 'not-applicable' }),
+    ).toEqual([
+      {
+        path: 'remediationStatus',
+        message: 'Say whether this document has been checked for accessibility.',
+      },
+    ])
   })
 
   it('a document needs no alt text; an image no attestation', () => {

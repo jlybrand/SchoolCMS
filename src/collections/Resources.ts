@@ -162,7 +162,6 @@ export const Resources: CollectionConfig = {
       options: [
         { label: 'Yes — checked and fixed', value: 'attested' },
         { label: 'No — not checked yet', value: 'not-attested' },
-        { label: 'Not needed — it’s a form to print, or similar', value: 'not-applicable' },
       ],
       admin: { condition: (data) => isDocument(data) },
       validate: (value: unknown, { siblingData }: { siblingData: Data }) => {

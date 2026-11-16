@@ -26,10 +26,10 @@ decisions:
 **`resources`** is a Payload upload collection, tenant-scoped by the multi-tenant plugin. Each
 file has a `title` (required), a `description`, tags and a `folder`, plus:
 
-| Kind (`kind`, from the type) | Accepted types                                     | Its rule                                                                                                                                  |
-| ---------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `image`                      | JPEG, PNG, GIF, WebP                               | `alt`, unless `isDecorative`: "Describe the image for people who can't see it, or mark it decorative." (CLAUDE.md rule 7)                 |
-| `document`                   | PDF, Word, Excel, PowerPoint (old and new formats) | `remediationStatus` (attested / not-attested / not-applicable): "Say whether this document has been checked for accessibility." (`07` §5) |
+| Kind (`kind`, from the type) | Accepted types                                     | Its rule                                                                                                                                                   |
+| ---------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `image`                      | JPEG, PNG, GIF, WebP                               | `alt`, unless `isDecorative`: "Describe the image for people who can't see it, or mark it decorative." (CLAUDE.md rule 7)                                  |
+| `document`                   | PDF, Word, Excel, PowerPoint (old and new formats) | `remediationStatus` (attested / not-attested; no "not needed" since 2026-11-16): "Say whether this document has been checked for accessibility." (`07` §5) |
 
 - **Anything else is refused.** Payload's `mimeTypes` allowlist (`ACCEPTED_MIME_TYPES`) stops it
   before anything is stored. There is no video (YouTube only) and no SVG, which can carry
@@ -163,7 +163,7 @@ screen refuses school managers: its access check runs before a school is known
   - a title, which starts from the file's name (`titleFromFilename`) and can be changed;
   - then **only what the file's kind needs**, read from its type in the browser:
     - an image: "Describe the image", or "This image is decorative", which disables the box;
-    - a document: "Has this document been checked for accessibility?" with three answers;
+    - a document: "Has this document been checked for accessibility?" with two answers;
   - a folder, a native `<select>` of the chosen school's folders, shown only if it has any;
   - a description and tags.
 - **Checked before sending** by `checkUpload` (`upload-file.ts`), in the library's own words
@@ -380,7 +380,7 @@ follows the folder: add or remove a file there and the list changes, with no pag
        the link says what it opens (WCAG 2.4.4);
      - the description, if any;
      - for an **unchecked** document only (Jason): "This document may not be fully accessible.
-       Contact {site name} for an accessible copy." A form marked "not needed" gets no note.
+       Contact {site name} for an accessible copy." A checked document gets no note.
        The platform records the status; it does not remediate (`07` §5).
 - **The approval diff** names it "Document list", with its heading.
 
@@ -459,3 +459,20 @@ A **district-only** panel on the district dashboard, "Documents to check": every
   reads another school's
 - `tests/e2e/district-dashboard.spec.ts`: the panel order, and an unchecked document listed
   with a link to its file (or the "See all" link), with axe in both themes
+
+## 7. Two answers, not three (Jason, 2026-11-16)
+
+A document's accessibility question has **two** answers: "Yes — checked and fixed" (`attested`)
+or "No — not checked yet" (`not-attested`). The third, "Not needed — it's a form to print, or
+similar" (`not-applicable`), is gone from the Files form, the school's "Upload a file" form and
+`REMEDIATION_STATUSES` (`src/lib/resources.ts`). So `resourceProblems` refuses it on every route,
+as it refuses no answer. A form to print is now listed for checking, with the public note, until
+someone checks it.
+
+- **Existing rows:** the enum loses a value, and Postgres will not convert a column that still
+  holds it. Before the schema change reaches a database with data, map every `not-applicable` to
+  `not-attested` (the conservative choice: the note shows and the document joins the queue).
+  `dd2_dev` had none, and there is no production yet.
+- **Tests:** `tests/unit/lib/resources.test.ts` and `tests/integration/resources.test.ts` refuse
+  `not-applicable`. Fixtures that used it as a stand-in now use `attested`.
+  `tests/e2e/school-upload.spec.ts` answers "No — not checked yet".

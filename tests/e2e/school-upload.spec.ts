@@ -147,7 +147,7 @@ schoolTest.describe('a school uploads a file', () => {
           page.getByText('Say whether this document has been checked for accessibility.'),
         ).toBeVisible()
 
-        await page.getByLabel('Not needed — it’s a form to print, or similar').check()
+        await page.getByLabel('No — not checked yet').check()
         await page.getByRole('button', { name: 'Upload' }).click()
         await expect(page.locator('#upload-file').getByRole('status')).toContainText(
           `Uploaded “${title}”`,
@@ -160,7 +160,7 @@ schoolTest.describe('a school uploads a file', () => {
             `/api/resources?where[title][equals]=${encodeURIComponent(title)}&depth=0`,
           )
         ).json()) as { docs: { id: number; remediationStatus: string }[] }
-        expect(found.docs[0]?.remediationStatus).toBe('not-applicable')
+        expect(found.docs[0]?.remediationStatus).toBe('not-attested')
         await district.delete(`/api/resources/${found.docs[0]!.id}`)
       } finally {
         await district.dispose()
