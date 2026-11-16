@@ -7,11 +7,13 @@ import {
   findLastPublished,
   findRecentActivity,
   findSites,
+  findUncheckedDocuments,
   findWaiting,
 } from '@/admin/Dashboard/dashboard-data'
 import { FEED_SYNC } from '@/collections/hooks/event-hooks'
-import { CONTENT_ACTIONS } from '@/lib/dashboard'
+import { CONTENT_ACTIONS, UNCHECKED_SHOWN } from '@/lib/dashboard'
 
+import { tinyPdf, tinyPng } from '../helpers/files'
 import { getTestPayload, seed, type Fixtures } from '../helpers/payload'
 
 /**
@@ -195,5 +197,55 @@ describe('findFeedFailures — feed calendars whose last copy failed (2026-11-12
     const ids = (await findFeedFailures(payload, f.managerA, names())).map((x) => x.id)
     expect(ids).toContain(theirs)
     expect(ids).not.toContain(other)
+  })
+})
+
+/**
+ * Documents not yet checked for accessibility (Jason, 2026-11-16; `07` §5): the district's work
+ * queue — documents only, `not-attested` only, oldest first, with the total.
+ */
+describe('findUncheckedDocuments — the not-checked work queue', () => {
+  const upload = async (tenant: number, data: Record<string, unknown>, image = false) =>
+    payload.create({
+      collection: 'resources',
+      data: { tenant, title: 'A file', ...data } as never,
+      file: image ? await tinyPng() : tinyPdf(),
+      overrideAccess: true,
+    })
+
+  it('not-attested documents only, oldest first, across sites, with the total', async () => {
+    const before = await findUncheckedDocuments(payload, f.districtAdmin)
+    const older = await upload(f.tenantA, { title: 'Older', remediationStatus: 'not-attested' })
+    const newer = await upload(f.tenantB, { title: 'Newer', remediationStatus: 'not-attested' })
+    await upload(f.tenantA, { title: 'Checked', remediationStatus: 'attested' })
+    await upload(f.tenantA, { title: 'Form', remediationStatus: 'not-applicable' })
+    await upload(f.tenantA, { title: 'Photo', alt: 'Students' }, true)
+
+    const after = await findUncheckedDocuments(payload, f.districtAdmin)
+    expect(after.total).toBe(before.total + 2)
+    expect(after.docs.length).toBeLessThanOrEqual(UNCHECKED_SHOWN)
+    const titles = (await findUncheckedDocuments(payload, f.districtAdmin)).docs.map((d) => d.title)
+    for (const t of ['Checked', 'Form', 'Photo']) expect(titles).not.toContain(t)
+    // Oldest first: when both fit, the older one comes before the newer one.
+    if (before.total + 2 <= UNCHECKED_SHOWN) {
+      expect(titles.indexOf('Older')).toBeLessThan(titles.indexOf('Newer'))
+    }
+
+    // Marked checked, it leaves the queue.
+    await payload.update({
+      collection: 'resources',
+      id: older.id,
+      data: { remediationStatus: 'attested' } as never,
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+    expect((await findUncheckedDocuments(payload, f.districtAdmin)).total).toBe(before.total + 1)
+    expect(newer.id).toBeTruthy()
+  })
+
+  it('a school manager reading it gets their own school’s, or nothing', async () => {
+    await upload(f.tenantB, { title: 'B’s unchecked', remediationStatus: 'not-attested' })
+    const { docs } = await findUncheckedDocuments(payload, f.managerA)
+    expect(docs.map((d) => d.title)).not.toContain('B’s unchecked')
   })
 })

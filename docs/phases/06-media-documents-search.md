@@ -15,8 +15,8 @@ decisions:
 | A2. The school's "Upload a file" task  | §2 (#102)    |
 | B1. Image and Hero blocks              | §3 (#103)    |
 | B2. An announcement's image            | §4 (#104)    |
-| C1. The Document list block            | §5 (this PR) |
-| C2. The not-attested work queue        | —            |
+| C1. The Document list block            | §5 (#106)    |
+| C2. The not-attested work queue        | §6 (this PR) |
 | D. Search                              | —            |
 
 ---
@@ -418,3 +418,44 @@ follows the folder: add or remove a file there and the list changes, with no pag
 - `tests/e2e/admin-planes-axe.spec.ts`: the page form with a hero, an image and a document list,
   in both themes
 - Storybook `Blocks/DocumentList`: the component axe gate, LTR and RTL
+
+## 6. The not-checked work queue (Jason, 2026-11-16)
+
+A **district-only** panel on the district dashboard, "Documents to check": every document whose
+`remediationStatus` is `not-attested`, oldest first (`07` §5; `04` §3.1 item 5). It sits under
+"Needs freshening". The platform records the status; it does not remediate.
+
+- **Read** (`findUncheckedDocuments`, `src/admin/Dashboard/dashboard-data.ts`): `resources` where
+  `kind` is `document` and `remediationStatus` is `not-attested`, sorted by `createdAt`, at most
+  `UNCHECKED_SHOWN` (10), with `totalDocs`. It runs **as the user**, like every dashboard read,
+  so a school manager would get their own school's or nothing. The dashboard renders only for
+  the district anyway.
+- **Shape** (`uncheckedDocuments`, `src/lib/dashboard.ts`, pure):
+  - the lead: "2 documents haven't been checked for accessibility. Oldest first.", or "…The
+    oldest 10 are shown." when there are more;
+  - each row: the site, the document's title as a link to its file
+    (`/admin/collections/resources/{id}`), and the day it was uploaded. Marking it checked there
+    takes it off the list;
+  - more than 10: a "See all N" link to the Files list, filtered by
+    `where[remediationStatus][equals]=not-attested`;
+  - none: "Every document has been checked for accessibility."
+- **Render:** Payload's `Table`, as in "Needs freshening".
+
+### Files
+
+| File                                        | Does                                                           |
+| ------------------------------------------- | -------------------------------------------------------------- |
+| `src/admin/Dashboard/dashboard-data.ts`     | `findUncheckedDocuments`                                       |
+| `src/lib/dashboard.ts`                      | `uncheckedDocuments`, `UNCHECKED_SHOWN`, `UNCHECKED_LIST_HREF` |
+| `src/admin/Dashboard/DistrictDashboard.tsx` | the "Documents to check" panel                                 |
+
+### Tests
+
+- `tests/unit/lib/dashboard.test.ts`: none waiting; the count and oldest first with site, link
+  and day; one is one; more than 10 gives the "See all" link; no title or an unknown site in
+  words
+- `tests/integration/dashboard.test.ts`: not-attested documents only (not checked, not "not
+  needed", not images), the total, leaving the queue once checked, and a school manager never
+  reads another school's
+- `tests/e2e/district-dashboard.spec.ts`: the panel order, and an unchecked document listed
+  with a link to its file (or the "See all" link), with axe in both themes

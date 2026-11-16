@@ -7,6 +7,7 @@ import {
   keyPageKind,
   type FeedFailure,
   type KeyPage,
+  UNCHECKED_SHOWN,
 } from '@/lib/dashboard'
 import { DAY } from '@/lib/queue-age'
 
@@ -202,4 +203,22 @@ export const findFeedFailures = async (
       error: typeof doc.feedError === 'string' ? doc.feedError : '',
     }
   })
+}
+
+/**
+ * Documents not yet checked for accessibility (Jason, 2026-11-16; `07` §5): the oldest
+ * `UNCHECKED_SHOWN`, and how many there are in all — the district's work queue.
+ */
+export const findUncheckedDocuments = async (payload: Payload, user: User) => {
+  const { docs, totalDocs } = await payload.find({
+    collection: 'resources',
+    ...asUser(user),
+    where: {
+      and: [{ kind: { equals: 'document' } }, { remediationStatus: { equals: 'not-attested' } }],
+    },
+    sort: 'createdAt',
+    limit: UNCHECKED_SHOWN,
+    select: { title: true, tenant: true, createdAt: true },
+  })
+  return { docs: docs as Row[], total: totalDocs }
 }

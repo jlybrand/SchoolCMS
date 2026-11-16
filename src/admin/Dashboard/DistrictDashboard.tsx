@@ -13,6 +13,7 @@ import {
   needsAttention,
   staleKeyPages,
   staleSites,
+  uncheckedDocuments,
 } from '@/lib/dashboard'
 import { DISTRICT_TIME_ZONE } from '@/lib/queue-age'
 
@@ -22,13 +23,15 @@ import {
   findLastPublished,
   findRecentActivity,
   findSites,
+  findUncheckedDocuments,
   findWaiting,
 } from './dashboard-data'
 import styles from './Dashboard.module.css'
 
 /**
  * The top of the district's dashboard (`admin.components.beforeDashboard`; `04` §3.1, layout
- * decided by Jason, 2026-11-04): ① approvals ② what needs freshening ③ recent activity — under
+ * decided by Jason, 2026-11-04): ① approvals ② what needs freshening ③ documents to check for
+ * accessibility (Jason, 2026-11-16; `07` §5) ④ recent activity — under
  * banners for what needs acting on now (Payload's `Banner`, Jason 2026-11-12). The
  * auto-approval panel follows (`GrantsPanel`), then Payload's cards under "Everything else".
  *
@@ -45,10 +48,11 @@ export const DistrictDashboard = async ({
 
   const now = new Date()
   const tz = DISTRICT_TIME_ZONE
-  const [waiting, sites, activity] = await Promise.all([
+  const [waiting, sites, activity, unchecked] = await Promise.all([
     findWaiting(payload, user),
     findSites(payload, user),
     findRecentActivity(payload, user),
+    findUncheckedDocuments(payload, user),
   ])
   const names = new Map(sites.map((s) => [s.id, s.name]))
   const [last, keyPages, feedFailures] = await Promise.all([
@@ -68,6 +72,7 @@ export const DistrictDashboard = async ({
   const quietSites = staleSites(sites, last, now, tz)
   const quietPages = staleKeyPages(keyPages, now, tz)
   const stale = freshnessRows(quietSites, quietPages, tz)
+  const toCheck = uncheckedDocuments(unchecked.docs, unchecked.total, names, tz)
   const rows = activity.flatMap((event) => {
     const site = relationshipIdOf(event.tenant as never)
     const row = activityRow(
@@ -186,6 +191,56 @@ export const DistrictDashboard = async ({
                     data={stale}
                   />
                 </div>
+              </>
+            )}
+          </section>
+
+          {/* The not-checked work queue (Jason, 2026-11-16; `07` §5): district only, oldest first. */}
+          <section
+            aria-labelledby="unchecked-heading"
+            className={styles.panel}
+            id="unchecked-panel"
+          >
+            <h2 className={styles.heading} id="unchecked-heading">
+              Documents to check
+            </h2>
+            {toCheck.rows.length === 0 ? (
+              <p className={styles.muted}>{toCheck.text}</p>
+            ) : (
+              <>
+                <p className={styles.lead}>{toCheck.text}</p>
+                <div className={styles.table}>
+                  <Table
+                    appearance="condensed"
+                    columns={[
+                      column(
+                        'site',
+                        'Site',
+                        toCheck.rows.map((row) => row.site),
+                      ),
+                      column(
+                        'document',
+                        'Document',
+                        toCheck.rows.map((row) => (
+                          <Link href={row.href} key={row.id}>
+                            {row.title}
+                          </Link>
+                        )),
+                      ),
+                      column(
+                        'uploaded',
+                        'Uploaded',
+                        toCheck.rows.map((row) => row.when),
+                      ),
+                    ]}
+                    data={toCheck.rows}
+                  />
+                </div>
+                {toCheck.more ? (
+                  <p className={styles.action}>
+                    <Link href={toCheck.more.href}>{toCheck.more.text}</Link>
+                  </p>
+                ) : null}
               </>
             )}
           </section>
