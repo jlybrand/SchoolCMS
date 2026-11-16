@@ -14,8 +14,9 @@ decisions:
 | A1. The library: files, folders, rules | §1 (#101)    |
 | A2. The school's "Upload a file" task  | §2 (#102)    |
 | B1. Image and Hero blocks              | §3 (#103)    |
-| B2. An announcement's image            | §4 (this PR) |
-| C. Document list; not-attested queue   | —            |
+| B2. An announcement's image            | §4 (#104)    |
+| C1. The Document list block            | §5 (this PR) |
+| C2. The not-attested work queue        | —            |
 | D. Search                              | —            |
 
 ---
@@ -345,3 +346,75 @@ announcement and as the thumbnail in news lists. The alt text is the library's, 
   with `alt=""`, and axe on both pages in both themes
 - `tests/e2e/admin-planes-axe.spec.ts`: the district's post form with an image chosen
 - Storybook `Components/NewsList` → `WithThumbnails`: the component axe gate, LTR and RTL
+
+## 5. The Document list block (Jason, 2026-11-16)
+
+A block that lists **every document in one folder** of this site's library, A–Z by title. It
+follows the folder: add or remove a file there and the list changes, with no page edit.
+
+| Block          | Fields                                    | Who                                                         |
+| -------------- | ----------------------------------------- | ----------------------------------------------------------- |
+| `documentList` | `heading` (optional), `folder` (required) | **In the school palette** (`SCHOOL_BLOCKS`), and in Columns |
+
+- **The folder picker** is a relationship to `resource-folders`, filtered to **this site's**
+  folders. Payload checks the same filter on save, and `allowCreate: false` means folders are
+  made in the library, not here.
+- **Only that folder:** its subfolders are not included, and neither are the images in it.
+- **Settings → data → render.**
+  1. **Settings:** `toDocumentList` keeps the folder's id; a block without one is dropped.
+  2. **Data:** the resolve pass calls `listFolderDocuments(tenantId, folderId)`
+     (`src/content/resources.ts`, as the platform). It asks for this site's documents in that
+     folder, so a stored id pointing at another site's folder lists nothing (`03` §6.4). Each
+     file goes through `toDocumentItem` (`src/content/document-item.ts`, pure):
+     - `fileType` is what a visitor calls it ("PDF", "Word", "Excel", "PowerPoint", else
+       "File"), and `fileSize` is "240 KB" or "3.5 MB";
+     - `unchecked` is true for `not-attested`;
+     - anything that isn't a document, or has no address or title, is left out.
+
+     The block gets `contactName`, the site's name. An empty folder, or one that is gone, drops
+     the block, and `BlockList` filters an empty one too, as it does an empty feed.
+
+  3. **Render** (`src/blocks/DocumentList/`): a list, under a named region when there's a
+     heading at the block's level. Each item:
+     - a link whose text is the title then the type and size, "Allergy plan (PDF, 240 KB)", so
+       the link says what it opens (WCAG 2.4.4);
+     - the description, if any;
+     - for an **unchecked** document only (Jason): "This document may not be fully accessible.
+       Contact {site name} for an accessible copy." A form marked "not needed" gets no note.
+       The platform records the status; it does not remediate (`07` §5).
+- **The approval diff** names it "Document list", with its heading.
+
+### Files
+
+| File                                                        | Does                                                             |
+| ----------------------------------------------------------- | ---------------------------------------------------------------- |
+| `src/collections/blocks/index.ts`                           | `documentListBlock`, in the library and in Columns               |
+| `src/access/school-layout.ts`                               | `documentList` in `SCHOOL_BLOCKS`                                |
+| `src/content/types.ts`                                      | `DocumentListBlock`, `DocumentItem`, `ResolvedDocumentListBlock` |
+| `src/content/blocks.ts`                                     | `toDocumentList`                                                 |
+| `src/content/document-item.ts`                              | pure `toDocumentItem`, `fileTypeLabel`, `fileSizeLabel`          |
+| `src/content/resources.ts`, `src/content/resolve-blocks.ts` | `listFolderDocuments`; the `documentList` case                   |
+| `src/blocks/DocumentList/`, `src/blocks/BlockList.tsx`      | the component, CSS, stories; the case and the empty filter       |
+| `src/admin/Approvals/page-diff.ts`                          | the section name                                                 |
+
+### Tests
+
+- `tests/unit/content/document-item.test.ts`: the row; the note only for not-attested; images,
+  no address and no title left out; type and size labels
+- `tests/unit/blocks.test.ts`: the mapper (no folder dropped) and the complete-row guard
+- `tests/unit/access/school-layout.test.ts`, `tests/unit/admin/layout-diff.test.ts`: in the
+  palette; named in the diff
+- `tests/unit/components/blocks.test.tsx`: the region, the link text, the note on the unchecked
+  one only, no heading, and empty renders nothing
+- `tests/integration/document-list.test.ts`:
+  - A–Z with type, the unchecked flag and the site's name
+  - only that folder: no neighbours, no folder-less files, no images
+  - an empty or missing folder drops the block
+  - another site's folder lists nothing, even by stored id
+  - another school's folder is refused on save
+  - a school manager may add one
+- `tests/e2e/document-list.spec.ts`: a public page with A–Z links naming type and size, the note
+  on the unchecked document only, and axe in both themes
+- `tests/e2e/admin-planes-axe.spec.ts`: the page form with a hero, an image and a document list,
+  in both themes
+- Storybook `Blocks/DocumentList`: the component axe gate, LTR and RTL

@@ -456,6 +456,45 @@ export const staffListBlock: Block = {
   ],
 }
 
+/**
+ * A document list (Jason, 2026-11-16) — every document in ONE folder of this site's library, A–Z,
+ * kept up to date as files are added or removed. A document not yet checked for accessibility is
+ * listed with a note offering an accessible copy (`07` §5). In the school palette.
+ */
+export const documentListBlock: Block = {
+  slug: 'documentList',
+  interfaceName: 'DocumentListBlockRow',
+  labels: { singular: 'Document list', plural: 'Document lists' },
+  fields: [
+    {
+      name: 'heading',
+      type: 'text',
+      label: 'Heading',
+      admin: {
+        description:
+          'A title above the list, like "Enrollment forms" — it also names this part of the page for screen readers.',
+      },
+    },
+    {
+      name: 'folder',
+      type: 'relationship',
+      relationTo: 'resource-folders',
+      required: true,
+      label: 'Folder',
+      // This site's folders only. Payload checks it on save too, not only in the picker.
+      filterOptions: ({ data }: { data?: { tenant?: unknown } }) => {
+        const tenant = data?.tenant
+        return tenant === undefined || tenant === null ? true : { tenant: { equals: tenant } }
+      },
+      admin: {
+        description:
+          'Every document in this folder of the site’s library is listed, A–Z. Add or remove files there and the list follows.',
+        allowCreate: false,
+      },
+    },
+  ],
+}
+
 export const imageBlock: Block = {
   slug: 'image',
   interfaceName: 'ImageBlockRow',
@@ -565,6 +604,7 @@ export const columnsBlock: Block = {
             feedBlock,
             calendarBlock,
             staffListBlock,
+            documentListBlock,
             imageBlock,
           ],
         },
@@ -582,6 +622,7 @@ export const blockLibrary: Block[] = [
   feedBlock,
   calendarBlock,
   staffListBlock,
+  documentListBlock,
   imageBlock,
   heroBlock,
   embedBlock,

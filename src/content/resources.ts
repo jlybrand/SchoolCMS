@@ -2,8 +2,9 @@ import { getPayload } from 'payload'
 
 import config from '@payload-config'
 
+import { toDocumentItem } from './document-item'
 import { toImageAsset } from './image-asset'
-import type { ImageAsset } from './types'
+import type { DocumentItem, ImageAsset } from './types'
 
 /**
  * A library image for a page (Jason, 2026-11-13) — read as the platform: files are public, the
@@ -45,4 +46,37 @@ export const getImageAssets = async (
       return asset ? [[String(doc.id), asset] as const] : []
     }),
   )
+}
+
+/** A folder holds a handful of forms, rarely more; a page lists at most this many. */
+const MAX_DOCUMENTS = 200
+
+/**
+ * The documents in ONE library folder (Jason, 2026-11-16), A–Z by title, for a Document list.
+ * Read as the platform — files are public — but only THIS site's: a stored folder id that points
+ * at another site lists nothing (`03` §6.4). Not its subfolders; images in it are left out.
+ */
+export const listFolderDocuments = async (
+  tenantId: string,
+  folderId: string,
+): Promise<DocumentItem[]> => {
+  const payload = await getPayload({ config })
+  const { docs } = await payload.find({
+    collection: 'resources',
+    where: {
+      and: [
+        { tenant: { equals: tenantId } },
+        { folder: { equals: folderId } },
+        { kind: { equals: 'document' } },
+      ],
+    },
+    sort: 'title',
+    limit: MAX_DOCUMENTS,
+    depth: 0,
+    overrideAccess: true,
+  })
+  return docs
+    .map(toDocumentItem)
+    .filter((d): d is DocumentItem => d !== null)
+    .sort((a, b) => a.title.localeCompare(b.title, 'en', { sensitivity: 'base' }))
 }

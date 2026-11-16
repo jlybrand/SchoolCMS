@@ -1,0 +1,32 @@
+/*
+ * A document list — see `DocumentList.tsx`. Tokens only; logical properties only (rule 5).
+ * Contrast: --color-text and --color-text-muted on --color-surface are checked at token level.
+ */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  list-style: none;
+  margin-block: 0;
+  padding-inline-start: 0;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.details {
+  white-space: nowrap;
+}
+
+.description,
+.note {
+  margin-block: 0;
+}
+
+.note {
+  color: var(--color-text-muted);
+}

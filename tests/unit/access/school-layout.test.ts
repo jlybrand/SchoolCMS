@@ -50,10 +50,19 @@ const columns = (id: string, cols: { id: string; heading?: string; content: unkn
 const ok = { ok: true }
 
 describe('SCHOOL_BLOCKS — the simple palette', () => {
-  it('is Text, Button, Cards, Accordion, Divider and Image — nothing that carries data or layout', () => {
+  it('is Text, Button, Cards, Accordion, Divider, Image and Document list — no layout, no other site’s data', () => {
     // Image joined 2026-11-13 (Jason): a school picks from its own library, alt already required.
+    // Document list joined 2026-11-16 (Jason): one of the school's own library folders.
     expect([...SCHOOL_BLOCKS].sort()).toEqual(
-      ['accordion', 'callToAction', 'cardGrid', 'divider', 'image', 'richText'].sort(),
+      [
+        'accordion',
+        'callToAction',
+        'cardGrid',
+        'divider',
+        'documentList',
+        'image',
+        'richText',
+      ].sort(),
     )
   })
 
