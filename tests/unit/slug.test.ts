@@ -213,6 +213,10 @@ describe('isReservedTopLevelSlug', () => {
     expect(isReservedTopLevelSlug(' NEWS ')).toBe(true)
   })
 
+  it('reserves search — the site search page (2026-11-16)', () => {
+    expect(isReservedTopLevelSlug('search')).toBe(true)
+  })
+
   it('also reserves what every page reserves', () => {
     expect(isReservedTopLevelSlug('admin')).toBe(true)
   })

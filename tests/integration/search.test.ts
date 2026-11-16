@@ -193,10 +193,11 @@ describe('searchSite — this site, or every site', () => {
     const all = await searchSite(siteA(), { query: term, scope: 'all' })
     expect(all.results.map((r) => [r.title, r.siteName]).sort()).toEqual([
       ['A’s page', null],
-      ['B’s page', 'School B'],
+      // Named as its own pages name it: its settings' title (the seed's "Bravo School").
+      ['B’s page', 'Bravo School'],
     ])
     // Another site's page links to that site.
-    const theirs = all.results.find((r) => r.siteName === 'School B')!
+    const theirs = all.results.find((r) => r.siteName === 'Bravo School')!
     expect(theirs.href).toMatch(/^https?:\/\/b\.localhost/)
   })
 

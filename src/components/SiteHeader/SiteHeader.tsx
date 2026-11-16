@@ -2,8 +2,10 @@ import { Container } from '@/components/Container'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { Link } from '@/components/Link'
 import { MenuList } from '@/components/MenuList'
+import { SearchForm } from '@/components/SearchForm'
 import type { Locale, MenuLink } from '@/content/types'
 import { localizedPath } from '@/lib/locales'
+import { SEARCH_PATH } from '@/lib/search'
 
 import styles from './SiteHeader.module.css'
 
@@ -14,7 +16,8 @@ import styles from './SiteHeader.module.css'
  * (`PAGE_TITLE_LEVEL`); a site name in an `h1` would put the same heading at the top of
  * every page's outline and push the one that differs to second place.
  *
- * DOM ORDER IS name -> quick links -> languages -> main menu, and it is also the visual order: nothing
+ * DOM ORDER IS name -> quick links -> languages -> search -> main menu, and it is also the visual
+ * order (the search box joined 2026-11-16, Phase 6 D): nothing
  * here is reordered with `order` or positioned out of flow, so a keyboard user tabs through
  * what a sighted user sees, in the sequence they see it (1.3.2, 2.4.3).
  *
@@ -65,6 +68,12 @@ export const SiteHeader = ({
             locale={locale}
           />
           <LanguageSwitcher locales={locales} locale={locale} currentPath={currentPath} />
+          {/* Site search (Phase 6 D): a GET form to this site's results page, no JS needed. */}
+          <SearchForm
+            action={localizedPath(SEARCH_PATH, locale)}
+            id="site-search"
+            landmark="Site search"
+          />
         </div>
       </div>
       <MenuList label={primaryLabel} links={primary} currentPath={currentPath} locale={locale} />

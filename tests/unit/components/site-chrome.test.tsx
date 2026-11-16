@@ -45,6 +45,31 @@ describe('SiteHeader', () => {
     expect(home.getAttribute('href')).toBe('/')
   })
 
+  /** Site search (2026-11-16, Phase 6 D): in every header, a GET form to the results page. */
+  it('holds a named search landmark that sends the words to /search, in the visitor’s language', () => {
+    const header = (locale: string) =>
+      renderComponent(
+        <SiteHeader
+          siteName="School A"
+          primary={primary}
+          utility={[]}
+          currentPath="/"
+          locale={locale}
+          locales={['en', 'es']}
+        />,
+      )
+    const { getByRole } = header('en')
+    const search = getByRole('search', { name: 'Site search' })
+    expect(getByRole('banner').contains(search)).toBe(true)
+    expect(search.getAttribute('action')).toBe('/search')
+    expect(search.getAttribute('method')).toBe('get')
+    const field = getByRole('searchbox', { name: 'Search this site' })
+    expect(field.getAttribute('name')).toBe('q')
+    expect(getByRole('button', { name: 'Search' })).toBeTruthy()
+    const spanish = header('es').container.querySelector('form[role="search"]')
+    expect(spanish?.getAttribute('action')).toBe('/es/search')
+  })
+
   it('the site name is NOT a heading — the page title is the only h1 (`07` §3)', () => {
     const { queryAllByRole } = renderComponent(
       <SiteHeader

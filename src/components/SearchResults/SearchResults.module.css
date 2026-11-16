@@ -1,0 +1,39 @@
+/*
+ * Search results — see `SearchResults.tsx`. Tokens only; logical properties only (rule 5): the
+ * list keeps its numbers at the inline start, so they move to the right for Arabic with no rule.
+ * Contrast: --color-text and --color-text-muted on --color-surface are checked at token level;
+ * `<mark>` is --color-highlight with --color-text on it (a checked pair).
+ */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  margin-block: 0;
+  padding-inline-start: var(--space-lg);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.meta,
+.event,
+.snippet {
+  margin-block: 0;
+}
+
+.meta {
+  color: var(--color-text-muted);
+}
+
+.event {
+  font-weight: 700;
+}
+
+.snippet mark {
+  background-color: var(--color-highlight);
+  color: var(--color-text);
+}

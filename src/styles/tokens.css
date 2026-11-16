@@ -30,6 +30,11 @@
   --color-text: #14171c;
   /* Contrast against --color-surface: 7.5:1 (AAA body text) */
   --color-text-muted: #4d5563;
+  /*
+   * The matched words in a search result (2026-11-16): `<mark>`'s fill, with --color-text on it.
+   * Not the only cue — `<mark>` is announced as highlighted, and the words are the search's own.
+   */
+  --color-highlight: #fff2a8;
 
   /* --- Color: brand (per-tenant override target) ----------------------- */
   /* Contrast against --color-surface: 8.8:1 */

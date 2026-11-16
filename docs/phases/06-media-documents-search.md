@@ -17,8 +17,8 @@ decisions:
 | B2. An announcement's image            | §4 (#104)    |
 | C1. The Document list block            | §5 (#106)    |
 | C2. The not-attested work queue        | §6 (#107)    |
-| D1. The search index and query         | §8 (this PR) |
-| D2. The search page and header box     | —            |
+| D1. The search index and query         | §8 (#109)    |
+| D2. The search page and header box     | §9 (this PR) |
 
 ---
 
@@ -591,3 +591,74 @@ is small. Add a GIN index on the weighted vector in Phase 8 hardening, when migr
   - **the backfill:** rebuilds from published content; running it twice gives the same result
 - `tests/integration/tenant-isolation.test.ts`: nobody reads the index through Payload's access
   (a visitor, a manager, the district), and a manager can't write or change a row
+
+## 9. The search page and the header box (Jason, 2026-11-16)
+
+**The header box.** `SiteHeader` puts a `SearchForm` in its tools column, after the languages
+(name → quick links → languages → search → main menu, in both the DOM and visual order):
+
+- a plain GET form to `localizedPath('/search', locale)`, so it works with no JavaScript;
+- a `search` landmark named "Site search";
+- a read-only label "Search this site" beside a visible "Search" button whose name matches it
+  (2.5.3);
+- `type="search"`, `name="q"`, at most 200 characters.
+
+**The page:** `/search` (`src/app/(frontend)/sites/[hostname]/[locale]/search/page.tsx`), rendered per
+request because it reads the query, and `noindex, follow`. `search` is a reserved top-level slug
+(`src/lib/slug.ts`).
+
+- **The request:** `parseSearchParams` (`src/lib/search.ts`, pure) reads `q`, `scope` and `page`
+  (at most 100). Anything unreadable falls back to the default. The default scope is the
+  site's own: a school searches **itself**, the district site **everything**.
+  `searchHref` builds the addresses, naming the scope only when it isn't the default and the page
+  only after the first.
+- **The layout:**
+  - `h1` "Search";
+  - the page's own `SearchForm`: a visible label ("Search {site}" or "Search all DD2 sites"), a
+    landmark named "Search again", the words kept, and a hidden `scope` when it isn't the
+    default;
+  - with no words: a hint, "Type a word or two…";
+  - otherwise "N results for “q” on {site}" (or "across all DD2 sites"), with a link to the
+    other scope that keeps the words: "Search all DD2 sites" or "Search only {site}";
+  - the results;
+  - Previous/Next pagination in a `nav` named "Search result pages", with "Page n of m".
+- **`SearchResults`** (`src/components/SearchResults/`): an `<ol>` numbered from the page's
+  first result (`start`), so 11 follows 10. Each result has:
+  - a line saying what it is, in words: Page, Announcement, Event or Document, a document's
+    type and size, and another site's name;
+  - its title as an `h2`, linking to it. An event without a calendar page has no link;
+  - an event's time and place;
+  - the snippet, with matches in `<mark>` as text, never HTML.
+- **Site names** are what the site's own pages call it: its settings' `siteTitle`, else the
+  tenant's name. `searchSite` reads them with the results.
+- **The highlight** is a token, `--color-highlight` (#fff2a8), with `--color-text` on it as a
+  checked pair (`REQUIRED_CONTRAST_PAIRS`, about 16:1).
+
+### Files
+
+| File                                                   | Does                                             |
+| ------------------------------------------------------ | ------------------------------------------------ |
+| `src/components/SearchForm/`                           | the box: component, CSS, stories                 |
+| `src/components/SearchResults/`                        | the list: component, CSS, stories                |
+| `src/components/SiteHeader/SiteHeader.tsx`             | the box in every header                          |
+| `src/app/(frontend)/sites/[hostname]/[locale]/search/` | the page and its CSS                             |
+| `src/lib/search.ts`                                    | `SEARCH_PATH`, `parseSearchParams`, `searchHref` |
+| `src/lib/slug.ts`                                      | `search` reserved at the top                     |
+| `src/content/search.ts`                                | site names from settings                         |
+| `src/styles/tokens.css`, `src/lib/contrast.ts`         | `--color-highlight` and its pair                 |
+
+### Tests
+
+- `tests/unit/lib/search.test.ts`: addresses (scope and page named only when needed, the locale
+  prefix) and reading them back (defaults, junk, the page cap)
+- `tests/unit/slug.test.ts`: `search` reserved
+- `tests/unit/components/search.test.tsx`: the form keeps the words and scope; the results'
+  numbering, linked headings, marks as text, kind/file/site in words, and an event without a link
+- `tests/unit/components/site-chrome.test.tsx`: the header's named search landmark, sending to
+  `/search` or `/es/search`
+- `tests/e2e/site-search.spec.ts`:
+  - from the header box to the results, this site only (its page and document, not School
+    A's), then every site (labelled), with axe in both themes;
+  - nothing found offers every site, and no words shows the hint, with both landmarks named apart;
+  - the results page in Arabic (RTL), with axe
+- Storybook `Components/SearchForm` and `Components/SearchResults`: the component axe gate, LTR and RTL
