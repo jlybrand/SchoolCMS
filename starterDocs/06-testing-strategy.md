@@ -162,19 +162,21 @@ Real browser flows, multi-tenant and multi-role:
 
 ```
 typecheck → lint (incl. boundary + logical-properties rules) → unit → integration
-  → build → e2e (full suite, 2 shards) → axe gate → lighthouse budget
+  → build → e2e (full suite, one machine, 2 workers) → axe gate → lighthouse budget
                                           │
    (nightly / pre-release) → full e2e matrix · localization matrix · k6 spike
                              · security scan · manual AT
 ```
 
 - **Blocking on every PR:** typecheck, lint, unit, integration, build, the full e2e suite
-  (Chromium, sharded across two machines), **axe**. Smoke alone let a regression in an untagged spec
+  (Chromium, one machine at two workers: one build instead of one per shard), **axe**. Smoke alone let a regression in an untagged spec
   through (2026-11-12), so smoke stays a local shortcut, not the gate.
 - **Blocking on a PR that can affect them:** the Storybook component axe gate (anything outside
   the admin, collections, access, content layer and tests), the Lighthouse budget (anything
   outside the admin planes and tests — it audits the public home page), the dependency audit
-  (the lockfile or CI itself). Every push to `main` runs all three. A prose-only PR (docs,
+  (the lockfile or CI itself), and the audit weekly. A push to `main` runs none of the three, nor
+  e2e: only typecheck, lint, unit and integration, because its PR ran the rest (Jason, 2026-11-17,
+  Actions minutes). A draft PR runs nothing until it's marked ready. A prose-only PR (docs,
   `starterDocs/`, Markdown) runs no CI; the job `changes` in `.github/workflows/ci.yml` holds
   the lists.
 - **Blocking on release/pre-cutover:** full e2e matrix, localization matrix across Tier 1,
