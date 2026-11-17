@@ -944,8 +944,11 @@ log and `revalidateFile` all apply, with nothing new on the server.
 admin root is 13px, so sizes are px, and every non-heading in the library is held at 15px,
 including the reused school-plane form. Under 1000px it becomes one column, and an open file takes
 the screen, with "Back to the files". A "File library" link sits in the side menu
-(`FileLibraryNavLink`, `afterNavLinks`). Like the other task screens, the library itself draws
-no side menu.
+(`FileLibraryNavLink`, `afterNavLinks`), and a school's start screen has a **"Manage your files"**
+card (`SCHOOL_TASKS`, Jason 2026-11-17). Unlike the other task screens, the library sits **in Payload's
+frame**, the side menu and top bar (Jason, 2026-11-17: the library only, to see it before deciding
+for every task screen). A custom view gets the frame only by wrapping itself in `DefaultTemplate`
+with the props Payload's root view passes.
 
 **Tests.** `tests/unit/admin/file-library.test.ts`, then `tests/integration/file-library.test.ts`
 (site scoping; a school's `?site=`/`?file=` for another school gives nothing; the folder, search

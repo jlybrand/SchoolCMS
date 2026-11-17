@@ -150,14 +150,19 @@ schoolTest.describe('a school’s file library', () => {
         await page.emulateMedia({ colorScheme })
         const fixture = await setUp(baseURL)
         try {
-          // In the side menu, both planes (it starts closed at this width for a school).
+          // A card on the school's start screen (Jason, 2026-11-17), and in the side menu.
           await page.goto('/admin')
+          await expect(
+            page.locator('#school-home').getByRole('link', { name: /Manage your files/ }),
+          ).toHaveAttribute('href', '/admin/file-library', { timeout: 20_000 })
           await expect(page.locator('#nav-file-library')).toHaveAttribute(
             'href',
             '/admin/file-library',
           )
           await page.goto('/admin/file-library')
           await expect(page.getByRole('heading', { level: 1, name: 'File library' })).toBeVisible()
+          // In Payload's frame (Jason, 2026-11-17): the side menu is on the library itself.
+          await expect(page.locator('#nav-file-library')).toBeAttached()
           expect(await blockingViolations(page)).toEqual([])
 
           await openFile(page, fixture)

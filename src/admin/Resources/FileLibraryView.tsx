@@ -1,7 +1,9 @@
+import { DefaultTemplate } from '@payloadcms/next/templates'
 import { Gutter } from '@payloadcms/ui'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import type { AdminViewServerProps } from 'payload'
+import type { ReactNode } from 'react'
 
 import { isDistrictAdmin, isSchoolManager } from '@/access/predicates'
 import type { AuthUser } from '@/access/types'
@@ -31,11 +33,36 @@ import { getLibraryFile, librarySites, listLibraryFiles, listLibraryFolders } fr
  * so nothing navigates while someone is still choosing (WCAG 3.2.2). Reads are as the user AND
  * scoped to the site (`library-data.ts`).
  *
+ * IN PAYLOAD'S FRAME — the side menu and top bar — unlike the other task screens (Jason,
+ * 2026-11-17: the library only, to see it before deciding on every task screen). A custom view
+ * gets the frame only by wrapping itself in `DefaultTemplate`, with the props Payload's own root
+ * view hands it.
+ *
  * Built, then locked with Playwright + axe (CLAUDE.md's exception for admin views):
  * `tests/e2e/file-library.spec.ts`.
  */
-export const FileLibraryView = async ({ initPageResult, searchParams }: AdminViewServerProps) => {
+export const FileLibraryView = async (props: AdminViewServerProps) => {
+  const { initPageResult, searchParams } = props
   const { req } = initPageResult
+  const framed = (children: ReactNode) => (
+    <DefaultTemplate
+      i18n={req.i18n}
+      payload={req.payload}
+      permissions={initPageResult.permissions}
+      req={req}
+      visibleEntities={{
+        // Copied, not passed through: React 19 refuses the read-only original (as Payload's root).
+        collections: [...initPageResult.visibleEntities.collections],
+        globals: [...initPageResult.visibleEntities.globals],
+      }}
+      {...(initPageResult.locale ? { locale: initPageResult.locale } : {})}
+      {...(props.params ? { params: props.params } : {})}
+      {...(searchParams ? { searchParams } : {})}
+      {...(req.user ? { user: req.user } : {})}
+    >
+      {children}
+    </DefaultTemplate>
+  )
   const user = req.user as AuthUser | null
   if (!isDistrictAdmin(user) && !isSchoolManager(user)) redirect('/admin')
 
@@ -70,7 +97,7 @@ export const FileLibraryView = async ({ initPageResult, searchParams }: AdminVie
     ) : null
 
   if (site === null) {
-    return (
+    return framed(
       <Gutter>
         <div className={styles.library} id="file-library">
           <h1 className={styles.title}>File library</h1>
@@ -81,7 +108,7 @@ export const FileLibraryView = async ({ initPageResult, searchParams }: AdminVie
               : 'Your account is not linked to a school yet. Ask the district web team to add it.'}
           </p>
         </div>
-      </Gutter>
+      </Gutter>,
     )
   }
 
@@ -100,7 +127,7 @@ export const FileLibraryView = async ({ initPageResult, searchParams }: AdminVie
       ? 'All files'
       : (folders.find((f) => String(f.id) === at.folder)?.label ?? 'All files')
 
-  return (
+  return framed(
     <Gutter>
       <div className={styles.library} data-file-open={file !== null} id="file-library">
         <h1 className={styles.title}>File library</h1>
@@ -245,7 +272,7 @@ export const FileLibraryView = async ({ initPageResult, searchParams }: AdminVie
           ) : null}
         </div>
       </div>
-    </Gutter>
+    </Gutter>,
   )
 }
 
