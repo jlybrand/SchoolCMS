@@ -89,8 +89,6 @@ export const UsedOnField = async ({ id, req }: UIFieldServerProps) => {
           </ul>
         </>
       ) : null}
-
-      <p className={styles.note}>A link to this file typed into a page’s text isn’t counted.</p>
     </section>
   )
 }
