@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs'
+import path from 'node:path'
+
 import type { Payload } from 'payload'
 import { beforeAll, describe, expect, it } from 'vitest'
 
@@ -275,5 +278,117 @@ describe('tags and the activity log', () => {
     expect(docs.map((d) => d.action)).toEqual(['publish', 'delete'])
     expect(docs.every((d) => d.tenant === f.tenantA)).toBe(true)
     expect(docs[0]!.documentTitle).toBe('Lunch menu')
+  })
+})
+
+/**
+ * Replace a file (Jason, 2026-11-16): a new file in the old one's place — the same kind only —
+ * keeping its library entry, so every page using it shows the new one. A replaced document is
+ * marked not checked; a school replaces its own files with no approval; the log says so.
+ */
+describe('replacing a file', () => {
+  const replace = (
+    id: number | string,
+    file: { data: Buffer; mimetype: string; name: string; size: number },
+    data: Row = {},
+    as: { user?: unknown; overrideAccess?: boolean } = { user: f.districtAdmin },
+  ) =>
+    payload.update({
+      collection: 'resources',
+      id,
+      data: data as never,
+      file,
+      user: as.user as never,
+      overrideAccess: as.overrideAccess ?? false,
+    })
+
+  it('an image for an image keeps its place; the new file’s sizes are made, the old ones gone', async () => {
+    const before = (await upload(
+      { alt: 'The old photo' },
+      await tinyPng(1200, 800),
+    )) as unknown as Row
+    const after = (await replace(before.id as number, await tinyPng(1600, 900))) as unknown as Row
+    expect(after.id).toBe(before.id)
+    expect(after.filename).not.toBe(before.filename)
+    expect(after.alt).toBe('The old photo')
+    const sizes = after.sizes as Record<string, { width?: number | null }>
+    expect(sizes.card?.width).toBe(800)
+    // The old file is gone from disk with its sizes; the new one serves.
+    const media = path.resolve(__dirname, '../../media')
+    expect(existsSync(path.join(media, String(before.filename)))).toBe(false)
+    expect(existsSync(path.join(media, String(after.filename)))).toBe(true)
+  })
+
+  it('a document for a document is marked not checked, whoever had checked the old one', async () => {
+    const before = (await upload({ remediationStatus: 'attested' }, tinyPdf())) as unknown as Row
+    expect(before.attestedAt).toBeTruthy()
+    // The admin form re-sends the old answer; it is reset all the same.
+    const after = (await replace(before.id as number, tinyPdf(), {
+      remediationStatus: 'attested',
+    })) as unknown as Row
+    expect(after).toMatchObject({ remediationStatus: 'not-attested', attestedAt: null })
+    expect(after.attestedBy ?? null).toBeNull()
+  })
+
+  it('a different kind is refused — even with access overridden', async () => {
+    const image = (await upload({ alt: 'A photo' }, await tinyPng())) as unknown as Row
+    const doc = (await upload({ remediationStatus: 'attested' }, tinyPdf())) as unknown as Row
+    for (const [id, file] of [
+      [image.id, tinyPdf()],
+      [doc.id, await tinyPng()],
+    ] as const) {
+      expect(await refusal(replace(id as number, file, {}, { overrideAccess: true }))).toContain(
+        'Replace an image with an image, or a document with a document.',
+      )
+    }
+  })
+
+  it('an image’s description can’t be emptied in the same breath', async () => {
+    const image = (await upload({ alt: 'A photo' }, await tinyPng())) as unknown as Row
+    expect(await refusal(replace(image.id as number, await tinyPng(), { alt: '' }))).toContain(
+      'Describe the image',
+    )
+  })
+
+  it('a school replaces its own files with no approval — never another school’s', async () => {
+    const mine = (await upload({ alt: 'Ours' }, await tinyPng())) as unknown as Row
+    await expect(
+      replace(mine.id as number, await tinyPng(), {}, { user: f.managerA }),
+    ).resolves.toBeTruthy()
+    const theirs = (await upload(
+      { tenant: f.tenantB, alt: 'Theirs' },
+      await tinyPng(),
+    )) as unknown as Row
+    await expect(
+      replace(theirs.id as number, await tinyPng(), {}, { user: f.managerA }),
+    ).rejects.toThrow()
+  })
+
+  it('the activity log says “Replaced the file”; the search index follows', async () => {
+    const doc = (await upload(
+      { title: 'Bus request', remediationStatus: 'attested' },
+      tinyPdf(),
+    )) as unknown as Row
+    const after = (await replace(doc.id as number, tinyPdf())) as unknown as Row
+    const { docs: log } = await payload.find({
+      collection: 'audit-events',
+      where: {
+        and: [{ contentType: { equals: 'resources' } }, { documentId: { equals: String(doc.id) } }],
+      },
+      sort: '-createdAt',
+      limit: 1,
+      overrideAccess: true,
+    })
+    expect(log[0]?.summary).toBe(
+      `Replaced the file: ${String(doc.filename)} → ${String(after.filename)}`,
+    )
+    const { docs: entries } = await payload.find({
+      collection: 'search',
+      where: {
+        and: [{ 'doc.relationTo': { equals: 'resources' } }, { 'doc.value': { equals: doc.id } }],
+      },
+      overrideAccess: true,
+    })
+    expect((entries[0] as { href?: string } | undefined)?.href).toContain(String(after.filename))
   })
 })

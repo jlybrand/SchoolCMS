@@ -6,6 +6,7 @@ import {
   folderMovesUnder,
   kindOf,
   parseTags,
+  replacementProblems,
   resourceProblems,
 } from '@/lib/resources'
 
@@ -141,5 +142,25 @@ describe('folders', () => {
   it('a folder is named with its path', () => {
     expect(folderLabel(['Forms'])).toBe('Forms')
     expect(folderLabel(['Forms', 'Enrollment', '2026'])).toBe('Forms › Enrollment › 2026')
+  })
+})
+
+/** Replace a file (Jason, 2026-11-16): an image for an image, a document for a document. */
+describe('replacementProblems', () => {
+  it('the same kind is fine — any image for an image, any document for a document', () => {
+    expect(replacementProblems('image/png', 'image/jpeg')).toEqual([])
+    expect(replacementProblems('application/pdf', 'application/msword')).toEqual([])
+  })
+
+  it('a different kind is refused, at the file', () => {
+    const refused = [
+      { path: 'file', message: 'Replace an image with an image, or a document with a document.' },
+    ]
+    expect(replacementProblems('image/png', 'application/pdf')).toEqual(refused)
+    expect(replacementProblems('application/pdf', 'image/webp')).toEqual(refused)
+  })
+
+  it('a type the library doesn’t take is left to the usual refusal', () => {
+    expect(replacementProblems('image/png', 'video/mp4')).toEqual([])
   })
 })

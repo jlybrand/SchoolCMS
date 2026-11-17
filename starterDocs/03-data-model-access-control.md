@@ -203,6 +203,8 @@ _(Revised 2026-11-13, Jason: **one** library, as Finalsite's Resources, in place
     does not remediate.**
   - Accepted: JPEG, PNG, GIF, WebP; PDF and Office documents. **No video** (YouTube only —
     Jason) and **no SVG** (it can carry script).
+  - **Replacing a file** (Jason, 2026-11-16): a new file of the same kind in an existing entry,
+    keeping its id; a replaced document is marked `not-attested` (`docs/phases/06` §11).
   - Not yet: `visibility` (`public` | `staff`) waits for Entra sign-in (Jason, 2026-11-13);
     `localeOf` joins with Phase 7 (`08` §9).
 - **`resource-folders`** — `tenant`, `name`, `parent` (nests, same school only, never inside

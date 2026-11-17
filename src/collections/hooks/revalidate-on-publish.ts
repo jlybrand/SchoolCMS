@@ -144,6 +144,22 @@ export const syndicationTargets = (
   all: readonly string[],
 ): string[] => [...new Set([...reach(doc, all), ...reach(previous, all)])]
 
+/**
+ * The sites a library file shows on (Jason, 2026-11-16) — refreshed when it changes or is
+ * replaced, because Payload deletes a replaced file and a cached page would show a broken image or
+ * link. Its own site (its Image, Hero and Document list sections), and every site that lists an
+ * announcement using it as its image (`syndicationTargets`). Pure; `all` is every tenant id.
+ */
+export const fileRevalidationTargets = (
+  file: { tenant?: unknown },
+  postsUsingIt: readonly Shared[],
+  all: readonly string[],
+): string[] => {
+  const own = relationshipIdOf(file.tenant as never)
+  if (own === null) return []
+  return [...new Set([own, ...postsUsingIt.flatMap((post) => syndicationTargets(post, null, all))])]
+}
+
 /** Every tenant id, read as the platform — for an announcement shared with every school. */
 export const allTenantIds = async (
   req: Parameters<CollectionAfterChangeHook>[0]['req'],
@@ -279,3 +295,54 @@ export const revalidateAllSites = async (
     req.payload.logger.error(`revalidateAllSites (${why}): ${(err as Error).message}`)
   }
 }
+
+/**
+ * A library file changed, replaced or removed (Jason, 2026-11-16) — refresh the sites it shows
+ * on (`fileRevalidationTargets`). It matters most for a REPLACEMENT: Payload deletes the old file,
+ * so a cached page would show a broken image or link until it was rebuilt. A changed description
+ * or title shows on pages too. Files have no draft, so every write counts. Never fails the write.
+ */
+export const makeRevalidateFile =
+  ({
+    revalidate,
+    hostnameFor,
+  }: Pick<RevalidateDeps, 'revalidate' | 'hostnameFor'>): CollectionAfterChangeHook =>
+  async ({ doc, req }) => {
+    try {
+      const { docs: posts } = await req.payload.find({
+        collection: 'posts',
+        where: { heroImage: { equals: doc.id } },
+        pagination: false,
+        depth: 0,
+        overrideAccess: true,
+        select: { tenant: true, syndication: true },
+        req,
+      })
+      const targets = fileRevalidationTargets(
+        doc as { tenant?: unknown },
+        posts as unknown as Shared[],
+        await allTenantIds(req),
+      )
+      for (const tenantId of targets) {
+        const hostname = await hostnameFor(tenantId, req)
+        if (hostname) await revalidate(tenantSitePath(hostname), 'layout')
+      }
+    } catch (err) {
+      if (OUTSIDE_NEXT.test((err as Error).message)) {
+        req.payload.logger.debug(`revalidateFile: not in a Next request; skipped`)
+        return doc
+      }
+      req.payload.logger.error(
+        `revalidateFile: could not revalidate file ${String(doc.id)}: ${(err as Error).message}`,
+      )
+    }
+    return doc
+  }
+
+export const revalidateFile = makeRevalidateFile({
+  revalidate: async (path, type) => {
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath(path, type)
+  },
+  hostnameFor: tenantHostname,
+})

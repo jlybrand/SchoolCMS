@@ -2750,6 +2750,35 @@ describe('the file library (Jason, 2026-11-13)', () => {
       ).toBe(true)
     })
 
+    /** Replace a file (Jason, 2026-11-16): a new file in another school's entry is a write too. */
+    it('school-manager A cannot put a new file in School B’s place', async () => {
+      const before = (await payload.findByID({
+        collection: 'resources',
+        id: r.fileB,
+        depth: 0,
+        overrideAccess: true,
+      })) as { filename?: unknown }
+      expect(
+        await isDenied(async () =>
+          payload.update({
+            collection: 'resources',
+            id: r.fileB,
+            data: {} as never,
+            file: await tinyPng(),
+            user: f.managerA,
+            overrideAccess: false,
+          }),
+        ),
+      ).toBe(true)
+      const after = (await payload.findByID({
+        collection: 'resources',
+        id: r.fileB,
+        depth: 0,
+        overrideAccess: true,
+      })) as { filename?: unknown }
+      expect(after.filename).toBe(before.filename)
+    })
+
     it('school-manager A cannot change or remove School B’s file, singly or in bulk', async () => {
       expect(
         await isDenied(() =>

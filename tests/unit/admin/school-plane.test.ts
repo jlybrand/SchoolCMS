@@ -31,6 +31,7 @@ describe('SCHOOL_TASKS — verbs, not collections (`04` §2.2)', () => {
       'Update a page',
       'Add a page',
       'Upload a file',
+      'Replace a file',
     ])
   })
 

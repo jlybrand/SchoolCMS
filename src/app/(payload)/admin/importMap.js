@@ -35,6 +35,7 @@ import { EventSaveButton as EventSaveButton_9d8ff44ca1c1d15e1c244354a4498e4a } f
 import { MembersField as MembersField_203cc5edbcb2db7244697b1fe62551b0 } from '../../../admin/StaffGroups/MembersField'
 import { UploadFileButton as UploadFileButton_ad11f66107fe2340d535e62868eb7090 } from '../../../admin/Resources/UploadFileButton'
 import { UploadingHeading as UploadingHeading_68858822c70c6bec0b3e5f71e2ad7716 } from '../../../admin/Resources/UploadingHeading'
+import { ReplaceFileLink as ReplaceFileLink_2f1f2950f5041d6fcf6699f0adecf1c2 } from '../../../admin/Resources/ReplaceFileLink'
 import { LinkToDoc as LinkToDoc_aead06e4cbf6b2620c5c51c9ab283634 } from '@payloadcms/plugin-search/client'
 import { ReindexButton as ReindexButton_aead06e4cbf6b2620c5c51c9ab283634 } from '@payloadcms/plugin-search/client'
 import { GlobalViewRedirect as GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
@@ -53,6 +54,7 @@ import { NewPageView as NewPageView_75d5b0676850069cc52fd8659e0483db } from '../
 import { NewPostView as NewPostView_77e93fa34962fc9debb861b64f9a1c69 } from '../../../admin/SchoolPlane/NewPostView'
 import { NewEventView as NewEventView_2bf2c031e47ebf55ba21b803e08fdd96 } from '../../../admin/SchoolPlane/NewEventView'
 import { UploadFileView as UploadFileView_b874b44d70a837a4c4c39977426847f4 } from '../../../admin/SchoolPlane/UploadFileView'
+import { ReplaceFileView as ReplaceFileView_f11d8877f95fcee9b980bc70b0de0bc2 } from '../../../admin/SchoolPlane/ReplaceFileView'
 import { ApprovalsView as ApprovalsView_24670674c7de4661a804a1c4ad51ba6b } from '../../../admin/Approvals/ApprovalsView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
@@ -95,6 +97,7 @@ export const importMap = {
   "/admin/StaffGroups/MembersField#MembersField": MembersField_203cc5edbcb2db7244697b1fe62551b0,
   "/admin/Resources/UploadFileButton#UploadFileButton": UploadFileButton_ad11f66107fe2340d535e62868eb7090,
   "/admin/Resources/UploadingHeading#UploadingHeading": UploadingHeading_68858822c70c6bec0b3e5f71e2ad7716,
+  "/admin/Resources/ReplaceFileLink#ReplaceFileLink": ReplaceFileLink_2f1f2950f5041d6fcf6699f0adecf1c2,
   "@payloadcms/plugin-search/client#LinkToDoc": LinkToDoc_aead06e4cbf6b2620c5c51c9ab283634,
   "@payloadcms/plugin-search/client#ReindexButton": ReindexButton_aead06e4cbf6b2620c5c51c9ab283634,
   "@payloadcms/plugin-multi-tenant/rsc#GlobalViewRedirect": GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62,
@@ -113,6 +116,7 @@ export const importMap = {
   "/admin/SchoolPlane/NewPostView#NewPostView": NewPostView_77e93fa34962fc9debb861b64f9a1c69,
   "/admin/SchoolPlane/NewEventView#NewEventView": NewEventView_2bf2c031e47ebf55ba21b803e08fdd96,
   "/admin/SchoolPlane/UploadFileView#UploadFileView": UploadFileView_b874b44d70a837a4c4c39977426847f4,
+  "/admin/SchoolPlane/ReplaceFileView#ReplaceFileView": ReplaceFileView_f11d8877f95fcee9b980bc70b0de0bc2,
   "/admin/Approvals/ApprovalsView#ApprovalsView": ApprovalsView_24670674c7de4661a804a1c4ad51ba6b,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }

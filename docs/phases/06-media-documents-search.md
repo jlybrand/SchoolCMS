@@ -19,7 +19,8 @@ decisions:
 | C2. The not-attested work queue        | §6 (#107)     |
 | D1. The search index and query         | §8 (#109)     |
 | D2. The search page and header box     | §9 (#110)     |
-| E. Exit check and close-out            | §10 (this PR) |
+| E. Exit check and close-out            | §10 (#111)    |
+| After the close: replace a file        | §11 (this PR) |
 
 ---
 
@@ -712,17 +713,115 @@ The roadmap's other Phase 6 bullets:
 
 ### Carried forward
 
-| Item                                                                                                                                                                                         | Where it lands / who decides                                                                      |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| **Staff-only visibility** on pages and documents                                                                                                                                             | The Entra switch, before the Phase 9 pilot                                                        |
-| **Replace a file** with one of the same kind, keeping its place (Jason, 2026-11-16): confirm alt, reset the accessibility answer, no approval for schools, a school "Replace this file" task | Pinned; next feature work                                                                         |
-| **R2 against a real bucket**                                                                                                                                                                 | Hosting work (`09` §1)                                                                            |
-| **A GIN index** on the weighted search vector                                                                                                                                                | Phase 8 hardening, when migrations start (§8)                                                     |
-| **Search UI words**, and stemming beyond English                                                                                                                                             | Phase 7 (`08`): the results page's labels are English; the index uses the `english` configuration |
-| An event's search link is the **first** page, by path, showing its calendar                                                                                                                  | As built; revisit if a school has several calendar pages                                          |
-| The other two **work queues** in `04` §3.1 item 5 (bulk-decorative images, translation verification)                                                                                         | Not built; translation verification with Phase 7                                                  |
-| **The feed calendar's admin form (dark)** still flakes under full-suite load, despite one calendar per scheme                                                                                | Test fix, separately                                                                              |
-| **The dev server rewrites `importMap.js`** mid-branch switch (twice on 2026-11-16)                                                                                                           | Check `git status` before each commit; restore from main                                          |
-| Migration mapper for library files                                                                                                                                                           | See the definition of done above                                                                  |
-| Screen-reader smoke test of the new screens                                                                                                                                                  | Manual release check; Phase 8 AT audit                                                            |
-| Earlier phases' open items (`05` §41, `04` §19)                                                                                                                                              | Unchanged unless noted above                                                                      |
+| Item                                                                                                          | Where it lands / who decides                                                                      |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| **Staff-only visibility** on pages and documents                                                              | The Entra switch, before the Phase 9 pilot                                                        |
+| **Replace a file** with one of the same kind, keeping its place (Jason, 2026-11-16)                           | **Built** after the close: §11                                                                    |
+| **R2 against a real bucket**                                                                                  | Hosting work (`09` §1)                                                                            |
+| **A GIN index** on the weighted search vector                                                                 | Phase 8 hardening, when migrations start (§8)                                                     |
+| **Search UI words**, and stemming beyond English                                                              | Phase 7 (`08`): the results page's labels are English; the index uses the `english` configuration |
+| An event's search link is the **first** page, by path, showing its calendar                                   | As built; revisit if a school has several calendar pages                                          |
+| The other two **work queues** in `04` §3.1 item 5 (bulk-decorative images, translation verification)          | Not built; translation verification with Phase 7                                                  |
+| **The feed calendar's admin form (dark)** still flakes under full-suite load, despite one calendar per scheme | Test fix, separately                                                                              |
+| **The dev server rewrites `importMap.js`** mid-branch switch (twice on 2026-11-16)                            | Check `git status` before each commit; restore from main                                          |
+| Migration mapper for library files                                                                            | See the definition of done above                                                                  |
+| Screen-reader smoke test of the new screens                                                                   | Manual release check; Phase 8 AT audit                                                            |
+| Earlier phases' open items (`05` §41, `04` §19)                                                               | Unchanged unless noted above                                                                      |
+
+## 11. Replace a file (Jason, 2026-11-16)
+
+A file in the library can be replaced by a **new file of the same kind**: an image for an image,
+a document for a document. It keeps its library entry, so every Image and Hero section,
+announcement image, Document list and search entry using it shows the new file, with no page
+edits. That's how an updated lunch menu or form goes up. Jason's decisions:
+
+- an image's **description is asked again**;
+- a document is **marked not checked**;
+- schools replace their own files with **no approval**;
+- the school plane has a **"Replace a file"** task.
+
+**The rules (`src/collections/Resources.ts`, on every route).** A replacement is an update that
+carries a new file (`req.file`).
+
+- **`checkFile`** (beforeValidate) also asks `replacementProblems(old, new)`
+  (`src/lib/resources.ts`, pure). A different kind is refused at the file: "Replace an image with
+  an image, or a document with a document." This holds even with access overridden. The usual
+  rules still apply to the result: an image's description can't be emptied as it's replaced.
+- **`settle`** (beforeChange): a replaced **document** gets `remediationStatus: not-attested`,
+  and `attestedBy`/`attestedAt` are cleared. This is unconditional, since Payload's form re-sends
+  the old answer. The document joins "Documents to check" (§6).
+- **Payload's own update** keeps the id, makes the new sizes and **deletes the old file and its
+  sizes** (`deleteAssociatedFiles`). The new file has a new name, so **its address changes**.
+  Links on our pages follow by themselves; a link to the old file pasted elsewhere, like an
+  email, stops working.
+- **The activity log** (`forResource` in `src/lib/audit.ts`): a change of filename reads
+  "Replaced the file: old.pdf → new.pdf".
+- **The search entry** follows: the plugin re-syncs on save.
+
+**Refreshing the pages (`revalidateFile`).** Because the old file is deleted, a cached page would
+show a broken image or link. `makeRevalidateFile`
+(`src/collections/hooks/revalidate-on-publish.ts`) runs after **every** change to a file and
+after its deletion: replacement, description, title. It refreshes `fileRevalidationTargets`
+(pure):
+
+- the file's own site, where its Image, Hero and Document list sections live;
+- every site listing an announcement that uses it as its `heroImage`
+  (`syndicationTargets`), so shared thumbnails follow.
+
+It never fails the write. This also fixes an older gap: an edited description used to wait for
+the hourly refresh.
+
+**The school's task: "Replace a file"** (`/admin/replace-file`; `ReplaceFileView`,
+`ReplaceFileForm`, `replace-file.ts`).
+
+1. **Which file:** the school's files by title, each with its kind, size and folder, read as the
+   user (`listMyFiles` in `school-data.ts`).
+2. **The form** (`?file=<id>`, `getMyFile`; another school's id reads as not found):
+   - "Now": a thumbnail for an image, the type and size, and a link to open it;
+   - "The new file": the picker offers only that kind's types (`mimeTypesFor`);
+   - **an image:** "Describe the new image", **prefilled** with the current description, with
+     the decorative checkbox. Sending it is the confirmation;
+   - **a document:** "The new document will be marked not checked for accessibility until
+     someone checks it."
+   - `checkReplace` (pure) gives the form's messages in the library's own words. It sends
+     `PATCH /api/resources/<id>` as multipart. On success: "Replaced “…”. Pages using it show the
+     new file."
+3. **A file's own page:** a school sees "Replace this file" (`ReplaceFileLink`, in
+   `beforeDocumentControls`). The district replaces through Payload's own form, where the same
+   rules apply.
+
+### Files
+
+| File                                                                                  | Does                                                              |
+| ------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `src/lib/resources.ts`                                                                | `replacementProblems`, `mimeTypesFor`                             |
+| `src/collections/Resources.ts`                                                        | the kind rule, the document's reset, the refresh hooks, the link  |
+| `src/collections/hooks/revalidate-on-publish.ts`                                      | `fileRevalidationTargets`, `makeRevalidateFile`, `revalidateFile` |
+| `src/lib/audit.ts`                                                                    | "Replaced the file: old → new"                                    |
+| `src/admin/SchoolPlane/replace-file.ts`, `ReplaceFileView.tsx`, `ReplaceFileForm.tsx` | the task                                                          |
+| `src/admin/SchoolPlane/school-data.ts`, `school-plane.ts`                             | `listMyFiles`, `getMyFile`; the task in the list                  |
+| `src/admin/Resources/ReplaceFileLink.tsx`                                             | "Replace this file" on a file's page                              |
+
+### Tests
+
+- **Unit:**
+  - `lib/resources.test.ts`: the kind rule;
+  - `admin/replace-file.test.ts`: the form's checks;
+  - `access/revalidate-on-publish.test.ts`: the targets, and the hook refreshing each site once
+    without ever failing the write;
+  - `lib/audit.test.ts`: the log's wording;
+  - `admin/school-plane.test.ts`: the task.
+- **Integration, `resources.test.ts`:**
+  - the same id, new sizes, the old file gone;
+  - a document reset even when the old answer is re-sent;
+  - the other kind refused with access overridden;
+  - a description can't be emptied;
+  - a school replaces its own file, not another's;
+  - the log and the search entry follow.
+- **Isolation suite:** a school can't put a new file in another school's place.
+- **E2E, `replace-file.spec.ts`:**
+  - from the start screen to the list and the prefilled form, replacing an image; the public page
+    shows the new image and description within seconds; axe on both screens in both themes;
+  - a document marked not checked;
+  - the other kind refused at the file;
+  - the file page's link.

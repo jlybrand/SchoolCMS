@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 
 import {
   makeRevalidateOnPublish,
+  fileRevalidationTargets,
+  makeRevalidateFile,
   syndicationTargets,
   tenantSitePath,
 } from '@/collections/hooks/revalidate-on-publish'
@@ -198,5 +200,81 @@ describe('revalidateOnPublish with several sites', () => {
       ['/sites/a.localhost', 'layout'],
       ['/sites/b.localhost', 'layout'],
     ])
+  })
+})
+
+/**
+ * A library file changed or replaced (Jason, 2026-11-16): its own site — where its Image, Hero and
+ * Document list sections are — and every site listing an announcement that uses it as its image.
+ */
+describe('fileRevalidationTargets', () => {
+  const ALL_SITES = ['1', '2', '3']
+
+  it('its own site, alone, when no announcement uses it', () => {
+    expect(fileRevalidationTargets({ tenant: 2 }, [], ALL_SITES)).toEqual(['2'])
+  })
+
+  it('plus every site that lists an announcement using it — shared ones included', () => {
+    expect(
+      fileRevalidationTargets(
+        { tenant: 2 },
+        [
+          { tenant: 2, syndication: { scope: 'selected', syndicatedTo: [3] } },
+          { tenant: 2, syndication: { scope: 'this-tenant' } },
+        ],
+        ALL_SITES,
+      ).sort(),
+    ).toEqual(['2', '3'])
+    expect(
+      fileRevalidationTargets(
+        { tenant: 1 },
+        [{ tenant: 1, syndication: { scope: 'district-wide' } }],
+        ALL_SITES,
+      ).sort(),
+    ).toEqual(['1', '2', '3'])
+  })
+
+  it('a file with no site refreshes nothing', () => {
+    expect(fileRevalidationTargets({}, [], ALL_SITES)).toEqual([])
+  })
+})
+
+describe('makeRevalidateFile — a changed, replaced or removed file', () => {
+  const req = (posts: unknown[]) => ({
+    payload: {
+      logger: { error: vi.fn(), debug: vi.fn() },
+      find: vi.fn(async ({ collection }: { collection: string }) =>
+        collection === 'posts' ? { docs: posts } : { docs: [{ id: 1 }, { id: 2 }, { id: 3 }] },
+      ),
+    },
+  })
+
+  it('refreshes its own site and every site listing an announcement that uses it — each once', async () => {
+    const revalidate = vi.fn()
+    const hook = makeRevalidateFile({
+      revalidate,
+      hostnameFor: async (tenantId) => hostnames[String(tenantId)] ?? null,
+    })
+    await hook({
+      doc: { id: 31, tenant: 2 },
+      req: req([{ tenant: 2, syndication: { scope: 'selected', syndicatedTo: [3] } }]),
+    } as never)
+    expect(revalidate.mock.calls.sort()).toEqual([
+      ['/sites/a.localhost', 'layout'],
+      ['/sites/b.localhost', 'layout'],
+    ])
+  })
+
+  it('never fails the write — a refresh that throws is logged, the file saved', async () => {
+    const hook = makeRevalidateFile({
+      revalidate: () => {
+        throw new Error('boom')
+      },
+      hostnameFor: async (tenantId) => hostnames[String(tenantId)] ?? null,
+    })
+    const r = req([])
+    const doc = { id: 31, tenant: 2 }
+    await expect(hook({ doc, req: r } as never)).resolves.toBe(doc)
+    expect(r.payload.logger.error).toHaveBeenCalled()
   })
 })
