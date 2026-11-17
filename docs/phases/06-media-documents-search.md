@@ -857,8 +857,8 @@ published pages and announcements, and the pages on other sites that reuse one o
 - **linked**: a page on another site with `linkMode: 'reuse'` whose `districtLinkTarget` is one of
   those pages. A district file shows on a school site this way.
 
-Not found, because it isn't stored as a reference: a file's address typed into text as a link. The
-panel says so. Rich text links only to pages (`src/lib/editor.ts`).
+Not found, because it isn't stored as a reference: a file's address typed into text as a link. Rich
+text links only to pages (`src/lib/editor.ts`).
 
 `usesSummary` gives one line: "Used on 3 pages and 1 announcement." / "Not used on any published
 page or announcement." Linked pages count as pages.
