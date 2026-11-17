@@ -92,6 +92,11 @@ export default buildConfig({
           Component: '/admin/SchoolPlane/ReplaceFileView#ReplaceFileView',
           path: '/replace-file',
         },
+        /** The file library: folders, files and a file's details in place (Jason, 2026-11-17). */
+        fileLibrary: {
+          Component: '/admin/Resources/FileLibraryView#FileLibraryView',
+          path: '/file-library',
+        },
         /** The district's approval queue (`04` §4.2). See src/admin/Approvals/. */
         approvals: {
           Component: '/admin/Approvals/ApprovalsView#ApprovalsView',
@@ -107,7 +112,10 @@ export default buildConfig({
         '/admin/Grants/GrantsPanel#GrantsPanel',
         '/admin/Dashboard/DistrictDashboard#EverythingElseHeading',
       ],
-      afterNavLinks: ['/admin/Approvals/ApprovalsNavLink#ApprovalsNavLink'],
+      afterNavLinks: [
+        '/admin/Approvals/ApprovalsNavLink#ApprovalsNavLink',
+        '/admin/Resources/FileLibraryNavLink#FileLibraryNavLink',
+      ],
       /**
        * The way home, at the very top of the side navigation: an icon link to the dashboard, both
        * planes (Jason, 2026-11-12). `beforeNav`, not `beforeNavLinks`: the multi-tenant plugin

@@ -143,6 +143,11 @@ const checkPanel = async (page: Page, fixture: Fixture) => {
     `/admin/collections/posts/${fixture.post}`,
   )
   await expect(panel).toContainText(`Also on ${fixture.otherSite}`)
+  // Nothing under 15px (Jason, 2026-11-17) — Payload's own body text is 13px.
+  const sizes = await panel
+    .locator('h2, h3, p, a, span, li')
+    .evaluateAll((els) => els.map((el) => parseFloat(getComputedStyle(el).fontSize)))
+  expect(Math.min(...sizes)).toBeGreaterThanOrEqual(15)
 }
 
 schoolTest.describe('a school sees where its file is used', () => {

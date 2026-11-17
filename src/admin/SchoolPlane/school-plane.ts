@@ -53,6 +53,13 @@ export const SCHOOL_TASKS: readonly SchoolTask[] = [
       'Put up a new version of a menu, form or image. Pages using it update by themselves.',
     href: '/admin/replace-file',
   },
+  {
+    // Jason, 2026-11-17: the file library, where a file is seen and changed in place.
+    label: 'Manage your files',
+    description:
+      'See your school’s images and documents. Change their details, move, replace or delete them.',
+    href: '/admin/file-library',
+  },
 ]
 
 export type ListTask = { label: string; href: string }

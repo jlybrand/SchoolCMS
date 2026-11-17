@@ -857,8 +857,8 @@ published pages and announcements, and the pages on other sites that reuse one o
 - **linked**: a page on another site with `linkMode: 'reuse'` whose `districtLinkTarget` is one of
   those pages. A district file shows on a school site this way.
 
-Not found, because it isn't stored as a reference: a file's address typed into text as a link. The
-panel says so. Rich text links only to pages (`src/lib/editor.ts`).
+Not found, because it isn't stored as a reference: a file's address typed into text as a link. Rich
+text links only to pages (`src/lib/editor.ts`).
 
 `usesSummary` gives one line: "Used on 3 pages and 1 announcement." / "Not used on any published
 page or announcement." Linked pages count as pages.
@@ -889,3 +889,70 @@ until it's published.
 announcement's sites; a reuse page; a school can't read another school's file's uses), and
 `tests/e2e/file-uses.spec.ts` (the panel for a school and the district, axe in both themes, and
 the replace form's line). Whole-screen axe already opens a file's page.
+
+## 13. The file library (Jason, 2026-11-17)
+
+A screen at **`/admin/file-library`**, "File library", for both planes, **beside** Payload's own
+Files list, which stays. It has three columns on a wide screen: the site's **folders**, the
+**files** in the chosen folder, and the open file's **details**, where the file is seen and
+changed in place. Jason's decisions: the district **chooses a site first**; a **folder tree**;
+deleting a used file warns in a **pop-up** with "Delete anyway". Renaming a file's address is
+the next PR; it keeps a document's accessibility answer.
+
+**Rendered from the address** (`FileLibraryView`, a server view registered in
+`src/payload.config.ts`): `?site&folder&q&kind&page&file`. The back button, reloads and shared
+links work, and no client state is kept. The rules are pure, in `src/admin/Resources/file-library.ts`:
+
+- `libraryParams`: what an address means. Ids must be digits, the kind is `image` or `document`,
+  the page is clamped to 1–1000 and the search to 100 characters. Anything else is ignored, not
+  trusted.
+- `libraryHref`: a link that changes one thing. A new site starts over. A new folder, search or
+  kind goes back to page 1 and closes the file. A new page closes the file.
+- `folderTree`: the folders nested and sorted A–Z. A folder whose parent is missing sits at the
+  top, and a cycle is broken rather than followed.
+- `checkDetails`: the details form's messages, in the library's words (`resourceProblems`). An
+  emptied description or tags are sent empty, so they clear.
+
+The site picker and the search are plain **GET forms**, and every other control is a link, so
+nothing navigates while someone is still choosing (WCAG 3.2.2).
+
+**The reads** (`library-data.ts`) are made **as the user** and **scoped to the one site on
+screen**:
+
+- `librarySites`: the district picks from every site and starts with none. A school manager is
+  on their own school, and a `?site=` for another school is ignored.
+- `listLibraryFolders`, `listLibraryFiles` (50 a page, by title, `title like q`, `kind`), and
+  `getLibraryFile` (the file only if it's on this site).
+
+**The details column** (`FileDetails`, client). Focus moves to the file's heading when it opens.
+
+- **Details:** title, description, tags, and for an image its description with the decorative
+  checkbox. Save sends `PATCH /api/resources/<id>`, then `router.refresh()`.
+- **Folder:** a native `<select>` of the site's folders, then Move. The server refuses another
+  site's folder.
+- **Replace the file:** `ReplaceFileForm` (§11), with its "Used on…" line.
+- **Where it's used:** `UsesList`, the markup shared with the file's sidebar (`UsedOnField`, §12),
+  from the `getFileUses` result.
+- **Delete:** a native `<dialog>`. It lists where the file is used (from the result already
+  loaded) and offers Cancel, which is focused first, and "Delete anyway" ("Delete" when the file
+  isn't used). `DELETE /api/resources/<id>`, then back to the list with "File deleted.".
+
+Every write goes through REST, so access, the alt rule, the kind lock, the folder rule, the audit
+log and `revalidateFile` all apply, with nothing new on the server.
+
+**Layout** (`FileLibrary.module.css`): Payload's theme variables. Nothing is under 15px: the
+admin root is 13px, so sizes are px, and every non-heading in the library is held at 15px,
+including the reused school-plane form. Under 1000px it becomes one column, and an open file takes
+the screen, with "Back to the files". A "File library" link sits in the side menu
+(`FileLibraryNavLink`, `afterNavLinks`), and a school's start screen has a **"Manage your files"**
+card (`SCHOOL_TASKS`, Jason 2026-11-17). Unlike the other task screens, the library sits **in Payload's
+frame**, the side menu and top bar (Jason, 2026-11-17: the library only, to see it before deciding
+for every task screen). A custom view gets the frame only by wrapping itself in `DefaultTemplate`
+with the props Payload's root view passes.
+
+**Tests.** `tests/unit/admin/file-library.test.ts`, then `tests/integration/file-library.test.ts`
+(site scoping; a school's `?site=`/`?file=` for another school gives nothing; the folder, search
+and kind filters). Then `tests/e2e/file-library.spec.ts`, which covers both planes with axe in
+both themes: open a file and focus lands on it; edit, with an emptied description refused; move;
+delete a used file, where Cancel keeps it and Delete anyway removes it; a narrow screen with no
+sideways scroll; and the 15px minimum. Whole-screen axe opens the library with a file open.

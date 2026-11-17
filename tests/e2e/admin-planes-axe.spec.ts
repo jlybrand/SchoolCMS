@@ -560,6 +560,14 @@ adminTest.describe('district plane — whole screens', () => {
         await page.goto('/admin/collections/resources/create')
         await auditScreen(page, '#field-title', 'input[type="file"]')
       })
+      adminTest(`@a11y the file library, a file open — ${colorScheme}`, async ({ page }) => {
+        const file = (await (
+          await page.request.get(`/api/resources/${imageFile}?depth=0`)
+        ).json()) as { tenant: number | { id: number } }
+        const site = typeof file.tenant === 'object' ? file.tenant.id : file.tenant
+        await page.goto(`/admin/file-library?site=${site}&file=${imageFile}`)
+        await auditScreen(page, '#file-details', '#library-used-on')
+      })
       adminTest(`@a11y folders list — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/collections/resource-folders')
         await expect(page.locator('h1')).toBeVisible({ timeout: 20_000 })
