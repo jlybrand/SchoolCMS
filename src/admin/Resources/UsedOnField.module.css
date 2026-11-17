@@ -4,10 +4,14 @@
  * `admin-overrides.css`). `tests/e2e/file-uses.spec.ts` runs axe over it in both themes.
  *
  * Logical properties only (CLAUDE.md rule 5).
+ *
+ * Nothing under 15px (Jason, 2026-11-17): Payload's body text is 13px, which everything here would
+ * otherwise inherit. In px, because Payload sets the root to 13px too, so 1rem is 13px here.
  */
 
 .usedOn {
   margin-block-start: 1.5rem;
+  font-size: 15px;
   color: var(--theme-elevation-800);
   line-height: 1.4;
 }
@@ -15,14 +19,14 @@
 .heading {
   margin: 0 0 0.5rem;
   color: var(--theme-text);
-  font-size: 1rem;
+  font-size: 17px;
   font-weight: 600;
 }
 
 .group {
   margin: 0.75rem 0 0.25rem;
   color: var(--theme-text);
-  font-size: 0.875rem;
+  font-size: 15px;
   font-weight: 600;
 }
 
@@ -38,16 +42,10 @@
 
 .detail {
   display: block;
-  font-size: 0.875rem;
+  font-size: 15px;
   overflow-wrap: anywhere;
 }
 
-.empty,
-.note {
+.empty {
   margin: 0;
-}
-
-.note {
-  margin-block-start: 0.75rem;
-  font-size: 0.875rem;
 }
