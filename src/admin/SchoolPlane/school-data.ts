@@ -238,7 +238,10 @@ export type MyFile = {
   folder: string | null
 }
 
-const toMyFile = (doc: Record<string, unknown>, folders: Map<string, string>): MyFile | null => {
+export const toMyFile = (
+  doc: Record<string, unknown>,
+  folders: ReadonlyMap<string, string>,
+): MyFile | null => {
   const kind = doc.kind === 'image' || doc.kind === 'document' ? doc.kind : null
   if (kind === null) return null
   const folder = relationshipIdOf(doc.folder as never)

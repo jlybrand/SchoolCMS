@@ -1,0 +1,335 @@
+/**
+ * The file library (Jason, 2026-11-17). Payload's theme variables, not DD2 tokens: the tokens are
+ * not loaded in the admin, and this must follow Payload's dark theme. `--theme-elevation-800`
+ * clears 4.5:1 in both (see `admin-overrides.css`). `tests/e2e/file-library.spec.ts` runs axe over
+ * it in both themes.
+ *
+ * NOTHING UNDER 15px (Jason, 2026-11-17). Payload sets the root and body to 13px, so sizes are px
+ * (1rem is 13px here), and every non-heading inside the library is held at 15px, including the
+ * replace form it reuses from the school plane.
+ *
+ * Logical properties only (CLAUDE.md rule 5).
+ */
+
+.library {
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--theme-text);
+  padding-block-end: 48px;
+}
+
+.library :not(h1, h2, h3, h4) {
+  font-size: 15px;
+}
+
+.title {
+  margin-block: 24px 8px;
+  font-size: 30px;
+}
+
+.muted {
+  color: var(--theme-elevation-800);
+}
+
+.picker,
+.search,
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  margin-block: 12px;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 24px;
+  align-items: start;
+  margin-block-start: 16px;
+}
+
+/** No file open: the list takes the room the details would. */
+.library[data-file-open='false'] .columns {
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+}
+
+.columnTitle {
+  margin-block: 0 8px;
+  font-size: 19px;
+}
+
+.folders,
+.files,
+.details {
+  min-inline-size: 0;
+}
+
+.tree {
+  margin: 0;
+  padding-inline-start: 16px;
+  list-style: none;
+}
+
+.folders > .tree {
+  padding-inline-start: 0;
+}
+
+.tree li {
+  margin-block: 6px;
+}
+
+.tree a[aria-current='page'],
+.fileText a[aria-current='true'] {
+  font-weight: 700;
+}
+
+.count {
+  margin-block: 4px 8px;
+  color: var(--theme-elevation-800);
+}
+
+.fileRows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-block-start: 1px solid var(--theme-elevation-150);
+}
+
+.fileRow {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding-block: 8px;
+  padding-inline: 8px;
+  border-block-end: 1px solid var(--theme-elevation-150);
+}
+
+/** The open file: a start-edge rule as well as bold text, never color alone (1.4.1). */
+.fileRow[data-open='true'] {
+  border-inline-start: 4px solid var(--theme-elevation-800);
+  background: var(--theme-elevation-50);
+}
+
+.thumb,
+.thumbDoc {
+  flex-shrink: 0;
+  inline-size: 48px;
+  block-size: 48px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.thumbDoc {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--theme-elevation-400);
+  font-weight: 600;
+}
+
+.fileText {
+  display: grid;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  color: var(--theme-elevation-800);
+}
+
+.pager {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-block-start: 12px;
+}
+
+.details {
+  padding-block: 16px;
+  padding-inline: 20px;
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: 4px;
+  background: var(--theme-elevation-0);
+}
+
+.back {
+  margin-block: 0 8px;
+}
+
+.fileTitle {
+  margin-block: 0 12px;
+  font-size: 22px;
+  overflow-wrap: anywhere;
+}
+
+.preview {
+  display: block;
+  max-inline-size: 100%;
+  max-block-size: 240px;
+  margin-block-end: 8px;
+  border-radius: 4px;
+}
+
+.address {
+  margin-block: 4px 0;
+  overflow-wrap: anywhere;
+  color: var(--theme-elevation-800);
+}
+
+.part {
+  margin-block-start: 24px;
+  padding-block-start: 16px;
+  border-block-start: 1px solid var(--theme-elevation-150);
+}
+
+.partTitle {
+  margin-block: 0 12px;
+  font-size: 18px;
+}
+
+.form {
+  display: grid;
+  gap: 16px;
+}
+
+.field {
+  display: grid;
+  gap: 4px;
+}
+
+.label {
+  font-weight: 600;
+}
+
+.hint {
+  margin: 0;
+  color: var(--theme-elevation-800);
+}
+
+.input,
+.select {
+  box-sizing: border-box;
+  padding-block: 8px;
+  padding-inline: 10px;
+  border: 1px solid var(--theme-elevation-800);
+  border-radius: 4px;
+  background: var(--theme-input-bg, var(--theme-elevation-0));
+  color: var(--theme-text);
+  font: inherit;
+}
+
+.input {
+  inline-size: 100%;
+}
+
+.search .input {
+  inline-size: auto;
+  flex: 1 1 200px;
+}
+
+.choice {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding-block: 4px;
+}
+
+.error {
+  margin-block: 0;
+  padding-inline-start: 10px;
+  border-inline-start: 4px solid var(--theme-error-500);
+  font-weight: 600;
+}
+
+.failure,
+.done {
+  margin-block: 8px 0;
+  padding-block: 10px;
+  padding-inline: 14px;
+  border: 1px solid var(--theme-elevation-400);
+  border-radius: 4px;
+  background: var(--theme-elevation-50);
+  font-weight: 600;
+}
+
+.failure {
+  border-inline-start: 4px solid var(--theme-error-500);
+}
+
+.done {
+  border-inline-start: 4px solid var(--theme-success-500);
+}
+
+.button,
+.dangerButton {
+  justify-self: start;
+  padding-block: 9px;
+  padding-inline: 18px;
+  border-radius: 4px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button {
+  border: 0;
+  background: var(--theme-elevation-800);
+  color: var(--theme-elevation-0);
+}
+
+/** Delete reads as delete by its words; the red edge repeats it, never alone (1.4.1). */
+.dangerButton {
+  border: 2px solid var(--theme-error-500);
+  background: var(--theme-elevation-0);
+  color: var(--theme-text);
+}
+
+.button:disabled,
+.dangerButton:disabled {
+  cursor: progress;
+  opacity: 0.75;
+}
+
+.dialog {
+  max-inline-size: min(560px, calc(100vw - 32px));
+  padding-block: 20px;
+  padding-inline: 24px;
+  border: 1px solid var(--theme-elevation-400);
+  border-radius: 6px;
+  background: var(--theme-elevation-0);
+  color: var(--theme-text);
+}
+
+.dialog::backdrop {
+  /* Not a token: the backdrop tints whatever is behind it and carries no text. */
+  background: rgb(0 0 0 / 55%);
+}
+
+.dialogTitle {
+  margin-block: 0 12px;
+  font-size: 20px;
+}
+
+.dialogActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-block-start: 16px;
+}
+
+/**
+ * Narrow screens: one column. With a file open, its details take the screen and the folders and
+ * list step aside; "Back to the files" returns.
+ */
+@media (width < 1000px) {
+  /* As specific as the no-file rule above, so one column wins here either way. */
+  .library[data-file-open] .columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .library[data-file-open='true'] .folders,
+  .library[data-file-open='true'] .files {
+    display: none;
+  }
+}
