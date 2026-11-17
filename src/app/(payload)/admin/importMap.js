@@ -33,6 +33,7 @@ import { AnnouncementsView as AnnouncementsView_424d1d2ce7b62f2a20ccd2961f5c622f
 import { BoardsListView as BoardsListView_a022c7e66bfcc000431bd70c768a08d6 } from '../../../admin/Boards/BoardsListView'
 import { EventSaveButton as EventSaveButton_9d8ff44ca1c1d15e1c244354a4498e4a } from '../../../admin/Events/EventSaveButton'
 import { MembersField as MembersField_203cc5edbcb2db7244697b1fe62551b0 } from '../../../admin/StaffGroups/MembersField'
+import { UsedOnField as UsedOnField_6000b15ca292bc118d74cb5be111b0fd } from '../../../admin/Resources/UsedOnField'
 import { UploadFileButton as UploadFileButton_ad11f66107fe2340d535e62868eb7090 } from '../../../admin/Resources/UploadFileButton'
 import { UploadingHeading as UploadingHeading_68858822c70c6bec0b3e5f71e2ad7716 } from '../../../admin/Resources/UploadingHeading'
 import { ReplaceFileLink as ReplaceFileLink_2f1f2950f5041d6fcf6699f0adecf1c2 } from '../../../admin/Resources/ReplaceFileLink'
@@ -95,6 +96,7 @@ export const importMap = {
   "/admin/Boards/BoardsListView#BoardsListView": BoardsListView_a022c7e66bfcc000431bd70c768a08d6,
   "/admin/Events/EventSaveButton#EventSaveButton": EventSaveButton_9d8ff44ca1c1d15e1c244354a4498e4a,
   "/admin/StaffGroups/MembersField#MembersField": MembersField_203cc5edbcb2db7244697b1fe62551b0,
+  "/admin/Resources/UsedOnField#UsedOnField": UsedOnField_6000b15ca292bc118d74cb5be111b0fd,
   "/admin/Resources/UploadFileButton#UploadFileButton": UploadFileButton_ad11f66107fe2340d535e62868eb7090,
   "/admin/Resources/UploadingHeading#UploadingHeading": UploadingHeading_68858822c70c6bec0b3e5f71e2ad7716,
   "/admin/Resources/ReplaceFileLink#ReplaceFileLink": ReplaceFileLink_2f1f2950f5041d6fcf6699f0adecf1c2,

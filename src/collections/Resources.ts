@@ -235,6 +235,18 @@ export const Resources: CollectionConfig = {
       admin: { position: 'sidebar' },
     },
     {
+      /**
+       * "Where it's used" (Jason, 2026-11-17): the published pages and announcements showing this
+       * file, on both planes. Display only; a `ui` field stores nothing. See `UsedOnField`.
+       */
+      name: 'usedOn',
+      type: 'ui',
+      admin: {
+        position: 'sidebar',
+        components: { Field: '/admin/Resources/UsedOnField#UsedOnField' },
+      },
+    },
+    {
       /** `image` or `document`, from the file's type — worked out on every save. */
       name: 'kind',
       type: 'text',
