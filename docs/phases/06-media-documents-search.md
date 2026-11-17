@@ -786,9 +786,15 @@ the hourly refresh.
    - `checkReplace` (pure) gives the form's messages in the library's own words. It sends
      `PATCH /api/resources/<id>` as multipart. On success: "Replaced “…”. Pages using it show the
      new file."
-3. **A file's own page:** a school sees "Replace this file" (`ReplaceFileLink`, in
-   `beforeDocumentControls`). The district replaces through Payload's own form, where the same
-   rules apply.
+3. **A file's own page:** "Replace this file" (`ReplaceFileLink`, in `beforeDocumentControls`)
+   opens the form for that file, for a school and for the district.
+
+**The district uses the same form** (Jason, 2026-11-16, "option 2"), from a file's own page, so
+it gets the prefilled description and the not-checked note too. Only the form: a district admin
+at `/admin/replace-file` without `?file` goes to the Files list, since a list of every school's
+files is no use to them. The form's way back is "Back to the file", and an unknown id reads
+"That file isn't in the library." Payload's own form still replaces a file as well, under the
+same server rules.
 
 ### Files
 

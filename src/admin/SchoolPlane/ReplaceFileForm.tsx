@@ -1,6 +1,7 @@
 'use client'
 
 import { useConfig } from '@payloadcms/ui'
+import { useRouter } from 'next/navigation'
 import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 
 import { fileSizeLabel, fileTypeLabel } from '@/content/document-item'
@@ -21,7 +22,9 @@ const FIELD_ORDER: readonly ReplaceField[] = ['file', 'alt']
  * sending it is the confirmation that it still fits. A document asks nothing more, and says the
  * new one will be marked not checked until someone checks it.
  *
- * `PATCH /api/resources/<id>` as multipart — the same entry, a new file. No approval.
+ * `PATCH /api/resources/<id>` as multipart — the same entry, a new file. No approval. On success
+ * the view is re-read from the server (`router.refresh()`), so "Now" shows the new file at once;
+ * this form's own state (the message, the description) is kept.
  *
  * Built, then locked with Playwright + axe (CLAUDE.md's exception for admin views):
  * `tests/e2e/replace-file.spec.ts`.
@@ -32,6 +35,7 @@ export const ReplaceFileForm = ({ file: current }: { file: MyFile }) => {
       routes: { api },
     },
   } = useConfig()
+  const router = useRouter()
   const id = useId()
   const formRef = useRef<HTMLFormElement>(null)
   const failureRef = useRef<HTMLParagraphElement>(null)
@@ -88,6 +92,7 @@ export const ReplaceFileForm = ({ file: current }: { file: MyFile }) => {
         setDone(`Replaced “${current.title}”. Pages using it show the new file.`)
         formRef.current?.reset()
         setFile(null)
+        router.refresh()
       } else {
         const explained = explainUploadError(json)
         setErrors(explained.fields as Errors)

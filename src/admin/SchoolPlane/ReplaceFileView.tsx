@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import type { AdminViewServerProps } from 'payload'
 
+import { isDistrictAdmin } from '@/access/predicates'
 import type { AuthUser } from '@/access/types'
 import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 import { fileSizeLabel, fileTypeLabel } from '@/content/document-item'
@@ -20,14 +21,22 @@ import { ReplaceFileForm } from './ReplaceFileForm'
  * (`?file=<id>`). Read as the user, so a school sees its own files only; another school's id
  * reads as not found.
  *
- * School plane only; the district replaces a file on its own page, through Payload's form.
+ * The district uses the form too (Jason, 2026-11-16, "option 2"), reaching it from a file's own
+ * page ("Replace this file"), so it gets the same prefilled description and not-checked note. The
+ * first step stays the school's: a list of every school's files is no use to the district, which
+ * finds a file in the Files list. So the district, without `?file`, goes there; and its way back
+ * is to the file's page.
  */
 export const ReplaceFileView = async ({ initPageResult, searchParams }: AdminViewServerProps) => {
   const { req } = initPageResult
-  if (!sendsForApproval(req.user as AuthUser | null)) redirect('/admin/collections/resources')
+  const user = req.user as AuthUser | null
+  const school = sendsForApproval(user)
+  const district = !school && isDistrictAdmin(user)
 
   const requested = searchParams?.file
   const fileId = typeof requested === 'string' ? requested : null
+
+  if (!school && (!district || fileId === null)) redirect('/admin/collections/resources')
 
   if (fileId !== null) {
     const file = await getMyFile(req, fileId)
@@ -35,12 +44,26 @@ export const ReplaceFileView = async ({ initPageResult, searchParams }: AdminVie
       <Gutter>
         <div className={styles.view} id="replace-file">
           <p className={styles.back}>
-            <Link href="/admin/replace-file">Choose another file</Link>
+            {district ? (
+              file === null ? (
+                <Link href="/admin/collections/resources">Back to the files</Link>
+              ) : (
+                <Link href={`/admin/collections/resources/${String(file.id)}`}>
+                  Back to the file
+                </Link>
+              )
+            ) : (
+              <Link href="/admin/replace-file">Choose another file</Link>
+            )}
           </p>
           {file === null ? (
             <>
               <h1 className={styles.title}>Replace a file</h1>
-              <p className={styles.empty}>That file isn’t in your school’s library.</p>
+              <p className={styles.empty}>
+                {district
+                  ? 'That file isn’t in the library.'
+                  : 'That file isn’t in your school’s library.'}
+              </p>
             </>
           ) : (
             <>

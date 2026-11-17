@@ -8,7 +8,7 @@ import {
 
 import { tinyPdf } from '../helpers/files'
 
-import { ADMIN_STORAGE_STATE, adminCredentials } from './support/admin-session'
+import { ADMIN_STORAGE_STATE, adminCredentials, adminTest } from './support/admin-session'
 import { uniqueTitle } from './support/fixture-pages'
 import { followLink } from './support/follow-link'
 import { schoolTest, tenantIdFor } from './support/school-session'
@@ -18,7 +18,8 @@ import { siteUrl } from './support/site-url'
  * "Replace a file" on the school plane (Jason, 2026-11-16): a new version of a file in the old
  * one's place — the same kind only — and every page using it shows the new one, with no page
  * edit. An image's description is asked again, prefilled; a document is marked not checked. No
- * approval. Built, then locked here (CLAUDE.md: admin views are not test-first); the rules are
+ * approval. The district uses the same form, from a file's own page (Jason, "option 2"). Built,
+ * then locked here (CLAUDE.md: admin views are not test-first); the rules are
  * `tests/unit/admin/replace-file.test.ts` and `tests/integration/resources.test.ts`.
  */
 
@@ -161,6 +162,13 @@ schoolTest.describe('a school replaces a file', () => {
           expect(after.filename).not.toBe(before.filename)
           expect(after.alt).toBe('Students at this year’s fair')
 
+          // "Now" shows the new file at once, with no reload. (These PNGs are too small for a
+          // thumbnail, so it is the link to the file that's checked.)
+          await expect(page.getByRole('link', { name: 'Open it' })).toHaveAttribute(
+            'href',
+            new RegExp(after.filename.replace(/\.png$/, '')),
+          )
+
           // The page using it shows the new one — no page edit, refreshed within seconds.
           await expect(async () => {
             await page.goto(siteUrl(baseURL, 'a.localhost', `/${fixture.slug}`))
@@ -214,6 +222,10 @@ schoolTest.describe('a school replaces a file', () => {
         const after = await stored(fixture.admin, fixture.doc)
         expect(after.filename).not.toBe(before.filename)
         expect(after.remediationStatus).toBe('not-attested')
+        await expect(page.getByRole('link', { name: 'Open it' })).toHaveAttribute(
+          'href',
+          new RegExp(after.filename.replace(/\.pdf$/, '')),
+        )
       } finally {
         await tearDown(fixture)
       }
@@ -233,4 +245,85 @@ schoolTest.describe('a school replaces a file', () => {
       await tearDown(fixture)
     }
   })
+})
+
+adminTest.describe('the district replaces a file', () => {
+  adminTest.skip(credentials === null, SKIP)
+
+  adminTest(
+    '@a11y from the file’s own page, through the same form, and back to the file',
+    async ({ page, baseURL }) => {
+      const fixture = await setUp(baseURL)
+      try {
+        const before = await stored(fixture.admin, fixture.image)
+
+        await page.goto(`/admin/collections/resources/${fixture.image}`)
+        await followLink(
+          page,
+          page.getByRole('link', { name: 'Replace this file' }),
+          /\/admin\/replace-file$/,
+        )
+        await expect(page).toHaveURL(new RegExp(`\\?file=${fixture.image}$`))
+        await expect(page.getByRole('heading', { name: `Replace “${before.title}”` })).toBeVisible()
+        await expect(page.getByLabel('Describe the new image')).toHaveValue(
+          'Students at last year’s fair',
+        )
+        expect(await blockingViolations(page)).toEqual([])
+
+        await page.getByLabel('The new file').setInputFiles({
+          name: `fair-district-${Date.now()}.png`,
+          mimeType: 'image/png',
+          buffer: PNG_NEW,
+        })
+        await page.getByRole('button', { name: 'Replace' }).click()
+        await expect(page.locator('#replace-file').getByRole('status')).toContainText(
+          `Replaced “${before.title}”`,
+          { timeout: 20_000 },
+        )
+        const after = await stored(fixture.admin, fixture.image)
+        expect(after.filename).not.toBe(before.filename)
+        expect(after.alt).toBe('Students at last year’s fair')
+
+        // Its way back is to the file, not to a list of every school's files.
+        await followLink(
+          page,
+          page.getByRole('link', { name: 'Back to the file' }),
+          new RegExp(`/admin/collections/resources/${fixture.image}$`),
+        )
+      } finally {
+        await tearDown(fixture)
+      }
+    },
+  )
+
+  adminTest('a document is marked not checked', async ({ page, baseURL }) => {
+    const fixture = await setUp(baseURL)
+    try {
+      await page.goto(`/admin/replace-file?file=${fixture.doc}`)
+      await expect(page.getByText(/marked not checked for accessibility/)).toBeVisible({
+        timeout: 20_000,
+      })
+      const pdf = tinyPdf()
+      await page.getByLabel('The new file').setInputFiles({
+        name: `menu-district-${Date.now()}.pdf`,
+        mimeType: pdf.mimetype,
+        buffer: pdf.data,
+      })
+      await page.getByRole('button', { name: 'Replace' }).click()
+      await expect(page.locator('#replace-file').getByRole('status')).toContainText('Replaced', {
+        timeout: 20_000,
+      })
+      expect((await stored(fixture.admin, fixture.doc)).remediationStatus).toBe('not-attested')
+    } finally {
+      await tearDown(fixture)
+    }
+  })
+
+  adminTest(
+    'the list step is the school’s: the district goes to the Files list',
+    async ({ page }) => {
+      await page.goto('/admin/replace-file')
+      await expect(page).toHaveURL(/\/admin\/collections\/resources(\?.*)?$/, { timeout: 20_000 })
+    },
+  )
 })
