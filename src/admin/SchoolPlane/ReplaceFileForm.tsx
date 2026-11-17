@@ -29,7 +29,14 @@ const FIELD_ORDER: readonly ReplaceField[] = ['file', 'alt']
  * Built, then locked with Playwright + axe (CLAUDE.md's exception for admin views):
  * `tests/e2e/replace-file.spec.ts`.
  */
-export const ReplaceFileForm = ({ file: current }: { file: MyFile }) => {
+export const ReplaceFileForm = ({
+  file: current,
+  usedOn,
+}: {
+  file: MyFile
+  /** "Used on 3 pages and 1 announcement." — what the replace affects (`usesSummary`). */
+  usedOn: string | null
+}) => {
   const {
     config: {
       routes: { api },
@@ -153,6 +160,11 @@ export const ReplaceFileForm = ({ file: current }: { file: MyFile }) => {
             </>
           ) : null}
         </p>
+        {usedOn ? (
+          <p className={styles.hint} id="replace-used-on">
+            {usedOn}
+          </p>
+        ) : null}
       </div>
 
       <div className={styles.field}>

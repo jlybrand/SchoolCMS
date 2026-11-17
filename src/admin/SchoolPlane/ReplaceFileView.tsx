@@ -8,6 +8,9 @@ import type { AuthUser } from '@/access/types'
 import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 import { fileSizeLabel, fileTypeLabel } from '@/content/document-item'
 
+import { getFileUses } from '@/admin/Resources/file-uses-data'
+import { usesSummary } from '@/lib/file-uses'
+
 import { getMyFile, listMyFiles } from './school-data'
 import styles from './SchoolPlane.module.css'
 import { ReplaceFileForm } from './ReplaceFileForm'
@@ -40,6 +43,7 @@ export const ReplaceFileView = async ({ initPageResult, searchParams }: AdminVie
 
   if (fileId !== null) {
     const file = await getMyFile(req, fileId)
+    const uses = file === null ? null : await getFileUses(req, file.id)
     return (
       <Gutter>
         <div className={styles.view} id="replace-file">
@@ -68,7 +72,7 @@ export const ReplaceFileView = async ({ initPageResult, searchParams }: AdminVie
           ) : (
             <>
               <h1 className={styles.title}>Replace “{file.title}”</h1>
-              <ReplaceFileForm file={file} />
+              <ReplaceFileForm file={file} usedOn={uses === null ? null : usesSummary(uses)} />
             </>
           )}
         </div>

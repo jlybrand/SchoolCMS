@@ -205,6 +205,9 @@ _(Revised 2026-11-13, Jason: **one** library, as Finalsite's Resources, in place
     Jason) and **no SVG** (it can carry script).
   - **Replacing a file** (Jason, 2026-11-16): a new file of the same kind in an existing entry,
     keeping its id; a replaced document is marked `not-attested` (`docs/phases/06` §11).
+  - **Where it's used** (Jason, 2026-11-17): **worked out, not stored**. A file can be used only
+    by its own site's pages and announcements, so its published uses are read from those when
+    its page opens. No reference table to keep in step (`docs/phases/06` §12).
   - Not yet: `visibility` (`public` | `staff`) waits for Entra sign-in (Jason, 2026-11-13);
     `localeOf` joins with Phase 7 (`08` §9).
 - **`resource-folders`** — `tenant`, `name`, `parent` (nests, same school only, never inside

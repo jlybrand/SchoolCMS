@@ -831,3 +831,61 @@ same server rules.
   - a document marked not checked;
   - the other kind refused at the file;
   - the file page's link.
+
+## 12. Where a file is used (Jason, 2026-11-17)
+
+A file's sidebar lists the **published** pages and announcements that show it, on both planes, so
+an editor sees what a replace or a delete affects. Jason's decisions: published only, no drafts;
+a school also sees the other sites a shared announcement reaches.
+
+**Worked out, never stored.** A library file can be used only by its own site's pages and
+announcements: `libraryImageField` offers only this site's images and checks it on save. So the
+uses are a function of that site's rows, read when the file's page opens. There's no reference
+table, no migration and no hook to keep in step.
+
+**The rule: `findFileUses` (`src/lib/file-uses.ts`, pure).** It's given the file, the site's
+published pages and announcements, and the pages on other sites that reuse one of them. It returns:
+
+- **pages**, A–Z, each with its address (`pathIndex` from `src/content/page-tree.ts`; null under
+  an unpublished parent), how it uses the file (`Hero`, `Image`, `Document list`) and whether it's
+  staff only. It walks `layout` and every Columns column's `content`:
+  - an Image or Hero section whose `image` is the file;
+  - for a **document** only, a Document list whose `folder` is the file's folder (the list shows
+    the whole folder). An image is never "used" by a list.
+- **announcements**, A–Z, whose `heroImage` is the file, each with **alsoOn**: the other sites it
+  reaches by name (`syndicationTargets`, so "district-wide" is every other site).
+- **linked**: a page on another site with `linkMode: 'reuse'` whose `districtLinkTarget` is one of
+  those pages. A district file shows on a school site this way.
+
+Not found, because it isn't stored as a reference: a file's address typed into text as a link. The
+panel says so. Rich text links only to pages (`src/lib/editor.ts`).
+
+`usesSummary` gives one line: "Used on 3 pages and 1 announcement." / "Not used on any published
+page or announcement." Linked pages count as pages.
+
+**The queries: `getFileUses` (`src/admin/Resources/file-uses-data.ts`).**
+
+1. The file is read **as the user** (`overrideAccess: false`). A file the user can't see, such as
+   another school's, gives null, as `getMyFile` does.
+2. Then, with access overridden and **scoped to the file's own tenant**: its published pages
+   (`title, slug, parent, visibility, layout`), and its published announcements with `heroImage =
+file`. Tenant names come from `tenants`.
+3. Only if a page uses the file: the published `reuse` pages on other sites pointing at one.
+
+Every read filters `_status: published`. The main tables hold the published version, and a newer
+draft lives only in the versions table, so a draft that adds or drops the file changes nothing
+until it's published.
+
+**Where it shows.**
+
+- **`UsedOnField`**: a `ui` field in the Files sidebar (`usedOn` in `src/collections/Resources.ts`),
+  a server component given `req` and `id`. "Where it's used", with Pages, Shown on other sites and
+  Announcements, each linking to its editor. Nothing on a new file's screen.
+- **The replace form**: under "Now", the `usesSummary` line (`#replace-used-on`), read by
+  `ReplaceFileView`. It refreshes with the view after a replace.
+
+**Tests.** `tests/unit/lib/file-uses.test.ts` (the rule), `tests/integration/file-uses.test.ts`
+(published only, including a newer draft either way; Columns; a document via its folder; a shared
+announcement's sites; a reuse page; a school can't read another school's file's uses), and
+`tests/e2e/file-uses.spec.ts` (the panel for a school and the district, axe in both themes, and
+the replace form's line). Whole-screen axe already opens a file's page.
