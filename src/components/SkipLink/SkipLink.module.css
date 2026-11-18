@@ -6,7 +6,7 @@
  * activated with the keyboard then clicked counts as visible focus, and a skip link that
  * fails to appear is a 2.4.1 failure. Showing it on mouse focus too costs nothing.
  *
- * The ring here is `--focus-ring-color-inverse`. The default dark ring scores 1.4:1 against
+ * The ring here is `--focus-ring-color-on-brand` (derived with the fill's text, per school). The default dark ring scores 1.4:1 against
  * the brand fill (`07` §3, 2.4.11) — present in the DOM, invisible on screen.
  */
 
@@ -28,6 +28,6 @@
 .skipLink:focus,
 .skipLink:focus-visible {
   inset-block-start: var(--space-xs);
-  outline: var(--focus-ring-width) solid var(--focus-ring-color-inverse);
+  outline: var(--focus-ring-width) solid var(--focus-ring-color-on-brand);
   outline-offset: var(--focus-ring-offset);
 }

@@ -248,17 +248,19 @@ export const REQUIRED_CONTRAST_PAIRS: readonly ContrastPair[] = [
      */
     label: 'text on a hovered brand fill',
     foreground: '--color-brand-contrast',
-    background: '--color-text',
+    background: '--color-brand-hover',
     requirement: 'bodyText',
   },
   {
     /**
      * The pair most often missed. A single dark focus ring is invisible on a brand-colored
      * control — which is exactly where focus lands first on every page, the skip link.
-     * `--focus-ring-color-inverse` is the ring used on brand fills (2.4.11).
+     * `--focus-ring-color-on-brand` is the ring used on brand fills (2.4.11) — its own token,
+     * derived per school with the fill's text (`brandFillTokens`), apart from the inverse ring
+     * the alert banners use, which must stay white on their fixed dark fills.
      */
     label: 'focus ring on a brand fill',
-    foreground: '--focus-ring-color-inverse',
+    foreground: '--focus-ring-color-on-brand',
     background: '--color-brand',
     requirement: 'nonText',
   },

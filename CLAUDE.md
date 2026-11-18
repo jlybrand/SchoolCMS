@@ -348,8 +348,12 @@ design system legible to whoever maintains this next.
 - **Logical properties only**, enforced by stylelint (non-negotiable rule 5). Use
   `margin-inline-start`, `padding-block`, `inset-inline`, `inline-size`/`block-size`,
   `text-align: start`, `float: inline-start`.
-- **Contrast is validated at token level**, so a per-tenant brand palette cannot ship a
-  combination that fails AA (`07` §3).
+- **Contrast is validated at token level** for the platform's palette (`07` §3). A school's
+  **brand colors are its own choice** (Jason, 2026-11-18): any color is accepted; everything that
+  sits ON a brand fill (its text, hover, focus ring) is derived so it always passes
+  (`brandFillTokens`, `src/lib/theme.ts`); the brand color as link TEXT is warned about under
+  4.5:1 on the theme form, never refused — whether a given use passes depends on size and weight,
+  which the district judges. Do not "fix" this back into a refusal without a decision.
 - Avoid inline `style` props for anything layout-bearing — stylelint cannot see them, which
   puts them outside the RTL guard.
 

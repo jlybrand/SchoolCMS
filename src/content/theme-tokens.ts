@@ -1,5 +1,4 @@
-import { THEME_FIELDS, checkThemeColors, toHexColor } from '@/lib/theme'
-import type { ThemeColors, ThemeField } from '@/lib/theme'
+import { THEME_FIELDS, brandFillTokens, toHexColor } from '@/lib/theme'
 
 import type { Theme } from './types'
 
@@ -9,11 +8,11 @@ import type { Theme } from './types'
  * PURE, and in its own file for the reason `menus.ts` is: `theme.ts` imports the Payload
  * config to run the query.
  *
- * VALIDATES AGAIN, and drops a failing palette WHOLE. The field validator tells the editor;
- * this is what `07` §3's "cannot ship a combination that fails AA" actually rests on, because
- * it also covers a row written around the validator and a palette that passed until the
- * platform's own neutrals changed underneath it. Whole rather than per-color, because a
- * palette is judged as a set — half of one is a combination nobody checked.
+ * ANY COLOR IS SERVED (Jason, 2026-11-18): only a value that is not a color is dropped — the
+ * whole row then, since nothing in it can be trusted into a `style` attribute. With a brand
+ * color, everything that sits ON a brand fill is derived from it (`brandFillTokens`: the fill's
+ * text, its hover, the focus ring on it), so buttons and the skip link read whatever the color.
+ * The brand color as link TEXT is the school's choice; the theme form warns under 4.5:1.
  */
 
 type Row = Record<string, unknown>
@@ -26,7 +25,6 @@ const NO_OVERRIDES: Theme = { tokens: {} }
 export const toTheme = (doc: unknown): Theme => {
   if (!isRow(doc)) return NO_OVERRIDES
 
-  const colors: ThemeColors = {}
   const tokens: Record<string, string> = {}
 
   for (const [field, { token }] of Object.entries(THEME_FIELDS)) {
@@ -37,11 +35,9 @@ export const toTheme = (doc: unknown): Theme => {
     // Not a color: nothing here is safe to put in a style attribute.
     if (hex === null) return NO_OVERRIDES
 
-    colors[field as ThemeField] = hex
     tokens[token] = hex
   }
 
-  if (checkThemeColors(colors).length > 0) return NO_OVERRIDES
-
-  return { tokens }
+  const brand = tokens['--color-brand']
+  return { tokens: brand ? { ...tokens, ...brandFillTokens(brand) } : tokens }
 }

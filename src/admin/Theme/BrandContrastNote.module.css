@@ -1,0 +1,21 @@
+/*
+ * The theme's contrast warning (Jason, 2026-11-18). Payload's theme variables: a warning reads in
+ * its light and dark themes; the bar at its start marks it without color carrying the meaning
+ * alone — the words say "hard to read". 15px (min-text-15px): px, as the admin root is 13px.
+ * Logical properties only.
+ */
+.wrap {
+  margin-block: 0 24px;
+}
+
+.note {
+  margin: 0;
+  padding-block: 10px;
+  padding-inline: 14px;
+  border-inline-start: 4px solid var(--theme-warning-500);
+  border-radius: 4px;
+  background: var(--theme-elevation-50);
+  color: var(--theme-text);
+  font-size: 15px;
+  line-height: 1.45;
+}

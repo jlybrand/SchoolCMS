@@ -1158,3 +1158,44 @@ Postgres; defaults English only). E2E: `tenant-routing.spec.ts` (translated addr
 switcher, alternates or translated sitemap entries; the footer's parts and fax) and
 `settings-fields.spec.ts` (the fields present, no languages, state and zip refused). Storybook:
 `SiteHeader` WithLogo, the footer with fax — in the component axe gate, LTR and RTL.
+
+## 17. A school's brand colors: accepted, with a warning (Jason, 2026-11-18)
+
+A school could not save `#1e891e`: the theme refused any main color under 4.5:1 as link text on
+the white page **or the light-grey panels** (`#f6f7f9`, 4.2:1 here), and a failing palette was
+dropped at render. Jason's decision: accept **any** color; brand colors may still be text (AA
+there depends on size and weight, which the district judges); **warn**, don't refuse.
+
+**`src/lib/theme.ts`** (pure, test-first):
+
+- `checkThemeColors`: refuses only a value that is not a hex color (both fields) — the only thing
+  safe in the `style` attribute. `describeThemeFailures` says only that.
+- `textOn(fill)`: white or **pure** black, whichever contrasts more — ≥ 4.58:1 on any fill
+  (near-black `#14171c` would top out near 4.2:1 on some mid-tones).
+- `brandFillTokens(brand)`: `--color-brand-contrast` (the fill's text), `--color-brand-hover`
+  (dark with white text, as before; the brand lightened 35% with black text, which only raises
+  the contrast) and `--focus-ring-color-on-brand` (the ring on a brand fill — its own token, so
+  the alert banners keep their white `--focus-ring-color-inverse`).
+- `brandTextWarnings` / `describeBrandWarnings`: the two link-text pairs (`BRAND_TEXT_PAIRS`) under
+  their requirement, with the numbers, and that large or bold text needs 3:1.
+
+**Tokens:** `--color-brand-hover` and `--focus-ring-color-on-brand` join `tokens.css` and its mirror
+`DEFAULT_COLOR_TOKENS`; the hover pair is measured against `--color-brand-hover`, the brand-fill ring
+pair against `--focus-ring-color-on-brand` (`src/lib/contrast.ts`). `Link`'s and `SearchForm`'s
+button hover use `--color-brand-hover`; `SkipLink`'s ring uses `--focus-ring-color-on-brand`.
+
+**`toTheme`** (`src/content/theme-tokens.ts`) serves any color, drops the row only for a value that
+is not a color, and adds `brandFillTokens(brand)` whenever a main color is set.
+
+**The form** (`src/collections/Theme.ts`): the main color's description says any color works; a UI
+field, `BrandContrastNote` (`src/admin/Theme/`), shows the warning live as the color is typed — a
+polite `role="status"` region, always present, 15px.
+
+**Tests.** `tests/unit/theme.test.ts`: any color accepted, malformed refused; `textOn` ≥ 4.5:1 over a
+sweep of fills; THE GUARANTEE — for a sweep of brand colors, every `REQUIRED_CONTRAST_PAIRS` pair
+except the two link-text ones passes with the derived tokens; the warning; `toTheme` derives and
+serves. Integration: `tenant-isolation` (any color saved through the API, a non-color refused),
+`content-layer` (getTheme derives; a light color served with black text; a non-color written
+around the validator dropped). E2E: `tests/e2e/theme-colors.spec.ts` (#1e891e warned "light-grey
+panels (4.2:1)", saved; a dark color clears it; a non-color refused; axe both themes), on a site
+of its own.
