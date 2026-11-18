@@ -23,8 +23,22 @@ type Errors = Partial<Record<Field, string>>
  * makes, through the same access functions and hooks. `applyReviewState` marks it `editing`.
  * The button says what it does; "Send for approval" is the next screen's, once there is
  * something to send.
+ *
+ * The district uses it too, on a site's pages (`src/admin/SitePages/`, Jason 2026-11-18): one
+ * site, and the `parent` the new page goes under ("Add a page here"). Access and the page hooks
+ * still decide whether it may sit there.
  */
-export const NewPageForm = ({ schools }: { schools: readonly SchoolOption[] }) => {
+export const NewPageForm = ({
+  schools,
+  parent,
+  focusOnOpen = false,
+}: {
+  schools: readonly SchoolOption[]
+  /** The page this one goes under; none for a top-level page. */
+  parent?: number | string
+  /** Opened in place by a link, so the title takes focus (as "Create post" does). */
+  focusOnOpen?: boolean
+}) => {
   const {
     config: {
       routes: { api },
@@ -69,6 +83,7 @@ export const NewPageForm = ({ schools }: { schools: readonly SchoolOption[] }) =
           title: check.title,
           // No sections yet: the page opens on its Sections (every page composed, Jason 2026-11-04).
           tenant: check.school,
+          ...(parent !== undefined ? { parent } : {}),
           _status: 'draft',
         }),
       })
@@ -90,6 +105,12 @@ export const NewPageForm = ({ schools }: { schools: readonly SchoolOption[] }) =
   useEffect(() => {
     if (failure) failureRef.current?.focus()
   }, [failure])
+
+  useEffect(() => {
+    if (focusOnOpen) document.getElementById(fieldId('title'))?.focus()
+    // Once, on open: `fieldId` is stable for the life of the form.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusOnOpen])
 
   const invalid = (field: Field) =>
     errors[field] ? { 'aria-invalid': true, 'aria-describedby': errorId(field) } : {}

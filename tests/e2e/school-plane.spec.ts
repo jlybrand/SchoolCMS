@@ -283,8 +283,14 @@ adminTest.describe('school plane — the district is unchanged', () => {
       await expect(page.locator('#list-task')).toHaveCount(0)
       await expect(page.locator('#nav-school')).toHaveCount(0)
       const nav = page.locator('aside.nav')
-      await expect(nav.getByRole('link', { name: 'Tenants', exact: true })).toHaveCount(1)
-      await expect(nav.getByRole('link', { name: 'Users', exact: true })).toHaveCount(1)
+      // Payload's own links, folded under "Everything else" (2026-11-18); Users is in the menu too.
+      const fold = nav.locator('#nav-everything-else')
+      await expect(fold.getByRole('link', { name: 'Tenants', exact: true })).toHaveCount(1)
+      await expect(fold.getByRole('link', { name: 'Users', exact: true })).toHaveCount(1)
+      await expect(nav.locator('#nav-menu-users')).toHaveAttribute(
+        'href',
+        '/admin/collections/users',
+      )
     },
   )
 

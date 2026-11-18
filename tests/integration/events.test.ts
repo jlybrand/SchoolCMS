@@ -1,8 +1,8 @@
 import { createLocalReq, type Payload } from 'payload'
 import { beforeAll, describe, expect, it } from 'vitest'
 
-import { listMyCalendars } from '@/admin/SchoolPlane/school-data'
-import { ensureMainCalendars } from '@/collections/hooks/event-hooks'
+import { listImportedCalendars, listMyCalendars } from '@/admin/SchoolPlane/school-data'
+import { ensureMainCalendars, FEED_SYNC } from '@/collections/hooks/event-hooks'
 import { getCalendarFeed } from '@/content/events'
 import { resolvePageBlocks } from '@/content/resolve-blocks'
 import type { CalendarBlock, ContentContext, ResolvedCalendarBlock } from '@/content/types'
@@ -278,6 +278,38 @@ describe('the school plane’s reads (Jason, 2026-11-11)', () => {
     // Only School A's — its own among them (an earlier test here adds a second one).
     expect(calendars.every((c) => c.tenant === f.tenantA)).toBe(true)
     expect(calendars.map((c) => c.label)).toContain('School A')
+  })
+
+  it('an imported calendar is not a choice, but is shown as a feed (Jason, 2026-11-18)', async () => {
+    // Made as the feed sync, so no import job is queued to outlive this file (`FEED_SYNC`).
+    const imported = await payload.create({
+      collection: 'calendars',
+      data: {
+        tenant: f.tenantA,
+        name: 'Imported athletics',
+        source: 'feed',
+        feedUrl: 'https://example.invalid/athletics.ics',
+      } as never,
+      context: { [FEED_SYNC]: true },
+      overrideAccess: true,
+    })
+    try {
+      const req = await createLocalReq({ user: f.managerA }, payload)
+      // Not a choice…
+      const calendars = await listMyCalendars(req)
+      expect(calendars.map((c) => String(c.id))).not.toContain(String(imported.id))
+      expect(calendars.map((c) => c.label)).toContain('School A')
+      // …but shown, saying where its events come from — the host, not the address.
+      expect(await listImportedCalendars(req)).toEqual([
+        {
+          id: imported.id,
+          label: 'Imported athletics',
+          note: 'This calendar is a feed from example.invalid. Its events are added there, not here.',
+        },
+      ])
+    } finally {
+      await payload.delete({ collection: 'calendars', id: imported.id, overrideAccess: true })
+    }
   })
 })
 

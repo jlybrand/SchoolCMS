@@ -4,7 +4,7 @@ import { useConfig } from '@payloadcms/ui'
 import { useRouter } from 'next/navigation'
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 
-import type { CalendarOption } from './school-data'
+import type { CalendarOption, ImportedCalendar } from './school-data'
 import { checkNewEvent, explainEventCreateError } from './school-plane'
 import styles from './SchoolPlane.module.css'
 
@@ -23,7 +23,17 @@ type Errors = Partial<Record<Field, string>>
  * then the event's own form opens for the end, the place, repeats and notes, and "Send for
  * approval".
  */
-export const NewEventForm = ({ calendars }: { calendars: readonly CalendarOption[] }) => {
+export const NewEventForm = ({
+  calendars,
+  imported = [],
+}: {
+  calendars: readonly CalendarOption[]
+  /**
+   * The school's imported calendars (Jason, 2026-11-18): not choices — their events come from
+   * their address — but named, with where they come from, so none seems to be missing.
+   */
+  imported?: readonly ImportedCalendar[]
+}) => {
   const {
     config: {
       routes: { api },
@@ -192,6 +202,16 @@ export const NewEventForm = ({ calendars }: { calendars: readonly CalendarOption
         <p className={styles.error} id={fieldId('calendar')} tabIndex={-1}>
           {errors.calendar}
         </p>
+      ) : null}
+
+      {imported.length > 0 ? (
+        <ul className={styles.feedNotes} id={`${id}-imported`}>
+          {imported.map((calendar) => (
+            <li key={calendar.id}>
+              <span className={styles.choiceLabel}>{calendar.label}</span>: {calendar.note}
+            </li>
+          ))}
+        </ul>
       ) : null}
 
       <button className={styles.button} disabled={busy} type="submit">

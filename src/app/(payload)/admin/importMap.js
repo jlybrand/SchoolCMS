@@ -39,15 +39,16 @@ import { UploadingHeading as UploadingHeading_68858822c70c6bec0b3e5f71e2ad7716 }
 import { ReplaceFileLink as ReplaceFileLink_2f1f2950f5041d6fcf6699f0adecf1c2 } from '../../../admin/Resources/ReplaceFileLink'
 import { LinkToDoc as LinkToDoc_aead06e4cbf6b2620c5c51c9ab283634 } from '@payloadcms/plugin-search/client'
 import { ReindexButton as ReindexButton_aead06e4cbf6b2620c5c51c9ab283634 } from '@payloadcms/plugin-search/client'
+import { ActionNav as ActionNav_1e94fba63d1eead46b8c957d1c778aba } from '../../../admin/Nav/ActionNav'
 import { GlobalViewRedirect as GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
-import { ApprovalsNavLink as ApprovalsNavLink_50736d5f53ca3024920ebd70347f12c2 } from '../../../admin/Approvals/ApprovalsNavLink'
-import { FileLibraryNavLink as FileLibraryNavLink_b88ccd12499bcb00066f158fa0079d45 } from '../../../admin/Resources/FileLibraryNavLink'
+import { EverythingElse as EverythingElse_d97dcc25d25e07eb77463561f152b7b8 } from '../../../admin/Nav/EverythingElse'
 import { DistrictDashboard as DistrictDashboard_edc4519ec276aaac7e06cda8a41f999e } from '../../../admin/Dashboard/DistrictDashboard'
 import { GrantsPanel as GrantsPanel_186d64a3916edf6aa31629c5b61e084c } from '../../../admin/Grants/GrantsPanel'
 import { EverythingElseHeading as EverythingElseHeading_edc4519ec276aaac7e06cda8a41f999e } from '../../../admin/Dashboard/DistrictDashboard'
 import { DashboardNavLink as DashboardNavLink_49bef2258fdd1f6d5ad626fc62acbb33 } from '../../../admin/Nav/DashboardNavLink'
 import { TenantSelector as TenantSelector_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
 import { SchoolNameNav as SchoolNameNav_b0a332a2ac8ea8004fb5781337ffc4fc } from '../../../admin/SchoolPlane/SchoolNameNav'
+import { ActionMenu as ActionMenu_224b55218fe8b028a1d8882ac4923141 } from '../../../admin/Nav/ActionMenu'
 import { A11yPatch as A11yPatch_f47d732b0bfe7e156f459bc74057afca } from '../../../admin/A11yPatch/A11yPatch'
 import { TenantSelectionProvider as TenantSelectionProvider_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
 import { SchoolHome as SchoolHome_3f48be60e82e2641c0b863afd982fe58 } from '../../../admin/SchoolPlane/SchoolHome'
@@ -58,6 +59,7 @@ import { NewEventView as NewEventView_2bf2c031e47ebf55ba21b803e08fdd96 } from '.
 import { UploadFileView as UploadFileView_b874b44d70a837a4c4c39977426847f4 } from '../../../admin/SchoolPlane/UploadFileView'
 import { ReplaceFileView as ReplaceFileView_f11d8877f95fcee9b980bc70b0de0bc2 } from '../../../admin/SchoolPlane/ReplaceFileView'
 import { FileLibraryView as FileLibraryView_abd7db7d83f01cafd93c729291562fd6 } from '../../../admin/Resources/FileLibraryView'
+import { SitePagesView as SitePagesView_86571b3400ea7cc926c9b7183b97fb32 } from '../../../admin/SitePages/SitePagesView'
 import { ApprovalsView as ApprovalsView_24670674c7de4661a804a1c4ad51ba6b } from '../../../admin/Approvals/ApprovalsView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
@@ -104,15 +106,16 @@ export const importMap = {
   "/admin/Resources/ReplaceFileLink#ReplaceFileLink": ReplaceFileLink_2f1f2950f5041d6fcf6699f0adecf1c2,
   "@payloadcms/plugin-search/client#LinkToDoc": LinkToDoc_aead06e4cbf6b2620c5c51c9ab283634,
   "@payloadcms/plugin-search/client#ReindexButton": ReindexButton_aead06e4cbf6b2620c5c51c9ab283634,
+  "/admin/Nav/ActionNav#ActionNav": ActionNav_1e94fba63d1eead46b8c957d1c778aba,
   "@payloadcms/plugin-multi-tenant/rsc#GlobalViewRedirect": GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62,
-  "/admin/Approvals/ApprovalsNavLink#ApprovalsNavLink": ApprovalsNavLink_50736d5f53ca3024920ebd70347f12c2,
-  "/admin/Resources/FileLibraryNavLink#FileLibraryNavLink": FileLibraryNavLink_b88ccd12499bcb00066f158fa0079d45,
+  "/admin/Nav/EverythingElse#EverythingElse": EverythingElse_d97dcc25d25e07eb77463561f152b7b8,
   "/admin/Dashboard/DistrictDashboard#DistrictDashboard": DistrictDashboard_edc4519ec276aaac7e06cda8a41f999e,
   "/admin/Grants/GrantsPanel#GrantsPanel": GrantsPanel_186d64a3916edf6aa31629c5b61e084c,
   "/admin/Dashboard/DistrictDashboard#EverythingElseHeading": EverythingElseHeading_edc4519ec276aaac7e06cda8a41f999e,
   "/admin/Nav/DashboardNavLink#DashboardNavLink": DashboardNavLink_49bef2258fdd1f6d5ad626fc62acbb33,
   "@payloadcms/plugin-multi-tenant/rsc#TenantSelector": TenantSelector_d6d5f193a167989e2ee7d14202901e62,
   "/admin/SchoolPlane/SchoolNameNav#SchoolNameNav": SchoolNameNav_b0a332a2ac8ea8004fb5781337ffc4fc,
+  "/admin/Nav/ActionMenu#ActionMenu": ActionMenu_224b55218fe8b028a1d8882ac4923141,
   "/admin/A11yPatch/A11yPatch#A11yPatch": A11yPatch_f47d732b0bfe7e156f459bc74057afca,
   "@payloadcms/plugin-multi-tenant/rsc#TenantSelectionProvider": TenantSelectionProvider_d6d5f193a167989e2ee7d14202901e62,
   "/admin/SchoolPlane/SchoolHome#SchoolHome": SchoolHome_3f48be60e82e2641c0b863afd982fe58,
@@ -123,6 +126,7 @@ export const importMap = {
   "/admin/SchoolPlane/UploadFileView#UploadFileView": UploadFileView_b874b44d70a837a4c4c39977426847f4,
   "/admin/SchoolPlane/ReplaceFileView#ReplaceFileView": ReplaceFileView_f11d8877f95fcee9b980bc70b0de0bc2,
   "/admin/Resources/FileLibraryView#FileLibraryView": FileLibraryView_abd7db7d83f01cafd93c729291562fd6,
+  "/admin/SitePages/SitePagesView#SitePagesView": SitePagesView_86571b3400ea7cc926c9b7183b97fb32,
   "/admin/Approvals/ApprovalsView#ApprovalsView": ApprovalsView_24670674c7de4661a804a1c4ad51ba6b,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }

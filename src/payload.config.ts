@@ -97,6 +97,11 @@ export default buildConfig({
           Component: '/admin/Resources/FileLibraryView#FileLibraryView',
           path: '/file-library',
         },
+        /** A site's pages, as a tree — the district's way in to pages (Jason, 2026-11-18). */
+        sitePages: {
+          Component: '/admin/SitePages/SitePagesView#SitePagesView',
+          path: '/site-pages',
+        },
         /** The district's approval queue (`04` §4.2). See src/admin/Approvals/. */
         approvals: {
           Component: '/admin/Approvals/ApprovalsView#ApprovalsView',
@@ -112,10 +117,14 @@ export default buildConfig({
         '/admin/Grants/GrantsPanel#GrantsPanel',
         '/admin/Dashboard/DistrictDashboard#EverythingElseHeading',
       ],
-      afterNavLinks: [
-        '/admin/Approvals/ApprovalsNavLink#ApprovalsNavLink',
-        '/admin/Resources/FileLibraryNavLink#FileLibraryNavLink',
-      ],
+      /**
+       * The side navigation, district and school managers (Jason, 2026-11-18): a short menu of
+       * actions first (`ActionMenu`, in `beforeNavLinks`), Payload's collection groups folded
+       * under "Everything else" after it. `Nav` is Payload's own, told to leave those groups to
+       * the fold. See src/admin/Nav/.
+       */
+      Nav: '/admin/Nav/ActionNav#ActionNav',
+      afterNavLinks: ['/admin/Nav/EverythingElse#EverythingElse'],
       /**
        * The way home, at the very top of the side navigation: an icon link to the dashboard, both
        * planes (Jason, 2026-11-12). `beforeNav`, not `beforeNavLinks`: the multi-tenant plugin
@@ -123,7 +132,10 @@ export default buildConfig({
        */
       beforeNav: ['/admin/Nav/DashboardNavLink#DashboardNavLink'],
       /** A school manager's school, named where a tenant picker would be (Jason, 2026-11-04). */
-      beforeNavLinks: ['/admin/SchoolPlane/SchoolNameNav#SchoolNameNav'],
+      beforeNavLinks: [
+        '/admin/SchoolPlane/SchoolNameNav#SchoolNameNav',
+        '/admin/Nav/ActionMenu#ActionMenu',
+      ],
       /** Repairs Payload's own markup where it fails axe — a stopgap; see the component. */
       providers: ['/admin/A11yPatch/A11yPatch#A11yPatch'],
     },

@@ -149,6 +149,31 @@ Free-text alerts remain available for novel situations and machine-translate wit
 disclosure. **The template path is the default**; free text requires an extra confirmation
 step, because 5am is the wrong time to be composing prose in six languages.
 
+### 3.5 Navigation
+
+Both planes show **verbs, not collections** in the side navigation (Jason, 2026-11-13; scope
+settled and extended to school managers 2026-11-18). It opens on a short menu — the district's
+Approvals, Pages, Announcements, Events, Alerts, Users, Files; a school manager's Pages,
+Announcements, Events, Files — and Payload's collection list sits folded below it under
+"Everything else", so nothing is unreachable.
+
+Pages, Announcements, Events and Files open a scrollable list that slides out beside the menu and drills
+down in place:
+- **Pages** asks the district for the site, then lists its pages (each opening its form, plus the
+  site's page tree, where a page is added or moved in place under another). A school manager has
+  one school, so their list opens straight on its pages, with "Add a page".
+- **Announcements** lists every board, by site and folder; a board opens its announcements.
+- **Events** lists every calendar, by site; a calendar opens its events. Choosing an imported
+  calendar (iCal or Google) opens a message instead — "This calendar is a feed from …" — with its
+  events a link away; it is never offered to add an event to, since its events come from its
+  address.
+- **Files** opens straight on every folder, under its site's name, then a folder's files (each
+  opening in the file library with its details).
+
+Access decides what each list holds, so a school manager sees only their own school's. This
+narrows §3.2 for these lists only: Payload's own
+all-tenant lists are still there, under the fold.
+
 ## 4. Approval workflow
 
 ### 4.1 Model

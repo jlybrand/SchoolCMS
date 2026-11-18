@@ -7,7 +7,7 @@ import type { AuthUser } from '@/access/types'
 import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 
 import { NewEventForm } from './NewEventForm'
-import { listMyCalendars } from './school-data'
+import { listImportedCalendars, listMyCalendars } from './school-data'
 import styles from './SchoolPlane.module.css'
 
 /**
@@ -23,7 +23,10 @@ export const NewEventView = async ({ initPageResult }: AdminViewServerProps) => 
   const { req } = initPageResult
   if (!sendsForApproval(req.user as AuthUser | null)) redirect('/admin/collections/events/create')
 
-  const calendars = await listMyCalendars(req)
+  const [calendars, imported] = await Promise.all([
+    listMyCalendars(req),
+    listImportedCalendars(req),
+  ])
 
   return (
     <Gutter>
@@ -32,7 +35,7 @@ export const NewEventView = async ({ initPageResult }: AdminViewServerProps) => 
           <Link href="/admin">Back to start</Link>
         </p>
         <h1 className={styles.title}>Add an event</h1>
-        <NewEventForm calendars={calendars} />
+        <NewEventForm calendars={calendars} imported={imported} />
       </div>
     </Gutter>
   )

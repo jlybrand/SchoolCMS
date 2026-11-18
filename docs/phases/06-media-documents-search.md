@@ -913,8 +913,10 @@ links work, and no client state is kept. The rules are pure, in `src/admin/Resou
 - `checkDetails`: the details form's messages, in the library's words (`resourceProblems`). An
   emptied description or tags are sent empty, so they clear.
 
-The site picker and the search are plain **GET forms**, and every other control is a link, so
-nothing navigates while someone is still choosing (WCAG 3.2.2).
+The search is a plain **GET form**, and every other control is a link, so nothing navigates while
+someone is still choosing (WCAG 3.2.2). The district chooses a folder, on any site, from the list
+that slides out of their menu (§14; Jason 2026-11-18, replacing a `<select>`), opened here by
+"Choose a folder"; a school manager has one school, so there is nothing to choose.
 
 **The reads** (`library-data.ts`) are made **as the user** and **scoped to the one site on
 screen**:
@@ -943,8 +945,8 @@ log and `revalidateFile` all apply, with nothing new on the server.
 **Layout** (`FileLibrary.module.css`): Payload's theme variables. Nothing is under 15px: the
 admin root is 13px, so sizes are px, and every non-heading in the library is held at 15px,
 including the reused school-plane form. Under 1000px it becomes one column, and an open file takes
-the screen, with "Back to the files". A "File library" link sits in the side menu
-(`FileLibraryNavLink`, `afterNavLinks`), and a school's start screen has a **"Manage your files"**
+the screen, with "Back to the files". A "File library" link sits in a school manager's side menu
+(`FileLibraryNavLink`, `afterNavLinks`; the district's is "Files" in their own menu since §14), and a school's start screen has a **"Manage your files"**
 card (`SCHOOL_TASKS`, Jason 2026-11-17). Unlike the other task screens, the library sits **in Payload's
 frame**, the side menu and top bar (Jason, 2026-11-17: the library only, to see it before deciding
 for every task screen). A custom view gets the frame only by wrapping itself in `DefaultTemplate`
@@ -956,3 +958,109 @@ and kind filters). Then `tests/e2e/file-library.spec.ts`, which covers both plan
 both themes: open a file and focus lands on it; edit, with an emptied description refused; move;
 delete a used file, where Cancel keeps it and Delete anyway removes it; a narrow screen with no
 sideways scroll; and the 15px minimum. Whole-screen axe opens the library with a file open.
+
+## 14. The side navigation and a site's pages (Jason, 2026-11-18)
+
+Pinned 2026-11-13, scope settled 2026-11-18 (`04` §3.5). Built for the district, then given to
+school managers too the same day (Jason: "school should get a similar workflow").
+
+**The side navigation** (`src/admin/Nav/`, registered in `src/payload.config.ts`):
+
+- `ActionNav` is `admin.components.Nav`. For a district admin or a school manager it returns
+  Payload's `DefaultNav` with **empty `visibleEntities`**, so Payload draws no collection groups
+  there; the dashboard icon, the tenant box, the links around the groups, log out and the mobile
+  toggle are all still Payload's. Anyone else gets `DefaultNav` as is.
+- `ActionMenu` (`beforeNavLinks`, server, after `SchoolNameNav`) reads the sites as the user —
+  every site for the district (`siteChoices`: the district first, then A–Z), a school manager's
+  one school for them — and renders `ActionMenuLinks` (client): the plane's items
+  (`action-menu.ts`, pure) as `nav__link`s, the current one `aria-current` (`isCurrent`, which
+  counts a school's task screens under their item).
+  - **District:** Approvals, Pages, Announcements, Events, Alerts, Users, Files.
+  - **School manager:** Pages, Announcements, Events, Files.
+  - Ids: `nav-approvals`, `nav-menu-pages`, `nav-menu-posts`, `nav-menu-events`,
+    `nav-menu-alerts`, `nav-menu-users`, `nav-file-library`.
+- **Pages, Announcements, Events and Files** are buttons (`panel`, `aria-expanded`) that slide out a
+  panel beside the menu (Jason, 2026-11-18: a scrollable list, not a page with a select, not
+  Payload's drawer). `#site-flyout` is a disclosure, not a modal: a region labelled by its
+  heading, fixed at the nav's inline end (covering the nav under 768px), scrolling on its own,
+  **portalled to `<body>`** so the nav's stacking context neither clips nor buries it (`useNav`
+  says whether the nav is open). It slides in unless reduced motion is asked for. Escape, Close or
+  a click outside shut it, focus returning to the opener; following a link out of it shuts it.
+  One instance: a screen's "Change site" / "Choose a folder" (`OpenPanelButton`) opens it with an
+  `OPEN_PANEL_EVENT` on `window`.
+- Its **levels replace one another in place** (`SiteFlyout`). Drilling in is a button; leaving is
+  a link; the heading names the level and takes focus on each change.
+  - **Pages:** sites → "Pages — <site>": the site's pages nested (`pageTree`), each with its
+    status, each opening its form. The district's "Add or move pages" opens
+    `/admin/site-pages?site=`. A school manager **starts on their school's pages** (one school, no
+    "All sites"), with "Add a page" → `/admin/new-page` (where a page sits is the district's).
+  - **Announcements:** every board, site → folder → board (`boardsBySite` over `boardTree`, the
+    sites' order, a site or folder with no boards left out; Jason: "a drawer with all boards").
+    Each board opens `/admin/collections/posts?board=<id>` (`boardHref`). Access decides what is
+    read, so a school manager sees their own school's.
+  - **Events:** every calendar, under its site's name, the main one first (`calendarsBySite`;
+    Jason: "all calendars too"). Each opens Payload's events list filtered to it
+    (`calendarEventsHref`, `?where[calendar][equals]=`). "Add an event" above them: the district's
+    Payload create form, a school manager's `/admin/new-event`. An **imported** calendar
+    (`source: 'feed'`) is a button instead: chosen, it opens a native `<dialog>`
+    (`FeedCalendarDialog`; Jason, 2026-11-18: the message not in the list but in a modal) saying
+    **"This calendar is a feed from …"**, with Close (focused first; Escape closes the dialog, not
+    the panel; focus returns to the calendar) and "See its events" (`feedNote`, `src/lib/feed-source.ts`:
+    Google Calendar or Outlook by name, else the host — never the address, which can carry a
+    token). The school's new-event form does not offer it as a choice (`listMyCalendars`) but
+    names it with the same line (`listImportedCalendars`); the event hook already refused an event
+    added to one by hand.
+  - **Files:** opens straight on **every folder**, under each site's name (no clicking through a
+    site) — `foldersBySite`: the sites' order, each nested by `folderTree`, a site with none left
+    out. A folder → its files, each opening `/admin/file-library?site&folder&file` (`fileHref`)
+    with its details.
+  - "All sites" / "All folders" go back a level. Each level is read over REST as the user when it
+    opens (`pagesQuery`, `boardFoldersQuery` + `boardsQuery`, `calendarsQuery`, `allFoldersQuery`,
+    `filesQuery` in
+    `site-flyout.ts`, pure), with "Loading…" in a status until it arrives and an alert if it
+    fails; a level already read is kept, so going back is instant.
+- `EverythingElse` (`afterNavLinks`, server), both planes: Payload's groups, built by its exported
+  `getVisibleEntities` + `getNavGroups` and drawn by `DefaultNavClient`, inside one native
+  `<details>` labelled "Everything else" (`EverythingElseFold`) — not Payload's `NavGroup`, whose
+  toggle has no `aria-expanded`. **Closed by default**; its open state is saved
+  (`setPreference`, merged) in the same `nav` preference Payload keeps its own groups in, and read
+  back as Payload's unexported `getNavPrefs` reads it.
+- `ApprovalsNavLink` and `FileLibraryNavLink` are gone — both are in the menus now.
+
+**A site's pages** — `/admin/site-pages` (`src/admin/SitePages/SitePagesView.tsx`), district
+only (anyone else is redirected to `/admin`), in Payload's frame (`inPayloadFrame`,
+`src/admin/frame.tsx`, now shared with the file library).
+
+- Rendered from the address: `?site=<id>&new=<pageId|top>` (`sitePagesParams`, `sitePagesHref`,
+  pure in `site-pages.ts`; ids are digits or ignored).
+- No site: a "Choose a site" button. A site: `h1` "Pages — <site>", "Change site" (both open the
+  list beside the menu), then the tree.
+- Reads as the user: the tenant by id, then the site's pages with `draft: true`, selecting title,
+  slug, parent, `_status`, `reviewState`.
+- `pageTree` nests them, A–Z per level with the front page first and marked; a page whose parent
+  is not listed (or is in a cycle) sits at the top, marked, never dropped. `pageStatusLabels`:
+  Live / Not live yet, then any `submissionStatus` (Sent for approval, Needs changes, …), as
+  Payload `Pill`s.
+- Each title opens the page's form. **"Add a page here"** (not on the front page, which takes no
+  children) links to `?new=<id>#new-page`; "+ New top-level page" to `?new=top`. With `new` set,
+  `NewPageForm` opens in place with the site as its only school, the `parent`, and
+  `focusOnOpen`. It POSTs a draft as the user, so access and the slug/parent hooks decide, then
+  opens the new page's form.
+
+**Layout:** Payload's theme variables; nothing under 15px (px, since the admin root is 13px), the
+menu and the site list included. Logical properties only.
+
+**Tests.** `tests/unit/admin/site-pages.test.ts` (address, tree, statuses, site order) and
+`tests/unit/admin/action-menu.test.ts` (both planes' items, order, panels, current). Then
+`tests/e2e/side-nav.spec.ts`: the district's menu items; the fold closed, opened, remembered across a
+reload; Pages → the list (expanded, focused, Escape returns focus, a click outside shuts it) →
+School A → that site's pages in the panel (back a level and in again) → a page opens its form →
+"Add or move pages" → the tree; add a page under a fixture, checked over REST for
+its title, parent and site; the 15px minimum; axe in both themes with the list open, on the
+tree and on the open form; `/admin/site-pages` sending a school manager home. `admin-planes-axe.spec.ts` audits the screen in both themes, and opens the fold before its
+open-sidebar contrast check. `file-library.spec.ts` drills the district from the list: every folder → School A's folder → its
+files (back a level and in again) → the file open in the library; `side-nav.spec.ts` checks
+Files opens on the folders, by site, and Announcements on every board (opening one), with axe
+and the 15px minimum; and a school manager's menu, their Pages opening straight on their
+school's pages, and their Announcements on their own boards only. `site-flyout.test.ts` pins
+the REST queries, the grouping of folders and boards by site, and where a file leads.
