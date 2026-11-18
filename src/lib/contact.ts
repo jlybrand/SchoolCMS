@@ -54,3 +54,20 @@ export const toSocialHref = (value: unknown): string | null => {
   const href = toSafeHref(value)
   return href !== null && /^https:\/\//i.test(href) ? href : null
 }
+
+/**
+ * The parts of a postal address (Jason, 2026-11-18: street, city, state, zip as separate
+ * fields). A state is its two-letter code, as on an envelope; a zip is five digits or ZIP+4.
+ * Each returns the clean value — the code in capitals — or null.
+ */
+export const toStateCode = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null
+  const code = value.trim().toUpperCase()
+  return /^[A-Z]{2}$/.test(code) ? code : null
+}
+
+export const toZipCode = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null
+  const zip = value.trim()
+  return /^\d{5}(-\d{4})?$/.test(zip) ? zip : null
+}

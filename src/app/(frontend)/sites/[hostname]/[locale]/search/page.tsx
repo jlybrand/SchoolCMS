@@ -52,6 +52,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     locales: site.settings.enabledLocales,
     indexable: indexingAllowed(process.env),
     defaultDescription: site.settings.defaultDescription,
+    defaultImage: site.settings.primaryThumbnail,
   })
   return { ...metadata, robots: { index: false, follow: true } }
 }

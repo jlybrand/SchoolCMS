@@ -1071,7 +1071,7 @@ the REST queries, the grouping of folders and boards by site, and where a file l
 ## 15. The admin's brand (Jason, 2026-11-18)
 
 White-label the **platform**, not per school: one brand across both planes. Jason's decisions:
-the platform's name is "DD2 Websites"; its logo and mark are **fixed files** committed beside their
+the platform's name is "DDTwo Websites" (renamed from "DD2 Websites" the same day); its logo and mark are **fixed files** committed beside their
 component in `src/admin/Brand/` and imported (the build serves them as hashed assets); the **district's own logo** is uploaded through the district site's Settings;
 the district's colors are primary `#2b3170`, secondary `#99a1e7` and white; it applies on the
 sign-in screens and inside the admin.
@@ -1079,7 +1079,7 @@ sign-in screens and inside the admin.
 **The platform's logo and mark** (`src/admin/Brand/PlatformGraphics.tsx`), in Payload's graphics
 slots (`admin.components.graphics`):
 
-- `PlatformLogo` (`Logo`): `district-header-logo.svg`, alt "DD2 Websites", on the sign-in screens —
+- `PlatformLogo` (`Logo`): `district-header-logo.svg`, alt "DDTwo Websites", on the sign-in screens —
   black on transparent, so on a white plate, visible in the dark theme too.
 - `PlatformMark` (`Icon`): `district-footer-home-logo.svg` (a primary circle). Payload draws it only as the content of the
   breadcrumb's home link, so its alt — "Dashboard" — is that link's whole name.
@@ -1093,7 +1093,7 @@ district-only, but a school's start screen carries the district's logo too — a
 for none, an unpopulated id, or a document.
 
 **The band** (`BrandBand`) heads both start screens, above each `h1` (`DistrictDashboard`,
-`SchoolHome`): the district's logo and "DD2 Websites" — on a school manager's, their **school's
+`SchoolHome`): the district's logo and "DDTwo Websites" — on a school manager's, their **school's
 name** in its place (Jason, 2026-11-18; `adminBrand(settings, school)`, from `schoolsOf`). It is **white in both themes**, so a logo
 made for a white page shows as made, with the name in primary (11.8:1), a primary rule and a
 secondary stripe below. Not a heading.
@@ -1117,3 +1117,44 @@ the sign-in Log in button in the accent per theme; the district's band with a fi
 Settings (restored, or the row removed, after), the breadcrumb home link named "Dashboard", the
 current menu item's color per theme, axe in both themes; a school's start screen's band names the
 school, not the platform.
+
+## 16. Site settings (Jason, 2026-11-18)
+
+The `settings` collection is relabelled **"Site settings"** and becomes where a site's details
+come from (`03` §5). Fields, in order: Site name (`siteTitle`); Primary logo (`logo`, the name
+#119 added), Secondary logo, Primary thumbnail, Secondary thumbnail — `libraryImageField`s, so alt
+text is the library's (rule 7); Contact — Street address, City / State / Zip (one row), Phone,
+Fax, Email; Social media; Site description. Languages (`enabledLocales`) and the one-box
+`contact.address` are **hidden**, not removed.
+
+**Validators** (`src/lib/contact.ts`, pure, field and mapper alike): `toStateCode` (two letters,
+returned in capitals) and `toZipCode` (`12345` or `12345-6789`); fax reuses `toPhoneHref`.
+
+**The mapper** (`toSiteSettings`, `src/content/site-settings.ts`):
+
+- `contact.address` lines: the street, then "City, ST zip", each line only what it has. A row with
+  no part filled falls back to the old one-box address, line by line.
+- `contact.fax`: the number as typed, only if dialable — text, not a link.
+- `logo`, `secondaryLogo`, `primaryThumbnail`, `secondaryThumbnail`: `toImageAsset` (null for none,
+  an unpopulated id, or a document). `getSettings` now reads at `depth: 1` to populate them.
+- `enabledLocales`: always `['en']` — whatever the row's old checkboxes say. Every reader (the
+  routing gate in `site.tsx`, the sitemap, `hreflang`, the switcher) is unchanged and follows it.
+
+**Where they show:** the footer (`SiteFooter`) gains "Fax: …" (`faxLabel`, a prop for the
+localization pipeline; digits `dir="ltr"`); the header (`SiteHeader`) shows the primary logo
+inside the link home, beside the name, with **empty alt** — the name names the link; the share
+image (`buildPageMetadata`'s `defaultImage`, `src/lib/seo.ts`) is the primary thumbnail as
+`openGraph.images`, its URL made absolute, its size only when known — passed by all four page
+routes beside `defaultDescription`.
+
+**Still to do — the contract step:** drop the `settings` columns for `contact.address` and the
+`enabled_locales_*` group once real migrations exist; remove `toEnabledLocales` or bring it back
+with Phase 7's design. The secondary logo and thumbnail are stored but not rendered.
+
+**Tests.** Unit: `contact.test.ts` (state, zip), `site-settings.test.ts` (address parts, legacy
+fallback, fax, images, English only), `seo.test.ts` (share image), `site-chrome.test.tsx` (fax line,
+header logo). Integration: `content-layer.test.ts` (the parts, fax and a thumbnail through
+Postgres; defaults English only). E2E: `tenant-routing.spec.ts` (translated addresses 404; no
+switcher, alternates or translated sitemap entries; the footer's parts and fax) and
+`settings-fields.spec.ts` (the fields present, no languages, state and zip refused). Storybook:
+`SiteHeader` WithLogo, the footer with fax — in the component axe gate, LTR and RTL.

@@ -33,6 +33,23 @@
   margin-block: 0;
 }
 
+/* The link home: the logo, then the name, side by side, wrapping on a narrow screen. */
+.home {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+/* Held to the header's height, its width following (Jason, 2026-11-18). */
+.logo {
+  display: block;
+  inline-size: auto;
+  max-inline-size: 10rem;
+  block-size: auto;
+  max-block-size: 3.5rem;
+}
+
 /*
  * Quick links, then languages, at inline-end. A column, so each keeps its own row and the
  * languages stay findable in one place rather than wrapping into the quick links.

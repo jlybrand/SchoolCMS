@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
 import { toSiteSettings } from '@/content/site-settings'
-import { ALL_LOCALES } from '@/lib/locales'
 
 /**
  * The settings mapper (`03` §5, `02` §11).
@@ -17,8 +16,12 @@ describe('toSiteSettings', () => {
       toSiteSettings({
         siteTitle: ' Summerville Elementary School ',
         contact: {
-          address: '123 Main Street\n  Summerville, SC 29483  \n\n',
+          street: ' 123 Main Street ',
+          city: 'Summerville',
+          state: 'sc',
+          zip: '29483',
           phone: '(843) 555-0100',
+          fax: '(843) 555-0101',
           email: 'office@dd2.example',
         },
         socialLinks: [
@@ -33,6 +36,7 @@ describe('toSiteSettings', () => {
       contact: {
         address: ['123 Main Street', 'Summerville, SC 29483'],
         phone: { text: '(843) 555-0100', href: 'tel:8435550100' },
+        fax: '(843) 555-0101',
         email: { text: 'office@dd2.example', href: 'mailto:office@dd2.example' },
       },
       social: [
@@ -50,8 +54,13 @@ describe('toSiteSettings', () => {
         },
       ],
       defaultDescription: 'A K–5 school in Summerville.',
-      // English first, then the platform's own order.
-      enabledLocales: ['en', 'es', 'ar'],
+      // English only until languages are handled another way (Jason, 2026-11-18) — whatever
+      // the row's old checkboxes say.
+      enabledLocales: ['en'],
+      logo: null,
+      secondaryLogo: null,
+      primaryThumbnail: null,
+      secondaryThumbnail: null,
     })
   })
 
@@ -59,22 +68,34 @@ describe('toSiteSettings', () => {
     for (const doc of [undefined, null, 'settings', []]) {
       expect(toSiteSettings(doc)).toEqual({
         siteTitle: null,
-        contact: { address: [], phone: null, email: null },
+        contact: { address: [], phone: null, fax: null, email: null },
         social: [],
         defaultDescription: null,
-        enabledLocales: [...ALL_LOCALES],
+        enabledLocales: ['en'],
+        logo: null,
+        secondaryLogo: null,
+        primaryThumbnail: null,
+        secondaryThumbnail: null,
       })
     }
   })
 
   it('drops a malformed contact value and keeps its neighbours', () => {
     const { contact } = toSiteSettings({
-      contact: { address: 42, phone: 'call the office', email: 'office@dd2.example' },
+      contact: {
+        street: 42,
+        state: 'South Carolina',
+        zip: 'zip',
+        phone: 'call the office',
+        fax: 'no fax',
+        email: 'office@dd2.example',
+      },
     })
 
     expect(contact).toEqual({
       address: [],
       phone: null,
+      fax: null,
       email: { text: 'office@dd2.example', href: 'mailto:office@dd2.example' },
     })
   })
@@ -96,43 +117,61 @@ describe('toSiteSettings', () => {
     ])
   })
 
-  describe('enabledLocales (`08` §2)', () => {
-    const enabled = (value: unknown) => toSiteSettings({ enabledLocales: value }).enabledLocales
+  describe('the address, from its parts (Jason, 2026-11-18)', () => {
+    const address = (contact: unknown) => toSiteSettings({ contact }).contact.address
 
-    it('English is always on — it is the source, and the only language anyone authors', () => {
-      expect(enabled({ es: true, zhHans: false, ko: false, pt: false, ar: false })).toEqual([
-        'en',
-        'es',
-      ])
+    it('the street, then "City, ST zip"', () => {
       expect(
-        enabled({ en: false, es: true, zhHans: false, ko: false, pt: false, ar: false }),
-      ).toEqual(['en', 'es'])
+        address({ street: '1 Elm St', city: 'Summerville', state: 'SC', zip: '29483' }),
+      ).toEqual(['1 Elm St', 'Summerville, SC 29483'])
     })
 
-    it('every box unticked is a decision: English only', () => {
-      expect(enabled({ es: false, zhHans: false, ko: false, pt: false, ar: false })).toEqual(['en'])
+    it('a missing part leaves a tidy line', () => {
+      expect(address({ city: 'Summerville', state: 'SC' })).toEqual(['Summerville, SC'])
+      expect(address({ street: '1 Elm St', zip: '29483' })).toEqual(['1 Elm St', '29483'])
+      expect(address({ city: 'Summerville' })).toEqual(['Summerville'])
     })
 
-    it('only an explicit NO turns a language off', () => {
-      // Failing towards MORE languages: dropping one by accident is the language-access
-      // failure (`08` §10); serving one nobody asked for is not. So a row that never
-      // answered — or that predates a locale the platform added since — serves it.
-      expect(enabled(undefined)).toEqual([...ALL_LOCALES])
-      expect(enabled(null)).toEqual([...ALL_LOCALES])
-      expect(enabled(['es'])).toEqual([...ALL_LOCALES])
-      expect(enabled({ ar: false })).toEqual(['en', 'es', 'zh-Hans', 'ko', 'pt'])
-      expect(enabled({ ar: null, ko: 'no', pt: 0 })).toEqual([...ALL_LOCALES])
+    it('a row saved before the split: its one-box address, line by line', () => {
+      expect(address({ address: '123 Main Street\n  Summerville, SC 29483  \n\n' })).toEqual([
+        '123 Main Street',
+        'Summerville, SC 29483',
+      ])
     })
 
-    it('ignores a key that is not a platform locale — it would route to an empty shell', () => {
-      expect(enabled({ tlh: true, es: false })).toEqual(['en', 'zh-Hans', 'ko', 'pt', 'ar'])
+    it('the parts win over the old box once any is filled', () => {
+      expect(address({ address: 'Old Road', street: 'New Road' })).toEqual(['New Road'])
     })
+  })
 
-    it('reads zh-Hans from the field that stores it', () => {
-      // A field name cannot carry the hyphen, so the script subtag is camel-cased in storage
-      // and nowhere else (`localeFieldName`).
-      expect(enabled({ zhHans: false })).not.toContain('zh-Hans')
-      expect(enabled({ 'zh-Hans': false })).toContain('zh-Hans')
+  describe('the images', () => {
+    const image = {
+      id: 9,
+      kind: 'image',
+      url: '/api/resources/file/logo.png',
+      alt: 'School A',
+      width: 200,
+      height: 80,
+    }
+
+    it('each a library image, its alt text the library’s', () => {
+      const settings = toSiteSettings({
+        logo: image,
+        secondaryLogo: { ...image, isDecorative: true },
+        primaryThumbnail: image,
+        secondaryThumbnail: 9,
+      })
+      expect(settings.logo).toMatchObject({ src: '/api/resources/file/logo.png', alt: 'School A' })
+      expect(settings.secondaryLogo?.alt).toBe('')
+      expect(settings.primaryThumbnail).toMatchObject({ width: 200, height: 80 })
+      // An unpopulated id is no image.
+      expect(settings.secondaryThumbnail).toBeNull()
     })
+  })
+
+  it('languages: English only, until they are handled another way (Jason, 2026-11-18)', () => {
+    for (const enabledLocales of [undefined, { es: true, ar: true }, { es: false }]) {
+      expect(toSiteSettings({ enabledLocales }).enabledLocales).toEqual(['en'])
+    }
   })
 })

@@ -70,3 +70,19 @@ export const FullMenus: Story = {
     locales: ['en', 'es', 'zh-Hans', 'ko', 'pt', 'ar'],
   },
 }
+
+/**
+ * The site's primary logo beside its name (Jason, 2026-11-18; Site settings), in the same link —
+ * the logo silent (empty alt), the name naming the link.
+ */
+export const WithLogo: Story = {
+  args: {
+    logo: {
+      src: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><circle cx='60' cy='60' r='58' fill='%232b3170'/><circle cx='60' cy='60' r='30' fill='%2399a1e7'/></svg>",
+      srcSet: '',
+      width: 120,
+      height: 120,
+      alt: 'Dorchester School District Two',
+    },
+  },
+}

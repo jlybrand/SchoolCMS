@@ -41,7 +41,7 @@ test.describe('district admin session', () => {
 
   test('admin tabs are named for DD2, not Payload (2026-11-11)', async ({ page }) => {
     await page.goto(LOGIN_PATH)
-    await expect(page).toHaveTitle(/- DD2 Websites$/)
+    await expect(page).toHaveTitle(/- DDTwo Websites$/)
     await expect(page).not.toHaveTitle(/Payload/)
   })
 

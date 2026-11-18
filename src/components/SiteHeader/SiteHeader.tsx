@@ -3,7 +3,7 @@ import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { Link } from '@/components/Link'
 import { MenuList } from '@/components/MenuList'
 import { SearchForm } from '@/components/SearchForm'
-import type { Locale, MenuLink } from '@/content/types'
+import type { ImageAsset, Locale, MenuLink } from '@/content/types'
 import { localizedPath } from '@/lib/locales'
 import { SEARCH_PATH } from '@/lib/search'
 
@@ -28,6 +28,12 @@ import styles from './SiteHeader.module.css'
 export type SiteHeaderProps = {
   /** The tenant's name. Links to the front page in the current locale. */
   readonly siteName: string
+  /**
+   * The site's primary logo (Jason, 2026-11-18; its Site settings), beside the name in the same
+   * link. Its alt is EMPTY here: the name right beside it already names the link, and the
+   * library's alt ("Dakota District 2") would be read twice.
+   */
+  readonly logo?: ImageAsset | null
   readonly primary: readonly MenuLink[]
   readonly utility: readonly MenuLink[]
   /** The unprefixed path of the page being rendered — see `MenuList`. */
@@ -46,6 +52,7 @@ export type SiteHeaderProps = {
 
 export const SiteHeader = ({
   siteName,
+  logo = null,
   primary,
   utility,
   currentPath,
@@ -58,7 +65,25 @@ export const SiteHeader = ({
     <Container width="wide">
       <div className={styles.top}>
         <p className={styles.siteName}>
-          <Link href={localizedPath('/', locale)}>{siteName}</Link>
+          <Link href={localizedPath('/', locale)}>
+            {/* A span for the layout: the design system's `Link` takes no `className`. */}
+            <span className={styles.home}>
+              {logo ? (
+                // A library image of any size, held to the header's height: next/image is not used
+                // in the design system, which fetches and optimises nothing (`src/components/`).
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  alt=""
+                  className={styles.logo}
+                  src={logo.src}
+                  {...(logo.srcSet ? { srcSet: logo.srcSet, sizes: '160px' } : {})}
+                  {...(logo.width ? { width: logo.width } : {})}
+                  {...(logo.height ? { height: logo.height } : {})}
+                />
+              ) : null}
+              {siteName}
+            </span>
+          </Link>
         </p>
         <div className={styles.tools}>
           <MenuList

@@ -48,10 +48,10 @@ test.describe('the sign-in screen', () => {
     test(`@a11y carries the platform’s logo — ${colorScheme}`, async ({ page }) => {
       await page.emulateMedia({ colorScheme })
       await page.goto('/admin/login')
-      const logo = page.getByRole('img', { name: 'DD2 Websites' })
+      const logo = page.getByRole('img', { name: 'DDTwo Websites' })
       await expect(logo).toBeVisible({ timeout: 20_000 })
-      expect(await loaded(page, 'img[alt="DD2 Websites"]')).toBe(true)
-      await expect(page).toHaveTitle(/DD2 Websites/)
+      expect(await loaded(page, 'img[alt="DDTwo Websites"]')).toBe(true)
+      await expect(page).toHaveTitle(/DDTwo Websites/)
       // A primary button in the district's accent: primary in the light theme, secondary in the
       // dark. Signed out, Payload takes the theme from a cookie, not the system, so the page says
       // which it is showing.
@@ -103,7 +103,7 @@ adminTest.describe('the district’s start screen', () => {
         try {
           await page.goto('/admin')
           const band = page.locator('#brand-band')
-          await expect(band).toContainText('DD2 Websites', { timeout: 20_000 })
+          await expect(band).toContainText('DDTwo Websites', { timeout: 20_000 })
           // Above the screen's own heading, and not one itself.
           await expect(band.getByRole('heading')).toHaveCount(0)
           await expect(band.getByRole('img', { name: alt })).toBeVisible()
@@ -146,7 +146,7 @@ schoolTest.describe('a school manager’s start screen', () => {
       await page.goto('/admin')
       const band = page.locator('#school-home #brand-band')
       await expect(band).toContainText('School A', { timeout: 20_000 })
-      await expect(band).not.toContainText('DD2 Websites')
+      await expect(band).not.toContainText('DDTwo Websites')
       await expect(
         page.getByRole('heading', { level: 1, name: 'What would you like to do?' }),
       ).toBeVisible()

@@ -26,9 +26,11 @@ export type SiteFooterProps = {
   /** The landmarks' names. Props because they are visitor-facing text (`08` §4). */
   readonly label?: string
   readonly socialLabel?: string
+  /** The word before a fax number — a prop, so the localization pipeline can give it a language. */
+  readonly faxLabel?: string
 }
 
-const NO_CONTACT: ContactBlock = { address: [], phone: null, email: null }
+const NO_CONTACT: ContactBlock = { address: [], phone: null, fax: null, email: null }
 
 export const SiteFooter = ({
   siteName,
@@ -39,8 +41,13 @@ export const SiteFooter = ({
   locale,
   label = 'Footer',
   socialLabel = 'Social media',
+  faxLabel = 'Fax',
 }: SiteFooterProps) => {
-  const hasContact = contact.address.length > 0 || contact.phone !== null || contact.email !== null
+  const hasContact =
+    contact.address.length > 0 ||
+    contact.phone !== null ||
+    contact.fax !== null ||
+    contact.email !== null
 
   return (
     <footer className={styles.footer}>
@@ -67,6 +74,15 @@ export const SiteFooter = ({
             {contact.phone && (
               <span className={styles.line} dir="ltr">
                 <Link href={contact.phone.href}>{contact.phone.text}</Link>
+              </span>
+            )}
+            {/*
+              A fax number is text, not a link (Jason, 2026-11-18): nothing dials a fax from a
+              web page. Only its digits are held left-to-right; the label follows the page.
+            */}
+            {contact.fax && (
+              <span className={styles.line}>
+                {faxLabel}: <span dir="ltr">{contact.fax}</span>
               </span>
             )}
             {contact.email && (

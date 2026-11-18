@@ -25,6 +25,7 @@ const meta = {
     contact: {
       address: ['123 Main Street', 'Summerville, SC 29483'],
       phone: { text: '(843) 555-0100', href: 'tel:8435550100' },
+      fax: '(843) 555-0101',
       email: { text: 'office@example.org', href: 'mailto:office@example.org' },
     },
     social: [
@@ -47,5 +48,5 @@ export const NoLinks: Story = { args: { links: [] } }
 
 /** A site set up this morning: the landmark and the name, and nothing empty around them. */
 export const NameOnly: Story = {
-  args: { links: [], social: [], contact: { address: [], phone: null, email: null } },
+  args: { links: [], social: [], contact: { address: [], phone: null, fax: null, email: null } },
 }

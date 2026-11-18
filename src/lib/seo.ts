@@ -1,4 +1,4 @@
-import type { Locale, RichText, RichTextInline } from '@/content/types'
+import type { ImageAsset, Locale, RichText, RichTextInline } from '@/content/types'
 
 import { DEFAULT_LOCALE, localizedPath } from './locales'
 
@@ -114,7 +114,12 @@ export type PageMetadataInput = {
   readonly indexable: boolean
   /** `settings.defaultDescription` (`03` §5) — the last resort, see `buildPageMetadata`. */
   readonly defaultDescription?: string | null
+  /** The site's primary thumbnail (Jason, 2026-11-18): the picture beside a shared link. */
+  readonly defaultImage?: ImageAsset | null
 }
+
+/** An Open Graph image: its address ABSOLUTE, its size only when known. */
+export type ShareImage = { url: string; width?: number; height?: number; alt: string }
 
 /** Structurally a subset of Next's `Metadata`, so the route returns it as-is. */
 export type PageMetadata = {
@@ -128,11 +133,24 @@ export type PageMetadata = {
     url: string
     siteName: string
     locale: Locale
+    images?: ShareImage[]
   }
   robots: { index: boolean; follow: boolean }
 }
 
 const SEPARATOR = ' — '
+
+/**
+ * The site's share image (Jason, 2026-11-18). ABSOLUTE, as every URL here: whoever reads the tag
+ * — a messaging app, a social network — has no base to resolve a path against. A library file is
+ * served from this site (`/api/resources/file/…`) or from the file store (already absolute).
+ */
+const shareImage = (image: ImageAsset, origin: string): ShareImage => ({
+  url: /^https?:\/\//.test(image.src) ? image.src : new URL(image.src, `${origin}/`).toString(),
+  ...(image.width ? { width: image.width } : {}),
+  ...(image.height ? { height: image.height } : {}),
+  alt: image.alt,
+})
 
 /**
  * The document title.
@@ -200,6 +218,8 @@ export const buildPageMetadata = (input: PageMetadataInput): PageMetadata => {
       url,
       siteName: tenant.name,
       locale,
+      // Omitted, never an empty list (`exactOptionalPropertyTypes`).
+      ...(input.defaultImage ? { images: [shareImage(input.defaultImage, origin)] } : {}),
     },
     /**
      * Both halves off on a closed site, so it is not crawled THROUGH either (see

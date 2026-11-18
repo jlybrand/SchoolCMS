@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { toEmailHref, toPhoneHref, toSocialHref } from '@/lib/contact'
+import { toEmailHref, toPhoneHref, toSocialHref, toStateCode, toZipCode } from '@/lib/contact'
 
 /**
  * Contact destinations (`03` §5).
@@ -80,6 +80,32 @@ describe('toSocialHref', () => {
       null,
     ]) {
       expect(toSocialHref(value)).toBeNull()
+    }
+  })
+})
+
+describe('toStateCode — the two-letter code, as on an envelope (Jason, 2026-11-18)', () => {
+  it('takes a code in any case, with spaces around it', () => {
+    expect(toStateCode('SC')).toBe('SC')
+    expect(toStateCode(' sc ')).toBe('SC')
+  })
+
+  it('refuses anything else', () => {
+    for (const value of ['', 'S', 'SCA', 'South Carolina', 'S1', null, 29]) {
+      expect(toStateCode(value)).toBeNull()
+    }
+  })
+})
+
+describe('toZipCode — five digits, or ZIP+4', () => {
+  it('takes either, trimmed', () => {
+    expect(toZipCode('29483')).toBe('29483')
+    expect(toZipCode(' 29483-1234 ')).toBe('29483-1234')
+  })
+
+  it('refuses anything else', () => {
+    for (const value of ['', '2948', '294831', '29483-12', '29483 1234', 'zip', null, 29483]) {
+      expect(toZipCode(value)).toBeNull()
     }
   })
 })

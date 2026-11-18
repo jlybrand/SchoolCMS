@@ -8,7 +8,8 @@ import type { ImageAsset } from '@/content/types'
  * The platform's own logo and mark are fixed files (`public/brand/`, `PlatformLogo`).
  */
 
-export const PLATFORM_NAME = 'DD2 Websites'
+/** The platform's name (Jason, 2026-11-18: "DDTwo Websites"). Tabs, sign-in, emails, the band. */
+export const PLATFORM_NAME = 'DDTwo Websites'
 
 export type AdminBrand = { name: string; logo: ImageAsset | null }
 

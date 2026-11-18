@@ -183,6 +183,57 @@ describe('buildPageMetadata', () => {
     expect(withDefault({ body: [] }).openGraph.description).toBe('A K–5 school in Summerville.')
   })
 
+  describe('the share image: the site’s primary thumbnail (Jason, 2026-11-18)', () => {
+    const withImage = (defaultImage: unknown) =>
+      buildPageMetadata({
+        tenant,
+        page: page(),
+        locale: 'en',
+        locales: ['en'],
+        indexable: true,
+        defaultImage: defaultImage as never,
+      })
+    const thumbnail = {
+      src: '/api/resources/file/school-a.jpg',
+      srcSet: '',
+      width: 1200,
+      height: 630,
+      alt: 'The front of School A',
+    }
+
+    it('is the page’s Open Graph image, at an ABSOLUTE address, with its size and alt text', () => {
+      expect(withImage(thumbnail).openGraph.images).toEqual([
+        {
+          url: 'https://a.dd2.example/api/resources/file/school-a.jpg',
+          width: 1200,
+          height: 630,
+          alt: 'The front of School A',
+        },
+      ])
+    })
+
+    it('an address already absolute (the file store) is kept', () => {
+      expect(
+        withImage({ ...thumbnail, src: 'https://files.dd2.example/school-a.jpg' }).openGraph
+          .images?.[0]?.url,
+      ).toBe('https://files.dd2.example/school-a.jpg')
+    })
+
+    it('a size not known is left out, not guessed', () => {
+      expect(withImage({ ...thumbnail, width: null, height: null }).openGraph.images).toEqual([
+        {
+          url: 'https://a.dd2.example/api/resources/file/school-a.jpg',
+          alt: 'The front of School A',
+        },
+      ])
+    })
+
+    it('no thumbnail: no image, not an empty list', () => {
+      expect(withImage(null).openGraph).not.toHaveProperty('images')
+      expect(withImage(undefined).openGraph).not.toHaveProperty('images')
+    })
+  })
+
   it('emits ABSOLUTE canonical and hreflang URLs — a crawler has no base to resolve against', () => {
     const meta = build({}, 'es')
 
