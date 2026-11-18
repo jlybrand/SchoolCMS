@@ -3,9 +3,10 @@ import { Gutter } from '@payloadcms/ui'
 import Link from 'next/link'
 
 import type { AuthUser } from '@/access/types'
+import { BrandBand } from '@/admin/Brand/BrandBand'
 import { sendsForApproval } from '@/admin/SendForApproval/review-status'
 
-import { listMySubmissions } from './school-data'
+import { listMySubmissions, schoolsOf } from './school-data'
 import { SCHOOL_TASKS, schoolEditPath, submissionStatus } from './school-plane'
 import styles from './SchoolPlane.module.css'
 
@@ -22,11 +23,15 @@ export const SchoolHome = async (props: DashboardViewServerProps) => {
   const { req } = props.initPageResult
   if (!sendsForApproval(req.user as AuthUser | null)) return <DefaultDashboard {...props} />
 
-  const submissions = await listMySubmissions(req)
+  const [submissions, schools] = await Promise.all([
+    listMySubmissions(req),
+    schoolsOf(req.payload, req.user as AuthUser | null),
+  ])
 
   return (
     <Gutter>
       <div className={styles.view} id="school-home">
+        <BrandBand payload={req.payload} {...(schools[0] ? { school: schools[0].name } : {})} />
         <h1 className={styles.title}>What would you like to do?</h1>
 
         <ul className={styles.tasks}>

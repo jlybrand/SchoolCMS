@@ -20,8 +20,10 @@ import { adminCredentials, adminTest as test } from './support/admin-session'
  * on the Menus form, and it is on the Phase 4 list. Remove the exclusion when it is fixed —
  * the test will say so by still passing.
  *
- * Opened for the district tenant, which the seed gives no `settings` row, so this is always
- * the create form and the test never edits data another spec reads. No tenant modal here,
+ * Opened for A SITE OF ITS OWN, made before each test and removed after, so this is always the
+ * create form and no other spec can make it an edit form. Until 2026-11-18 it borrowed the
+ * district, the only seeded site with no `settings` row — then the admin brand spec began setting
+ * the district's logo there, and a row made mid-run turned this create form into an edit form. No tenant modal here,
  * unlike `pages`: an `isGlobal` collection belongs to whichever site the admin's tenant
  * selector names, and the plugin keeps that in the `payload-tenant` cookie — set explicitly,
  * because otherwise it is whatever the last spec left behind.
@@ -37,16 +39,34 @@ test.describe('the settings form', () => {
     'No SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD — set them in .env and re-run `pnpm run seed`.',
   )
 
+  let site: { id: number } | null = null
+
   test.beforeEach(async ({ page, baseURL }) => {
-    const response = await page.request.get('/api/tenants?where[slug][equals]=district&depth=0')
-    const { docs } = (await response.json()) as { docs: { id: number }[] }
-    const district = docs[0]
-    if (!district) throw new Error('the seeded district tenant is missing — run `pnpm run seed`')
+    const stamp = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`
+    const made = await page.request.post('/api/tenants?depth=0', {
+      data: {
+        name: `Settings spec ${stamp}`,
+        slug: `settings-spec-${stamp}`,
+        hostname: `settings-spec-${stamp}.localhost`,
+        type: 'school',
+      },
+    })
+    expect(made.ok(), await made.text()).toBe(true)
+    site = ((await made.json()) as { doc: { id: number } }).doc
 
     await page
       .context()
-      .addCookies([{ name: 'payload-tenant', value: String(district.id), url: baseURL ?? '' }])
+      .addCookies([{ name: 'payload-tenant', value: String(site!.id), url: baseURL ?? '' }])
     await page.goto('/admin/collections/settings/create')
+  })
+
+  test.afterEach(async ({ page }) => {
+    if (site === null) return
+    // A test that saved leaves a row; the site goes only once it holds nothing (`tenant-delete`).
+    await page.request.delete(`/api/settings?where[tenant][equals]=${site.id}`)
+    const gone = await page.request.delete(`/api/tenants/${site.id}`)
+    expect(gone.ok(), `remove the spec's own site: ${await gone.text()}`).toBe(true)
+    site = null
   })
 
   test('@smoke starts with every platform language on, and no image until `media` exists', async ({

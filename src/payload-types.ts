@@ -1133,6 +1133,10 @@ export interface Setting {
    */
   siteTitle?: string | null;
   /**
+   * An image from this site’s library. The district site’s logo also appears at the top of the admin’s start screens.
+   */
+  logo?: (number | null) | Resource;
+  /**
    * Shown at the bottom of every page. Leave any of these empty.
    */
   contact?: {
@@ -2009,6 +2013,7 @@ export interface ThemeSelect<T extends boolean = true> {
 export interface SettingsSelect<T extends boolean = true> {
   tenant?: T;
   siteTitle?: T;
+  logo?: T;
   contact?:
     | T
     | {

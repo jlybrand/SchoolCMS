@@ -246,7 +246,7 @@ src/
   admin/                admin-plane React: paste prompt, school plane (SchoolPlane/,
                         SendForApproval/), approval queue + diff (Approvals/), grants
                         (Grants/), the side menu + its slide-out lists, both planes (Nav/), a site's
-                        page tree (SitePages/), A11yPatch/ — repairs Payload's own markup
+                        page tree (SitePages/), the platform's brand (Brand/), A11yPatch/ — repairs Payload's own markup
                         until upstream fixes it. Separate from components/ — this side MAY import the SDK.
   auth/                 entra-mapping.ts (unwired), password-policy.ts (interim)
   content/              THE BOUNDARY. Payload lives behind this.

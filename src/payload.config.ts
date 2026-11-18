@@ -16,6 +16,7 @@ import { Navigation } from './collections/Navigation'
 import { SCHEDULE_CRON } from './lib/schedule-step'
 import { Pages } from './collections/Pages'
 import { People } from './collections/People'
+import { PLATFORM_NAME } from './admin/Brand/brand'
 import { MAX_UPLOAD_BYTES } from './admin/SchoolPlane/upload-file'
 import { ResourceFolders } from './collections/ResourceFolders'
 import { Resources } from './collections/Resources'
@@ -54,7 +55,7 @@ export default buildConfig({
   upload: { limits: { fileSize: MAX_UPLOAD_BYTES } },
   admin: {
     /** Browser tabs read "Approvals - DD2 Websites", not Payload's default "- Payload". */
-    meta: { titleSuffix: '- DD2 Websites' },
+    meta: { titleSuffix: `- ${PLATFORM_NAME}` },
     user: Users.slug,
     importMap: { baseDir: path.resolve(dirname) },
     /**
@@ -131,6 +132,14 @@ export default buildConfig({
        * appends its "Filter by Tenant" box to `beforeNav`, so only there does this come first.
        */
       beforeNav: ['/admin/Nav/DashboardNavLink#DashboardNavLink'],
+      /**
+       * The platform's own logo and mark, fixed files in `public/brand/` (Jason, 2026-11-18:
+       * white-label the platform, not per school), in place of Payload's.
+       */
+      graphics: {
+        Logo: '/admin/Brand/PlatformGraphics#PlatformLogo',
+        Icon: '/admin/Brand/PlatformGraphics#PlatformMark',
+      },
       /** A school manager's school, named where a tenant picker would be (Jason, 2026-11-04). */
       beforeNavLinks: [
         '/admin/SchoolPlane/SchoolNameNav#SchoolNameNav',

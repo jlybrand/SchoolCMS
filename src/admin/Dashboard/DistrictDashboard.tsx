@@ -27,6 +27,7 @@ import {
   findWaiting,
 } from './dashboard-data'
 import styles from './Dashboard.module.css'
+import { BrandBand } from '@/admin/Brand/BrandBand'
 
 /**
  * The top of the district's dashboard (`admin.components.beforeDashboard`; `04` §3.1, layout
@@ -85,6 +86,7 @@ export const DistrictDashboard = async ({
 
   return (
     <div className={styles.dashboard} id="district-dashboard">
+      <BrandBand payload={payload} />
       <h1 className={styles.title}>District dashboard</h1>
 
       {attention.length > 0 ? (
