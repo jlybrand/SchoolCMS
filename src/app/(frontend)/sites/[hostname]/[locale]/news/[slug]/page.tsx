@@ -51,6 +51,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     locales: site.settings.enabledLocales,
     indexable: indexingAllowed(process.env),
     defaultDescription: site.settings.defaultDescription,
+    defaultImage: site.settings.primaryThumbnail,
   })
 }
 

@@ -92,6 +92,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     locales: settings.enabledLocales,
     indexable: indexingAllowed(process.env),
     defaultDescription: settings.defaultDescription,
+    defaultImage: settings.primaryThumbnail,
   })
 }
 

@@ -17,9 +17,9 @@ const image = {
 }
 
 describe('adminBrand', () => {
-  it('the platform is DD2 Websites', () => {
-    expect(PLATFORM_NAME).toBe('DD2 Websites')
-    expect(adminBrand(null).name).toBe('DD2 Websites')
+  it('the platform is DDTwo Websites', () => {
+    expect(PLATFORM_NAME).toBe('DDTwo Websites')
+    expect(adminBrand(null).name).toBe('DDTwo Websites')
   })
 
   it('a school’s start screen says the school’s name instead (Jason, 2026-11-18)', () => {
@@ -28,7 +28,7 @@ describe('adminBrand', () => {
   })
 
   it('a blank school name falls back to the platform’s', () => {
-    expect(adminBrand(null, '  ').name).toBe('DD2 Websites')
+    expect(adminBrand(null, '  ').name).toBe('DDTwo Websites')
   })
 
   it('the district’s logo, its alt text the library’s', () => {

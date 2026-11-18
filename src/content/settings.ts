@@ -29,7 +29,11 @@ export const getSettings = async (ctx: Pick<ContentContext, 'tenant'>): Promise<
     collection: 'settings',
     where: { tenant: { equals: ctx.tenant.id } },
     limit: 1,
-    depth: 0,
+    /**
+     * One level, for the logos and thumbnails (Jason, 2026-11-18): each is a library file, and
+     * its address, size and alt text are on that file. `toImageAsset` reads only those.
+     */
+    depth: 1,
     overrideAccess: true,
   })
 

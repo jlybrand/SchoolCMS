@@ -11,6 +11,7 @@ import type { ContentContext, FeedBlock, ResolvedFeedBlock, Tenant } from '@/con
 import { ROOT_SLUG } from '@/lib/slug'
 import type { Payload } from 'payload'
 
+import { tinyPng } from '../helpers/files'
 import { getTestPayload, seed, seedPosts, type PostFixtures } from '../helpers/payload'
 
 /**
@@ -517,8 +518,10 @@ describe('getSettings', () => {
     expect(await getSettings(await tenantFor('a.localhost'))).toEqual({
       siteTitle: 'Alpha School',
       contact: {
+        // A row with the one-box address of before the split: read line by line (2026-11-18).
         address: ['1 Alpha Road', 'Summerville, SC 29483'],
         phone: { text: '(843) 555-0101', href: 'tel:8435550101' },
+        fax: null,
         email: null,
       },
       social: [
@@ -530,7 +533,12 @@ describe('getSettings', () => {
         },
       ],
       defaultDescription: 'About Alpha.',
-      enabledLocales: ['en', 'es', 'ar'],
+      // The row still stores Spanish and Arabic; every site is English only (Jason, 2026-11-18).
+      enabledLocales: ['en'],
+      logo: null,
+      secondaryLogo: null,
+      primaryThumbnail: null,
+      secondaryThumbnail: null,
     })
   })
 
@@ -541,18 +549,75 @@ describe('getSettings', () => {
     expect(settings.contact.phone?.href).toBe('tel:8435550202')
   })
 
-  it('every language turned off survives the database as English only', async () => {
-    // `false` has to come back as `false`, not null: only an explicit no turns one off.
-    expect((await getSettings(await tenantFor('b.localhost'))).enabledLocales).toEqual(['en'])
+  it('the address in parts, a fax, and a thumbnail, through the database (Jason, 2026-11-18)', async () => {
+    const { tenant } = await tenantFor('b.localhost')
+    const image = await payload.create({
+      collection: 'resources',
+      data: {
+        tenant: Number(tenant.id),
+        title: 'School front',
+        alt: 'The front of Bravo School',
+      } as never,
+      file: await tinyPng(120, 63),
+      overrideAccess: true,
+    })
+    const row = (
+      await payload.find({
+        collection: 'settings',
+        where: { tenant: { equals: Number(tenant.id) } },
+        limit: 1,
+        overrideAccess: true,
+      })
+    ).docs[0]!
+    const before = { contact: row.contact, primaryThumbnail: row.primaryThumbnail ?? null }
+    await payload.update({
+      collection: 'settings',
+      id: row.id,
+      data: {
+        contact: {
+          ...row.contact,
+          street: '2 Bravo Road',
+          city: 'Summerville',
+          state: 'sc',
+          zip: '29483',
+          fax: '843.555.0299',
+        },
+        primaryThumbnail: image.id,
+      } as never,
+      overrideAccess: true,
+    })
+    try {
+      const settings = await getSettings({ tenant })
+      expect(settings.contact.address).toEqual(['2 Bravo Road', 'Summerville, SC 29483'])
+      expect(settings.contact.fax).toBe('843.555.0299')
+      expect(settings.primaryThumbnail).toMatchObject({
+        alt: 'The front of Bravo School',
+        width: 120,
+        height: 63,
+      })
+      expect(settings.primaryThumbnail?.src).toMatch(/\.png$/)
+    } finally {
+      await payload.update({
+        collection: 'settings',
+        id: row.id,
+        data: before as never,
+        overrideAccess: true,
+      })
+      await payload.delete({ collection: 'resources', id: image.id, overrideAccess: true })
+    }
   })
 
-  it('returns the defaults for a tenant with no settings row — every platform locale', async () => {
+  it('returns the defaults for a tenant with no settings row — English only', async () => {
     expect(await getSettings(await tenantFor('localhost'))).toEqual({
       siteTitle: null,
-      contact: { address: [], phone: null, email: null },
+      contact: { address: [], phone: null, fax: null, email: null },
       social: [],
       defaultDescription: null,
-      enabledLocales: ['en', 'es', 'zh-Hans', 'ko', 'pt', 'ar'],
+      enabledLocales: ['en'],
+      logo: null,
+      secondaryLogo: null,
+      primaryThumbnail: null,
+      secondaryThumbnail: null,
     })
   })
 })

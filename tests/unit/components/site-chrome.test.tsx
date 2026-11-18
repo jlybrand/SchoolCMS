@@ -27,6 +27,51 @@ const utility = [link('Staff email', 'https://outlook.office.com', true)]
 const footer = [link('Contact', '/contact'), link('Call the office', 'tel:+18435550100')]
 
 describe('SiteHeader', () => {
+  describe('the primary logo (Jason, 2026-11-18)', () => {
+    const logo = {
+      src: '/api/resources/file/logo.png',
+      srcSet: '',
+      width: 200,
+      height: 80,
+      alt: 'Dakota District 2',
+    }
+
+    it('sits inside the link home, beside the name, which alone names the link', () => {
+      const { getByRole, container } = renderComponent(
+        <SiteHeader
+          siteName="School A"
+          logo={logo}
+          primary={primary}
+          utility={utility}
+          currentPath="/"
+          locale="en"
+          locales={['en']}
+        />,
+      )
+      const home = getByRole('link', { name: 'School A' })
+      const img = home.querySelector('img')
+      expect(img?.getAttribute('src')).toBe('/api/resources/file/logo.png')
+      // The name is right beside it, in the same link: the logo's own alt would be read twice.
+      expect(img?.getAttribute('alt')).toBe('')
+      expect(container.querySelectorAll('header img')).toHaveLength(1)
+    })
+
+    it('no logo: the name alone', () => {
+      const { container } = renderComponent(
+        <SiteHeader
+          siteName="School A"
+          logo={null}
+          primary={primary}
+          utility={utility}
+          currentPath="/"
+          locale="en"
+          locales={['en']}
+        />,
+      )
+      expect(container.querySelector('header img')).toBeNull()
+    })
+  })
+
   it('is the banner landmark, holding the site name as a link home', () => {
     const { getByRole } = renderComponent(
       <SiteHeader
@@ -272,6 +317,7 @@ describe('SiteFooter', () => {
     const contact: ContactBlock = {
       address: ['123 Main Street', 'Summerville, SC 29483'],
       phone: { text: '(843) 555-0100', href: 'tel:8435550100' },
+      fax: '(843) 555-0101',
       email: { text: 'office@dd2.example', href: 'mailto:office@dd2.example' },
     }
     const social: SocialLink[] = [
@@ -295,6 +341,32 @@ describe('SiteFooter', () => {
       )
     })
 
+    it('a fax number is labelled, and text, not a link: nothing dials a fax from a page', () => {
+      const { container, queryByRole } = renderComponent(
+        <SiteFooter siteName="School A" links={[]} contact={contact} currentPath="/" locale="en" />,
+      )
+      const fax = [...container.querySelectorAll('address span')].find((el) =>
+        el.textContent?.startsWith('Fax'),
+      )
+      expect(fax?.textContent).toBe('Fax: (843) 555-0101')
+      expect(queryByRole('link', { name: /555-0101/ })).toBeNull()
+      // Its digits kept left-to-right on a right-to-left page, as the phone's are.
+      expect(fax?.querySelector('[dir="ltr"]')?.textContent).toBe('(843) 555-0101')
+    })
+
+    it('a fax alone is still contact details', () => {
+      const { container } = renderComponent(
+        <SiteFooter
+          siteName="School A"
+          links={[]}
+          contact={{ address: [], phone: null, fax: '(843) 555-0101', email: null }}
+          currentPath="/"
+          locale="en"
+        />,
+      )
+      expect(container.querySelector('address')?.textContent).toContain('Fax: (843) 555-0101')
+    })
+
     it('keeps a phone number and an email address left-to-right on a right-to-left page', () => {
       const { getByRole } = renderComponent(
         <SiteFooter siteName="School A" links={[]} contact={contact} currentPath="/" locale="ar" />,
@@ -308,7 +380,7 @@ describe('SiteFooter', () => {
         <SiteFooter
           siteName="School A"
           links={[]}
-          contact={{ address: [], phone: null, email: null }}
+          contact={{ address: [], phone: null, fax: null, email: null }}
           currentPath="/"
           locale="en"
         />,

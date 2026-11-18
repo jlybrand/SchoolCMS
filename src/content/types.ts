@@ -126,9 +126,11 @@ export type ContactLink = {
 }
 
 export type ContactBlock = {
-  /** One entry per line; empty when there is no address. */
+  /** One entry per line ("1 Elm St", "Summerville, SC 29483"); empty when there is no address. */
   address: string[]
   phone: ContactLink | null
+  /** As typed — text, not a link: nothing dials a fax from a web page (Jason, 2026-11-18). */
+  fax: string | null
   email: ContactLink | null
 }
 
@@ -143,8 +145,18 @@ export type SiteSettings = {
   social: SocialLink[]
   /** The description of last resort, for a page with none of its own (`src/lib/seo.ts`). */
   defaultDescription: string | null
-  /** Always starts with `en`, in the platform's order (`toEnabledLocales`). */
+  /**
+   * The languages the site is served in: `['en']` until languages are handled another way
+   * (Jason, 2026-11-18 — no longer a per-site setting). Kept as a list, so every reader of it is
+   * ready for more.
+   */
   enabledLocales: Locale[]
+  /** The site's logos and thumbnails (Jason, 2026-11-18), library images; null when none. */
+  logo: ImageAsset | null
+  secondaryLogo: ImageAsset | null
+  /** The site's share image — the picture beside a link to it (`openGraph.images`). */
+  primaryThumbnail: ImageAsset | null
+  secondaryThumbnail: ImageAsset | null
 }
 
 /** Where a linked page sends visitors: a path on a site, by that site's hostname. */

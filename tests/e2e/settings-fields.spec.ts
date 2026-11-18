@@ -69,19 +69,44 @@ test.describe('the settings form', () => {
     site = null
   })
 
-  test('@smoke starts with every platform language on, and no image until `media` exists', async ({
+  test('@smoke has the fields a site is described by, and no languages (Jason, 2026-11-18)', async ({
     page,
   }) => {
-    const languages = page.locator('#field-enabledLocales')
-    await expect(languages).toBeVisible({ timeout: 20_000 })
-    // On by default: turning a language OFF is the deliberate act (`08` §10).
-    for (const name of ['Español', '简体中文', '한국어', 'Português', 'العربية']) {
-      await expect(languages.getByRole('checkbox', { name, exact: true })).toBeChecked()
+    await expect(page.locator('[name="siteTitle"]')).toBeEnabled({ timeout: 20_000 })
+    for (const name of [
+      'contact.street',
+      'contact.city',
+      'contact.state',
+      'contact.zip',
+      'contact.phone',
+      'contact.fax',
+      'contact.email',
+      'defaultDescription',
+    ]) {
+      await expect(page.locator(`[name="${name}"]`), name).toBeVisible()
     }
-    // English is not an option because it is not optional.
-    await expect(languages.getByRole('checkbox', { name: 'English' })).toHaveCount(0)
-    // A default share image would be an upload with no alt-text gate behind it (rule 7).
-    await expect(page.locator('[name="defaultImage"]')).toHaveCount(0)
+    // Logos and thumbnails: images from the site's library, so alt text is the library's (rule 7).
+    for (const field of ['logo', 'secondaryLogo', 'primaryThumbnail', 'secondaryThumbnail']) {
+      await expect(page.locator(`#field-${field}`), field).toBeVisible()
+    }
+    // The old one-box address and the languages are kept but hidden (expand/contract).
+    await expect(page.locator('#field-enabledLocales')).toBeHidden()
+    await expect(page.getByRole('checkbox', { name: 'Español' })).toHaveCount(0)
+    await expect(page.locator('[name="contact.address"]')).toBeHidden()
+  })
+
+  test('refuses a state or zip that is not one, and says which field', async ({ page }) => {
+    await expect(page.locator('[name="contact.state"]')).toBeEnabled({ timeout: 20_000 })
+    await page.locator('[name="contact.state"]').fill('S1')
+    await page.locator('[name="contact.zip"]').fill('2948')
+    await page.getByRole('button', { name: 'Save' }).click()
+    await expect(page.getByText('Use the two-letter state code, like SC.')).toBeVisible({
+      timeout: 10_000,
+    })
+    await expect(
+      page.getByText('Use five digits, like 29483, or ZIP+4, like 29483-1234.'),
+    ).toBeVisible()
+    await expect(page).toHaveURL(/\/settings\/create/)
   })
 
   test('@smoke refuses a phone number nobody can dial, and says which field', async ({ page }) => {
@@ -110,7 +135,7 @@ test.describe('the settings form', () => {
       test.use({ colorScheme })
 
       test('@smoke @a11y has zero critical or serious axe violations', async ({ page }) => {
-        await expect(page.locator('#field-enabledLocales')).toBeVisible({ timeout: 20_000 })
+        await expect(page.locator('#field-primaryThumbnail')).toBeVisible({ timeout: 20_000 })
         // Payload disables every input while the form initialises; a disabled input is greyed,
         // and axe would be measuring a state nobody types into.
         await expect(page.locator('[name="siteTitle"]')).toBeEnabled()

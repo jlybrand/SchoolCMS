@@ -3,7 +3,7 @@ import type { CollectionConfig } from 'payload'
 import { districtOnly } from '@/access/tenant-scoped'
 import { libraryImageField } from '@/collections/fields/library-image'
 import { SOCIAL_PLATFORMS } from '@/content/site-settings'
-import { toEmailHref, toPhoneHref, toSocialHref } from '@/lib/contact'
+import { toEmailHref, toPhoneHref, toSocialHref, toStateCode, toZipCode } from '@/lib/contact'
 import { LOCALE_NAMES, TIER_1_LOCALES, localeFieldName } from '@/lib/locales'
 
 /**
@@ -31,7 +31,7 @@ const optional =
 
 export const Settings: CollectionConfig = {
   slug: 'settings',
-  labels: { singular: 'Site details', plural: 'Site details' },
+  labels: { singular: 'Site settings', plural: 'Site settings' },
   admin: { group: 'Site' },
 
   access: {
@@ -57,12 +57,38 @@ export const Settings: CollectionConfig = {
      * heads the admin's start screens (`src/admin/Brand/`). An upload, so its alt text is the
      * library's and rule 7 holds at upload — the reason this waited for the file library.
      */
+    /**
+     * Logos and thumbnails (Jason, 2026-11-18) — images from the site's own library, so each one's
+     * alt text is the library's (rule 7). `logo` keeps the name it was added under; it is the
+     * PRIMARY logo. The secondary logo and thumbnail are stored for uses not built yet.
+     */
     libraryImageField({
       name: 'logo',
-      label: 'Logo',
+      label: 'Primary logo',
       required: false,
       description:
-        'An image from this site’s library. The district site’s logo also appears at the top of the admin’s start screens.',
+        'Shown at the top of every page. The district site’s also appears at the top of the admin’s start screens. From this site’s library.',
+    }),
+    libraryImageField({
+      name: 'secondaryLogo',
+      label: 'Secondary logo',
+      required: false,
+      description:
+        'Another version of the logo, for places the primary one doesn’t suit. From this site’s library.',
+    }),
+    libraryImageField({
+      name: 'primaryThumbnail',
+      label: 'Primary thumbnail',
+      required: false,
+      description:
+        'The picture shown beside a link to this site when it’s shared — in a text, an email or on social media. From this site’s library.',
+    }),
+    libraryImageField({
+      name: 'secondaryThumbnail',
+      label: 'Secondary thumbnail',
+      required: false,
+      description:
+        'Another picture for the site, for places the primary one doesn’t suit. From this site’s library.',
     }),
     {
       name: 'contact',
@@ -70,12 +96,39 @@ export const Settings: CollectionConfig = {
       label: 'Contact details',
       admin: { description: 'Shown at the bottom of every page. Leave any of these empty.' },
       fields: [
+        // The address in parts (Jason, 2026-11-18), as an envelope has it.
+        { name: 'street', type: 'text', label: 'Street address', maxLength: 120 },
         {
-          name: 'address',
-          type: 'textarea',
-          label: 'Address',
-          admin: { description: 'One line per line, the way it goes on an envelope.' },
+          type: 'row',
+          fields: [
+            { name: 'city', type: 'text', label: 'City', maxLength: 80 },
+            {
+              name: 'state',
+              type: 'text',
+              label: 'State',
+              maxLength: 2,
+              admin: { placeholder: 'SC', width: '25%' },
+              validate: optional(toStateCode, 'Use the two-letter state code, like SC.'),
+            },
+            {
+              name: 'zip',
+              type: 'text',
+              label: 'Zip code',
+              maxLength: 10,
+              admin: { placeholder: '29483', width: '25%' },
+              validate: optional(
+                toZipCode,
+                'Use five digits, like 29483, or ZIP+4, like 29483-1234.',
+              ),
+            },
+          ],
         },
+        /**
+         * The one-box address the fields above replace. HIDDEN, not removed: expand/contract
+         * (CLAUDE.md) — a row saved before the split still shows it (`toSiteSettings`) until any
+         * part is filled. Drop the column once real migrations exist (`docs/phases/06` §16).
+         */
+        { name: 'address', type: 'textarea', label: 'Address', admin: { hidden: true } },
         {
           name: 'phone',
           type: 'text',
@@ -85,6 +138,13 @@ export const Settings: CollectionConfig = {
             toPhoneHref,
             'Use a phone number people can dial, like (843) 555-0100, without an extension.',
           ),
+        },
+        {
+          name: 'fax',
+          type: 'text',
+          label: 'Fax',
+          admin: { placeholder: '(843) 555-0101' },
+          validate: optional(toPhoneHref, 'Use a fax number like (843) 555-0101.'),
         },
         {
           name: 'email',
@@ -105,7 +165,7 @@ export const Settings: CollectionConfig = {
       fields: [
         {
           name: 'platform',
-          // A radio group, not a select — see `enabledLocales` below.
+          // A radio group, not a select: Payload's select is react-select, which fails axe.
           type: 'radio',
           required: true,
           label: 'Where',
@@ -137,26 +197,16 @@ export const Settings: CollectionConfig = {
     },
     {
       /**
-       * THE MECHANISM, NOT THE LIST. Which languages DD2 must serve is a Title VI question
-       * for counsel and the Title VI coordinator (`08` §10) — so every platform locale
-       * starts ON, and turning one off is a deliberate act by a district admin. English is
-       * not an option because it is not optional (`toEnabledLocales`).
-       *
-       * CHECKBOXES, NOT A MULTI-SELECT, which is what this field was first. Payload's select
-       * is react-select: its chosen values are draggable `role="button"`s with a remove
-       * button nested inside, and its search box has no accessible name — one serious and
-       * one critical axe violation (rule 6; tests/e2e/settings-fields.spec.ts). A checkbox is
-       * a native input with a label. Same reason `platform` above is a radio group.
-       *
-       * Tier 1 only. A Tier 2 locale has nothing behind it until Phase 7 (`08` §2).
+       * NO LONGER A PER-SITE SETTING (Jason, 2026-11-18: languages "should be handled
+       * differently"; every site is English only until then — `toSiteSettings`). HIDDEN, not
+       * removed: expand/contract (CLAUDE.md); nothing reads it. Drop its columns once real
+       * migrations exist (`docs/phases/06` §16). Which languages DD2 must serve remains a Title VI
+       * question for counsel (`08` §10).
        */
       name: 'enabledLocales',
       type: 'group',
       label: 'Languages',
-      admin: {
-        description:
-          'The languages this site is offered in, as well as English. Which languages the district has to offer is a language-access decision — check with the Title VI coordinator before turning one off.',
-      },
+      admin: { hidden: true },
       fields: TIER_1_LOCALES.map((locale) => ({
         name: localeFieldName(locale),
         type: 'checkbox' as const,

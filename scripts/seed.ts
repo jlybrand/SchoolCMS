@@ -97,9 +97,14 @@ const THEMED_TENANT = { slug: 'school-a', primaryColor: '#7a1f2b', secondaryColo
  */
 const SETTINGS: Record<string, Record<string, unknown>> = {
   'school-a': {
+    // The address in parts, plus a fax (Jason, 2026-11-18).
     contact: {
-      address: '100 School A Road\nSummerville, SC 29483',
+      street: '100 School A Road',
+      city: 'Summerville',
+      state: 'SC',
+      zip: '29483',
       phone: '(843) 555-0100',
+      fax: '(843) 555-0101',
       email: 'office@a.localhost',
     },
     socialLinks: [
@@ -108,9 +113,9 @@ const SETTINGS: Record<string, Record<string, unknown>> = {
     ],
     defaultDescription: 'School A is a seeded school in Dorchester School District Two.',
   },
+  // Languages are no longer a per-site setting: every site is English only (Jason, 2026-11-18).
   'school-b': {
     siteTitle: 'School B Elementary',
-    enabledLocales: { es: true, zhHans: false, ko: false, pt: false, ar: false },
   },
 }
 

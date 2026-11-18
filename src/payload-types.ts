@@ -1133,18 +1133,32 @@ export interface Setting {
    */
   siteTitle?: string | null;
   /**
-   * An image from this site’s library. The district site’s logo also appears at the top of the admin’s start screens.
+   * Shown at the top of every page. The district site’s also appears at the top of the admin’s start screens. From this site’s library.
    */
   logo?: (number | null) | Resource;
+  /**
+   * Another version of the logo, for places the primary one doesn’t suit. From this site’s library.
+   */
+  secondaryLogo?: (number | null) | Resource;
+  /**
+   * The picture shown beside a link to this site when it’s shared — in a text, an email or on social media. From this site’s library.
+   */
+  primaryThumbnail?: (number | null) | Resource;
+  /**
+   * Another picture for the site, for places the primary one doesn’t suit. From this site’s library.
+   */
+  secondaryThumbnail?: (number | null) | Resource;
   /**
    * Shown at the bottom of every page. Leave any of these empty.
    */
   contact?: {
-    /**
-     * One line per line, the way it goes on an envelope.
-     */
+    street?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zip?: string | null;
     address?: string | null;
     phone?: string | null;
+    fax?: string | null;
     email?: string | null;
   };
   /**
@@ -1161,9 +1175,6 @@ export interface Setting {
    * One or two sentences about the school, for search results and link previews. Used only for a page that has no description and no text of its own.
    */
   defaultDescription?: string | null;
-  /**
-   * The languages this site is offered in, as well as English. Which languages the district has to offer is a language-access decision — check with the Title VI coordinator before turning one off.
-   */
   enabledLocales?: {
     es?: boolean | null;
     zhHans?: boolean | null;
@@ -2014,11 +2025,19 @@ export interface SettingsSelect<T extends boolean = true> {
   tenant?: T;
   siteTitle?: T;
   logo?: T;
+  secondaryLogo?: T;
+  primaryThumbnail?: T;
+  secondaryThumbnail?: T;
   contact?:
     | T
     | {
+        street?: T;
+        city?: T;
+        state?: T;
+        zip?: T;
         address?: T;
         phone?: T;
+        fax?: T;
         email?: T;
       };
   socialLinks?:

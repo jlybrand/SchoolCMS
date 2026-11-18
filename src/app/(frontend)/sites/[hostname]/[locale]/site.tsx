@@ -93,6 +93,7 @@ export const SiteFrame = async ({
       <AlertBar alerts={alerts} />
       <SiteHeader
         siteName={site.siteName}
+        logo={site.settings.logo}
         primary={navigation.primary}
         utility={navigation.utility}
         currentPath={currentPath}

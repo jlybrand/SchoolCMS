@@ -184,10 +184,9 @@ test.describe('site search', () => {
     await expect(page.getByRole('search', { name: 'Site search' })).toBeVisible()
   })
 
-  test('@rtl @a11y the results page in Arabic', async ({ page, baseURL }) => {
-    await page.goto(`${siteUrl(baseURL, 'localhost', '/ar/search')}?q=zzzznothingmatchesthis`)
-    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl')
-    await expect(page.getByRole('search', { name: 'Search again' })).toBeVisible()
-    expect(await blockingViolations(page)).toEqual([])
-  })
+  /*
+   * The Arabic results page (`@rtl`) is retired while every site is English only (Jason,
+   * 2026-11-18): `/ar/search` is a 404. RTL stays guarded by the component axe gate (every story,
+   * LTR and RTL) and the logical-properties lint; bring this back when a language is served.
+   */
 })

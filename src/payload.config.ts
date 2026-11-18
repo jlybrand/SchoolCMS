@@ -54,7 +54,7 @@ export default buildConfig({
   /** The file library takes nothing over 25 MB (`MAX_UPLOAD_BYTES`, the school's form says so). */
   upload: { limits: { fileSize: MAX_UPLOAD_BYTES } },
   admin: {
-    /** Browser tabs read "Approvals - DD2 Websites", not Payload's default "- Payload". */
+    /** Browser tabs read "Approvals - DDTwo Websites", not Payload's default "- Payload". */
     meta: { titleSuffix: `- ${PLATFORM_NAME}` },
     user: Users.slug,
     importMap: { baseDir: path.resolve(dirname) },
@@ -294,7 +294,7 @@ export default buildConfig({
         email: resendAdapter({
           apiKey: process.env.RESEND_API_KEY,
           defaultFromAddress: process.env.RESEND_FROM_ADDRESS || 'onboarding@resend.dev',
-          defaultFromName: 'DD2 Websites',
+          defaultFromName: PLATFORM_NAME,
         }),
       }
     : {}),

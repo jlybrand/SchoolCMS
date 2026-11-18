@@ -1,5 +1,7 @@
-import { toEmailHref, toPhoneHref, toSocialHref } from '@/lib/contact'
-import { toEnabledLocales } from '@/lib/locales'
+import { toEmailHref, toPhoneHref, toSocialHref, toStateCode, toZipCode } from '@/lib/contact'
+import { DEFAULT_LOCALE } from '@/lib/locales'
+
+import { toImageAsset } from './image-asset'
 
 import type { ContactLink, SiteSettings, SocialLink, SocialPlatform } from './types'
 
@@ -68,6 +70,36 @@ const toSocial = (value: unknown): SocialLink[] => {
   return links
 }
 
+/**
+ * The address lines (Jason, 2026-11-18: street, city, state and zip as their own fields): the
+ * street, then "City, ST 12345", each line only what it has. A row saved before the split keeps
+ * its one-box `address`, read line by line, until any of the parts is filled.
+ */
+const toAddress = (contact: Row): string[] => {
+  const street = str(contact.street)
+  const city = str(contact.city)
+  const state = toStateCode(contact.state)
+  const zip = toZipCode(contact.zip)
+
+  if (street === null && city === null && state === null && zip === null) {
+    return (str(contact.address) ?? '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line !== '')
+  }
+
+  const place = [city, [state, zip].filter((part) => part !== null).join(' ')]
+    .filter((part) => part !== null && part !== '')
+    .join(', ')
+  return [street, place].filter((line): line is string => line !== null && line !== '')
+}
+
+/** A fax number shown as typed — but only one a phone could dial (`toPhoneHref`). */
+const toFax = (value: unknown): string | null => {
+  const text = str(value)
+  return text !== null && toPhoneHref(text) !== null ? text : null
+}
+
 export const toSiteSettings = (doc: unknown): SiteSettings => {
   const row: Row = isRow(doc) ? doc : {}
   const contact: Row = isRow(row.contact) ? row.contact : {}
@@ -75,15 +107,19 @@ export const toSiteSettings = (doc: unknown): SiteSettings => {
   return {
     siteTitle: str(row.siteTitle),
     contact: {
-      address: (str(contact.address) ?? '')
-        .split('\n')
-        .map((line) => line.trim())
-        .filter((line) => line !== ''),
+      address: toAddress(contact),
       phone: toContactLink(contact.phone, toPhoneHref),
+      fax: toFax(contact.fax),
       email: toContactLink(contact.email, toEmailHref),
     },
     social: toSocial(row.socialLinks),
     defaultDescription: str(row.defaultDescription),
-    enabledLocales: toEnabledLocales(row.enabledLocales),
+    // English only, until languages are handled another way (Jason, 2026-11-18). The row's old
+    // `enabledLocales` checkboxes are no longer read; `toEnabledLocales` waits for Phase 7.
+    enabledLocales: [DEFAULT_LOCALE],
+    logo: toImageAsset(row.logo),
+    secondaryLogo: toImageAsset(row.secondaryLogo),
+    primaryThumbnail: toImageAsset(row.primaryThumbnail),
+    secondaryThumbnail: toImageAsset(row.secondaryThumbnail),
   }
 }

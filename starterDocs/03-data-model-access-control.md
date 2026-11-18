@@ -408,8 +408,8 @@ seam; an unused collection is maintenance.
 - `theme` — design tokens (logo, palette, type scale, hero style, favicon) plus per-locale
   typography tokens for CJK line-height and font stacks (`08` §6).
 - `navigation` — primary/utility/footer menus.
-- `settings` — site title, contact block, social links, default SEO/OG,
-  **`enabledLocales`** (`08` §2).
+- `settings` ("Site settings") — site name, address, phone, fax, email, social links, logos,
+  thumbnails, site description. (Languages were here until 2026-11-18; see below.)
 
 **How "per tenant" is expressed.** A Payload global is one document for the whole install, so
 these are not Payload globals. Each is a tenant-scoped **collection** registered with
@@ -431,21 +431,32 @@ string checked against an allowlist of four shapes — a site path, an `http(s)`
 and `tel:` — by the field validator and again by the content mapper. Menus have no nesting; a
 section's own pages are reached through `ChildPageNav` (§3.1).
 
-`settings` is built: an optional site name that replaces the tenant's name wherever the site
-names itself; a contact block (address, phone, email) and up to six social accounts from a
-closed list of platforms, both rendered in the footer; a site description used only for a page
-with no description and no prose of its own; and the enabled languages. Phone, email and social
-addresses are checked by the field validator and again by the content mapper, as menu
-destinations are. A default Open Graph image waits for `media` (Phase 6).
+`settings` is built — "Site settings" in the admin, the one place a site's details come from
+(Jason, 2026-11-18):
 
-`enabledLocales` is one yes/no per Tier 1 locale, every one **on** by default, and English is
-not among them because it cannot be turned off. Only an explicit "no" removes a language: a
-tenant with no row, and a row saved before the platform gained a locale, both serve it. That
-direction is deliberate — which languages DD2 must offer is a Title VI decision (`08` §10), so
-the platform's failure mode is one language too many, never one too few. The list drives four
-things that must agree: which locale prefixes are pages at all (any other 404s), `hreflang`,
-the sitemap, and the language switcher. Tier 2 locales join it with the translation pipeline
-(`08` §2, Phase 7).
+- **Site name** — optional; replaces the tenant's name wherever the site names itself.
+- **Contact** — street address, city, state (two-letter code), zip (five digits or ZIP+4), phone,
+  fax and email. Rendered in the footer: the address as "street" then "City, ST zip", phone and
+  email as links, the fax as text (nothing dials a fax from a page). Each part is checked by its
+  field validator and again by the content mapper, as menu destinations are.
+- **Social media** — up to six accounts from a closed list of platforms, in the footer.
+- **Primary and secondary logo, primary and secondary thumbnail** — images from the site's own
+  library, so each one's alt text is the library's (rule 7). The primary logo heads the public
+  header (beside the name, silent: the name names the link) and, for the district site, the
+  admin's start screens. The primary thumbnail is the site's share image (`og:image`). The
+  secondary logo and thumbnail are stored for uses not built yet (a favicon, a card picture).
+- **Site description** — used only for a page with no description and no prose of its own.
+
+**Languages are not a site setting** (Jason, 2026-11-18: they "should be handled differently").
+Until that lands, **every site is English only**: `enabledLocales` is always `['en']`, so every
+other locale prefix 404s and nothing advertises another language — no `hreflang` alternate, no
+sitemap entry, no switcher. The locale routing itself is unchanged and ready. Which languages DD2
+must offer remains a Title VI decision for counsel (`08` §10), recorded, not resolved here.
+
+**Expand, not yet contract.** The one-box `contact.address` and the per-site `enabledLocales`
+checkboxes are hidden, not removed: a row saved before the split still shows its old address
+until any part is filled, and nothing reads the checkboxes. Their columns are dropped once real
+migrations exist (`docs/phases/06` §16).
 
 ## 6. Access-control model
 

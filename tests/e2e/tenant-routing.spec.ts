@@ -1,4 +1,3 @@
-import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 
 /**
@@ -165,22 +164,6 @@ test.describe('site menus (`03` §5)', () => {
     )
   })
 
-  test('@smoke menu links keep the visitor in their language', async ({ page }) => {
-    await page.goto('/es/about')
-
-    const main = page.getByRole('navigation', { name: 'Main' })
-    await expect(main.getByRole('link', { name: 'Staff directory' })).toHaveAttribute(
-      'href',
-      '/es/about/staff',
-    )
-    // Still current: the marker compares unprefixed paths, so it works in every locale.
-    await expect(main.getByRole('link', { name: 'About' })).toHaveAttribute('aria-current', 'page')
-    // An external destination is not a page of this site and takes no prefix.
-    await expect(
-      page.getByRole('navigation', { name: 'Quick links' }).getByRole('link'),
-    ).toHaveAttribute('href', 'https://outlook.office.com')
-  })
-
   test('@smoke a menu link leads to the page it names — the seeded links all resolve', async ({
     page,
   }) => {
@@ -226,96 +209,64 @@ test.describe('per-tenant theme (`02` §4.4)', () => {
   })
 })
 
-test.describe('locale routing', () => {
+test.describe('languages: English only, until they are handled another way', () => {
+  /**
+   * Jason, 2026-11-18: languages are no longer a per-site setting, and every site is English
+   * only until the new approach lands (Phase 7, `08`). The locale ROUTING is unchanged — the
+   * proxy still recognises `/es`, `/ar` … — but no site serves them, so each is a 404, and
+   * nothing advertises one: no switcher, no alternates, no translated sitemap entries.
+   *
+   * NOT TESTED HERE MEANWHILE: a right-to-left PAGE (`dir="rtl"` on `/ar`), since none renders.
+   * RTL stays guarded by the component axe gate (every story, LTR and RTL) and by stylelint's
+   * logical-properties rule (rule 5) until a language is served again.
+   */
   test.use(site('a.localhost'))
 
-  test('@smoke serves a Tier 1 locale under its path prefix', async ({ page }) => {
-    await page.goto('/es/about')
-    await expect(page.locator('html')).toHaveAttribute('lang', 'es')
-    // Untranslated until the render-layer pipeline lands (Phase 7, `08` §4) — the locale
-    // routing is what is under test here, not the translation.
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('About Our School')
+  test('@smoke a translated address is not a page', async ({ request }) => {
+    expect((await request.get('/about')).status()).toBe(200)
+    for (const path of ['/es/about', '/ar', '/ko', '/zh-Hans/about'])
+      expect((await request.get(path)).status(), path).toBe(404)
   })
 
-  test('@smoke @rtl sets dir="rtl" for Arabic', async ({ page }) => {
-    // Release-blocking (`08` §6). Verified from Phase 2 so RTL is never a retrofit.
-    await page.goto('/ar')
-    await expect(page.locator('html')).toHaveAttribute('lang', 'ar')
-    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl')
-  })
-
-  test('@smoke emits an hreflang alternate for every enabled locale', async ({ request }) => {
-    /**
-     * `08` §5 — every locale plus `x-default`, built from the page's RESOLVED path so the
-     * alternates point at this page in another language rather than at whatever was typed.
-     */
-    const { alternates } = await documentFor(request, '/about')
-
-    // Absolute, on the TENANT's origin: a crawler has no base URL to resolve against.
-    expect(alternates).toEqual({
+  test('@smoke nothing offers another language: no switcher, no alternates, no sitemap entries', async ({
+    page,
+    request,
+  }) => {
+    expect((await documentFor(request, '/about')).alternates).toEqual({
       en: 'http://a.localhost/about',
-      es: 'http://a.localhost/es/about',
-      'zh-Hans': 'http://a.localhost/zh-Hans/about',
-      ko: 'http://a.localhost/ko/about',
-      pt: 'http://a.localhost/pt/about',
-      ar: 'http://a.localhost/ar/about',
       'x-default': 'http://a.localhost/about',
     })
-  })
 
-  test('@smoke language switcher lists each language in its own script', async ({ page }) => {
-    /**
-     * `08` §6 — each option carries `lang` and is written as its own speakers write it.
-     * Never flag icons: a flag is a country, not a language.
-     */
-    await page.goto('/')
-    const nav = page.getByRole('navigation', { name: 'Language' })
-    await expect(nav.getByRole('link', { name: 'Español' })).toHaveAttribute('lang', 'es')
-    await expect(nav.getByRole('link', { name: '한국어' })).toHaveAttribute('lang', 'ko')
-    await expect(nav.getByRole('link', { name: 'العربية' })).toHaveAttribute('lang', 'ar')
-  })
-
-  test('@smoke the language switcher is site chrome — in the banner, not the page content', async ({
-    page,
-  }) => {
     await page.goto('/about')
-    await expect(
-      page.getByRole('banner').getByRole('navigation', { name: 'Language' }),
-    ).toHaveCount(1)
-    await expect(page.getByRole('main').getByRole('navigation', { name: 'Language' })).toHaveCount(
-      0,
-    )
-  })
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+    await expect(page.getByRole('navigation', { name: 'Language' })).toHaveCount(0)
 
-  test('@smoke @a11y a localized page has zero critical or serious axe violations', async ({
-    page,
-  }) => {
-    await page.goto('/ar')
-    const results = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-      .analyze()
-
-    const blocking = results.violations.filter((v) =>
-      ['critical', 'serious'].includes(v.impact ?? ''),
-    )
-    expect(blocking.map((v) => v.id)).toEqual([])
+    const xml = await (await request.get('/sitemap.xml')).text()
+    expect(xml).toContain('<loc>http://a.localhost/about</loc>')
+    for (const prefix of ['/es/', '/ar/', '/zh-Hans/', '/ko/', '/pt/'])
+      expect(xml).not.toContain(prefix)
   })
 })
 
 test.describe('per-tenant settings (`03` §5)', () => {
-  test.describe('a tenant with contact details and every language', () => {
+  test.describe('a tenant with contact details', () => {
     test.use(site('a.localhost'))
 
     test('@smoke the footer carries the contact block and the social links', async ({ page }) => {
-      await page.goto('/es/about')
+      await page.goto('/about')
       const footer = page.getByRole('contentinfo')
+      const address = footer.locator('address')
 
-      await expect(footer.locator('address')).toContainText('100 School A Road')
-      // Never locale-prefixed, on a Spanish page: neither is a path on this site.
+      // The address in parts, as an envelope has it (Jason, 2026-11-18).
+      await expect(address).toContainText('100 School A Road')
+      await expect(address).toContainText('Summerville, SC 29483')
       await expect(footer.getByRole('link', { name: '(843) 555-0100' })).toHaveAttribute(
         'href',
         'tel:8435550100',
       )
+      // A fax is text, not a link.
+      await expect(address).toContainText('Fax: (843) 555-0101')
+      await expect(footer.getByRole('link', { name: /555-0101/ })).toHaveCount(0)
       await expect(footer.getByRole('link', { name: 'office@a.localhost' })).toHaveAttribute(
         'href',
         'mailto:office@a.localhost',
@@ -326,7 +277,7 @@ test.describe('per-tenant settings (`03` §5)', () => {
     })
   })
 
-  test.describe('a tenant that offers Spanish only', () => {
+  test.describe('a tenant with its own name', () => {
     test.use(site('b.localhost'))
 
     test('@smoke its name is the one its settings give it, everywhere the site names itself', async ({
@@ -338,33 +289,6 @@ test.describe('per-tenant settings (`03` §5)', () => {
       ).toHaveAttribute('href', '/')
       await expect(page.getByRole('contentinfo')).toContainText('School B Elementary')
     })
-
-    test('@smoke a language it has not enabled is not a page', async ({ request }) => {
-      // The proxy recognises `/ar` for every tenant; the tenant's own list decides (`08` §2).
-      expect((await request.get('/es/about')).status()).toBe(200)
-      expect((await request.get('/ar/about')).status()).toBe(404)
-      expect((await request.get('/ko')).status()).toBe(404)
-    })
-
-    test('@smoke hreflang, the switcher and the sitemap all read the same list', async ({
-      page,
-      request,
-    }) => {
-      expect((await documentFor(request, '/about')).alternates).toEqual({
-        en: 'http://b.localhost/about',
-        es: 'http://b.localhost/es/about',
-        'x-default': 'http://b.localhost/about',
-      })
-
-      await page.goto('/about')
-      await expect(page.getByRole('navigation', { name: 'Language' }).getByRole('link')).toHaveText(
-        ['English', 'Español'],
-      )
-
-      const xml = await (await request.get('/sitemap.xml')).text()
-      expect(xml).toContain('<loc>http://b.localhost/es/about</loc>')
-      expect(xml).not.toContain('/ar/')
-    })
   })
 })
 
@@ -375,7 +299,8 @@ test.describe('search engines and link previews (`01` §3 item 13)', () => {
     test('@smoke a page describes itself without anyone having written SEO fields', async ({
       request,
     }) => {
-      const html = await (await request.get('/es/about')).text()
+      // English: the only language a site serves for now (Jason, 2026-11-18).
+      const html = await (await request.get('/about')).text()
       const meta = (name: string) =>
         new RegExp(`<meta (?:name|property)="${name}" content="([^"]*)"`).exec(html)?.[1]
 
@@ -383,9 +308,9 @@ test.describe('search engines and link previews (`01` §3 item 13)', () => {
       expect(meta('description')).toBe('A seeded top-level page, so path walking has a target.')
       expect(meta('og:title')).toBe('About Our School — School A')
       expect(meta('og:site_name')).toBe('School A')
-      expect(meta('og:url')).toBe('http://a.localhost/es/about')
+      expect(meta('og:url')).toBe('http://a.localhost/about')
       expect(/<link rel="canonical" href="([^"]+)"/.exec(html)?.[1]).toBe(
-        'http://a.localhost/es/about',
+        'http://a.localhost/about',
       )
     })
 
@@ -401,9 +326,7 @@ test.describe('search engines and link previews (`01` §3 item 13)', () => {
       expect(body).toContain('Sitemap: http://a.localhost/sitemap.xml')
     })
 
-    test('@smoke sitemap.xml lists every reachable page in every locale, and only those', async ({
-      request,
-    }) => {
+    test('@smoke sitemap.xml lists every reachable page, and only those', async ({ request }) => {
       const response = await request.get('/sitemap.xml')
       expect(response.status()).toBe(200)
       expect(response.headers()['content-type']).toContain('application/xml')
@@ -412,16 +335,16 @@ test.describe('search engines and link previews (`01` §3 item 13)', () => {
       const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1])
 
       /**
-       * 3 seeded pages x 6 locales, plus the announcement list x 6. Announcements themselves are
-       * left out of the count: specs running alongside publish and delete them on this site.
-       * The front page is `/`, never `/home`.
+       * 3 seeded pages plus the announcement list — in English only, the one language a site
+       * serves for now (Jason, 2026-11-18). Announcements themselves are left out of the count:
+       * specs running alongside publish and delete them on this site. The front page is `/`,
+       * never `/home`.
        */
       const notPosts = locs.filter((loc) => !/\/news\/[^/]+$/.test(loc ?? ''))
-      expect(notPosts).toHaveLength(24)
+      expect(notPosts).toHaveLength(4)
       expect(locs).toContain('http://a.localhost/news')
-      expect(locs).toContain('http://a.localhost/es/news')
       expect(locs).toContain('http://a.localhost/')
-      expect(locs).toContain('http://a.localhost/ar/about/staff')
+      expect(locs).toContain('http://a.localhost/about/staff')
       expect(locs.some((loc) => loc?.includes('/home'))).toBe(false)
       // Every URL is this tenant's.
       expect(locs.every((loc) => loc?.startsWith('http://a.localhost/'))).toBe(true)
