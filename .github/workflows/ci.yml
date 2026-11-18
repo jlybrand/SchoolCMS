@@ -4,15 +4,30 @@ name: CI
 # reads it. A PR that mixes prose with anything else runs in full (`paths-ignore` skips a run only
 # when EVERY changed file matches). There is no branch protection with required checks, so a run
 # that never starts blocks nothing.
+#
+# ACTIONS MINUTES (Jason, 2026-11-17: the plan's minutes were nearly gone). Measured over 40 runs,
+# a run billed ~30 minutes, and pushes to main were 48% of the total: every merge re-ran the whole
+# suite its PR had just passed. So:
+#   - a PULL REQUEST runs everything, as before;
+#   - a DRAFT pull request runs nothing — mark it ready for review to run CI;
+#   - a PUSH TO MAIN runs typecheck + lint and unit + integration only (the isolation suite stays
+#     on main). E2E, the Storybook axe gate and Lighthouse ran on the PR;
+#   - the DEPENDENCY AUDIT runs when the lockfile can have changed, and weekly on its own.
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore: ['docs/**', 'starterDocs/**', '**/*.md']
   push:
     branches: [main]
     paths-ignore: ['docs/**', 'starterDocs/**', '**/*.md']
+  schedule:
+    # Mondays, 11:00 UTC: the audit alone. A new advisory against an unchanged lockfile shows up
+    # here within a week, without a full run on every merge.
+    - cron: '0 11 * * 1'
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # The event is in the group so the weekly audit and a push to main never cancel each other.
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -31,10 +46,13 @@ jobs:
   #   public      Lighthouse audits the public home page (`lighthouserc.json`); the admin planes
   #               (`src/admin`, `(payload)`, `(preview)`) and tests cannot change it.
   #   deps        the dependency audit reads only the lockfile.
+  #
+  # A push to main runs none of the three (the PR did); the weekly schedule runs the audit only.
   changes:
     name: what changed
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     outputs:
       components: ${{ steps.filter.outputs.components }}
       public: ${{ steps.filter.outputs.public }}
@@ -47,8 +65,12 @@ jobs:
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.base_ref }}
         run: |
+          if [ "$EVENT" = "schedule" ]; then
+            printf 'components=false\npublic=false\ndeps=true\n' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if [ "$EVENT" != "pull_request" ]; then
-            printf 'components=true\npublic=true\ndeps=true\n' >> "$GITHUB_OUTPUT"
+            printf 'components=false\npublic=false\ndeps=false\n' >> "$GITHUB_OUTPUT"
             exit 0
           fi
           files=$(git diff --name-only "origin/$BASE...HEAD")
@@ -90,6 +112,11 @@ jobs:
     name: typecheck + lint
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Not on the weekly audit, and not on a draft. Every other test job waits on this one, so
+    # skipping it skips them.
+    if: >-
+      github.event_name != 'schedule' &&
+      (github.event_name != 'pull_request' || !github.event.pull_request.draft)
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -193,21 +220,19 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
-  # The WHOLE e2e suite, split across two machines — not only `@smoke`. Smoke alone let a
-  # regression in a spec it does not tag reach a PR (2026-11-12: `page-toolbar.spec.ts`, when the
-  # page header changed). Each shard builds and seeds its own server and database, so they share
-  # nothing. Two, not four: every shard pays for its own build, and two keeps CI inside the Pro
-  # plan's included Actions minutes (Jason, 2026-11-12).
+  # The WHOLE e2e suite — not only `@smoke`. Smoke alone let a regression in a spec it does not
+  # tag reach a PR (2026-11-12: `page-toolbar.spec.ts`, when the page header changed).
+  #
+  # ONE machine, TWO workers (Jason, 2026-11-17), in place of two shards that each installed,
+  # built and seeded on their own: the same suite, one build instead of two. Two workers share
+  # one `next start`; locally the suite runs at four. Pull requests only — a merge's PR ran it.
   e2e:
-    name: build + e2e + axe gate (${{ matrix.shard }}/2)
+    name: build + e2e + axe gate
     runs-on: ubuntu-latest
-    # Half the suite, one worker (`playwright.config.ts`), after a build: ~10 minutes.
-    timeout-minutes: 25
+    # The whole suite at two workers, after a build: ~10 minutes.
+    timeout-minutes: 30
     needs: test
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2]
+    if: github.event_name == 'pull_request'
     # Playwright's own image, for the reason the component job gives. Inside a container job
     # the Postgres service is reached by its name, `postgres`, not through a published port.
     container: mcr.microsoft.com/playwright:v1.62.1-noble
@@ -256,6 +281,14 @@ jobs:
         # Chromium still does, but Node's own requests (the specs' API calls, the server's
         # readiness check) go through glibc, which does not. The image runs as root.
         run: echo '127.0.0.1 a.localhost b.localhost c.localhost unknown.localhost' >> /etc/hosts
+      - name: Next's build cache
+        # Next reuses its compile cache between builds. Keyed on the lockfile and the source, so a
+        # change rebuilds only what it touched; the restore key starts from the nearest older one.
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('src/**', 'next.config.*') }}
+          restore-keys: next-${{ hashFiles('pnpm-lock.yaml') }}-
       - name: Build
         run: pnpm run build
       - name: Seed tenants + the CI district admin
@@ -269,12 +302,12 @@ jobs:
         # (tests/e2e/support/admin-session.ts) — a gate that silently stops covering the
         # admin plane while still reporting green is the failure mode being avoided.
         run: pnpm run seed
-      - name: E2E + axe gate, this shard (zero critical/serious to merge)
-        run: pnpm exec playwright test --shard=${{ matrix.shard }}/2
+      - name: E2E + axe gate (zero critical/serious to merge)
+        run: pnpm exec playwright test --workers=2
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report-${{ matrix.shard }}
+          name: playwright-report
           path: playwright-report/
           retention-days: 7
 
@@ -313,6 +346,12 @@ jobs:
           node-version: '${{ env.NODE_VERSION }}'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Next's build cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('src/**', 'next.config.*') }}
+          restore-keys: next-${{ hashFiles('pnpm-lock.yaml') }}-
       - run: pnpm run build
       - name: Seed tenants
         # `lighthouserc.json` audits `http://localhost:3000/`, and bare `localhost` is the
@@ -335,8 +374,9 @@ jobs:
 
   # Dependency scanning per `06` §2.7. Payload version bumps are always a deliberate,
   # separate PR — never bundled with feature work (`09` §2).
-  # Only when the lockfile can have changed, and on every push to main: an advisory against an
-  # unchanged lockfile is not this PR's to fix, and the audit is red by choice today (transitive advisories).
+  # Only when the lockfile can have changed on a PR, and weekly on the schedule (Jason,
+  # 2026-11-17): an advisory against an unchanged lockfile is not a PR's to fix, and a weekly run
+  # catches it without a full CI run on every merge.
   security:
     name: dependency audit
     runs-on: ubuntu-latest

@@ -29,11 +29,16 @@ against the production directory.
 
 ```
 PR:   typecheck → lint (boundary + logical-properties) → unit → integration → build
-      → e2e (full, sharded) → axe gate → Lighthouse budget* → Preview deploy
+      → e2e (full, one machine) → axe gate → Lighthouse budget* → Preview deploy
       (* and the component axe gate and dependency audit: only when the PR can affect them — `06` §3)
-main: (all above) → Staging deploy → DB migration (guarded) → post-deploy smoke + a11y
+      (a DRAFT PR runs nothing; marking it ready runs the above)
+main: typecheck → lint → unit → integration (the PR ran the rest) → Staging deploy → DB migration (guarded) → post-deploy smoke + a11y
 rel:  tag → manual approval → Production deploy → migration → health/smoke → cache warm
 ```
+
+_Actions minutes (Jason, 2026-11-17):_ a merge no longer re-runs e2e, the Storybook axe gate and
+Lighthouse, which its PR has just passed. Those were nearly half the minutes used. The dependency
+audit runs on a lockfile change and weekly (Mondays), not on every merge.
 
 - **DB migrations** are generated from the Payload schema, reviewed, and applied as a
   guarded, reversible step (expand/contract; never a destructive change without a two-step
