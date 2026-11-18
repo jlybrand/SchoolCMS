@@ -223,9 +223,11 @@ test.describe('school plane — their school, not a tenant picker', () => {
     await expect(nav.locator('#nav-school')).toHaveText(/Your school\s*School A/, {
       timeout: 20_000,
     })
-    await expect(nav.getByRole('link', { name: 'News and announcements' })).toBeVisible()
-    await expect(nav.getByRole('link', { name: 'Tenants', exact: true })).toHaveCount(0)
-    await expect(nav.getByRole('link', { name: 'Users', exact: true })).toHaveCount(0)
+    // Payload's links sit in the "Everything else" fold (2026-11-18), hidden from role queries
+    // while it is closed: found by their ids, so the checks hold open or shut.
+    await expect(nav.locator('#nav-posts')).toBeAttached()
+    await expect(nav.locator('#nav-tenants')).toHaveCount(0)
+    await expect(nav.locator('#nav-users')).toHaveCount(0)
   })
 
   test('their account shows only what is theirs: email, name, password and their school', async ({
@@ -283,10 +285,11 @@ adminTest.describe('school plane — the district is unchanged', () => {
       await expect(page.locator('#list-task')).toHaveCount(0)
       await expect(page.locator('#nav-school')).toHaveCount(0)
       const nav = page.locator('aside.nav')
-      // Payload's own links, folded under "Everything else" (2026-11-18); Users is in the menu too.
+      // Payload's own links, folded under "Everything else" (2026-11-18) and found by id, open or
+      // shut; Users is in the menu too.
       const fold = nav.locator('#nav-everything-else')
-      await expect(fold.getByRole('link', { name: 'Tenants', exact: true })).toHaveCount(1)
-      await expect(fold.getByRole('link', { name: 'Users', exact: true })).toHaveCount(1)
+      await expect(fold.locator('#nav-tenants')).toHaveCount(1)
+      await expect(fold.locator('#nav-users')).toHaveCount(1)
       await expect(nav.locator('#nav-menu-users')).toHaveAttribute(
         'href',
         '/admin/collections/users',

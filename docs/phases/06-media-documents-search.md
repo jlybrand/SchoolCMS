@@ -1067,3 +1067,53 @@ Files opens on the folders, by site, and Announcements on every board (opening o
 and the 15px minimum; and a school manager's menu, their Pages opening straight on their
 school's pages, and their Announcements on their own boards only. `site-flyout.test.ts` pins
 the REST queries, the grouping of folders and boards by site, and where a file leads.
+
+## 15. The admin's brand (Jason, 2026-11-18)
+
+White-label the **platform**, not per school: one brand across both planes. Jason's decisions:
+the platform's name is "DD2 Websites"; its logo and mark are **fixed files** committed beside their
+component in `src/admin/Brand/` and imported (the build serves them as hashed assets); the **district's own logo** is uploaded through the district site's Settings;
+the district's colors are primary `#2b3170`, secondary `#99a1e7` and white; it applies on the
+sign-in screens and inside the admin.
+
+**The platform's logo and mark** (`src/admin/Brand/PlatformGraphics.tsx`), in Payload's graphics
+slots (`admin.components.graphics`):
+
+- `PlatformLogo` (`Logo`): `district-header-logo.svg`, alt "DD2 Websites", on the sign-in screens —
+  black on transparent, so on a white plate, visible in the dark theme too.
+- `PlatformMark` (`Icon`): `district-footer-home-logo.svg` (a primary circle). Payload draws it only as the content of the
+  breadcrumb's home link, so its alt — "Dashboard" — is that link's whole name.
+- The browser tab suffix is `- ${PLATFORM_NAME}` (`src/admin/Brand/brand.ts`).
+
+**The district's logo:** Settings has a `logo` field (`libraryImageField`, an image from the
+site's own library, so its alt text is the library's — rule 7; not required). `getAdminBrand`
+(`brand-data.ts`) reads the district site's Settings row with access overridden — Settings are
+district-only, but a school's start screen carries the district's logo too — and `adminBrand`
+(`brand.ts`, pure, over `toImageAsset`) maps it: the library alt, empty when decorative; no logo
+for none, an unpopulated id, or a document.
+
+**The band** (`BrandBand`) heads both start screens, above each `h1` (`DistrictDashboard`,
+`SchoolHome`): the district's logo and "DD2 Websites" — on a school manager's, their **school's
+name** in its place (Jason, 2026-11-18; `adminBrand(settings, school)`, from `schoolsOf`). It is **white in both themes**, so a logo
+made for a white page shows as made, with the name in primary (11.8:1), a primary rule and a
+secondary stripe below. Not a heading.
+
+**The colors** (`src/app/(payload)/admin-brand.css`, imported after `admin-overrides.css`, which
+stays WCAG fixes only). Measured before use:
+
+| Theme | Accent                                            | On it             | Hover              |
+| ----- | ------------------------------------------------- | ----------------- | ------------------ |
+| Light | primary `#2b3170` (11.8:1 on white)               | white (11.8:1)    | `#1d2150` (15.2:1) |
+| Dark  | secondary `#99a1e7` (6.5–8.6:1 on Payload's dark) | `#14183d` (7.0:1) | `#b4baee` (9.1:1)  |
+
+Primary is 1.6:1 on the dark background and never used there; secondary is 2.4:1 on white and
+never carries text in the light theme. `--dd2-brand-*` variables carry them, applied to Payload's
+primary button (its `--bg-color`/`--color`/`--hover-*` variables), its side-menu current-page bar
+(`.nav__link-indicator`), and our menu's current item (`Nav.module.css`).
+
+**Tests.** `tests/unit/admin/brand.test.ts` (the name; the logo and its alt; decorative; none).
+`tests/e2e/admin-brand.spec.ts`: the sign-in logo loaded and the tab title, axe in both themes;
+the sign-in Log in button in the accent per theme; the district's band with a fixture logo set in
+Settings (restored, or the row removed, after), the breadcrumb home link named "Dashboard", the
+current menu item's color per theme, axe in both themes; a school's start screen's band names the
+school, not the platform.

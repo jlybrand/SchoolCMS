@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { districtOnly } from '@/access/tenant-scoped'
+import { libraryImageField } from '@/collections/fields/library-image'
 import { SOCIAL_PLATFORMS } from '@/content/site-settings'
 import { toEmailHref, toPhoneHref, toSocialHref } from '@/lib/contact'
 import { LOCALE_NAMES, TIER_1_LOCALES, localeFieldName } from '@/lib/locales'
@@ -13,8 +14,8 @@ import { LOCALE_NAMES, TIER_1_LOCALES, localeFieldName } from '@/lib/locales'
  * `src/collections/Navigation.ts` gives: registered `isGlobal` with the multi-tenant plugin,
  * which makes `tenant` unique, and `03` §6.1 puts settings out of a school-manager's reach.
  *
- * NOT HERE: a default Open Graph image. It is an upload and waits for `media` (Phase 6) — an
- * image URL would bypass alt-required-at-upload (CLAUDE.md rule 7), as for the theme's logo.
+ * NOT HERE YET: a default Open Graph image — an upload, like the logo, which now picks from the
+ * site's library (`logo`); an image URL would bypass alt-required-at-upload (CLAUDE.md rule 7).
  *
  * Per CLAUDE.md's TDD exception table the declarations are not test-first. The behaviour is
  * the validators in `src/lib/contact.ts` and the mapper in `src/content/site-settings.ts`,
@@ -51,6 +52,18 @@ export const Settings: CollectionConfig = {
           'Shown in the header, the footer and the browser tab. Leave empty to use the name the site was set up with.',
       },
     },
+    /**
+     * The site's logo, from its own library (Jason, 2026-11-18). The DISTRICT site's logo also
+     * heads the admin's start screens (`src/admin/Brand/`). An upload, so its alt text is the
+     * library's and rule 7 holds at upload — the reason this waited for the file library.
+     */
+    libraryImageField({
+      name: 'logo',
+      label: 'Logo',
+      required: false,
+      description:
+        'An image from this site’s library. The district site’s logo also appears at the top of the admin’s start screens.',
+    }),
     {
       name: 'contact',
       type: 'group',

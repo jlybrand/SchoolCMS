@@ -693,7 +693,13 @@ const auditOpenSidebar = async (page: Page, colorScheme: 'light' | 'dark') => {
   await page.setViewportSize({ width: 1600, height: 1000 })
   await page.emulateMedia({ colorScheme })
   await page.goto('/admin')
-  // The district's groups are folded under "Everything else" (2026-11-18): audit them open.
+  // The district's groups are folded under "Everything else" (2026-11-18): audit them open —
+  // WITHOUT saving that, since the open state is the admin user's, and side-nav.spec checks it.
+  await page.route('**/api/payload-preferences/nav', (route) =>
+    route.request().method() === 'POST'
+      ? route.fulfill({ status: 200, body: '{}' })
+      : route.continue(),
+  )
   const fold = page.locator('#nav-everything-else')
   if ((await fold.count()) > 0 && !(await fold.evaluate((el) => (el as HTMLDetailsElement).open)))
     await fold.locator('summary').click()

@@ -15,6 +15,8 @@ import '@payloadcms/next/css'
 
 // After Payload's own sheet. Contrast corrections only — see the file's header.
 import './admin-overrides.css'
+// The platform's brand (Jason, 2026-11-18) — after the fixes, which it never undoes.
+import './admin-brand.css'
 
 const serverFunction: ServerFunctionClient = async function (args) {
   'use server'

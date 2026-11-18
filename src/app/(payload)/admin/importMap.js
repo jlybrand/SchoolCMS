@@ -40,6 +40,8 @@ import { ReplaceFileLink as ReplaceFileLink_2f1f2950f5041d6fcf6699f0adecf1c2 } f
 import { LinkToDoc as LinkToDoc_aead06e4cbf6b2620c5c51c9ab283634 } from '@payloadcms/plugin-search/client'
 import { ReindexButton as ReindexButton_aead06e4cbf6b2620c5c51c9ab283634 } from '@payloadcms/plugin-search/client'
 import { ActionNav as ActionNav_1e94fba63d1eead46b8c957d1c778aba } from '../../../admin/Nav/ActionNav'
+import { PlatformMark as PlatformMark_8ed80ef07fae18acb67af5f931aaa4b7 } from '../../../admin/Brand/PlatformGraphics'
+import { PlatformLogo as PlatformLogo_8ed80ef07fae18acb67af5f931aaa4b7 } from '../../../admin/Brand/PlatformGraphics'
 import { GlobalViewRedirect as GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62 } from '@payloadcms/plugin-multi-tenant/rsc'
 import { EverythingElse as EverythingElse_d97dcc25d25e07eb77463561f152b7b8 } from '../../../admin/Nav/EverythingElse'
 import { DistrictDashboard as DistrictDashboard_edc4519ec276aaac7e06cda8a41f999e } from '../../../admin/Dashboard/DistrictDashboard'
@@ -107,6 +109,8 @@ export const importMap = {
   "@payloadcms/plugin-search/client#LinkToDoc": LinkToDoc_aead06e4cbf6b2620c5c51c9ab283634,
   "@payloadcms/plugin-search/client#ReindexButton": ReindexButton_aead06e4cbf6b2620c5c51c9ab283634,
   "/admin/Nav/ActionNav#ActionNav": ActionNav_1e94fba63d1eead46b8c957d1c778aba,
+  "/admin/Brand/PlatformGraphics#PlatformMark": PlatformMark_8ed80ef07fae18acb67af5f931aaa4b7,
+  "/admin/Brand/PlatformGraphics#PlatformLogo": PlatformLogo_8ed80ef07fae18acb67af5f931aaa4b7,
   "@payloadcms/plugin-multi-tenant/rsc#GlobalViewRedirect": GlobalViewRedirect_d6d5f193a167989e2ee7d14202901e62,
   "/admin/Nav/EverythingElse#EverythingElse": EverythingElse_d97dcc25d25e07eb77463561f152b7b8,
   "/admin/Dashboard/DistrictDashboard#DistrictDashboard": DistrictDashboard_edc4519ec276aaac7e06cda8a41f999e,

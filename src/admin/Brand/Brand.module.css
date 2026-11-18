@@ -1,0 +1,56 @@
+/*
+ * The brand band (Jason, 2026-11-18). WHITE in both of Payload's themes, so a district logo made
+ * for a white page shows as made; the name in the district's primary (#2b3170 on white, 11.8:1).
+ * A primary rule and a secondary stripe below — no text on the secondary, which is 2.4:1 on white.
+ * The colors are the `--dd2-brand-*` variables set once in `admin-overrides.css`.
+ *
+ * Nothing under 15px (min-text-15px): px, since the admin root is 13px. Logical properties only.
+ */
+.band {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  align-items: center;
+  margin-block: 16px 8px;
+  padding-block: 14px;
+  padding-inline: 20px;
+  border-radius: 6px;
+  border-block-end: 4px solid var(--dd2-brand-primary);
+  background: var(--dd2-brand-surface);
+  box-shadow: inset 0 -8px 0 -4px var(--dd2-brand-secondary);
+  color: var(--dd2-brand-primary);
+}
+
+.logo {
+  display: block;
+  inline-size: auto;
+  max-inline-size: 240px;
+  block-size: auto;
+  max-block-size: 56px;
+}
+
+.name {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* The platform's logo on the sign-in screens, and its mark in the breadcrumb's home link. */
+.platformLogo {
+  display: block;
+  box-sizing: content-box;
+  inline-size: auto;
+  max-inline-size: 280px;
+  block-size: auto;
+  max-block-size: 96px;
+  /* Black on transparent: a white plate keeps it visible in the dark theme. */
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--dd2-brand-surface);
+}
+
+.platformMark {
+  display: block;
+  inline-size: 20px;
+  block-size: 20px;
+}

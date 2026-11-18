@@ -1,0 +1,45 @@
+/**
+ * The platform's brand in the admin (Jason, 2026-11-18: white-label the platform, not per
+ * school) — kept apart from `admin-overrides.css`, which is WCAG fixes only.
+ *
+ * The district's colors: primary #2b3170, secondary #99a1e7, white. Measured before use:
+ * - LIGHT theme accent = primary: 11.8:1 on white; white on it 11.8:1; on its hover #1d2150, 15.2:1.
+ * - DARK theme accent = secondary: primary is 1.6:1 on Payload's dark background and can't be
+ *   used there; secondary is 6.5–8.6:1. Text on a secondary button is #14183d (7.0:1; 9.1:1 on
+ *   the hover #b4baee).
+ * - Secondary is 2.4:1 on white, so it never carries text in the light theme — stripes only.
+ * The admin axe gate checks every screen in both themes.
+ *
+ * Payload ships its styles inside `@layer payload-default`, so these unlayered rules win on
+ * layering alone. Only a few of its variables and one element are touched: its primary button,
+ * and its current-page bar in the side menu. Logical properties only (rule 5).
+ */
+
+:root {
+  --dd2-brand-primary: #2b3170;
+  --dd2-brand-secondary: #99a1e7;
+  --dd2-brand-surface: #fff;
+  /* What links, the current menu item and primary buttons take, per theme. */
+  --dd2-brand-accent: var(--dd2-brand-primary);
+  --dd2-brand-accent-hover: #1d2150;
+  --dd2-brand-on-accent: #fff;
+}
+
+html[data-theme='dark'] {
+  --dd2-brand-accent: var(--dd2-brand-secondary);
+  --dd2-brand-accent-hover: #b4baee;
+  --dd2-brand-on-accent: #14183d;
+}
+
+/* Payload's primary button (Save, Publish, Log in, Create New …). */
+.btn--style-primary {
+  --bg-color: var(--dd2-brand-accent);
+  --color: var(--dd2-brand-on-accent);
+  --hover-bg: var(--dd2-brand-accent-hover);
+  --hover-color: var(--dd2-brand-on-accent);
+}
+
+/* The bar beside the current page in Payload's side menu. */
+.nav__link-indicator {
+  background: var(--dd2-brand-accent);
+}
