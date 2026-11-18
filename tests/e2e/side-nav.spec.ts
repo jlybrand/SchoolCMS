@@ -175,6 +175,8 @@ adminTest.describe('the district’s side navigation', () => {
             page.getByRole('heading', { level: 1, name: 'Pages — School A' }),
           ).toBeVisible({ timeout: 20_000 })
           await expect(page.locator('#nav-menu-pages')).toHaveAttribute('aria-current', 'page')
+          // Next streams the title in after the page; axe's document-title check needs it.
+          await expect(page).toHaveTitle(/\S/)
 
           const row = page.locator('#site-pages li').filter({
             has: page.getByRole('link', { name: parent.title, exact: true }),

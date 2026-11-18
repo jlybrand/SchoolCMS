@@ -241,7 +241,6 @@ export const listMyFolders = async (req: PayloadRequest): Promise<FolderOption[]
     depth: 0,
     pagination: false,
     sort: 'label',
-    where: { source: { not_equals: 'feed' } },
     select: { label: true, name: true, tenant: true },
   })
   return docs.flatMap((doc) => {
