@@ -2,6 +2,7 @@ import { WatchTenantCollection as WatchTenantCollection_1d0591e3cf4f332c83a86da1
 import { GrantScopesField as GrantScopesField_f72aa3c0d135b885b20d14c3fe6f775a } from '../../../admin/Grants/GrantScopesField'
 import { YourSchoolField as YourSchoolField_657d17b2c6ca4ee9360b1f3f90ccc600 } from '../../../admin/SchoolPlane/YourSchoolField'
 import { TenantField as TenantField_1d0591e3cf4f332c83a86da13a0de59a } from '@payloadcms/plugin-multi-tenant/client'
+import { SiteNameField as SiteNameField_3f2cd33bf4f86a9fea6b8f03bd922c53 } from '../../../admin/SiteName/SiteNameField'
 import { ReviewStatusField as ReviewStatusField_078936fce220cbf8e528e3d7e8fc0dfa } from '../../../admin/SendForApproval/ReviewStatusField'
 import { DocumentReview as DocumentReview_49fe0baadaac961ddb91ea87bec1882f } from '../../../admin/Approvals/DocumentReview'
 import { DeviceTabs as DeviceTabs_57c7c42e5ba5d1d414334b9c062073cc } from '../../../admin/LivePreview/DeviceTabs'
@@ -31,6 +32,7 @@ import { HistoryView as HistoryView_ce0eee06b302982e31ccb86b2ede9295 } from '../
 import { NoPill as NoPill_56c46c87b506e0bb7f4bac3c5dc041d3 } from '../../../admin/History/NoPill'
 import { AnnouncementsView as AnnouncementsView_424d1d2ce7b62f2a20ccd2961f5c622f } from '../../../admin/Announcements/AnnouncementsView'
 import { BoardsListView as BoardsListView_a022c7e66bfcc000431bd70c768a08d6 } from '../../../admin/Boards/BoardsListView'
+import { EventsListHeading as EventsListHeading_0be958da59294990c1097559b7c98b6f } from '../../../admin/SiteName/EventsListHeading'
 import { EventSaveButton as EventSaveButton_9d8ff44ca1c1d15e1c244354a4498e4a } from '../../../admin/Events/EventSaveButton'
 import { BrandContrastNote as BrandContrastNote_ec2c057553788d3993e9f2cddec59957 } from '../../../admin/Theme/BrandContrastNote'
 import { MembersField as MembersField_203cc5edbcb2db7244697b1fe62551b0 } from '../../../admin/StaffGroups/MembersField'
@@ -72,6 +74,7 @@ export const importMap = {
   "/admin/Grants/GrantScopesField#GrantScopesField": GrantScopesField_f72aa3c0d135b885b20d14c3fe6f775a,
   "/admin/SchoolPlane/YourSchoolField#YourSchoolField": YourSchoolField_657d17b2c6ca4ee9360b1f3f90ccc600,
   "@payloadcms/plugin-multi-tenant/client#TenantField": TenantField_1d0591e3cf4f332c83a86da13a0de59a,
+  "/admin/SiteName/SiteNameField#SiteNameField": SiteNameField_3f2cd33bf4f86a9fea6b8f03bd922c53,
   "/admin/SendForApproval/ReviewStatusField#ReviewStatusField": ReviewStatusField_078936fce220cbf8e528e3d7e8fc0dfa,
   "/admin/Approvals/DocumentReview#DocumentReview": DocumentReview_49fe0baadaac961ddb91ea87bec1882f,
   "/admin/LivePreview/DeviceTabs#DeviceTabs": DeviceTabs_57c7c42e5ba5d1d414334b9c062073cc,
@@ -101,6 +104,7 @@ export const importMap = {
   "/admin/History/NoPill#NoPill": NoPill_56c46c87b506e0bb7f4bac3c5dc041d3,
   "/admin/Announcements/AnnouncementsView#AnnouncementsView": AnnouncementsView_424d1d2ce7b62f2a20ccd2961f5c622f,
   "/admin/Boards/BoardsListView#BoardsListView": BoardsListView_a022c7e66bfcc000431bd70c768a08d6,
+  "/admin/SiteName/EventsListHeading#EventsListHeading": EventsListHeading_0be958da59294990c1097559b7c98b6f,
   "/admin/Events/EventSaveButton#EventSaveButton": EventSaveButton_9d8ff44ca1c1d15e1c244354a4498e4a,
   "/admin/Theme/BrandContrastNote#BrandContrastNote": BrandContrastNote_ec2c057553788d3993e9f2cddec59957,
   "/admin/StaffGroups/MembersField#MembersField": MembersField_203cc5edbcb2db7244697b1fe62551b0,
