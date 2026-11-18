@@ -996,8 +996,11 @@ school managers too the same day (Jason: "school should get a similar workflow")
     "All sites"), with "Add a page" → `/admin/new-page` (where a page sits is the district's).
   - **Announcements:** every board, site → folder → board (`boardsBySite` over `boardTree`, the
     sites' order, a site or folder with no boards left out; Jason: "a drawer with all boards").
-    Each board opens `/admin/collections/posts?board=<id>` (`boardHref`). Access decides what is
-    read, so a school manager sees their own school's.
+    A board → **its posts in their place** (Jason, 2026-11-18): the newest `BOARD_POSTS_SHOWN`
+    (50; `boardPostsQuery`, drafts included), each with its status (`pageStatusLabels`) and
+    opening its form; "Create post" above them (`createPostHref`, the announcements screen's
+    headline); "All boards" back; and the announcements screen (`boardHref`) a link away under
+    them. Access decides what is read, so a school manager sees their own school's.
   - **Events:** every calendar, under its site's name, the main one first (`calendarsBySite`;
     Jason: "all calendars too"). Each opens Payload's events list filtered to it
     (`calendarEventsHref`, `?where[calendar][equals]=`). "Add an event" above them: the district's
@@ -1015,7 +1018,7 @@ school managers too the same day (Jason: "school should get a similar workflow")
     out. A folder → its files, each opening `/admin/file-library?site&folder&file` (`fileHref`)
     with its details.
   - "All sites" / "All folders" go back a level. Each level is read over REST as the user when it
-    opens (`pagesQuery`, `boardFoldersQuery` + `boardsQuery`, `calendarsQuery`, `allFoldersQuery`,
+    opens (`pagesQuery`, `boardFoldersQuery` + `boardsQuery`, `boardPostsQuery`, `calendarsQuery`, `allFoldersQuery`,
     `filesQuery` in
     `site-flyout.ts`, pure), with "Loading…" in a status until it arrives and an alert if it
     fails; a level already read is kept, so going back is instant.

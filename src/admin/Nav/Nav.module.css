@@ -354,3 +354,16 @@
   justify-content: flex-end;
   margin-block-start: 16px;
 }
+
+/* "See all on the announcements screen", under a board's posts. */
+.flyoutMore {
+  display: inline-block;
+  margin-block-start: 12px;
+  font-size: 15px;
+  color: var(--theme-text);
+}
+
+.flyoutMore:focus-visible {
+  outline: 2px solid var(--theme-text);
+  outline-offset: 2px;
+}

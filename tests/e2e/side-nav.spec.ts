@@ -3,13 +3,14 @@ import { expect, request as playwrightRequest, type Page } from '@playwright/tes
 
 import { ADMIN_STORAGE_STATE, adminCredentials, adminTest } from './support/admin-session'
 import { deletePage, makePage, uniqueTitle } from './support/fixture-pages'
+import { dropPost, makePost } from './support/fixture-posts'
 import { SCHOOL_HOSTNAME, schoolTest, tenantIdFor } from './support/school-session'
 
 /**
  * The side navigation, district and school managers (Jason, 2026-11-13; scope settled and
  * extended 2026-11-18): a short menu of actions, Payload's collection groups folded under
  * "Everything else", and a panel beside the menu that drills down in place — Pages: a site → its
- * pages (a school manager starts on their school's); Announcements: every board; Events: every
+ * pages (a school manager starts on their school's); Announcements: every board → its posts; Events: every
  * calendar; Files: every folder → its files. Built, then locked here (CLAUDE.md: admin views are not test-first).
  */
 
@@ -257,37 +258,67 @@ adminTest.describe('the district’s side navigation', () => {
 
   for (const colorScheme of ['light', 'dark'] as const) {
     adminTest(
-      `@a11y Announcements opens on every board, by site — ${colorScheme}`,
-      async ({ page }) => {
+      `@a11y Announcements opens on every board, by site; a board, on its posts — ${colorScheme}`,
+      async ({ page, baseURL }) => {
         await page.emulateMedia({ colorScheme })
-        await page.goto('/admin')
-        await showNav(page)
-        const button = page.locator('#nav-menu-posts')
-        await button.click()
-        await expect(button).toHaveAttribute('aria-expanded', 'true')
-        const panel = page.locator('#site-flyout')
-        await expect(panel.getByRole('heading', { level: 2, name: 'Announcements' })).toBeFocused()
-        // Every site's boards, the district first (Jason, 2026-11-18: "a drawer with all boards").
-        await expect(panel.locator('h3').first()).toHaveText('DD2 District', { timeout: 20_000 })
-        for (const site of ['School A', 'School B'])
+        const title = uniqueTitle('Picture day')
+        const post = await makePost(baseURL, { title })
+        try {
+          await page.goto('/admin')
+          await showNav(page)
+          const button = page.locator('#nav-menu-posts')
+          await button.click()
+          await expect(button).toHaveAttribute('aria-expanded', 'true')
+          const panel = page.locator('#site-flyout')
           await expect(
-            panel
-              .getByRole('region', { name: site, exact: true })
-              .getByRole('link', { name: 'News', exact: true }),
-          ).toBeVisible()
-        expect(await blockingViolations(page)).toEqual([])
-        expect(await smallestText(page, '#site-flyout')).toBeGreaterThanOrEqual(15)
-        await panel
-          .getByRole('region', { name: 'School B', exact: true })
-          .getByRole('link', { name: 'News', exact: true })
-          .click()
-        await expect(page).toHaveURL(/\/admin\/collections\/posts\?board=\d+(&|$)/, {
-          timeout: 20_000,
-        })
-        await expect(
-          page.getByRole('heading', { level: 1, name: 'News and announcements' }),
-        ).toBeVisible()
-        await expect(button).toHaveAttribute('aria-current', 'page')
+            panel.getByRole('heading', { level: 2, name: 'Announcements' }),
+          ).toBeFocused()
+          // Every site's boards, the district first (Jason, 2026-11-18: "a drawer with all boards").
+          await expect(panel.locator('h3').first()).toHaveText('DD2 District', {
+            timeout: 20_000,
+          })
+          for (const site of ['School A', 'School B'])
+            await expect(
+              panel
+                .getByRole('region', { name: site, exact: true })
+                .getByRole('button', { name: 'News', exact: true }),
+            ).toBeVisible()
+          expect(await blockingViolations(page)).toEqual([])
+          expect(await smallestText(page, '#site-flyout')).toBeGreaterThanOrEqual(15)
+
+          // A board: its posts REPLACE the boards (Jason, 2026-11-18), the newest first.
+          const news = panel
+            .getByRole('region', { name: 'School A', exact: true })
+            .getByRole('button', { name: 'News', exact: true })
+          await news.click()
+          await expect(panel.getByRole('heading', { level: 2, name: 'News' })).toBeFocused()
+          await expect(panel).toContainText('School A')
+          await expect(panel.locator('h3')).toHaveCount(0)
+          const row = panel.getByRole('link', { name: new RegExp(`^${title}`) })
+          await expect(row).toContainText('Not live yet', { timeout: 20_000 })
+          await expect(panel.getByRole('link', { name: 'Create post' })).toHaveAttribute(
+            'href',
+            /\/admin\/collections\/posts\?board=\d+&new=1$/,
+          )
+          expect(await blockingViolations(page)).toEqual([])
+          expect(await smallestText(page, '#site-flyout')).toBeGreaterThanOrEqual(15)
+          // Back a level, and in again.
+          await panel.getByRole('button', { name: 'All boards' }).click()
+          await expect(
+            panel.getByRole('heading', { level: 2, name: 'Announcements' }),
+          ).toBeFocused()
+          await news.click()
+
+          // A post opens its form, and the panel shuts.
+          await panel.getByRole('link', { name: new RegExp(`^${title}`) }).click()
+          await expect(page).toHaveURL(new RegExp(`/admin/collections/posts/${post.id}`), {
+            timeout: 20_000,
+          })
+          await expect(panel).toBeHidden()
+          await expect(button).toHaveAttribute('aria-current', 'page')
+        } finally {
+          await dropPost(post)
+        }
       },
     )
   }
@@ -391,11 +422,18 @@ schoolTest.describe('a school manager’s side navigation — the same workflow'
         await expect(panel.getByRole('heading', { level: 2, name: 'Announcements' })).toBeFocused()
         const news = panel
           .getByRole('region', { name: 'School A', exact: true })
-          .getByRole('link', { name: 'News', exact: true })
+          .getByRole('button', { name: 'News', exact: true })
         await expect(news).toBeVisible({ timeout: 20_000 })
         await expect(panel.getByRole('region', { name: 'School B', exact: true })).toHaveCount(0)
         expect(await blockingViolations(page)).toEqual([])
+        // A board: its posts in the panel; the announcements screen a link away.
         await news.click()
+        await expect(panel.getByRole('heading', { level: 2, name: 'News' })).toBeFocused()
+        await expect(panel.getByRole('link', { name: 'Create post' })).toBeVisible({
+          timeout: 20_000,
+        })
+        expect(await blockingViolations(page)).toEqual([])
+        await panel.getByRole('link', { name: /on the announcements screen$/ }).click()
         await expect(page).toHaveURL(/\/admin\/collections\/posts\?board=\d+(&|$)/, {
           timeout: 20_000,
         })

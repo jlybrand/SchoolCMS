@@ -4,10 +4,11 @@ import { useConfig } from '@payloadcms/ui'
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 
-import { boardHref } from '@/admin/Announcements/announcements'
+import { boardHref, createPostHref } from '@/admin/Announcements/announcements'
 import type { FolderNode } from '@/admin/Resources/file-library'
 import { schoolEditPath } from '@/admin/SchoolPlane/school-plane'
 import {
+  pageStatusLabels,
   pageTree,
   sitePagesHref,
   type PageNode,
@@ -21,10 +22,12 @@ import {
   allFoldersQuery,
   boardFoldersQuery,
   boardsBySite,
+  boardPostsQuery,
   boardsQuery,
   calendarEventsHref,
   calendarsBySite,
   calendarsQuery,
+  BOARD_POSTS_SHOWN,
   type CalendarChoice,
   fileHref,
   filesQuery,
@@ -39,16 +42,43 @@ type Step =
   | { level: 'sites' }
   | { level: 'pages'; site: Named }
   | { level: 'boards' }
+  | { level: 'posts'; site: Named; board: Named }
   | { level: 'calendars' }
   | { level: 'folders' }
   | { level: 'files'; site: Named; folder: Named }
 
 type Row = { id: unknown; name?: unknown; tenant?: unknown; folder?: unknown; parent?: unknown }
 type FileRow = { id: string | number; title?: string | null; kind?: string | null }
+type PostRow = {
+  id: string | number
+  title?: string | null
+  _status?: 'draft' | 'published' | null
+  reviewState?: string | null
+}
 /** Each address's rows; null when it failed. A level already read is kept, so Back is instant. */
 type Loaded = Readonly<Record<string, unknown[] | null>>
 
 const TITLE_ID = 'site-flyout-title'
+
+/** What a level's heading says, and the line under it. */
+const headingOf = (step: Step): { title: string; subtitle: string | null } => {
+  switch (step.level) {
+    case 'sites':
+      return { title: 'Choose a site', subtitle: 'for Pages' }
+    case 'pages':
+      return { title: `Pages — ${step.site.name}`, subtitle: null }
+    case 'boards':
+      return { title: 'Announcements', subtitle: 'Choose a board' }
+    case 'posts':
+      return { title: step.board.name, subtitle: step.site.name }
+    case 'calendars':
+      return { title: 'Events', subtitle: 'Choose a calendar' }
+    case 'folders':
+      return { title: 'Files', subtitle: 'Choose a folder' }
+    case 'files':
+      return { title: step.folder.name, subtitle: step.site.name }
+  }
+}
 
 const calendarLabel = (calendar: CalendarChoice): ReactNode => (
   <>
@@ -73,8 +103,9 @@ const firstStep = (kind: PanelKind, plane: Plane, sites: readonly SiteChoice[]):
  * - Pages: the sites → a site's pages, each opening its form. The district's "Add or move pages"
  *   opens the site's page tree; a school manager, on their one school from the start, gets "Add a
  *   page" (the new-page task — where a page sits is the district's).
- * - Announcements: every board, site → folder → board (Jason: "a drawer with all boards"), each
- *   opening the announcements screen on that board.
+ * - Announcements: every board, site → folder → board (Jason: "a drawer with all boards") → the
+ *   board's posts in their place (Jason, 2026-11-18), the newest first, each opening its form;
+ *   "Create post" above them, and the announcements screen a link away.
  * - Events: every calendar, under its site's name, the main one first (Jason: "a drawer with all
  *   calendars too"), each opening its events; "Add an event" above them. An imported calendar
  *   opens a dialog instead, "This calendar is a feed from …" (`FeedCalendarDialog`; Jason,
@@ -125,13 +156,15 @@ export const SiteFlyout = ({
       ? [pagesQuery(api, step.site.id)]
       : step.level === 'boards'
         ? [boardFoldersQuery(api), boardsQuery(api)]
-        : step.level === 'calendars'
-          ? [calendarsQuery(api)]
-          : step.level === 'folders'
-            ? [allFoldersQuery(api)]
-            : step.level === 'files'
-              ? [filesQuery(api, step.site.id, step.folder.id)]
-              : []
+        : step.level === 'posts'
+          ? [boardPostsQuery(api, step.board.id)]
+          : step.level === 'calendars'
+            ? [calendarsQuery(api)]
+            : step.level === 'folders'
+              ? [allFoldersQuery(api)]
+              : step.level === 'files'
+                ? [filesQuery(api, step.site.id, step.folder.id)]
+                : []
   const wanted = urls.join(' ')
 
   useEffect(() => {
@@ -163,30 +196,7 @@ export const SiteFlyout = ({
   const failed = results.some((r) => r === null)
   const docs = (i = 0) => (results[i] ?? []) as Row[]
 
-  const title =
-    step.level === 'sites'
-      ? 'Choose a site'
-      : step.level === 'pages'
-        ? `Pages — ${step.site.name}`
-        : step.level === 'boards'
-          ? 'Announcements'
-          : step.level === 'calendars'
-            ? 'Events'
-            : step.level === 'folders'
-              ? 'Files'
-              : step.folder.name
-  const subtitle =
-    step.level === 'sites'
-      ? 'for Pages'
-      : step.level === 'boards'
-        ? 'Choose a board'
-        : step.level === 'calendars'
-          ? 'Choose a calendar'
-          : step.level === 'folders'
-            ? 'Choose a folder'
-            : step.level === 'files'
-              ? step.site.name
-              : null
+  const { title, subtitle } = headingOf(step)
 
   const back =
     step.level === 'pages' && !onOneSite ? (
@@ -196,6 +206,14 @@ export const SiteFlyout = ({
         type="button"
       >
         All sites
+      </button>
+    ) : step.level === 'posts' ? (
+      <button
+        className={styles.flyoutBack}
+        onClick={() => setStep({ level: 'boards' })}
+        type="button"
+      >
+        All boards
       </button>
     ) : step.level === 'files' ? (
       <button
@@ -299,13 +317,60 @@ export const SiteFlyout = ({
                 <p className={styles.groupFolder}>{folder.name}</p>
                 <ul className={`${styles.sites} ${styles.nested}`}>
                   {folder.boards.map((board) => (
-                    <li key={board.id}>{leave(boardHref(board.id), board.name)}</li>
+                    <li key={board.id}>
+                      <button
+                        className={`${styles.site} ${styles.siteButton}`}
+                        onClick={() =>
+                          setStep({
+                            level: 'posts',
+                            site: { id: site.id, name: site.name },
+                            board: { id: board.id, name: board.name },
+                          })
+                        }
+                        type="button"
+                      >
+                        {board.name}
+                      </button>
+                    </li>
                   ))}
                 </ul>
               </div>
             ))}
           </section>
         ))
+      )
+    }
+
+    if (step.level === 'posts') {
+      const posts = docs() as PostRow[]
+      return (
+        <>
+          {leave(createPostHref(step.board.id), 'Create post', styles.flyoutAction)}
+          {posts.length === 0 ? (
+            <p className={styles.flyoutFor}>There are no posts on this board yet.</p>
+          ) : (
+            <ul className={styles.sites}>
+              {posts.map((post) => (
+                <li key={String(post.id)}>
+                  {leave(
+                    schoolEditPath('posts', String(post.id)),
+                    <>
+                      {post.title?.trim() || 'Untitled post'}
+                      <span className={styles.siteNote}> {pageStatusLabels(post).join(' · ')}</span>
+                    </>,
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {leave(
+            boardHref(step.board.id),
+            posts.length >= BOARD_POSTS_SHOWN
+              ? 'See all on the announcements screen'
+              : 'Open on the announcements screen',
+            styles.flyoutMore,
+          )}
+        </>
       )
     }
 

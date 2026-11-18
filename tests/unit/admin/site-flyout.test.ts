@@ -8,6 +8,8 @@ import {
   boardFoldersQuery,
   boardsBySite,
   boardsQuery,
+  boardPostsQuery,
+  BOARD_POSTS_SHOWN,
   fileHref,
   filesQuery,
   foldersBySite,
@@ -221,5 +223,23 @@ describe('the calendars — Events opens on every calendar (Jason, 2026-11-18)',
     expect(calendarEventsHref('51')).toBe(
       '/admin/collections/events?where%5Bcalendar%5D%5Bequals%5D=51',
     )
+  })
+})
+
+describe('a board’s posts — chosen in the Announcements panel (Jason, 2026-11-18)', () => {
+  it('the newest first, drafts too, a page of them, only what the list shows', () => {
+    const q = boardPostsQuery('/api', '40')
+    expect(q.startsWith('/api/posts?')).toBe(true)
+    expect(params(q)).toEqual({
+      'where[board][equals]': '40',
+      draft: 'true',
+      depth: '0',
+      sort: '-updatedAt',
+      limit: String(BOARD_POSTS_SHOWN),
+      'select[title]': 'true',
+      'select[_status]': 'true',
+      'select[reviewState]': 'true',
+    })
+    expect(BOARD_POSTS_SHOWN).toBe(50)
   })
 })
