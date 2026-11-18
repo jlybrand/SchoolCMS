@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest'
 
 import { toTheme } from '@/content/theme-tokens'
-import { REQUIRED_CONTRAST_PAIRS } from '@/lib/contrast'
+import { REQUIRED_CONTRAST_PAIRS, checkContrastPairs, contrastRatio } from '@/lib/contrast'
 import {
+  BRAND_TEXT_PAIRS,
   DEFAULT_COLOR_TOKENS,
   THEME_FIELDS,
+  brandFillTokens,
+  brandTextWarnings,
   checkThemeColors,
+  describeBrandWarnings,
   describeThemeFailures,
+  textOn,
   toHexColor,
 } from '@/lib/theme'
 
@@ -15,9 +20,12 @@ import { readRootTokens } from '../helpers/tokens'
 /**
  * Per-tenant theme validation (`02` §4.4, `07` §3).
  *
- * `07` §3 promises that "a school cannot pick a brand color that fails". This suite is that
- * promise: the same `checkContrastPairs` the token suite runs over the shipped palette, run
- * over a tenant's overrides laid on top of it — at save, and again at render.
+ * A school may pick ANY brand color (Jason, 2026-11-18). What it is used FOR decides the rest:
+ *   - on a FILL (buttons, the skip link, today's date) the text on it, its hover and the focus
+ *     ring are DERIVED — white or black, whichever reads — so every fill pair passes, whatever
+ *     the color. The sweep below proves it against the same manifest the token suite runs.
+ *   - as TEXT (links) the color is the school's choice; AA depends on size and weight, which
+ *     Jason judges. Under 4.5:1 the form WARNS (`brandTextWarnings`) — it no longer refuses.
  */
 
 describe('DEFAULT_COLOR_TOKENS', () => {
@@ -85,109 +93,129 @@ describe('toHexColor', () => {
   })
 })
 
-describe('checkThemeColors', () => {
-  it('passes an empty theme — the defaults are already valid', () => {
-    expect(checkThemeColors({})).toEqual([])
+describe('checkThemeColors — refuses only what is not a color (Jason, 2026-11-18)', () => {
+  it('accepts any color as the main one — #1e891e, school-bus yellow, white', () => {
+    for (const primaryColor of ['#1e891e', '#ffcc00', '#ffffff', '#000000', '#0f4c81'])
+      expect(checkThemeColors({ primaryColor }), primaryColor).toEqual([])
   })
 
-  it.each([['#0f4c81'], ['#7a1f2b'], ['#14532d'], ['#000000']])(
-    'accepts %s as a brand color',
-    (primaryColor) => {
-      expect(checkThemeColors({ primaryColor })).toEqual([])
-    },
-  )
-
-  it('refuses a school-bus yellow, and reports EVERY pair it breaks', () => {
-    /**
-     * The realistic failure: a school's actual brand color. It is link text, so it fails
-     * on both surfaces, and it carries white text and a white focus ring, so it fails there
-     * too. All at once — one-at-a-time correction of a palette is how a validator becomes
-     * the thing people work around.
-     */
-    const failures = checkThemeColors({ primaryColor: '#ffcc00' })
-
-    expect(failures.map((failure) => failure.label).sort()).toEqual([
-      'focus ring on a brand fill',
-      'link text on raised surface',
-      'link text on surface',
-      'text on a brand fill',
-    ])
-    expect(failures.every((failure) => failure.reason === 'insufficient-contrast')).toBe(true)
-  })
-
-  it('refuses a mid-tone that passes on white but not on the raised surface', () => {
-    // 4.54:1 on #ffffff, 4.23:1 on #f6f7f9 — the header and footer sit on the raised one.
-    const failures = checkThemeColors({ primaryColor: '#767676' })
-    expect(failures.map((failure) => failure.label)).toEqual(['link text on raised surface'])
-  })
-
-  it('reports a value that is not a color as a failure, never as a pass', () => {
-    const failures = checkThemeColors({ primaryColor: 'navy' })
-    expect(failures.length).toBeGreaterThan(0)
-    expect(failures.every((failure) => failure.reason === 'unevaluable-color')).toBe(true)
-  })
-
-  it.each([['#ffcc00'], ['#ffffff'], ['#000000'], ['#87ceeb']])(
-    'accepts %s as a SECONDARY color — it is decorative, so nothing is read against it',
-    (secondaryColor) => {
-      /**
-       * The accent is a rule under the header, never text and never behind text, which is
-       * what lets a school's gold or sky blue be used at all (1.4.11 covers interactive
-       * boundaries and meaningful graphics, not decoration). The day a component puts text on
-       * it, that component adds a pair to `REQUIRED_CONTRAST_PAIRS` and this test changes.
-       */
-      expect(checkThemeColors({ primaryColor: '#14532d', secondaryColor })).toEqual([])
-    },
-  )
-
-  it('still refuses a secondary color that is not a color — no pair names it, so this is explicit', () => {
-    const failures = checkThemeColors({ secondaryColor: 'gold' })
-    expect(failures.map((failure) => failure.reason)).toEqual(['unevaluable-color'])
-    expect(failures[0]?.foreground).toBe('--color-accent')
-  })
-
-  it('a light color is refused as primary and accepted as secondary — the same gold', () => {
-    expect(checkThemeColors({ primaryColor: '#ffcc00' }).length).toBeGreaterThan(0)
+  it('accepts any second color', () => {
     expect(checkThemeColors({ secondaryColor: '#ffcc00' })).toEqual([])
   })
 
+  it('refuses a value that is not a color, on either field', () => {
+    for (const value of ['blue', '#12345', '#0f4c81;background:red', 'rgb(0,0,0)'])
+      for (const field of ['primaryColor', 'secondaryColor'] as const)
+        expect(checkThemeColors({ [field]: value }), `${field} ${value}`).toHaveLength(1)
+  })
+
   it('ignores absent and empty overrides — they mean "use the default"', () => {
-    expect(checkThemeColors({ primaryColor: null })).toEqual([])
-    expect(checkThemeColors({ primaryColor: undefined })).toEqual([])
-    expect(checkThemeColors({ primaryColor: '' })).toEqual([])
+    expect(checkThemeColors({})).toEqual([])
+    expect(checkThemeColors({ primaryColor: null, secondaryColor: '' })).toEqual([])
   })
 })
 
 describe('describeThemeFailures', () => {
-  it('says what is wrong in plain words, with the numbers, and what to do', () => {
-    const message = describeThemeFailures(checkThemeColors({ primaryColor: '#ffcc00' }))
+  it('names a malformed value as malformed, with an example', () => {
+    expect(describeThemeFailures(checkThemeColors({ primaryColor: 'blue' }))).toBe(
+      'Enter the color as a # followed by six letters or numbers, like #0f4c81.',
+    )
+    expect(describeThemeFailures([])).toBe('')
+  })
+})
 
-    expect(message).toContain('darker')
-    expect(message).toContain('link text on surface')
-    expect(message).toMatch(/1\.\d+:1/)
-    expect(message).toContain('4.5:1')
-    // `04` §2.1 — nobody should have to know what a token is.
-    expect(message).not.toContain('--color')
+describe('textOn — the text that reads on a fill', () => {
+  it('white on a dark fill, black on a light one', () => {
+    expect(textOn('#0f4c81')).toBe('#ffffff')
+    expect(textOn('#ffcc00')).toBe('#000000')
+    expect(textOn('#1e891e')).toBe('#000000')
   })
 
-  it('tells someone whose main color is light what to do about it', () => {
-    /**
-     * Green-and-gold is fine; gold-and-black is the case that needs words. The main color
-     * is what links are drawn in, so the advice is to swap the two — not to give up.
-     */
-    const message = describeThemeFailures(checkThemeColors({ primaryColor: '#ffcc00' }))
-    expect(message).toMatch(/second color/i)
+  it('reaches 4.5:1 on EVERY fill — pure black is why: near-black tops out near 4.2:1', () => {
+    for (let v = 0; v <= 255; v += 5) {
+      for (const hex of [
+        gray(v),
+        rgb(v, 0, 0),
+        rgb(0, v, 0),
+        rgb(0, 0, v),
+        rgb(v, v, 0),
+        rgb(0, v, v),
+      ]) {
+        expect(contrastRatio(textOn(hex), hex), hex).toBeGreaterThanOrEqual(4.5)
+      }
+    }
+  })
+})
+
+describe('brandFillTokens — everything that sits ON the brand color, derived', () => {
+  it('a dark brand: white text, a dark hover, a white focus ring', () => {
+    expect(brandFillTokens('#0f4c81')).toEqual({
+      '--color-brand-contrast': '#ffffff',
+      '--color-brand-hover': '#14171c',
+      '--focus-ring-color-on-brand': '#ffffff',
+    })
   })
 
-  it('names a malformed value as malformed', () => {
-    expect(describeThemeFailures(checkThemeColors({ primaryColor: 'navy' }))).toContain('#')
+  it('a light brand: black text, a LIGHTER hover (more contrast, not less), a black ring', () => {
+    const tokens = brandFillTokens('#ffcc00')
+    expect(tokens['--color-brand-contrast']).toBe('#000000')
+    expect(tokens['--focus-ring-color-on-brand']).toBe('#000000')
+    const hover = tokens['--color-brand-hover']!
+    expect(contrastRatio('#000000', hover)).toBeGreaterThan(contrastRatio('#000000', '#ffcc00'))
+  })
+
+  it('THE GUARANTEE: with any brand color, every pair except brand-as-link-text passes', () => {
+    const notText = REQUIRED_CONTRAST_PAIRS.filter((pair) => !BRAND_TEXT_PAIRS.includes(pair.label))
+    for (let v = 0; v <= 255; v += 15) {
+      for (const brand of [
+        gray(v),
+        rgb(v, 0, 0),
+        rgb(0, v, 0),
+        rgb(0, 0, v),
+        rgb(255, v, 0),
+        '#1e891e',
+      ]) {
+        const tokens: Record<string, string> = {
+          ...DEFAULT_COLOR_TOKENS,
+          '--color-brand': brand,
+          ...brandFillTokens(brand),
+        }
+        expect(
+          checkContrastPairs(notText, (token) => tokens[token]!),
+          brand,
+        ).toEqual([])
+      }
+    }
+  })
+})
+
+describe('brandTextWarnings — a warning, never a refusal', () => {
+  it('none for a color that reads as link text on every surface', () => {
+    expect(brandTextWarnings({ primaryColor: '#0f4c81' })).toEqual([])
+    expect(brandTextWarnings({})).toEqual([])
+    expect(brandTextWarnings({ primaryColor: 'blue' })).toEqual([])
+  })
+
+  it('#1e891e: fine on white, under 4.5:1 on the raised surface — and says so', () => {
+    const warnings = brandTextWarnings({ primaryColor: '#1e891e' })
+    expect(warnings.map((w) => w.label)).toEqual(['link text on raised surface'])
+    expect(warnings[0]!.ratio).toBeLessThan(4.5)
+    expect(warnings[0]!.ratio).toBeGreaterThan(4)
+  })
+
+  it('the warning in plain words: the numbers, and that large or bold text needs only 3:1', () => {
+    const text = describeBrandWarnings(brandTextWarnings({ primaryColor: '#ffcc00' }))
+    expect(text).toContain('normal-size text')
+    expect(text).toContain('3:1')
+    expect(text).toMatch(/\d\.\d:1/)
+    expect(describeBrandWarnings([])).toBe('')
   })
 })
 
 describe('toTheme', () => {
-  it('maps a valid row to the custom properties it overrides', () => {
+  it('maps a color and DERIVES what sits on it', () => {
     expect(toTheme({ id: 1, tenant: 2, primaryColor: '#7A1F2B' })).toEqual({
-      tokens: { '--color-brand': '#7a1f2b' },
+      tokens: { '--color-brand': '#7a1f2b', ...brandFillTokens('#7a1f2b') },
     })
   })
 
@@ -203,34 +231,40 @@ describe('toTheme', () => {
     expect(toTheme(doc)).toEqual({ tokens: {} })
   })
 
-  it('drops a palette that fails contrast, WHOLE — never serves it, never half of it', () => {
-    /**
-     * Validation tells the editor; this is what keeps a failing palette off the site when
-     * the row arrived by a route that never ran it, or when a later platform change to the
-     * neutrals turned a palette that passed into one that does not.
-     */
-    expect(toTheme({ primaryColor: '#ffcc00' })).toEqual({ tokens: {} })
+  it('serves a low-contrast color — the school’s choice (Jason, 2026-11-18)', () => {
+    expect(toTheme({ primaryColor: '#1e891e' }).tokens['--color-brand']).toBe('#1e891e')
+    expect(toTheme({ primaryColor: '#ffcc00' }).tokens['--color-brand-contrast']).toBe('#000000')
+  })
+
+  it('drops a value that is not a color — nothing unsafe reaches a style attribute', () => {
     expect(toTheme({ primaryColor: '#0f4c81;background:red' })).toEqual({ tokens: {} })
   })
 
   it('maps both colors', () => {
-    expect(toTheme({ primaryColor: '#14532d', secondaryColor: '#FC0' })).toEqual({
-      tokens: { '--color-brand': '#14532d', '--color-accent': '#ffcc00' },
+    expect(toTheme({ primaryColor: '#14532d', secondaryColor: '#FC0' }).tokens).toMatchObject({
+      '--color-brand': '#14532d',
+      '--color-accent': '#ffcc00',
     })
   })
 
-  it('a secondary color alone is a theme', () => {
+  it('a secondary color alone is a theme, and derives nothing', () => {
     expect(toTheme({ secondaryColor: '#ffcc00' })).toEqual({
       tokens: { '--color-accent': '#ffcc00' },
     })
   })
 
-  it('a failing primary takes a valid secondary down with it — a palette is judged as a set', () => {
-    expect(toTheme({ primaryColor: '#ffcc00', secondaryColor: '#14532d' })).toEqual({ tokens: {} })
-  })
-
   it('emits only known custom properties — no field on the row can name its own', () => {
     const theme = toTheme({ primaryColor: '#7a1f2b', '--color-surface': '#000000', extra: '#000' })
-    expect(Object.keys(theme.tokens)).toEqual(['--color-brand'])
+    expect(Object.keys(theme.tokens).sort()).toEqual(
+      ['--color-brand', ...Object.keys(brandFillTokens('#7a1f2b'))].sort(),
+    )
   })
 })
+
+const hex2 = (n: number) => n.toString(16).padStart(2, '0')
+function rgb(r: number, g: number, b: number) {
+  return `#${hex2(r)}${hex2(g)}${hex2(b)}`
+}
+function gray(v: number) {
+  return rgb(v, v, v)
+}

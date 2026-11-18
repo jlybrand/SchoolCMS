@@ -45,8 +45,11 @@ Every block ships with:
 - **No color-only meaning.** Severity, status, and error states carry text or icon plus
   text.
 - **Visible focus** on every interactive element, meeting 2.4.11 focus appearance.
-- **Contrast baked into theme tokens.** Per-tenant palettes are validated against AA
-  contrast at token level, so a school cannot pick a brand color that fails.
+- **Contrast baked into theme tokens.** The platform's palette is validated against AA at token
+  level. A school's brand color is accepted whatever it is (Jason, 2026-11-18): the text, hover
+  and focus ring ON a brand fill are derived from it, white or black, so fills always pass; as
+  link text the color is the school's choice — the theme form warns under 4.5:1 (normal text;
+  large or bold text needs 3:1) and the district judges by size and weight.
 - **CSS logical properties only** — RTL correctness is structural, verified from the first
   component (`08` §7).
 - A Storybook entry and an axe test in the same PR (`06` §2.4).

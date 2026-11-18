@@ -418,11 +418,13 @@ one row per tenant, and the admin opens that row directly instead of a list. All
 district-only for every operation, reads included (§6.1); the public site reads them through
 `src/content/*` with access overridden and an explicit tenant filter.
 
-`theme` is built with a school's two colors. The **main color** is the brand token — link
-text and buttons — so it is checked against every contrast pair it appears in (`07` §3), when
-saved and again when rendered; a failing palette is never served and the site falls back to the
-default. The **second color** is an accent used for decorative rules only, so any color is
-accepted; it gains a contrast pair the day a component puts text on it. Logo and favicon wait
+`theme` is built with a school's two colors, and **any color is accepted for either** (Jason,
+2026-11-18); only a value that is not a hex color is refused, at save and again at render. The
+**main color** is the brand token — buttons, links, the skip link. What sits ON a brand fill is
+derived from it (white or black text, a hover fill, the focus ring), so fills always pass (`07`
+§3); as link text the color is the school's choice, and the theme form warns, live, when it is
+under 4.5:1. The **second color** is an accent used for decorative rules only; it gains a
+contrast pair the day a component puts text on it. Logo and favicon wait
 for `media` (Phase 6) and hero style for the hero block; a type scale has no DD2 usage traced
 to it and is not planned.
 

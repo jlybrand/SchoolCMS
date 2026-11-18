@@ -122,7 +122,10 @@ fails on its own.
 
 ### 4.4 Theming
 A `theme` global per tenant holds design tokens (logo, palette, type scale, hero style,
-favicon). The shared component library reads tokens at render. No per-tenant CSS forks.
+favicon). The shared component library reads tokens at render. No per-tenant CSS forks. A
+school's brand color is accepted whatever it is; the tokens that sit on a brand fill are derived
+from it so fills always meet AA, and its use as link text is warned about, not refused (`03` §5,
+`07` §3; Jason, 2026-11-18).
 Per-locale typography tokens exist for CJK line-height and font stacks (`08` §6).
 
 ## 5. Public request & delivery flow

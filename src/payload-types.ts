@@ -1111,7 +1111,7 @@ export interface Theme {
   id: number;
   tenant?: (number | null) | Tenant;
   /**
-   * Used for links and buttons, so it has to be dark enough to read on a white page. Leave empty for the district's blue. If the school's main color is a light one — a gold, a sky blue — put the darker of its two colors here and the light one below.
+   * Used for buttons and links. Any color works: the text on a button is chosen to suit it. As link text, a light color is hard to read — you'll see a note below if so. Leave empty for the district's blue.
    */
   primaryColor?: string | null;
   /**

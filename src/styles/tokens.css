@@ -39,7 +39,13 @@
   /* --- Color: brand (per-tenant override target) ----------------------- */
   /* Contrast against --color-surface: 8.8:1 */
   --color-brand: #0f4c81;
+  /**
+   * What sits ON a brand fill — its text, its hover fill — is DERIVED per school from the brand
+   * color (`brandFillTokens`, `src/lib/theme.ts`; Jason, 2026-11-18), so any brand color gives a
+   * fill that reads. These are the values for the default brand.
+   */
   --color-brand-contrast: #ffffff;
+  --color-brand-hover: #14171c;
 
   /**
    * A school's SECOND color (per-tenant override target). DECORATIVE ONLY — a rule under the
@@ -67,6 +73,12 @@
    * every page is the skip link, which is brand-filled (8.8:1 against --color-brand).
    */
   --focus-ring-color-inverse: #ffffff;
+  /**
+   * The ring on a BRAND fill (the skip link) — derived per school with the fill's text color
+   * (`brandFillTokens`), so it reads on any brand. Apart from the inverse ring above, which the
+   * alert banners' fixed dark fills need white.
+   */
+  --focus-ring-color-on-brand: #ffffff;
   --focus-ring-width: 3px;
   --focus-ring-offset: 2px;
 

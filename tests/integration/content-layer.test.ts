@@ -7,6 +7,7 @@ import { resolvePageBlocks } from '@/content/resolve-blocks'
 import { getTenantByHostname, listActiveTenants } from '@/content/tenants'
 import { getSettings } from '@/content/settings'
 import { getTheme } from '@/content/theme'
+import { brandFillTokens } from '@/lib/theme'
 import type { ContentContext, FeedBlock, ResolvedFeedBlock, Tenant } from '@/content/types'
 import { ROOT_SLUG } from '@/lib/slug'
 import type { Payload } from 'payload'
@@ -479,14 +480,19 @@ describe('getTheme', () => {
 
   it("returns the resolved tenant's overrides, as custom properties", async () => {
     expect(await getTheme(await tenantFor('a.localhost'))).toEqual({
-      tokens: { '--color-brand': '#7a1f2b', '--color-accent': '#c9a227' },
+      // What sits on a brand fill comes with it, derived (Jason, 2026-11-18).
+      tokens: {
+        '--color-brand': '#7a1f2b',
+        '--color-accent': '#c9a227',
+        ...brandFillTokens('#7a1f2b'),
+      },
     })
   })
 
   it("never returns another tenant's color", async () => {
     // Access is overridden on this path; the tenant filter is the only scoping (`02` §4.2).
     expect(await getTheme(await tenantFor('b.localhost'))).toEqual({
-      tokens: { '--color-brand': '#14532d' },
+      tokens: { '--color-brand': '#14532d', ...brandFillTokens('#14532d') },
     })
   })
 
@@ -494,13 +500,22 @@ describe('getTheme', () => {
     expect(await getTheme(await tenantFor('localhost'))).toEqual({ tokens: {} })
   })
 
-  it('returns no overrides for a failing palette that reached the database anyway', async () => {
-    /**
-     * The route the validator does not cover: a direct write. `07` §3's guarantee has to
-     * hold for what is SERVED, so the render path re-checks rather than trusting the row.
-     */
+  it('serves a light color, with black text on its fills (Jason, 2026-11-18)', async () => {
     await payload.db.drizzle.execute(
       `update theme set primary_color = '#ffcc00' where tenant_id = ${String(fixtures.tenantA)}`,
+    )
+    const { tokens } = await getTheme(await tenantFor('a.localhost'))
+    expect(tokens['--color-brand']).toBe('#ffcc00')
+    expect(tokens['--color-brand-contrast']).toBe('#000000')
+  })
+
+  it('returns no overrides for a value that is not a color that reached the database anyway', async () => {
+    /**
+     * The route the validator does not cover: a direct write. Nothing but a hex color may reach
+     * the style attribute, so the render path re-checks rather than trusting the row.
+     */
+    await payload.db.drizzle.execute(
+      `update theme set primary_color = '#ffcc00;x' where tenant_id = ${String(fixtures.tenantA)}`,
     )
 
     expect(await getTheme(await tenantFor('a.localhost'))).toEqual({ tokens: {} })

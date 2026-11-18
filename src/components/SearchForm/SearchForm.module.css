@@ -46,5 +46,6 @@
 }
 
 .button:hover {
-  background-color: var(--color-text);
+  /* Derived per school with the label color (`brandFillTokens`), so the pair always reads. */
+  background-color: var(--color-brand-hover);
 }

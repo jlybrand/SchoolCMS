@@ -17,8 +17,8 @@
  * THIS IS THE ONE PLACE THE UNDERLINE COMES OFF, and only because the cue it provides is
  * replaced rather than dropped: a filled block of brand color with its own border radius
  * and padding does not read as body text, so 1.4.1's "not by color alone" is satisfied by
- * shape. The pair is validated at token level, so a per-tenant brand palette cannot ship a
- * combination that fails AA (`07` §3).
+ * shape. Its label and hover fill are derived from the school's brand color (`brandFillTokens`,
+ * Jason 2026-11-18), white or black, so the pair passes AA whatever the color (`07` §3).
  *
  * `inline-block`, not a fixed-height pill: a translated label runs half again as long in
  * German or Arabic, and it has to wrap rather than clip (`08` §6).
@@ -34,7 +34,8 @@
 }
 
 .button:hover {
-  background-color: var(--color-text);
+  /* Derived per school with the label color (`brandFillTokens`), so the pair always reads. */
+  background-color: var(--color-brand-hover);
 }
 
 /*

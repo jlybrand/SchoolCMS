@@ -1221,12 +1221,23 @@ describe('theme — district-only, one row per tenant, never a failing palette (
     expect(denied).toBe(true)
   })
 
-  it('refuses a color that fails contrast — through the API, not just the admin form', async () => {
-    /**
-     * `07` §3: "a school cannot pick a brand color that fails". The district admin is the
-     * only actor who can write here, so the district admin is who the check has to stop.
-     */
-    for (const primaryColor of ['#ffcc00', '#767676', 'navy', '#0f4c81;background:red']) {
+  it('accepts any main color through the API — #1e891e included (Jason, 2026-11-18)', async () => {
+    // Contrast is a warning on the form now, never a refusal (`src/lib/theme.ts`).
+    for (const primaryColor of ['#1e891e', '#ffcc00', '#767676']) {
+      const updated = await payload.update({
+        collection: 'theme',
+        id: f.themeA,
+        data: { primaryColor },
+        user: f.districtAdmin,
+        overrideAccess: false,
+      })
+      expect(updated.primaryColor, primaryColor).toBe(primaryColor)
+    }
+  })
+
+  it('refuses a main color that is not a color — through the API, not just the admin form', async () => {
+    // The only refusal left: nothing but a hex color is safe in the style attribute it reaches.
+    for (const primaryColor of ['navy', '#0f4c81;background:red', '#12345']) {
       const denied = await isDenied(() =>
         payload.update({
           collection: 'theme',
@@ -1241,7 +1252,7 @@ describe('theme — district-only, one row per tenant, never a failing palette (
   })
 
   it('takes a light color as the SECOND color — and still refuses one that is not a color', async () => {
-    // The same gold the main color refuses above. It is decorative here (`src/lib/theme.ts`).
+    // Decorative, as ever (`src/lib/theme.ts`).
     const updated = await payload.update({
       collection: 'theme',
       id: f.themeA,

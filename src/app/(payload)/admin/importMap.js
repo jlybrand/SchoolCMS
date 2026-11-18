@@ -32,6 +32,7 @@ import { NoPill as NoPill_56c46c87b506e0bb7f4bac3c5dc041d3 } from '../../../admi
 import { AnnouncementsView as AnnouncementsView_424d1d2ce7b62f2a20ccd2961f5c622f } from '../../../admin/Announcements/AnnouncementsView'
 import { BoardsListView as BoardsListView_a022c7e66bfcc000431bd70c768a08d6 } from '../../../admin/Boards/BoardsListView'
 import { EventSaveButton as EventSaveButton_9d8ff44ca1c1d15e1c244354a4498e4a } from '../../../admin/Events/EventSaveButton'
+import { BrandContrastNote as BrandContrastNote_ec2c057553788d3993e9f2cddec59957 } from '../../../admin/Theme/BrandContrastNote'
 import { MembersField as MembersField_203cc5edbcb2db7244697b1fe62551b0 } from '../../../admin/StaffGroups/MembersField'
 import { UsedOnField as UsedOnField_6000b15ca292bc118d74cb5be111b0fd } from '../../../admin/Resources/UsedOnField'
 import { UploadFileButton as UploadFileButton_ad11f66107fe2340d535e62868eb7090 } from '../../../admin/Resources/UploadFileButton'
@@ -101,6 +102,7 @@ export const importMap = {
   "/admin/Announcements/AnnouncementsView#AnnouncementsView": AnnouncementsView_424d1d2ce7b62f2a20ccd2961f5c622f,
   "/admin/Boards/BoardsListView#BoardsListView": BoardsListView_a022c7e66bfcc000431bd70c768a08d6,
   "/admin/Events/EventSaveButton#EventSaveButton": EventSaveButton_9d8ff44ca1c1d15e1c244354a4498e4a,
+  "/admin/Theme/BrandContrastNote#BrandContrastNote": BrandContrastNote_ec2c057553788d3993e9f2cddec59957,
   "/admin/StaffGroups/MembersField#MembersField": MembersField_203cc5edbcb2db7244697b1fe62551b0,
   "/admin/Resources/UsedOnField#UsedOnField": UsedOnField_6000b15ca292bc118d74cb5be111b0fd,
   "/admin/Resources/UploadFileButton#UploadFileButton": UploadFileButton_ad11f66107fe2340d535e62868eb7090,
