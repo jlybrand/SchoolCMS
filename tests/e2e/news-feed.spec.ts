@@ -138,8 +138,21 @@ test.describe('a news feed on a page', () => {
 
   test('a feed with nothing to show is not on the page at all', async ({ page, baseURL }) => {
     const admin = await asDistrict(baseURL)
-    // School A's board seen from School B: none of A's announcements are shared with B.
-    const { board } = await boardOf(admin, 'a.localhost')
+    // A School A board of its own, seen from School B. Its OWN board, not School A's News: other
+    // specs running alongside publish School A announcements shared with B there (file-uses
+    // does), and one would show here mid-run.
+    const tenant = await tenantIdFor(admin, 'a.localhost')
+    const stamp = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`
+    const folder = await admin.post('/api/post-folders?depth=0', {
+      data: { tenant, name: `Empty feed ${stamp}` },
+    })
+    expect(folder.ok(), await folder.text()).toBe(true)
+    const folderId = ((await folder.json()) as { doc: { id: number } }).doc.id
+    const madeBoard = await admin.post('/api/post-boards?depth=0', {
+      data: { tenant, folder: folderId, name: `Quiet ${stamp}` },
+    })
+    expect(madeBoard.ok(), await madeBoard.text()).toBe(true)
+    const board = ((await madeBoard.json()) as { doc: { id: number } }).doc.id
     const made = await pageWithFeed(admin, 'b.localhost', {
       heading: 'School A news',
       boards: [board],
@@ -150,6 +163,8 @@ test.describe('a news feed on a page', () => {
       await expect(page.getByText('School A news')).toHaveCount(0)
     } finally {
       await admin.delete(`/api/pages/${made.id}`)
+      await admin.delete(`/api/post-boards/${board}`)
+      await admin.delete(`/api/post-folders/${folderId}`)
       await admin.dispose()
     }
   })

@@ -419,6 +419,17 @@ adminTest.describe('district plane — whole screens', () => {
           '.dashboard-breadcrumb-select input[aria-label="Choose a view"]',
         )
       })
+      adminTest(`@a11y a site's pages — ${colorScheme}`, async ({ page }) => {
+        await page.goto('/admin/site-pages')
+        await page.locator('#site-pages-change').click()
+        await page
+          .locator('#site-flyout')
+          .getByRole('button', { name: 'School A', exact: true })
+          .click()
+        await page.locator('#site-flyout').getByRole('link', { name: 'Add or move pages' }).click()
+        await expect(page).toHaveURL(/\/admin\/site-pages\?site=\d+$/)
+        await auditScreen(page, '#site-pages li', '#action-menu')
+      })
       adminTest(`@a11y pages list — ${colorScheme}`, async ({ page }) => {
         await page.goto('/admin/collections/pages')
         await auditScreen(page, ...LIST_REPAIRED, '.clickable-arrow--right[aria-label="Next page"]')
@@ -682,6 +693,10 @@ const auditOpenSidebar = async (page: Page, colorScheme: 'light' | 'dark') => {
   await page.setViewportSize({ width: 1600, height: 1000 })
   await page.emulateMedia({ colorScheme })
   await page.goto('/admin')
+  // The district's groups are folded under "Everything else" (2026-11-18): audit them open.
+  const fold = page.locator('#nav-everything-else')
+  if ((await fold.count()) > 0 && !(await fold.evaluate((el) => (el as HTMLDetailsElement).open)))
+    await fold.locator('summary').click()
   await expect(page.locator('.nav-group__label').first()).toBeVisible({ timeout: 20_000 })
   const results = await new AxeBuilder({ page })
     .include('.nav')

@@ -258,12 +258,6 @@
   font-weight: 600;
 }
 
-.navLink {
-  display: block;
-  padding-block: 0.25rem;
-  color: var(--theme-text);
-}
-
 /* An announcement's dates in the queue (Jason, 2026-11-04): closed until wanted. */
 .dates {
   margin-block: 1rem 0;

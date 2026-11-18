@@ -245,8 +245,9 @@ src/
   access/               role/tenant predicates + Payload access functions
   admin/                admin-plane React: paste prompt, school plane (SchoolPlane/,
                         SendForApproval/), approval queue + diff (Approvals/), grants
-                        (Grants/), A11yPatch/ — repairs Payload's own markup until upstream
-                        fixes it. Separate from components/ — this side MAY import the SDK.
+                        (Grants/), the side menu + its slide-out lists, both planes (Nav/), a site's
+                        page tree (SitePages/), A11yPatch/ — repairs Payload's own markup
+                        until upstream fixes it. Separate from components/ — this side MAY import the SDK.
   auth/                 entra-mapping.ts (unwired), password-policy.ts (interim)
   content/              THE BOUNDARY. Payload lives behind this.
     types.ts            hand-written DD2 domain types — never generated

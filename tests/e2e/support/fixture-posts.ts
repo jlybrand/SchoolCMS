@@ -1,6 +1,7 @@
 import { expect, request as playwrightRequest, type APIRequestContext } from '@playwright/test'
 
 import { ADMIN_STORAGE_STATE } from './admin-session'
+import { uniqueTitle } from './fixture-pages'
 import { SCHOOL_HOSTNAME, tenantIdFor } from './school-session'
 
 /**
@@ -35,7 +36,11 @@ const firstId = async (admin: APIRequestContext, path: string): Promise<number> 
 export const makePost = async (
   baseURL: string | undefined,
   {
-    title = 'Axe announcement',
+    /**
+     * Unique by default: the axe spec's light and dark passes each make one at once, and two
+     * posts of the same title race for the same numbered address (`uniquePostSlug`) — one lost.
+     */
+    title = uniqueTitle('Axe announcement'),
     /** Shared with the school itself, so the form shows the chosen-sites field with a chip. */
     selected = false,
     /** A tag ticked, so the form shows the tags field with a chip. */

@@ -1,8 +1,10 @@
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 
-import type { Payload } from 'payload'
+import { createLocalReq, type Payload } from 'payload'
 import { beforeAll, describe, expect, it } from 'vitest'
+
+import { listMyFolders } from '@/admin/SchoolPlane/school-data'
 
 import { tinyPdf, tinyPng } from '../helpers/files'
 import { getTestPayload, seed, type Fixtures } from '../helpers/payload'
@@ -390,5 +392,24 @@ describe('replacing a file', () => {
       overrideAccess: true,
     })
     expect((entries[0] as { href?: string } | undefined)?.href).toContain(String(after.filename))
+  })
+})
+
+describe('the school plane’s folder read (`listMyFolders`)', () => {
+  // Locks a regression (2026-11-18): a calendar filter landed on this read too, and every Upload
+  // and Replace a file screen failed with "The following path cannot be queried: source".
+  it('lists a manager’s own school’s folders, and nothing else', async () => {
+    const folder = await payload.create({
+      collection: 'resource-folders',
+      data: { tenant: f.tenantA, name: 'Menus for the read' } as never,
+      overrideAccess: true,
+    })
+    try {
+      const folders = await listMyFolders(await createLocalReq({ user: f.managerA }, payload))
+      expect(folders.map((x) => String(x.id))).toContain(String(folder.id))
+      expect(folders.every((x) => String(x.tenant) === String(f.tenantA))).toBe(true)
+    } finally {
+      await payload.delete({ collection: 'resource-folders', id: folder.id, overrideAccess: true })
+    }
   })
 })

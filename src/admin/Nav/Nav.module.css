@@ -41,3 +41,316 @@
   inline-size: 1.5rem;
   block-size: 1.5rem;
 }
+
+/*
+ * The district's menu (Jason, 2026-11-18): Payload's `nav__link` look, held at 15px — Payload's
+ * root is 13px here, so px, not rem (min-text-15px). "Pages" and "Files" are buttons styled as
+ * their siblings.
+ */
+.menu {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  font-size: 15px;
+}
+
+.menuItem {
+  display: block;
+  padding-block: 4px;
+  font-size: 15px;
+  color: var(--theme-text);
+}
+
+.menuButton {
+  inline-size: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 15px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.menuItem[aria-current='page'] {
+  font-weight: 600;
+}
+
+.menuItem:focus-visible {
+  outline: 2px solid var(--theme-text);
+  outline-offset: 2px;
+}
+
+/*
+ * "Choose a site" (Jason, 2026-11-18): slides out beside the menu. Portalled to <body> and
+ * fixed, so Payload's nav (sticky, overflow hidden, its own stacking context) neither clips nor
+ * buries it. It starts at the nav's inline end while the nav is open, at the window's edge while
+ * it is shut, and scrolls on its own. Under 768px Payload's nav is the full width, so the panel
+ * covers it instead.
+ */
+.flyout {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-start: 0;
+  z-index: var(--z-modal);
+  inline-size: min(360px, 100vw);
+  overflow-block: auto;
+  padding-block: 24px;
+  padding-inline: 20px;
+  border-inline-end: 1px solid var(--theme-elevation-150);
+  background: var(--theme-bg);
+  box-shadow: 0 0 24px rgb(0 0 0 / 20%);
+  font-size: 15px;
+  animation: slide-out 160ms ease-out;
+}
+
+.flyout[data-beside-nav='true'] {
+  inset-inline-start: var(--nav-width);
+  inline-size: min(360px, calc(100vw - var(--nav-width)));
+}
+
+@keyframes slide-out {
+  from {
+    opacity: 0;
+    translate: -16px 0;
+  }
+}
+
+.flyout:dir(rtl) {
+  animation-name: slide-out-rtl;
+}
+
+@keyframes slide-out-rtl {
+  from {
+    opacity: 0;
+    translate: 16px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flyout {
+    animation: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .flyout,
+  .flyout[data-beside-nav='true'] {
+    inset-inline-start: 0;
+    inline-size: 100vw;
+  }
+}
+
+.flyoutHeader {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  margin-block-end: 12px;
+}
+
+.flyoutTitle {
+  margin: 0;
+  font-size: 20px;
+}
+
+.flyoutTitle:focus {
+  outline: none;
+}
+
+.flyoutTitle:focus-visible {
+  outline: 2px solid var(--theme-text);
+  outline-offset: 2px;
+}
+
+.flyoutFor {
+  margin: 0;
+  font-size: 15px;
+  color: var(--theme-elevation-800);
+}
+
+.flyoutClose {
+  margin-inline-start: auto;
+  padding-block: 4px;
+  padding-inline: 10px;
+  border: 1px solid var(--theme-elevation-400);
+  border-radius: 4px;
+  background: none;
+  font-size: 15px;
+  color: var(--theme-text);
+  cursor: pointer;
+}
+
+.flyoutClose:focus-visible {
+  outline: 2px solid var(--theme-text);
+  outline-offset: 2px;
+}
+
+.sites {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site {
+  display: block;
+  padding-block: 8px;
+  border-block-end: 1px solid var(--theme-elevation-100);
+  font-size: 15px;
+  color: var(--theme-text);
+}
+
+.site:hover {
+  background: var(--theme-elevation-50);
+}
+
+.site[aria-current='page'] {
+  font-weight: 600;
+}
+
+.site:focus-visible {
+  outline: 2px solid var(--theme-text);
+  outline-offset: -2px;
+}
+
+/* "Everything else" (`EverythingElseFold`): Payload's collection groups, folded. */
+.fold {
+  margin-block: 8px 16px;
+}
+
+.foldSummary {
+  padding-block: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--theme-text);
+  cursor: pointer;
+}
+
+.foldSummary:focus-visible {
+  outline: 2px solid var(--theme-text);
+  outline-offset: 2px;
+}
+
+/*
+ * The panel's levels (`SiteFlyout`, Jason 2026-11-18): drilling in is a button styled as a row;
+ * leaving is a link. A row's note (a page's status, a file's kind) is quieter; a level under a
+ * row is indented with a rule down its start edge, as on a site's pages.
+ */
+.siteButton {
+  inline-size: 100%;
+  border: 0;
+  border-block-end: 1px solid var(--theme-elevation-100);
+  background: none;
+  font: inherit;
+  font-size: 15px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.siteButton[aria-current='true'] {
+  font-weight: 600;
+}
+
+.siteNote {
+  font-size: 15px;
+  color: var(--theme-elevation-800);
+}
+
+.nested {
+  margin-inline-start: 8px;
+  padding-inline-start: 14px;
+  border-inline-start: 1px solid var(--theme-elevation-200);
+}
+
+.flyoutBack {
+  display: inline-block;
+  margin-block-end: 8px;
+  padding-block: 4px;
+  padding-inline: 0;
+  border: 0;
+  background: none;
+  font-size: 15px;
+  color: var(--theme-text);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.flyoutBack::before {
+  content: '← ';
+}
+
+.flyoutBack:dir(rtl)::before {
+  content: '→ ';
+}
+
+.flyoutAction {
+  display: inline-block;
+  margin-block-end: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--theme-text);
+}
+
+.flyoutBack:focus-visible,
+.flyoutAction:focus-visible,
+.siteButton:focus-visible {
+  outline: 2px solid var(--theme-text);
+  outline-offset: -2px;
+}
+
+/* Files opens on every folder, under each site's name (Jason, 2026-11-18). */
+.group {
+  margin-block-end: 16px;
+}
+
+.groupTitle {
+  margin-block: 12px 4px;
+  font-size: 16px;
+  color: var(--theme-text);
+}
+
+/* A board folder's name in the Announcements panel, its boards indented under it. */
+.groupFolder {
+  margin-block: 8px 2px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--theme-elevation-800);
+}
+
+/*
+ * An imported calendar's dialog, "This calendar is a feed from …" (`FeedCalendarDialog`, Jason
+ * 2026-11-18), as the file library's delete dialog.
+ */
+.dialog {
+  max-inline-size: min(480px, calc(100vw - 32px));
+  padding-block: 20px;
+  padding-inline: 24px;
+  border: 1px solid var(--theme-elevation-400);
+  border-radius: 6px;
+  background: var(--theme-elevation-0);
+  color: var(--theme-text);
+}
+
+.dialog::backdrop {
+  /* Not a token: the backdrop tints whatever is behind it and carries no text. */
+  background: rgb(0 0 0 / 55%);
+}
+
+.dialogTitle {
+  margin-block: 0 12px;
+  font-size: 20px;
+}
+
+.dialogText {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.dialogActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: baseline;
+  justify-content: flex-end;
+  margin-block-start: 16px;
+}

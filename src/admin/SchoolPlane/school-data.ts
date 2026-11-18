@@ -2,6 +2,7 @@ import type { Payload, PayloadRequest } from 'payload'
 
 import { relationshipIdOf, tenantIdsFor } from '@/access/predicates'
 import type { AuthUser } from '@/access/types'
+import { feedNote } from '@/lib/feed-source'
 
 import type { FolderOption } from './upload-file'
 
@@ -168,6 +169,10 @@ export type CalendarOption = { id: number | string; tenant: number | string; lab
  * The calendars the user may add events to — their schools' — read AS THE USER, so the list is
  * what access allows and nothing more (Jason, 2026-11-11). Labelled "Site · Calendar" when the
  * user has several schools, so two schools' calendars of the same name are told apart.
+ *
+ * An IMPORTED calendar (iCal or Google, `source: 'feed'`) is not a choice (Jason, 2026-11-18): its
+ * events come from its address, and the event hook refuses one added by hand anyway. The form
+ * shows it instead, saying so (`listImportedCalendars`).
  */
 export const listMyCalendars = async (req: PayloadRequest): Promise<CalendarOption[]> => {
   if (!req.user) return []
@@ -179,6 +184,7 @@ export const listMyCalendars = async (req: PayloadRequest): Promise<CalendarOpti
     depth: 0,
     pagination: false,
     sort: 'label',
+    where: { source: { not_equals: 'feed' } },
     select: { label: true, name: true, tenant: true },
   })
   const schools = new Set(
@@ -192,6 +198,33 @@ export const listMyCalendars = async (req: PayloadRequest): Promise<CalendarOpti
       schools.size > 1 && typeof doc.label === 'string' && doc.label !== '' ? doc.label : name
     return [{ id: doc.id, tenant: Number.isNaN(Number(tenant)) ? tenant : Number(tenant), label }]
   })
+}
+
+export type ImportedCalendar = { id: number | string; label: string; note: string }
+
+/**
+ * The user's schools' IMPORTED calendars (Jason, 2026-11-18), read as the user: shown beside the
+ * new-event form's choices with "This calendar is a feed from …" (`feedNote` — the host, never
+ * the address), rather than silently missing.
+ */
+export const listImportedCalendars = async (req: PayloadRequest): Promise<ImportedCalendar[]> => {
+  if (!req.user) return []
+  const { docs } = await req.payload.find({
+    collection: 'calendars',
+    req,
+    user: req.user,
+    overrideAccess: false,
+    depth: 0,
+    pagination: false,
+    sort: 'label',
+    where: { source: { equals: 'feed' } },
+    select: { name: true, feedUrl: true },
+  })
+  return docs.map((doc) => ({
+    id: doc.id,
+    label: typeof doc.name === 'string' && doc.name !== '' ? doc.name : String(doc.id),
+    note: feedNote((doc as { feedUrl?: unknown }).feedUrl),
+  }))
 }
 
 /**

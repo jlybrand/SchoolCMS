@@ -1,0 +1,125 @@
+/**
+ * A site's pages (Jason, 2026-11-18). Payload's theme variables, not DD2 tokens: the tokens are
+ * not loaded in the admin, and this must follow Payload's dark theme. `--theme-elevation-800`
+ * clears 4.5:1 in both (see `admin-overrides.css`).
+ *
+ * NOTHING UNDER 15px (Jason, 2026-11-17): Payload's root is 13px, so sizes are px, and every
+ * non-heading is held at 15px — Payload's small Pill and the new-page form it reuses included.
+ *
+ * Logical properties only (CLAUDE.md rule 5).
+ */
+
+.view {
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--theme-text);
+  padding-block-end: 48px;
+}
+
+.view :not(h1, h2, h3, h4) {
+  font-size: 15px;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  align-items: baseline;
+  margin-block: 24px 16px;
+}
+
+.title {
+  margin: 0;
+  font-size: 30px;
+}
+
+.muted,
+.note {
+  color: var(--theme-elevation-800);
+}
+
+.changeSite {
+  padding-block: 6px;
+  padding-inline: 14px;
+  border: 1px solid var(--theme-elevation-400);
+  border-radius: 4px;
+  background: var(--theme-elevation-0);
+  color: var(--theme-text);
+  cursor: pointer;
+}
+
+.changeSite:hover {
+  background: var(--theme-elevation-100);
+}
+
+.changeSite:focus-visible,
+.add:focus-visible,
+.addTop:focus-visible,
+.pageTitle:focus-visible,
+.cancel:focus-visible {
+  outline: 2px solid var(--theme-text);
+  outline-offset: 2px;
+}
+
+.tree {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Each level in: a rule down its start edge shows what sits under what. */
+.tree .tree {
+  margin-inline-start: 12px;
+  padding-inline-start: 20px;
+  border-inline-start: 1px solid var(--theme-elevation-200);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  align-items: center;
+  padding-block: 8px;
+  border-block-end: 1px solid var(--theme-elevation-100);
+}
+
+.pageTitle {
+  font-weight: 600;
+  color: var(--theme-text);
+}
+
+.pills {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.add {
+  margin-inline-start: auto;
+  color: var(--theme-text);
+}
+
+.addTop {
+  display: inline-block;
+  margin-block-start: 20px;
+  color: var(--theme-text);
+  font-weight: 600;
+}
+
+.newPage {
+  margin-block: 8px 16px;
+  padding: 16px 20px;
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: 4px;
+  background: var(--theme-elevation-50);
+}
+
+.newPageTitle {
+  margin-block: 0 8px;
+  font-size: 19px;
+}
+
+.cancel {
+  display: inline-block;
+  margin-block-start: 12px;
+  color: var(--theme-text);
+}

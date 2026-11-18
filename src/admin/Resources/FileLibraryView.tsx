@@ -1,4 +1,3 @@
-import { DefaultTemplate } from '@payloadcms/next/templates'
 import { Gutter } from '@payloadcms/ui'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
@@ -7,6 +6,8 @@ import type { ReactNode } from 'react'
 
 import { isDistrictAdmin, isSchoolManager } from '@/access/predicates'
 import type { AuthUser } from '@/access/types'
+import { inPayloadFrame } from '@/admin/frame'
+import { OpenPanelButton } from '@/admin/Nav/OpenPanelButton'
 import { fileSizeLabel, fileTypeLabel } from '@/content/document-item'
 import { usesSummary } from '@/lib/file-uses'
 
@@ -34,9 +35,7 @@ import { getLibraryFile, librarySites, listLibraryFiles, listLibraryFolders } fr
  * scoped to the site (`library-data.ts`).
  *
  * IN PAYLOAD'S FRAME — the side menu and top bar — unlike the other task screens (Jason,
- * 2026-11-17: the library only, to see it before deciding on every task screen). A custom view
- * gets the frame only by wrapping itself in `DefaultTemplate`, with the props Payload's own root
- * view hands it.
+ * 2026-11-17: the library only, to see it before deciding on every task screen): `inPayloadFrame`.
  *
  * Built, then locked with Playwright + axe (CLAUDE.md's exception for admin views):
  * `tests/e2e/file-library.spec.ts`.
@@ -44,25 +43,7 @@ import { getLibraryFile, librarySites, listLibraryFiles, listLibraryFolders } fr
 export const FileLibraryView = async (props: AdminViewServerProps) => {
   const { initPageResult, searchParams } = props
   const { req } = initPageResult
-  const framed = (children: ReactNode) => (
-    <DefaultTemplate
-      i18n={req.i18n}
-      payload={req.payload}
-      permissions={initPageResult.permissions}
-      req={req}
-      visibleEntities={{
-        // Copied, not passed through: React 19 refuses the read-only original (as Payload's root).
-        collections: [...initPageResult.visibleEntities.collections],
-        globals: [...initPageResult.visibleEntities.globals],
-      }}
-      {...(initPageResult.locale ? { locale: initPageResult.locale } : {})}
-      {...(props.params ? { params: props.params } : {})}
-      {...(searchParams ? { searchParams } : {})}
-      {...(req.user ? { user: req.user } : {})}
-    >
-      {children}
-    </DefaultTemplate>
-  )
+  const framed = (children: ReactNode) => inPayloadFrame(props, children)
   const user = req.user as AuthUser | null
   if (!isDistrictAdmin(user) && !isSchoolManager(user)) redirect('/admin')
 
@@ -71,30 +52,17 @@ export const FileLibraryView = async (props: AdminViewServerProps) => {
   const at: LibraryParams = { ...params, site: site?.id ?? null }
   const deleted = searchParams?.done === 'deleted'
 
-  const picker =
-    sites.length > 1 ? (
-      <form action={LIBRARY_PATH} className={styles.picker} method="get">
-        <label className={styles.label} htmlFor="library-site">
-          Site
-        </label>
-        <select
-          className={styles.select}
-          defaultValue={site?.id ?? ''}
-          id="library-site"
-          name="site"
-        >
-          {site === null ? <option value="">Choose a site</option> : null}
-          {sites.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-        <button className={styles.button} type="submit">
-          Show its files
-        </button>
-      </form>
-    ) : null
+  // The district chooses a folder, on any site, from the list beside the menu (Jason, 2026-11-18:
+  // no select, no clicking through a site);
+  // a school manager has one school (Jason, 2026-11-18), so there is nothing to choose.
+  const picker = district ? (
+    <p className={styles.picker}>
+      {site ? <strong id="library-site">{site.name}</strong> : null}
+      <OpenPanelButton className={styles.button} id="library-change-site" kind="files">
+        Choose a folder
+      </OpenPanelButton>
+    </p>
+  ) : null
 
   if (site === null) {
     return framed(
@@ -104,7 +72,7 @@ export const FileLibraryView = async (props: AdminViewServerProps) => {
           {picker}
           <p className={styles.muted}>
             {district
-              ? 'Choose a site to see its files.'
+              ? 'Choose a folder to see its files.'
               : 'Your account is not linked to a school yet. Ask the district web team to add it.'}
           </p>
         </div>
