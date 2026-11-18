@@ -10,7 +10,8 @@ import type { SiteChoice } from '@/admin/SitePages/site-pages'
 
 /**
  * The "Choose a site" panel's drill-down (Jason, 2026-11-18) — PURE. Each level replaces the one
- * before it in the panel: Pages goes sites → the site's pages; Announcements opens on every board;
+ * before it in the panel: Pages goes sites → the site's pages; Announcements opens on every board
+ * → a board's posts;
  * Events on every calendar;
  * Files opens on EVERY folder, under each site's name (Jason, 2026-11-18: no clicking through a
  * site first) → a folder's files. These say what each level asks the REST API for (read AS THE USER,
@@ -163,6 +164,20 @@ export const calendarsBySite = (
 /** A calendar's events: Payload's events list, filtered to it. */
 export const calendarEventsHref = (calendar: string): string =>
   `/admin/collections/events?${new URLSearchParams([['where[calendar][equals]', calendar]]).toString()}`
+
+/** How many of a board's posts the panel lists; the announcements screen has the rest. */
+export const BOARD_POSTS_SHOWN = 50
+
+/** A board's posts, the newest first, drafts included (a post not live yet is listed too). */
+export const boardPostsQuery = (api: string, board: string): string =>
+  query(api, 'posts', [
+    ['where[board][equals]', board],
+    ['draft', 'true'],
+    ['depth', '0'],
+    ['sort', '-updatedAt'],
+    ['limit', String(BOARD_POSTS_SHOWN)],
+    ...select('title', '_status', 'reviewState'),
+  ])
 
 /** One folder's files on one site, by title. */
 export const filesQuery = (api: string, site: string, folder: string): string =>

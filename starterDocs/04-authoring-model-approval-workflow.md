@@ -162,7 +162,8 @@ down in place:
 - **Pages** asks the district for the site, then lists its pages (each opening its form, plus the
   site's page tree, where a page is added or moved in place under another). A school manager has
   one school, so their list opens straight on its pages, with "Add a page".
-- **Announcements** lists every board, by site and folder; a board opens its announcements.
+- **Announcements** lists every board, by site and folder; a board lists its announcements in
+  their place (each opening its form, with "Create post" above them).
 - **Events** lists every calendar, by site; a calendar opens its events. Choosing an imported
   calendar (iCal or Google) opens a message instead — "This calendar is a feed from …" — with its
   events a link away; it is never offered to add an event to, since its events come from its
