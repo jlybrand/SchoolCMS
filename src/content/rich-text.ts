@@ -1,3 +1,5 @@
+import { linkLabelVerdict } from '@/lib/link-label'
+
 import { toImageAsset } from './image-asset'
 import { NO_PAGE_PATHS, pathOfPage, type PagePaths } from './page-tree'
 import type {
@@ -109,7 +111,20 @@ const toInline = (value: unknown, paths: PagePaths): RichTextInline[] => {
      */
     if (href === '') return children
 
-    return [{ kind: 'link', href, newTab: fields.newTab === true, children }]
+    // The link's own screen-reader words, held to 2.5.3 here whatever is stored.
+    const label = linkLabelVerdict(
+      typeof fields.ariaLabel === 'string' ? fields.ariaLabel : '',
+      children.map((child) => child.text).join(''),
+    )
+    return [
+      {
+        kind: 'link',
+        href,
+        newTab: fields.newTab === true,
+        ...('keep' in label ? { ariaLabel: label.keep } : {}),
+        children,
+      },
+    ]
   }
 
   return []

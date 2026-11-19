@@ -25,17 +25,26 @@
  * production.
  */
 
-/** `07` §4.2. Anything else is unwrapped to its text content. */
+/**
+ * `07` §4.2, plus what the editor gained on 2026-11-19 (Jason, "a more robust text editor"): the
+ * Minor heading (`h4`), a quotation and a line. Typing and pasting share one vocabulary, so what
+ * the editor can make a paste can keep. (Code edited in the HTML view is read back by its own
+ * walker over the same vocabulary, `src/lib/html-source.ts`.)
+ * Anything else is unwrapped to its text content.
+ */
 export const ALLOWED_ELEMENTS = [
   'p',
   'h2',
   'h3',
+  'h4',
   'strong',
   'em',
   'a',
   'ul',
   'ol',
   'li',
+  'blockquote',
+  'hr',
 ] as const satisfies readonly string[]
 
 export type PasteRejectionKind = 'table' | 'image'
@@ -70,11 +79,11 @@ const defaultParse: HtmlParser = (html) => new DOMParser().parseFromString(html,
  * clause a non-specialist can act on, and give the alternative. No jargon — an author who
  * reads "semantic markup" learns nothing they can do something about.
  */
-const REJECTION_MESSAGES: Record<PasteRejectionKind, string> = {
+export const REJECTION_MESSAGES: Record<PasteRejectionKind, string> = {
   table:
     'We removed a table. Tables are hard to read on a phone and hard to follow with a screen reader. Put the information in a list instead, or ask the district team if this really needs to be a table.',
   image:
-    'We removed an image. Add images with the Add image button instead — it asks you to describe the picture for people who cannot see it, and a pasted image skips that step.',
+    'We removed an image. Add images with the Insert an image button instead — it asks you to describe the picture for people who cannot see it, and a pasted image skips that step.',
 }
 
 /** Elements whose content is markup or styling, never author content. */
@@ -181,10 +190,14 @@ type Piece = Inline | LineBreak
 
 const isBreak = (piece: Piece): piece is LineBreak => 'br' in piece
 
+/** A block of words: a paragraph, one of the three headings, or a quotation. */
+type TextTag = 'p' | 'h2' | 'h3' | 'h4' | 'blockquote'
+
 type Unit =
-  | { type: 'p' | 'h2' | 'h3'; inlines: Inline[] }
+  | { type: TextTag; inlines: Inline[] }
   | { type: 'item'; style: ListStyle; inlines: Inline[] }
   | { type: 'list'; ordered: boolean; items: Inline[][] }
+  | { type: 'rule' }
 
 /**
  * `kind` is carried alongside `tag` as an explicit discriminant. Narrowing on `tag` alone
@@ -192,8 +205,9 @@ type Unit =
  * leaves the compiler unable to rule the list variant out.
  */
 type Block =
-  | { kind: 'text'; tag: 'p' | 'h2' | 'h3'; inlines: Inline[] }
+  | { kind: 'text'; tag: TextTag; inlines: Inline[] }
   | { kind: 'list'; tag: 'ul' | 'ol'; items: Inline[][] }
+  | { kind: 'rule' }
 
 // ---------------------------------------------------------------------------
 // Text
@@ -332,7 +346,7 @@ const SAFE_SCHEMES = new Set(['http:', 'https:', 'mailto:', 'tel:'])
  * pasted link depend on Google staying up and would defeat the link checker, so the real
  * destination is recovered here rather than left for someone to notice later.
  */
-const sanitizeHref = (raw: string | null): string | undefined => {
+export const sanitizeHref = (raw: string | null): string | undefined => {
   const href = raw?.trim()
   if (!href) return undefined
 
@@ -360,7 +374,9 @@ const sanitizeHref = (raw: string | null): string | undefined => {
 // Walking
 // ---------------------------------------------------------------------------
 
-const headingTagFor = (tag: string): 'h2' | 'h3' => (tag === 'h1' || tag === 'h2' ? 'h2' : 'h3')
+/** h1 is the page title's, so it becomes h2; below h4 the editor has no name, so h5–h6 are h4. */
+const headingTagFor = (tag: string): 'h2' | 'h3' | 'h4' =>
+  tag === 'h1' || tag === 'h2' ? 'h2' : tag === 'h3' ? 'h3' : 'h4'
 
 /** Flattens an element to inline pieces, ignoring any block structure inside it. */
 const piecesOf = (node: Node, format: Format): Piece[] => {
@@ -428,7 +444,7 @@ const listStyleOf = (match: RegExpExecArray): ListStyle => {
  * `07` §4.2 calls this the highest-value transform, because agendas and supply lists are
  * mostly lists and a literal `•` carries no structure at all.
  */
-const unitsFromLines = (lines: Inline[][], tag: 'p' | 'h2' | 'h3'): Unit[] => {
+const unitsFromLines = (lines: Inline[][], tag: TextTag): Unit[] => {
   const out: Unit[] = []
 
   for (const line of lines) {
@@ -471,11 +487,15 @@ const listUnitFrom = (element: Element, format: Format): Unit => {
  *
  * `format` is threaded through rather than recomputed, because Google Docs wraps whole
  * documents in a formatting element and Word nests spans several deep.
+ *
+ * `quoted` is true inside a `<blockquote>`: its words become quotes — one per paragraph, since
+ * the editor's quote holds a line of text, not paragraphs — while a list or heading inside it
+ * stays a list or heading.
  */
-const walk = (node: Node, format: Format, out: Unit[]): void => {
+const walk = (node: Node, format: Format, out: Unit[], quoted = false): void => {
   let pending: Piece[] = []
 
-  const flush = (tag: 'p' | 'h2' | 'h3' = 'p') => {
+  const flush = (tag: TextTag = quoted ? 'blockquote' : 'p') => {
     if (pending.length === 0) return
     out.push(...unitsFromLines(linesOf(pending), tag))
     pending = []
@@ -502,6 +522,7 @@ const walk = (node: Node, format: Format, out: Unit[]): void => {
 
     if (tag === 'hr') {
       flush()
+      out.push({ type: 'rule' })
       continue
     }
 
@@ -532,7 +553,7 @@ const walk = (node: Node, format: Format, out: Unit[]): void => {
      */
     if (BLOCK_TAGS.has(tag) || containsBlock(element)) {
       flush()
-      walk(element, next, out)
+      walk(element, next, out, quoted || tag === 'blockquote')
       continue
     }
 
@@ -569,6 +590,12 @@ const toBlocks = (units: Unit[]): Block[] => {
 
     closeRun()
 
+    if (unit.type === 'rule') {
+      // Two lines with nothing between them are one line — the gap held no content.
+      if (blocks[blocks.length - 1]?.kind !== 'rule') blocks.push({ kind: 'rule' })
+      continue
+    }
+
     if (unit.type === 'list') {
       blocks.push({ kind: 'list', tag: unit.ordered ? 'ol' : 'ul', items: unit.items })
       continue
@@ -598,6 +625,7 @@ const serializeInlines = (inlines: Inline[]): string =>
     .join('')
 
 const serializeBlock = (block: Block): string => {
+  if (block.kind === 'rule') return '<hr>'
   if (block.kind === 'list') {
     const items = block.items.map((item) => `<li>${serializeInlines(item)}</li>`).join('')
     return `<${block.tag}>${items}</${block.tag}>`

@@ -71,6 +71,13 @@ export type LinkProps = {
    * from the page title sitting under the menu.
    */
   readonly current?: boolean
+  /**
+   * The link's own screen-reader words — its `aria-label` — when the visible words need more
+   * ("Read more" → "Read more about the bond election"). The caller keeps the visible words
+   * inside it (WCAG 2.5.3; `linkLabelVerdict`). It replaces the link's content for a screen
+   * reader, the hidden new-window notice included, so that notice is added to it here.
+   */
+  readonly label?: string
 }
 
 export const Link = ({
@@ -82,6 +89,7 @@ export const Link = ({
   hrefLang,
   variant = 'inline',
   current = false,
+  label,
 }: LinkProps) => (
   <a
     className={
@@ -91,6 +99,7 @@ export const Link = ({
     lang={lang}
     hrefLang={hrefLang}
     aria-current={current ? 'page' : undefined}
+    aria-label={label ? (newWindow ? `${label} (${newWindowLabel})` : label) : undefined}
     {...(ABSOLUTE_HTTP.test(href) ? { 'data-external': 'true' } : {})}
     {...(newWindow ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
   >

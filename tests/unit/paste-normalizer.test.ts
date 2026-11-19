@@ -59,7 +59,20 @@ const candidateTexts = (result: NormalizedPaste) => result.headingCandidates.map
 
 describe('element allowlist', () => {
   it('is exactly the set in `07` §4.2', () => {
-    expect([...ALLOWED_ELEMENTS]).toEqual(['p', 'h2', 'h3', 'strong', 'em', 'a', 'ul', 'ol', 'li'])
+    expect([...ALLOWED_ELEMENTS]).toEqual([
+      'p',
+      'h2',
+      'h3',
+      'h4',
+      'strong',
+      'em',
+      'a',
+      'ul',
+      'ol',
+      'li',
+      'blockquote',
+      'hr',
+    ])
   })
 
   it.each([WORD_AGENDA, WORD_MANUAL_LIST, GOOGLE_DOCS_NOTICE])(
@@ -101,13 +114,48 @@ describe('element allowlist', () => {
     expect(html).toBe('<p>Notice</p>')
   })
 
-  it('maps pasted heading levels into the two the design system allows', () => {
+  it('maps pasted heading levels into the three the editor allows', () => {
     // Blocks own their heading levels; an editor must not be able to paste an h1 onto a
-    // page that already has one, or paste an h5 and create a skipped level (`07` §3).
+    // page that already has one, or paste an h6 and create a level the editor has no name
+    // for (`07` §3). h4 is the Minor heading (2026-11-19); h5 and h6 become it.
     const { html } = normalizePastedHtml(
       '<h1>One</h1><h2>Two</h2><h3>Three</h3><h4>Four</h4><h5>Five</h5><h6>Six</h6>',
     )
-    expect(tagsOf(html)).toEqual(['h2', 'h2', 'h3', 'h3', 'h3', 'h3'])
+    expect(tagsOf(html)).toEqual(['h2', 'h2', 'h3', 'h4', 'h4', 'h4'])
+  })
+
+  it('keeps a quotation, one quote per paragraph of it, holding only its words', () => {
+    // The editor's quote holds a line of text, not paragraphs, so each paragraph of a
+    // quotation is a quote of its own — the words and their order survive.
+    const { html } = normalizePastedHtml(
+      '<blockquote><p>First <b>line</b>.</p><p>Second line.</p></blockquote><p>After</p>',
+    )
+    expect(html).toBe(
+      '<blockquote>First <strong>line</strong>.</blockquote><blockquote>Second line.</blockquote><p>After</p>',
+    )
+  })
+
+  it('keeps a list or heading inside a quotation as itself, beside the quote', () => {
+    const { html } = normalizePastedHtml(
+      '<blockquote>Said:<ul><li>One</li></ul><h2>Title</h2></blockquote>',
+    )
+    expect(html).toBe('<blockquote>Said:</blockquote><ul><li>One</li></ul><h2>Title</h2>')
+  })
+
+  it('keeps a line, but never two in a row — an empty gap between lines is no content', () => {
+    expect(normalizePastedHtml('<p>A</p><hr><p>B</p>').html).toBe('<p>A</p><hr><p>B</p>')
+    expect(normalizePastedHtml('<p>A</p><hr><p> </p><hr /><p>B</p><hr>').html).toBe(
+      '<p>A</p><hr><p>B</p><hr>',
+    )
+  })
+
+  it('does not reconstruct a list or ask about a heading inside a quotation', () => {
+    const result = normalizePastedHtml('<blockquote><b>Short bold</b></blockquote>')
+    expect(result.html).toBe('<blockquote><strong>Short bold</strong></blockquote>')
+    expect(result.headingCandidates).toEqual([])
+    expect(normalizePastedHtml('<blockquote>1. Not an item</blockquote>').html).toBe(
+      '<blockquote>1. Not an item</blockquote>',
+    )
   })
 
   it('keeps bold and italic as semantic elements, not as tag names', () => {

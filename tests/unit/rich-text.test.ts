@@ -219,6 +219,33 @@ describe('toRichText — inline marks', () => {
     )
     expect(result[0]).toMatchObject({ children: [{ kind: 'link', newTab: true }] })
   })
+
+  /**
+   * A link's own screen-reader words (Jason, 2026-11-19), held to WCAG 2.5.3 HERE too — the
+   * renderer's guarantee, whatever the stored value: kept only when it adds to the link's words
+   * and contains them.
+   */
+  const labelled = (ariaLabel: string, words: string) =>
+    toRichText(
+      root({
+        type: 'paragraph',
+        children: [{ type: 'link', fields: { url: '/bond', ariaLabel }, children: [text(words)] }],
+      }),
+    )[0]
+
+  it('carries a link label that adds to the words and contains them', () => {
+    expect(labelled('Read more about the bond election', 'Read more')).toMatchObject({
+      children: [{ kind: 'link', ariaLabel: 'Read more about the bond election' }],
+    })
+  })
+
+  it('drops a label that repeats the words, or leaves them out', () => {
+    for (const label of ['read more', 'Bond details', '']) {
+      const link = (labelled(label, 'Read more') as { children: Record<string, unknown>[] })
+        .children[0]!
+      expect(link).not.toHaveProperty('ariaLabel')
+    }
+  })
 })
 
 describe('toRichText — malformed input never throws', () => {

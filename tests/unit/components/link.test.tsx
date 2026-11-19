@@ -63,6 +63,27 @@ describe('Link', () => {
     expect(link.getAttribute('target')).toBe('_blank')
   })
 
+  it('names the link with its own screen-reader words when it has them', () => {
+    const { getByRole } = renderComponent(
+      <Link href="/bond" label="Read more about the bond election">
+        Read more
+      </Link>,
+    )
+    expect(getByRole('link').getAttribute('aria-label')).toBe('Read more about the bond election')
+  })
+
+  it('keeps the new-window notice when a label replaces the words', () => {
+    // An aria-label overrides the link's content, the hidden notice included.
+    const { getByRole } = renderComponent(
+      <Link href="https://forms.office.com/x" label="Register for the bond forum" newWindow>
+        Register
+      </Link>,
+    )
+    expect(getByRole('link').getAttribute('aria-label')).toBe(
+      'Register for the bond forum (opens in a new window)',
+    )
+  })
+
   it('pairs rel with target so an opened page gets no handle on this one', () => {
     const { getByRole } = renderComponent(
       <Link href="https://forms.office.com/x" newWindow>

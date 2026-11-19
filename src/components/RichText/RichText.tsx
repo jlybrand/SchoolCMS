@@ -73,7 +73,12 @@ const Inlines = ({ nodes }: { readonly nodes: readonly RichTextInline[] }) => (
   <>
     {nodes.map((node, index) =>
       node.kind === 'link' ? (
-        <Link href={node.href} key={index} newWindow={node.newTab}>
+        <Link
+          href={node.href}
+          key={index}
+          newWindow={node.newTab}
+          {...(node.ariaLabel ? { label: node.ariaLabel } : {})}
+        >
           {node.children.map((child, childIndex) => (
             <span key={childIndex}>{markUp(child)}</span>
           ))}

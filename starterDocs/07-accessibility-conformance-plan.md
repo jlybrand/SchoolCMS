@@ -115,9 +115,26 @@ alike:_ **alignment** (rendered as center or end only — logical, so a translat
 **images from the site's library**, where alt text is required at upload (rule 7; an image from
 another site's library or a document placed as an image is refused on save). Color, underline,
 strikethrough and tables stay out. The editor's triage table (`src/lib/editor.ts`) records each
-verdict. Still to come in the same direction: an Embed section for named services, and "Insert
-HTML" that is checked against WCAG 2.1 AA and converted into these same elements before it goes in
-— never stored raw.
+verdict. Still to come in the same direction: an Embed section for named services (a section of
+its own, never inside the text).
+
+_The text as HTML (Jason, 2026-11-19), for schools and the district alike:_ a toolbar button,
+"HTML code", shows the whole text as clean HTML5, to read, edit or paste code into. The HTML is
+**never stored as written**: "Update the text" reads it back over exactly the elements above, with
+alignment (center or end), Large text, page links (as permalinks) and the text's own library
+images. Everything else — embedded frames, scripts and event handlers, form fields, unsafe links,
+tables, other images, styling, a main heading — is **named in plain words before the text
+changes**, and the author updates with the rest or goes back to the code
+(`src/lib/html-source.ts`). With it, the paste normalizer now keeps a quotation, a line and the
+Minor heading (`h4`; `h5`–`h6` become it), so typing, pasting and HTML share one vocabulary.
+Attributes the text cannot hold (ARIA, `role`, `title`, `id`, and `lang` — the page sets its
+language) are named and dropped, with one exception (Jason, 2026-11-19): a **link's own
+screen-reader words** (`aria-label`, also a field in the link dialog) are kept when they add to
+the link's words and contain them — WCAG 2.5.3 Label in Name. One that only repeats the words is
+unnecessary and one that leaves them out fails 2.5.3; both are dropped, and the renderer applies
+the same rule to whatever is stored (`src/lib/link-label.ts`). The code box is Payload's code
+editor (Monaco), **bundled** — pinned `monaco-editor`, never loaded from a CDN — with Tab moving
+focus out as from any field (2.1.2) and a theme whose colors pass 4.5:1.
 
 ### 4.5 Structured content over prose
 

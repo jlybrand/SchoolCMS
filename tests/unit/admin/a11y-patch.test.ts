@@ -56,6 +56,7 @@ describe('unnamed buttons', () => {
   it.each([
     ['upload', 'Insert an image'],
     ['horizontalRule', 'Insert a line'],
+    ['htmlSource', 'HTML code'],
     ['paragraph', 'Normal text'],
     ['h2', 'Heading'],
     ['h3', 'Subheading'],

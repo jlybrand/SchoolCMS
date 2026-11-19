@@ -57,6 +57,11 @@ describe('the editor allowlist', () => {
          * which is why it belongs in a set otherwise chosen for what authors may express.
          */
         'pasteNormalizer',
+        /**
+         * DD2's own (Jason, 2026-11-19): the text as HTML. Edited code is CHECKED and read back
+         * over the vocabulary above (`src/lib/html-source.ts`), never stored as written.
+         */
+        'htmlSource',
       ].sort(),
     )
   })
