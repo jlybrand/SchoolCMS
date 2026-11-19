@@ -116,6 +116,8 @@ test.describe('pasting into the rich text editor', () => {
 
     const prompt = pastePrompt(page)
     await expect(prompt).toBeVisible()
+    // It paints with the design tokens — opaque, not see-through (2026-11-19).
+    await expect(prompt).toHaveCSS('background-color', 'rgb(255, 255, 255)')
 
     // The plain-language rejections from `07` §4.2 rows 6-7, in the author's words.
     await expect(prompt).toContainText('We removed a table.')

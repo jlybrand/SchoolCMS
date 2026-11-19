@@ -676,6 +676,11 @@ export type RichTextLink = {
   href: string
   /** The renderer announces this; a new tab that opens unannounced is a WCAG 3.2.5 problem. */
   newTab: boolean
+  /**
+   * The link's own screen-reader words (Jason, 2026-11-19), present only when they add to the
+   * visible words and contain them (WCAG 2.5.3, `linkLabelVerdict`).
+   */
+  ariaLabel?: string
   children: RichTextText[]
 }
 

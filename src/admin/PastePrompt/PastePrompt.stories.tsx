@@ -35,7 +35,7 @@ const IMAGE_REMOVED = {
   kind: 'image' as const,
   count: 1,
   message:
-    'We removed an image. Add images with the Add image button instead — it asks you to describe the picture for people who cannot see it, and a pasted image skips that step.',
+    'We removed an image. Add images with the Insert an image button instead — it asks you to describe the picture for people who cannot see it, and a pasted image skips that step.',
 }
 
 const AGENDA_HEADINGS = [

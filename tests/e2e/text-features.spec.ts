@@ -32,6 +32,25 @@ const blocking = async (page: Page) =>
     .filter((v) => ['critical', 'serious'].includes(v.impact ?? ''))
     .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)
 
+/**
+ * The HTML view's code box is Monaco (Payload's code editor): its input is a hidden textarea that
+ * holds only part of the code, so the code is read and set through Monaco's own API.
+ */
+type MonacoWindow = {
+  monaco: {
+    editor: { getEditors: () => { getValue: () => string; setValue: (v: string) => void }[] }
+  }
+}
+const codeOf = (page: Page) =>
+  page.evaluate(() =>
+    (window as unknown as MonacoWindow).monaco.editor.getEditors().at(-1)?.getValue(),
+  )
+const setCode = (page: Page, value: string) =>
+  page.evaluate(
+    (v) => (window as unknown as MonacoWindow).monaco.editor.getEditors().at(-1)!.setValue(v),
+    value,
+  )
+
 const words = (text: string, format = '') => ({
   type: 'paragraph',
   version: 1,
@@ -84,6 +103,23 @@ test.describe('the added text features on the public page', () => {
                   { type: 'horizontalrule', version: 1 },
                   { type: 'upload', version: 3, relationTo: 'resources', value: file, fields: {} },
                   words('— The principal', 'right'),
+                  {
+                    type: 'paragraph',
+                    version: 1,
+                    children: [
+                      {
+                        type: 'link',
+                        version: 3,
+                        fields: {
+                          linkType: 'custom',
+                          url: 'https://example.org/bond',
+                          newTab: false,
+                          ariaLabel: 'Read more about the bond election',
+                        },
+                        children: [{ type: 'text', version: 1, text: 'Read more' }],
+                      },
+                    ],
+                  },
                 ],
               },
             },
@@ -104,6 +140,10 @@ test.describe('the added text features on the public page', () => {
       await expect(page.locator('blockquote')).toHaveText('Every student, every day.')
       await expect(page.locator('main hr')).toHaveCount(1)
       await expect(page.getByRole('img', { name: 'The new playground' })).toBeVisible()
+      // A link's own screen-reader words, which contain its visible words (WCAG 2.5.3).
+      await expect(
+        page.getByRole('link', { name: 'Read more about the bond election' }),
+      ).toHaveText('Read more')
       expect(await blocking(page)).toEqual([])
     } finally {
       await admin.delete(`/api/pages/${id}`)
@@ -127,6 +167,7 @@ adminTest.describe('the editor’s toolbar', () => {
         for (const name of [
           'Insert an image',
           'Insert a line',
+          'HTML code',
           'Normal text',
           'Heading',
           'Subheading',
@@ -152,6 +193,166 @@ adminTest.describe('the editor’s toolbar', () => {
           )
           .toBe(true)
         expect(await blocking(page)).toEqual([])
+      } finally {
+        await dropPage(fixture)
+      }
+    },
+  )
+
+  adminTest(
+    '@a11y "HTML code" shows the text as HTML, names what a change took out, and updates the rest',
+    async ({ page, baseURL }) => {
+      const fixture = await makePage(baseURL)
+      // Monaco is BUNDLED: nothing comes from a CDN (Payload's loader would use jsDelivr).
+      const cdn: string[] = []
+      page.on('request', (request) => {
+        if (/jsdelivr|unpkg|cdnjs/.test(request.url())) cdn.push(request.url())
+      })
+      try {
+        await openPage(page, fixture.id)
+        await page.locator('.ContentEditable__root').first().click()
+        const toolbar = page.locator('.fixed-toolbar').first()
+        // After the everyday "add" buttons.
+        const keys = await toolbar
+          .locator('button[data-button-key]')
+          .evaluateAll((buttons) => buttons.map((b) => b.getAttribute('data-button-key')))
+        expect(keys.indexOf('htmlSource')).toBeGreaterThan(keys.indexOf('horizontalRule'))
+        await toolbar.getByRole('button', { name: 'HTML code', exact: true }).click()
+
+        const dialog = page.getByRole('dialog', { name: 'HTML code' })
+        const code = dialog.getByRole('textbox', { name: 'The text as HTML' })
+        await expect(dialog.locator('.monaco-editor')).toBeVisible()
+        await expect.poll(() => codeOf(page)).toBe('<p>Forms are due Friday.</p>')
+        await expect(code).toBeFocused()
+        // No keyboard trap (WCAG 2.1.2): Tab leaves the code box, as from any field.
+        await page.keyboard.press('Tab')
+        await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused()
+        await page.keyboard.press('Shift+Tab')
+        await expect(code).toBeFocused()
+        // It PAINTS: the design tokens are loaded in the admin, so the box is opaque, not a
+        // see-through panel over the backdrop (2026-11-19 — Storybook loads them, the admin did not).
+        await expect(dialog).toHaveCSS('background-color', 'rgb(255, 255, 255)')
+        expect(await blocking(page)).toEqual([])
+
+        await setCode(
+          page,
+          '<p>Forms are due Friday.</p>\n' +
+            '<blockquote>Every student, every day.</blockquote>\n' +
+            '<iframe src="https://forms.office.com/x">Loading</iframe>\n' +
+            '<p style="color:red" onclick="track()">Sign up today.</p>',
+        )
+        await dialog.getByRole('button', { name: 'Update the text' }).click()
+
+        const report = page.getByRole('dialog', { name: 'Before the text changes' })
+        await expect(report).toContainText('We removed embedded content')
+        await expect(report).toContainText('We removed code that runs in the browser')
+        await expect(report).toContainText('We removed styling')
+        expect(await blocking(page)).toEqual([])
+
+        await report.getByRole('button', { name: 'Update with the rest' }).click()
+        await expect(report).toBeHidden()
+        const editor = page.locator('.ContentEditable__root').first()
+        await expect(editor.locator('blockquote')).toHaveText('Every student, every day.')
+        await expect(editor.locator('p').first()).toHaveText('Forms are due Friday.')
+        await expect(editor.locator('p').last()).toHaveText('Sign up today.')
+
+        await expect
+          .poll(
+            async () => {
+              const doc = JSON.stringify(
+                await (
+                  await fixture.admin.get(`/api/pages/${fixture.id}?draft=true&depth=0`)
+                ).json(),
+              )
+              return doc.includes('"quote"') && doc.includes('Sign up today.')
+            },
+            { timeout: 20_000 },
+          )
+          .toBe(true)
+        const saved = JSON.stringify(
+          await (await fixture.admin.get(`/api/pages/${fixture.id}?draft=true&depth=0`)).json(),
+        )
+        expect(saved).not.toMatch(/iframe|onclick|color:red|Loading/)
+        expect(cdn).toEqual([])
+
+        // Opened again, it shows the text as it is now.
+        await toolbar.getByRole('button', { name: 'HTML code', exact: true }).click()
+        await expect(dialog.locator('.monaco-editor')).toBeVisible()
+        await expect
+          .poll(() => codeOf(page))
+          .toBe(
+            '<p>Forms are due Friday.</p>\n<blockquote>Every student, every day.</blockquote>\n<p>Sign up today.</p>',
+          )
+      } finally {
+        await dropPage(fixture)
+      }
+    },
+  )
+
+  adminTest(
+    '"HTML code": a clean change updates at once; Cancel leaves the text alone',
+    async ({ page, baseURL }) => {
+      const fixture = await makePage(baseURL)
+      try {
+        await openPage(page, fixture.id)
+        const editor = page.locator('.ContentEditable__root').first()
+        await editor.click()
+        const open = () =>
+          page
+            .locator('.fixed-toolbar')
+            .first()
+            .getByRole('button', { name: 'HTML code', exact: true })
+            .click()
+        const dialog = page.getByRole('dialog', { name: 'HTML code' })
+        const code = dialog.getByRole('textbox', { name: 'The text as HTML' })
+
+        await open()
+        await expect(code).toBeFocused()
+        // Typed, as an author would: select all, then the new code.
+        await page.keyboard.press('ControlOrMeta+a')
+        await page.keyboard.insertText(
+          '<h2>Field trip</h2>\n<p style="text-align: center">Forms are due Friday.</p>',
+        )
+        await dialog.getByRole('button', { name: 'Update the text' }).click()
+        await expect(dialog).toBeHidden()
+        await expect(editor.locator('h2')).toHaveText('Field trip')
+
+        await open()
+        await expect(dialog.locator('.monaco-editor')).toBeVisible()
+        await setCode(page, '<p>Gone</p>')
+        await dialog.getByRole('button', { name: 'Cancel' }).click()
+        await expect(dialog).toBeHidden()
+        await expect(editor.locator('h2')).toHaveText('Field trip')
+        await expect(editor).not.toContainText('Gone')
+      } finally {
+        await dropPage(fixture)
+      }
+    },
+  )
+
+  adminTest(
+    '"HTML code" with nothing it can keep offers only the way back',
+    async ({ page, baseURL }) => {
+      const fixture = await makePage(baseURL)
+      try {
+        await openPage(page, fixture.id)
+        await page.locator('.ContentEditable__root').first().click()
+        await page
+          .locator('.fixed-toolbar')
+          .first()
+          .getByRole('button', { name: 'HTML code', exact: true })
+          .click()
+        const dialog = page.getByRole('dialog', { name: 'HTML code' })
+        await expect(dialog.locator('.monaco-editor')).toBeVisible()
+        await setCode(page, '<iframe src="https://maps.google.com/x"></iframe>')
+        await dialog.getByRole('button', { name: 'Update the text' }).click()
+
+        const report = page.getByRole('dialog', { name: 'Nothing in this code can go in the text' })
+        await expect(report.getByRole('button', { name: 'Update with the rest' })).toHaveCount(0)
+        await report.getByRole('button', { name: 'Back to the code' }).click()
+        await expect
+          .poll(() => codeOf(page))
+          .toBe('<iframe src="https://maps.google.com/x"></iframe>')
       } finally {
         await dropPage(fixture)
       }

@@ -1,0 +1,117 @@
+/**
+ * DD2 tokens, as `PastePrompt` uses — the component axe gate measures what the admin paints.
+ * Text in px, never under 15 (Payload's admin root is 13px, so rem would shrink it). Logical
+ * properties only.
+ */
+
+.dialog {
+  inline-size: min(72rem, calc(100vw - 2 * var(--space-lg)));
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-family-locale);
+  font-size: 15px;
+  line-height: var(--line-height-base);
+}
+
+.dialog::backdrop {
+  /* Not a token: the backdrop tints whatever is behind it and carries no text. */
+  background: rgb(0 0 0 / 55%);
+}
+
+.body {
+  padding: var(--space-lg);
+}
+
+.title {
+  margin-block: 0 var(--space-md);
+  font-size: 20px;
+}
+
+.label {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.hint {
+  margin-block: var(--space-xs) var(--space-sm);
+  font-size: 15px;
+}
+
+.code {
+  box-sizing: border-box;
+  inline-size: 100%;
+  padding: var(--space-sm);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  /* Code reads in a fixed-width face; an author lining up tags needs the columns to hold. */
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 15px;
+  resize: block;
+}
+
+.codeBox {
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.section {
+  margin-block-end: var(--space-md);
+}
+
+.sectionTitle {
+  margin-block: 0 var(--space-xs);
+  font-size: 16px;
+}
+
+.list {
+  margin-block: 0;
+  padding-inline-start: var(--space-lg);
+}
+
+.list > li + li {
+  margin-block-start: var(--space-xs);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  justify-content: flex-end;
+  margin-block-start: var(--space-lg);
+}
+
+.button {
+  padding-block: var(--space-xs);
+  padding-inline: var(--space-md);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.primary {
+  border-color: var(--color-brand);
+  background: var(--color-brand);
+  color: var(--color-brand-contrast);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.code:focus-visible,
+.button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}

@@ -61,6 +61,22 @@ export const PasteNormalizerFeature = createServerFeature({
 })
 
 /**
+ * THE TEXT AS HTML (Jason, 2026-11-19: "select <> and the contents of the text editor are shown
+ * in HTML5"; earlier that day, HTML "checked before hand"), for schools and the district alike.
+ *
+ * DD2's own feature, and the same control as the paste normalizer: HTML is never stored as
+ * written. `src/lib/html-source.ts` writes the text as HTML5 and reads the edited code back over
+ * exactly the vocabulary below, NAMING everything it took out (frames, scripts, form fields,
+ * styling…) before the text changes. Embeds are not here: they are sections of their own.
+ */
+export const HtmlSourceFeature = createServerFeature({
+  feature: {
+    ClientFeature: '/admin/HtmlSource/feature.client#HtmlSourceFeatureClient',
+  },
+  key: 'htmlSource',
+})
+
+/**
  * Feature keys DD2 wrote, as opposed to ones Payload ships.
  *
  * `TRIAGED_FEATURES` answers "what did Payload ship that nobody has decided about yet", so a
@@ -69,7 +85,7 @@ export const PasteNormalizerFeature = createServerFeature({
  * all. `tests/unit/editor.test.ts` reads this list instead, and asserts no key here collides
  * with a Payload one.
  */
-export const DD2_FEATURE_KEYS: readonly string[] = ['pasteNormalizer']
+export const DD2_FEATURE_KEYS: readonly string[] = ['pasteNormalizer', 'htmlSource']
 
 /** The features the editor enables. Everything else in the package is denied below. */
 export const CONSTRAINED_FEATURES = [
@@ -99,7 +115,27 @@ export const CONSTRAINED_FEATURES = [
    * so a rename or a move never breaks the link. `maxDepth: 0` stores the page's id, not a copy
    * of the whole page inside the words.
    */
-  LinkFeature({ enabledCollections: ['pages'], maxDepth: 0 }),
+  LinkFeature({
+    enabledCollections: ['pages'],
+    maxDepth: 0,
+    /**
+     * A link's own screen-reader words (Jason, 2026-11-19: aria-labels kept "unless they are
+     * unnecessary"). The page renders them only when they add to the link's words and contain
+     * them — WCAG 2.5.3 (`linkLabelVerdict`, applied in `src/content/rich-text.ts`).
+     */
+    fields: ({ defaultFields }) => [
+      ...defaultFields,
+      {
+        name: 'ariaLabel',
+        type: 'text',
+        label: 'Words for screen readers',
+        admin: {
+          description:
+            'Only when the link’s words need more, and include them: “Read more about the bond election” for a link that says “Read more”.',
+        },
+      },
+    ],
+  }),
   UnorderedListFeature(),
   OrderedListFeature(),
   /**
@@ -172,6 +208,8 @@ export const CONSTRAINED_FEATURES = [
      */
     customGroups: { text: { type: 'buttons' }, add: { type: 'buttons' } },
   }),
+  /** After the features whose nodes its HTML becomes, as the paste normalizer is. */
+  HtmlSourceFeature(),
   /**
    * Last, so its `PASTE_COMMAND` handler registers after the features whose nodes it
    * produces. It contributes no toolbar control and no node type of its own.
@@ -212,10 +250,6 @@ export const EDITOR_ELEMENTS: readonly string[] = [
  */
 export const EDITOR_ONLY_ELEMENTS: Readonly<Record<string, string>> = {
   img: 'An image comes from the library, where alt text is required (rule 7). A pasted image has neither, so paste keeps refusing it.',
-  blockquote:
-    'Added 2026-11-19. Paste still flattens a quotation to paragraphs; keeping it is the Word-paste work that follows.',
-  hr: 'Added 2026-11-19. Paste still drops a line; keeping it is the Word-paste work that follows.',
-  h4: 'Added 2026-11-19 (Minor heading). Paste still makes a deeper heading a Subheading; the Word-paste work follows.',
   span: 'The one text style, "Large text" (2026-11-19) — a size, not a meaning. Paste never brings a size in.',
 }
 
