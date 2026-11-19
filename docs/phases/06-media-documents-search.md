@@ -1199,3 +1199,23 @@ serves. Integration: `tenant-isolation` (any color saved through the API, a non-
 around the validator dropped). E2E: `tests/e2e/theme-colors.spec.ts` (#1e891e warned "light-grey
 panels (4.2:1)", saved; a dark color clears it; a non-color refused; axe both themes), on a site
 of its own.
+
+## 18. A document's form names its site (Jason, 2026-11-18)
+
+After Pages → a site → a page, only the left menu's tenant select said which site's page was open.
+`siteNameField()` (`src/collections/fields/site-name.ts`) is a `ui` field, FIRST on pages,
+announcements and events, shown to district admins only (a school manager's one school is named in
+their menu). Its server component, `SiteNameField` (`src/admin/SiteName/`), reads the site from the
+document's own `tenant`, as the user, and shows "Site: School A" — nothing on a new document with no
+site yet. Marked with the brand accent; 15px and up.
+
+**The events list, one calendar's.** Events → a calendar opens Payload's events list filtered to it
+— with no word of whose. `EventsListHeading` (`beforeListTable` on Events) reads the calendar from
+the address (`calendarFilterOf`, pure: the flat `where[calendar][equals]` the panel writes, or the
+parsed shape) and shows "Site: School A · Calendar: …" — the site for district admins only, the
+calendar for everyone; nothing on the whole list.
+
+**Tests.** `tests/unit/admin/calendar-filter.test.ts`. `tests/e2e/doc-site-name.spec.ts`: the
+district sees it atop a page's, an announcement's and an event's form (before the title field),
+and site + calendar above a calendar's events list (axe both themes, 15px); nothing on the whole
+list; a school manager sees neither site badge, and only the calendar above the list.

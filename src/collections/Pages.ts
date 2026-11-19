@@ -45,6 +45,7 @@ import {
 import { settingClass } from '@/admin/PageToolbar/page-settings'
 import { PERMALINK_SEGMENT } from '@/lib/permalink'
 import { isReservedSlug, isReservedTopLevelSlug, slugify } from '@/lib/slug'
+import { siteNameField } from '@/collections/fields/site-name'
 
 /**
  * `pages` — the first content collection (`03` §2).
@@ -221,6 +222,8 @@ export const Pages: CollectionConfig = {
   endpoints: [makeApproveEndpoint('pages')],
 
   fields: [
+    // Which site this is on, for the district (Jason, 2026-11-18) — see `siteNameField`.
+    siteNameField(),
     {
       /**
        * Where a school manager's change stands — sent, or sent back with the district's note

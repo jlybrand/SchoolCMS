@@ -16,6 +16,7 @@ import {
 import { restoreIsDistrictOnly } from '@/collections/hooks/page-history'
 import { revalidateEvent } from '@/collections/hooks/revalidate-on-publish'
 import { REPEAT_OPTIONS } from '@/lib/recurrence'
+import { siteNameField } from '@/collections/fields/site-name'
 
 /**
  * `events` — calendar events (`03` §2; Jason, 2026-11-11: "the same fields as Finalsite calendar
@@ -59,6 +60,8 @@ export const Events: CollectionConfig = {
     components: {
       /** A school manager's "Add an event" on the list, as Pages has "Add a page". */
       beforeListTable: [
+        /** Whose calendar this list is, when it is one calendar's (Jason, 2026-11-18). */
+        '/admin/SiteName/EventsListHeading#EventsListHeading',
         {
           path: '/admin/SchoolPlane/ListTaskButton#ListTaskButton',
           clientProps: { collection: 'events' },
@@ -103,6 +106,8 @@ export const Events: CollectionConfig = {
   },
 
   fields: [
+    // Which site this is on, for the district (Jason, 2026-11-18) — see `siteNameField`.
+    siteNameField(),
     {
       name: 'title',
       type: 'text',

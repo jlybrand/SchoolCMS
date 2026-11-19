@@ -366,9 +366,12 @@ adminTest.describe('the district’s side navigation', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Pages' })).toBeVisible({
       timeout: 20_000,
     })
-    await page.locator('#site-pages-change').click()
     const panel = page.locator('#site-flyout')
-    await expect(panel).toContainText('for Pages')
+    // A click before hydration goes nowhere (the button is React's): click until it opens.
+    await expect(async () => {
+      if ((await panel.count()) === 0) await page.locator('#site-pages-change').click()
+      await expect(panel).toContainText('for Pages', { timeout: 1_000 })
+    }).toPass({ timeout: 20_000 })
     // A click outside shuts it.
     await page.locator('#site-pages h1').click()
     await expect(panel).toBeHidden()

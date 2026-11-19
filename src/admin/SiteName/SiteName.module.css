@@ -1,0 +1,27 @@
+/*
+ * "Site: School A" atop a document's form (Jason, 2026-11-18). Payload's theme variables; the
+ * district's brand accent marks it (`admin-brand.css`). Nothing under 15px (min-text-15px): px,
+ * as the admin root is 13px. Logical properties only.
+ */
+.site {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  margin-block: 0 20px;
+  padding-block: 8px;
+  padding-inline: 14px;
+  border-inline-start: 4px solid var(--dd2-brand-accent);
+  border-radius: 4px;
+  background: var(--theme-elevation-50);
+  color: var(--theme-text);
+}
+
+.label {
+  font-size: 15px;
+  color: var(--theme-elevation-800);
+}
+
+.name {
+  font-size: 18px;
+}

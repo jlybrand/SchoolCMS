@@ -38,6 +38,7 @@ import { applyReviewState } from '@/collections/hooks/review-state'
 import { SYNDICATION_SCOPES } from '@/content/syndication'
 import { SCHEDULE_STEP_MINUTES } from '@/lib/schedule-step'
 import { slugify } from '@/lib/slug'
+import { siteNameField } from '@/collections/fields/site-name'
 
 /**
  * `posts` — news and announcements (`03` §2), the first Phase 5 module.
@@ -188,6 +189,8 @@ export const Posts: CollectionConfig = {
   endpoints: [makeApproveEndpoint('posts')],
 
   fields: [
+    // Which site this is on, for the district (Jason, 2026-11-18) — see `siteNameField`.
+    siteNameField(),
     {
       name: 'reviewStatus',
       type: 'ui',
