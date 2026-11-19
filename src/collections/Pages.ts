@@ -157,6 +157,10 @@ export const Pages: CollectionConfig = {
    * untitled, slugless draft behind (measured: ~26 per e2e run). With it, a new page saves on
    * its first explicit save and autosaves from then on, and no draft can exist without a
    * title. The school plane's own "new page" flow is where that first save happens.
+   *
+   * A SECTION'S fields are the exception (Jason, 2026-11-19): they pass the edit check and an
+   * autosave, so adding an empty section shows no error until Publish or Send for approval,
+   * which check them in full (`src/lib/defer-section-validation.ts`).
    */
   versions: {
     drafts: { autosave: true, validate: true },

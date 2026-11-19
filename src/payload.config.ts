@@ -25,6 +25,7 @@ import { PostBoards } from './collections/PostBoards'
 import { PostFolders } from './collections/PostFolders'
 import { Posts } from './collections/Posts'
 import { crossTenantRelationships } from './lib/cross-tenant-relationships'
+import { deferSectionValidation } from './lib/defer-section-validation'
 import { PostTags } from './collections/PostTags'
 import { Calendars } from './collections/Calendars'
 import { Events } from './collections/Events'
@@ -278,6 +279,12 @@ export default buildConfig({
      * news feed's boards — back its own filter. See src/lib/cross-tenant-relationships.ts.
      */
     crossTenantRelationships,
+    /**
+     * After the plugins too: a page's sections are checked on Publish and Send for approval,
+     * not as they are added and autosaved (Jason, 2026-11-19). See
+     * src/lib/defer-section-validation.ts.
+     */
+    deferSectionValidation,
   ],
 
   secret: process.env.PAYLOAD_SECRET ?? '',
