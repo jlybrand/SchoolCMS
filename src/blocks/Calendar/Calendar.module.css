@@ -127,15 +127,15 @@
   vertical-align: top;
 }
 
+/* Days outside the month are blank cells, unfilled: the one gray cell is today. */
 .outside {
-  background: var(--color-surface-raised);
+  background: var(--color-surface);
 }
 
-.day[aria-current='date'] .dayNumber {
-  background: var(--color-brand);
-  border-radius: var(--radius);
-  color: var(--color-brand-contrast);
-  padding-inline: var(--space-2xs);
+/* Today (Jason, 2026-11-19): the whole cell slightly gray, not a color behind its number.
+   Screen readers hear it from `aria-current="date"`. */
+.day[aria-current='date'] {
+  background: var(--color-surface-raised);
 }
 
 .dayNumber {
@@ -153,7 +153,7 @@
 }
 
 /* An event in a day: its title, as a button that looks like a label. Full width, so it is an easy
-   target; wraps rather than overflowing the cell. */
+   target. */
 .dayEvent,
 .agendaEvent {
   background: none;
@@ -169,7 +169,14 @@
 .dayEvent {
   font-size: 0.875em;
   inline-size: 100%;
-  overflow-wrap: anywhere;
+  /* Whole words only (Jason, 2026-11-19): a title wraps between words, never inside one. A
+     single word wider than the cell ends in "…" at its edge rather than spilling into the next
+     day; the event's dialog shows it whole. The focus ring is outside the box, so it is not cut. */
+  hyphens: manual;
+  overflow: hidden;
+  overflow-wrap: normal;
+  text-overflow: ellipsis;
+  word-break: normal;
 }
 
 .agenda {
@@ -192,17 +199,6 @@
     flex-basis: 100%;
     order: -1;
   }
-}
-
-/* ---- Subscribe ------------------------------------------------------------------------- */
-
-.subscribe {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs) var(--space-md);
-  list-style: none;
-  margin-block: var(--space-md) 0;
-  padding-inline-start: 0;
 }
 
 /* ---- Dialog ----------------------------------------------------------------------------- */
@@ -231,4 +227,183 @@
 
 .dialogNotes {
   margin-block-start: var(--space-md);
+}
+
+/* ---- Filter and print (Jason, 2026-11-18) --------------------------------------------------- */
+
+.root {
+  display: contents;
+}
+
+.toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-block-end: var(--space-sm);
+}
+
+/* Filter and Print: icon buttons, named in words for screen readers. 44px square (2.5.5). */
+.iconButton {
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  block-size: 2.75rem;
+  inline-size: 2.75rem;
+  padding: 0;
+}
+
+.iconButton:hover {
+  background: var(--color-surface-raised);
+}
+
+.iconButton:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.icon {
+  block-size: 1.375rem;
+  inline-size: 1.375rem;
+}
+
+.filterStatus {
+  color: var(--color-text-muted);
+  margin-block: 0;
+}
+
+.filterStatus:empty {
+  display: none;
+}
+
+.filterChoices {
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+}
+
+.filterTitle {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin-block-end: var(--space-xs);
+  padding: 0;
+}
+
+.filterChoice {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.filterChoice input {
+  block-size: 1.25rem;
+  inline-size: 1.25rem;
+  margin: 0;
+}
+
+.filterChoice input:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.filterActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  justify-content: flex-end;
+  margin-block-start: var(--space-md);
+}
+
+/* Subscribe's dialog (Jason, 2026-11-19): the apps, then the address to copy. */
+.subscribeOptions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  list-style: none;
+  margin-block: 0 var(--space-md);
+  padding-inline-start: 0;
+}
+
+.subscribeOptions a {
+  color: var(--color-brand);
+}
+
+.subscribeOptions a:focus-visible,
+.feedAddress:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.feedLabel {
+  display: block;
+  margin-block-end: var(--space-2xs);
+}
+
+.feedRow {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.feedAddress {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  flex: 1 1 auto;
+  font: inherit;
+  min-inline-size: 0;
+  padding-block: var(--space-2xs);
+  padding-inline: var(--space-xs);
+}
+
+/*
+ * PRINT what is on screen (Jason, 2026-11-18). While "Print" is printing, the block is marked
+ * (`data-calendar-printing`, `CalendarFilterRoot`) and everything on the page that neither holds
+ * it nor sits inside it is left out — the site's header, menus, footer and other sections. Its own
+ * buttons go too; the month, the list and the filter's result stay. A page printed from the
+ * browser's own menu prints as it always has.
+ */
+@media print {
+  :global(body:has([data-calendar-printing]))
+    :global(
+      *:not(:has([data-calendar-printing])):not([data-calendar-printing]):not(
+          [data-calendar-printing] *
+        )
+    ) {
+    display: none;
+  }
+
+  .toolbar,
+  .navButton {
+    display: none;
+  }
+
+  /* Wide enough on paper for the month's seven columns: the table, never the narrow list. */
+  .table {
+    display: table;
+  }
+
+  .agenda {
+    display: none;
+  }
+
+  .dayEvent,
+  .agendaEvent {
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  /* Today keeps its gray on paper: browsers drop backgrounds when printing. */
+  .day[aria-current='date'] {
+    print-color-adjust: exact;
+  }
 }

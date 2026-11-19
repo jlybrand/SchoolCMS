@@ -364,7 +364,9 @@ export const calendarBlock: Block = {
       custom: { crossTenant: true },
       admin: {
         isSortable: false,
-        description: 'Which calendars to show events from — any site’s.',
+        description: 'Tick every calendar this section shows events from — any site’s.',
+        // Checkboxes by site, not Payload's multi-select (Jason, 2026-11-19).
+        components: { Field: '/admin/CalendarPicker/CalendarsField#CalendarsField' },
       },
     },
     {

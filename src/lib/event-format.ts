@@ -68,6 +68,7 @@ export const toEventOccurrences = (
     occurrences(event.timing, range, options.timeZone).map((o): EventOccurrence => ({
       key: `${event.id}-${o.startDate}`,
       eventId: event.id,
+      calendarId: event.calendarId,
       title: event.title,
       location: event.location,
       notes: event.notes,

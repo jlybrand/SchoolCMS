@@ -12,6 +12,7 @@ import { toGridMonths, weekdayNames } from '@/lib/calendar-view'
 const occ = (key: string, startDate: string, endDate = startDate): EventOccurrence => ({
   key,
   eventId: key,
+  calendarId: '1',
   title: key,
   location: null,
   notes: [],

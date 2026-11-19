@@ -23,6 +23,7 @@ import { BoldFeatureClient as BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864
 import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { HeadingFeatureClient as HeadingFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { ParagraphFeatureClient as ParagraphFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
+import { CalendarsField as CalendarsField_e818b223385b6cdfad2b18a740bad2c8 } from '../../../admin/CalendarPicker/CalendarsField'
 import { PageToolbar as PageToolbar_f3bd17167892b923c2a1c372b53f0d6e } from '../../../admin/PageToolbar/PageToolbar'
 import { ListTaskButton as ListTaskButton_914e5ea18819f469db2e9cd0431636b1 } from '../../../admin/SchoolPlane/ListTaskButton'
 import { AssignTenantFieldTrigger as AssignTenantFieldTrigger_1d0591e3cf4f332c83a86da13a0de59a } from '@payloadcms/plugin-multi-tenant/client'
@@ -95,6 +96,7 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#ItalicFeatureClient": ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#HeadingFeatureClient": HeadingFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#ParagraphFeatureClient": ParagraphFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
+  "/admin/CalendarPicker/CalendarsField#CalendarsField": CalendarsField_e818b223385b6cdfad2b18a740bad2c8,
   "/admin/PageToolbar/PageToolbar#PageToolbar": PageToolbar_f3bd17167892b923c2a1c372b53f0d6e,
   "/admin/SchoolPlane/ListTaskButton#ListTaskButton": ListTaskButton_914e5ea18819f469db2e9cd0431636b1,
   "@payloadcms/plugin-multi-tenant/client#AssignTenantFieldTrigger": AssignTenantFieldTrigger_1d0591e3cf4f332c83a86da13a0de59a,

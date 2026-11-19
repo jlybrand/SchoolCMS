@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 
 import { listImportedCalendars, listMyCalendars } from '@/admin/SchoolPlane/school-data'
 import { ensureMainCalendars, FEED_SYNC } from '@/collections/hooks/event-hooks'
-import { getCalendarFeed } from '@/content/events'
+import { getCalendarFeed, getCombinedCalendarFeed } from '@/content/events'
 import { resolvePageBlocks } from '@/content/resolve-blocks'
 import type { CalendarBlock, ContentContext, ResolvedCalendarBlock } from '@/content/types'
 
@@ -242,10 +242,46 @@ describe('a calendar block, resolved (Jason, 2026-11-11)', () => {
   it('names each calendar shown with its webcal feed on its own site', async () => {
     const district = String(await mainCalendarFor(payload, f.districtTenant))
     const [list] = await resolve(block({ calendars: [calendar, district] }))
-    expect(list?.subscribe).toEqual([
-      { name: 'School B', href: `webcal://b.localhost:3000/calendars/${calendar}.ics` },
-      { name: 'District', href: `webcal://localhost:3000/calendars/${district}.ics` },
+    expect(list?.calendars.map((c) => [c.name, c.href])).toEqual([
+      ['School B', `webcal://b.localhost:3000/calendars/${calendar}.ics`],
+      ['District', `webcal://localhost:3000/calendars/${district}.ics`],
     ])
+    // Several on: their one feed on THIS page's site (Jason, 2026-11-19).
+    expect(list?.feedOrigin).toBe('webcal://b.localhost:3000')
+  })
+
+  it('names the calendars a visitor can filter by, in the block’s order (Jason, 2026-11-18)', async () => {
+    const district = String(await mainCalendarFor(payload, f.districtTenant))
+    const [list] = await resolve(block({ calendars: [calendar, district] }))
+    expect(list?.calendars.map(({ id, name }) => ({ id, name }))).toEqual([
+      { id: calendar, name: 'School B' },
+      { id: district, name: 'District' },
+    ])
+    if (list?.display !== 'list') throw new Error('a list')
+    expect(list.events.every((e) => [calendar, district].includes(e.calendarId))).toBe(true)
+  })
+
+  it('a list keeps each calendar’s next N, so filtering one out still fills it to N', async () => {
+    // A district event after School B's three: with one shared cap of 3 it would be cut, and a
+    // visitor who chose only the district would see nothing.
+    const district = String(await mainCalendarFor(payload, f.districtTenant))
+    await payload.create({
+      collection: 'events',
+      data: {
+        tenant: f.districtTenant,
+        calendar: Number(district),
+        title: 'District open house',
+        start: '2027-05-20T23:00:00.000Z',
+        _status: 'published',
+      } as never,
+      user: f.districtAdmin,
+      overrideAccess: false,
+    })
+    const [list] = await resolve(block({ calendars: [calendar, district], limit: 3 }))
+    if (list?.display !== 'list') throw new Error('a list')
+    expect(list.limit).toBe(3)
+    expect(list.events.filter((e) => e.calendarId === calendar)).toHaveLength(3)
+    expect(list.events.map((e) => e.title)).toContain('District open house')
   })
 
   it('an empty list is dropped — no heading over nothing', async () => {
@@ -344,5 +380,21 @@ describe('a calendar’s iCal feed (Jason, 2026-11-11)', () => {
       await getCalendarFeed(site(f.tenantA, 'a.localhost'), calendarB, '2027-03-01'),
     ).toBeNull()
     expect(await getCalendarFeed(site(f.tenantB, 'b.localhost'), '999999', '2027-03-01')).toBeNull()
+  })
+
+  it('several calendars’ ONE feed: all their published events, named for them all (Jason, 2026-11-19)', async () => {
+    const district = String(await mainCalendarFor(payload, f.districtTenant))
+    const calendarB = String(await mainCalendarFor(payload, f.tenantB))
+    const feed = await getCombinedCalendarFeed([district, calendarB], '2027-03-01')
+    expect(feed?.name).toBe('District, School B')
+    const titles = feed?.events.map((e) => e.title) ?? []
+    expect(titles).toContain('Spring concert')
+    expect(titles).toContain('District open house')
+    expect(titles).not.toContain('Feed draft')
+  })
+
+  it('a combined feed naming a calendar that does not exist is not found', async () => {
+    const calendarB = String(await mainCalendarFor(payload, f.tenantB))
+    expect(await getCombinedCalendarFeed([calendarB, '999999'], '2027-03-01')).toBeNull()
   })
 })

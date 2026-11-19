@@ -63,17 +63,24 @@ const EVENTS: CalendarEvent[] = [
     { start: '2026-12-01T23:30:00.000Z', repeat: 'monthly', repeatUntil: '2027-06-01' },
     { location: 'District office', notes: [paragraph('Agenda posted the Friday before.')] },
   ),
-  event('break', 'Winter break — schools closed', {
-    start: '2026-12-21T05:00:00.000Z',
-    end: '2027-01-01T05:00:00.000Z',
-    allDay: true,
-  }),
+  event(
+    'break',
+    'Winter break — schools closed',
+    { start: '2026-12-21T05:00:00.000Z', end: '2027-01-01T05:00:00.000Z', allDay: true },
+    { calendarId: '2' },
+  ),
   event(
     'game',
     'Basketball vs. Ashley Ridge',
     { start: '2026-12-11T23:30:00.000Z' },
-    { location: 'Main gym' },
+    { location: 'Main gym', calendarId: '3' },
   ),
+]
+
+const CALENDARS = [
+  { id: '1', name: 'School A', href: 'webcal://a.dd2.org/calendars/1.ics' },
+  { id: '2', name: 'District', href: 'webcal://dd2.org/calendars/2.ics' },
+  { id: '3', name: 'District HS', href: 'webcal://dd2.org/calendars/3.ics' },
 ]
 
 const range = { from: '2026-12-01', to: '2027-11-30' }
@@ -84,9 +91,11 @@ const list = (overrides: Partial<ResolvedCalendarBlock> = {}): ResolvedCalendarB
     kind: 'calendar',
     id: 'calendar',
     heading: 'Upcoming events',
-    subscribe: [{ name: 'School A', href: 'webcal://a.dd2.org/calendars/1.ics' }],
+    calendars: [{ id: '1', name: 'School A', href: 'webcal://a.dd2.org/calendars/1.ics' }],
+    feedOrigin: 'webcal://a.dd2.org',
     display: 'list',
     events: occurrences('en').slice(0, 5),
+    limit: 5,
     ...overrides,
   }) as ResolvedCalendarBlock
 
@@ -94,10 +103,8 @@ const grid = (events = occurrences('en')): ResolvedCalendarBlock => ({
   kind: 'calendar',
   id: 'calendar',
   heading: 'District calendar',
-  subscribe: [
-    { name: 'District', href: 'webcal://dd2.org/calendars/2.ics' },
-    { name: 'District HS', href: 'webcal://dd2.org/calendars/3.ics' },
-  ],
+  calendars: CALENDARS,
+  feedOrigin: 'webcal://dd2.org',
   display: 'grid',
   weekdays: weekdayNames('en'),
   months: toGridMonths(events, {
@@ -110,6 +117,21 @@ const grid = (events = occurrences('en')): ResolvedCalendarBlock => ({
 
 /** The next events; click one with notes to read them. */
 export const List: Story = { args: { block: list(), baseLevel: 2 } }
+
+/**
+ * Three calendars in one list: "Filter calendars" chooses which to show (Jason, 2026-11-18). The
+ * number counts what is shown, after the filter.
+ */
+export const ListOfSeveralCalendars: Story = {
+  args: {
+    block: list({
+      calendars: CALENDARS,
+      events: occurrences('en'),
+      limit: 4,
+    } as Partial<ResolvedCalendarBlock>),
+    baseLevel: 2,
+  },
+}
 
 /** Without a heading, the event titles take the block's own level. */
 export const ListWithoutAHeading: Story = {

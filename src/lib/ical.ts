@@ -1,5 +1,6 @@
 import type { CalendarEvent, RichText, RichTextInline, RichTextList } from '@/content/types'
 
+import { feedSegment } from './calendar-filter'
 import { addDays, localDateOf, toRRule } from './recurrence'
 import { publicUrlFor } from './review-emails'
 
@@ -180,8 +181,12 @@ export const toICalendar = ({ name, events, domain, now, timeZone }: ICalendarIn
   return lines.map(foldLine).join(CRLF) + CRLF
 }
 
-/** Where a calendar's feed is, on its own site (`src/proxy.ts` maps it). */
-export const calendarFeedPath = (calendarId: string): string => `/calendars/${calendarId}.ics`
+/**
+ * Where a calendar's feed is, on its own site (`src/proxy.ts` maps it) — or several calendars'
+ * one feed (Jason, 2026-11-19), its ids ascending (`feedSegment`).
+ */
+export const calendarFeedPath = (calendarIds: string | readonly string[]): string =>
+  `/calendars/${typeof calendarIds === 'string' ? calendarIds : feedSegment(calendarIds)}.ics`
 
 /**
  * The address a calendar app subscribes to: the feed on the calendar's OWN site, with the
@@ -191,3 +196,9 @@ export const calendarFeedPath = (calendarId: string): string => `/calendars/${ca
  */
 export const subscribeUrl = (serverUrl: string, hostname: string, calendarId: string): string =>
   publicUrlFor(serverUrl, hostname, calendarFeedPath(calendarId)).replace(/^https?:/, 'webcal:')
+
+/** A site's `webcal://host[:port]`, for several calendars' one feed on it (Jason, 2026-11-19). */
+export const subscribeOrigin = (serverUrl: string, hostname: string): string =>
+  publicUrlFor(serverUrl, hostname, '/')
+    .replace(/^https?:/, 'webcal:')
+    .replace(/\/$/, '')
