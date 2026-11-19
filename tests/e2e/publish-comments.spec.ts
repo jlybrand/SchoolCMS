@@ -44,32 +44,29 @@ const loggedComment = async (
 adminTest.describe('the district’s comment', () => {
   adminTest.skip(credentials === null, SKIP)
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    adminTest(
-      `@a11y a comment in the Publish dialog is kept with the publish — ${colorScheme}`,
-      async ({ page, baseURL }) => {
-        await page.emulateMedia({ colorScheme })
-        const fixture = await makePage(baseURL, { title: uniqueTitle('Commented page') })
-        try {
-          await openPage(page, fixture.id)
-          await page.locator('#action-publish').click()
-          const dialog = page.getByRole('dialog', { name: 'Publish this page' })
-          const box = dialog.getByLabel('Comment')
-          await expect(box).toBeVisible()
-          await box.fill('Checked with the principal.')
-          expect(await blockingViolations(page)).toEqual([])
-          await dialog.getByRole('button', { name: 'Publish now' }).click()
-          await expect
-            .poll(() => loggedComment(fixture.admin, 'pages', fixture.id, 'publish'), {
-              timeout: 20_000,
-            })
-            .toBe('Checked with the principal.')
-        } finally {
-          await dropPage(fixture)
-        }
-      },
-    )
-  }
+  adminTest(
+    `@a11y a comment in the Publish dialog is kept with the publish`,
+    async ({ page, baseURL }) => {
+      const fixture = await makePage(baseURL, { title: uniqueTitle('Commented page') })
+      try {
+        await openPage(page, fixture.id)
+        await page.locator('#action-publish').click()
+        const dialog = page.getByRole('dialog', { name: 'Publish this page' })
+        const box = dialog.getByLabel('Comment')
+        await expect(box).toBeVisible()
+        await box.fill('Checked with the principal.')
+        expect(await blockingViolations(page)).toEqual([])
+        await dialog.getByRole('button', { name: 'Publish now' }).click()
+        await expect
+          .poll(() => loggedComment(fixture.admin, 'pages', fixture.id, 'publish'), {
+            timeout: 20_000,
+          })
+          .toBe('Checked with the principal.')
+      } finally {
+        await dropPage(fixture)
+      }
+    },
+  )
 
   adminTest('an announcement gets the same dialog, comment and all', async ({ page, baseURL }) => {
     const post = await makePost(baseURL, { title: uniqueTitle('Commented announcement') })
@@ -118,36 +115,33 @@ adminTest.describe('the district’s comment', () => {
 schoolTest.describe('the school’s note', () => {
   schoolTest.skip(credentials === null, SKIP)
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    schoolTest(
-      `@a11y a note beside Send for approval goes with the send — ${colorScheme}`,
-      async ({ page, baseURL }) => {
-        await page.emulateMedia({ colorScheme })
-        const fixture = await makePage(baseURL, { title: uniqueTitle('School note') })
-        try {
-          await page.goto(`/admin/collections/pages/${fixture.id}`)
-          const box = page.getByLabel('Note for the district')
-          await expect(box).toBeVisible({ timeout: 20_000 })
-          await box.fill('New lunch menu.')
-          // Audit only once A11yPatch has named the editor and its toolbar (it runs after Payload
-          // renders) — auditing before it raced, mostly in dark mode under load.
-          await expect(page.locator('.ContentEditable__root[aria-label]').first()).toBeAttached()
-          await expect(
-            page.locator('button.toolbar-popup__button-bold[aria-label="Bold"]').first(),
-          ).toBeAttached()
-          expect(await blockingViolations(page)).toEqual([])
-          await page.locator('#action-send-for-approval').click()
-          await expect
-            .poll(() => loggedComment(fixture.admin, 'pages', fixture.id, 'submit'), {
-              timeout: 20_000,
-            })
-            .toBe('New lunch menu.')
-          // Sent: the box is cleared, ready for the next time.
-          await expect(box).toHaveValue('')
-        } finally {
-          await dropPage(fixture)
-        }
-      },
-    )
-  }
+  schoolTest(
+    `@a11y a note beside Send for approval goes with the send`,
+    async ({ page, baseURL }) => {
+      const fixture = await makePage(baseURL, { title: uniqueTitle('School note') })
+      try {
+        await page.goto(`/admin/collections/pages/${fixture.id}`)
+        const box = page.getByLabel('Note for the district')
+        await expect(box).toBeVisible({ timeout: 20_000 })
+        await box.fill('New lunch menu.')
+        // Audit only once A11yPatch has named the editor and its toolbar (it runs after Payload
+        // renders) — auditing before it raced under load.
+        await expect(page.locator('.ContentEditable__root[aria-label]').first()).toBeAttached()
+        await expect(
+          page.locator('button.toolbar-popup__button-bold[aria-label="Bold"]').first(),
+        ).toBeAttached()
+        expect(await blockingViolations(page)).toEqual([])
+        await page.locator('#action-send-for-approval').click()
+        await expect
+          .poll(() => loggedComment(fixture.admin, 'pages', fixture.id, 'submit'), {
+            timeout: 20_000,
+          })
+          .toBe('New lunch menu.')
+        // Sent: the box is cleared, ready for the next time.
+        await expect(box).toHaveValue('')
+      } finally {
+        await dropPage(fixture)
+      }
+    },
+  )
 })

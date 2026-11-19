@@ -1099,23 +1099,29 @@ made for a white page shows as made, with the name in primary (11.8:1), a primar
 secondary stripe below. Not a heading.
 
 **The colors** (`src/app/(payload)/admin-brand.css`, imported after `admin-overrides.css`, which
-stays WCAG fixes only). Measured before use:
+stays WCAG fixes only). Measured before use. **Light only, with a dark side menu (Jason, 2026-11-18; built 2026-11-19).** `admin.theme:
+'light'` in `src/payload.config.ts` — a system set to dark changes nothing, and the Account
+screen has no theme choice. The side menu is the one dark part:
 
-| Theme | Accent                                            | On it             | Hover              |
-| ----- | ------------------------------------------------- | ----------------- | ------------------ |
-| Light | primary `#2b3170` (11.8:1 on white)               | white (11.8:1)    | `#1d2150` (15.2:1) |
-| Dark  | secondary `#99a1e7` (6.5–8.6:1 on Payload's dark) | `#14183d` (7.0:1) | `#b4baee` (9.1:1)  |
+| Where     | Background          | Accent (current item, bar)   | On the accent     | Hover              |
+| --------- | ------------------- | ---------------------------- | ----------------- | ------------------ |
+| Screen    | white               | primary `#2b3170` (11.8:1)   | white (11.8:1)    | `#1d2150` (15.2:1) |
+| Side menu | primary, white text | secondary `#99a1e7` (4.85:1) | `#14183d` (7.0:1) | `#b4baee` (9.1:1)  |
 
-Primary is 1.6:1 on the dark background and never used there; secondary is 2.4:1 on white and
-never carries text in the light theme. `--dd2-brand-*` variables carry them, applied to Payload's
+Secondary is 2.4:1 on white and never carries text on the screen. `.nav` redefines Payload's
+elevation scale — primary at 0, rising to white at 1000, each step primary mixed with white by
+step/1000 — so Payload's own parts in it (links, groups, the site selector) follow without being
+restyled one by one; text takes 800 and up (8.2:1 and more). The slide-out panels are portalled
+outside `.nav` and stay light. `--dd2-brand-*` variables carry the colors, applied to Payload's
 primary button (its `--bg-color`/`--color`/`--hover-*` variables), its side-menu current-page bar
 (`.nav__link-indicator`), and our menu's current item (`Nav.module.css`).
 
 **Tests.** `tests/unit/admin/brand.test.ts` (the name; the logo and its alt; decorative; none).
-`tests/e2e/admin-brand.spec.ts`: the sign-in logo loaded and the tab title, axe in both themes;
-the sign-in Log in button in the accent per theme; the district's band with a fixture logo set in
+`tests/e2e/admin-brand.spec.ts`: the sign-in logo loaded and the tab title, axe;
+the sign-in Log in button in primary; a dark system still gets the light admin with no theme to
+choose; the district's band with a fixture logo set in
 Settings (restored, or the row removed, after), the breadcrumb home link named "Dashboard", the
-current menu item's color per theme, axe in both themes; a school's start screen's band names the
+menu on primary and its current item in secondary, axe; a school's start screen's band names the
 school, not the platform.
 
 ## 16. Site settings (Jason, 2026-11-18)

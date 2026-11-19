@@ -45,8 +45,14 @@
   block-size: auto;
   min-block-size: 0;
   margin: 0;
-  /* Payload's group dividers reach past their column on purpose; the panel's edge stops them. */
-  overflow: clip;
+  /*
+   * Payload's group dividers reach past their column on purpose; the panel's edge stops them —
+   * sideways only. Clipping the block axis too cut off a page picker's list at the panel's
+   * bottom, leaving one option showing (Jason, 2026-11-19). `clip`, unlike `hidden`, lets the
+   * other axis stay visible.
+   */
+  overflow-inline: clip;
+  overflow-block: visible;
   border: 0;
   background: var(--theme-elevation-0);
 }

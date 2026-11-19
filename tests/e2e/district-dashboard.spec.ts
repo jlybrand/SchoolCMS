@@ -33,7 +33,7 @@ adminTest.describe('the district dashboard', () => {
   adminTest('@smoke the panels, in order, then everything else', async ({ page }) => {
     await page.goto('/admin')
     const dashboard = page.locator('#district-dashboard')
-    await expect(dashboard.getByRole('heading', { level: 1 })).toHaveText('District dashboard', {
+    await expect(dashboard.getByRole('heading', { level: 1 })).toHaveText('District Dashboard', {
       timeout: 20_000,
     })
     // "Needs attention" leads only when something does — another spec's feed calendar may.
@@ -96,50 +96,47 @@ adminTest.describe('the district dashboard', () => {
     },
   )
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    adminTest(
-      `@a11y a kind’s card opens the queue at that kind, with the way back — ${colorScheme}`,
-      async ({ page, baseURL }) => {
-        await page.emulateMedia({ colorScheme })
-        const fixture = await makePage(baseURL, { title: uniqueTitle('Card check') })
-        const school = await schoolRequest(baseURL)
-        try {
-          const sent = await school.patch(`/api/pages/${fixture.id}?draft=true`, {
-            data: { reviewState: 'submitted' },
-          })
-          expect(sent.ok(), await sent.text()).toBe(true)
+  adminTest(
+    `@a11y a kind’s card opens the queue at that kind, with the way back`,
+    async ({ page, baseURL }) => {
+      const fixture = await makePage(baseURL, { title: uniqueTitle('Card check') })
+      const school = await schoolRequest(baseURL)
+      try {
+        const sent = await school.patch(`/api/pages/${fixture.id}?draft=true`, {
+          data: { reviewState: 'submitted' },
+        })
+        expect(sent.ok(), await sent.text()).toBe(true)
 
-          await page.goto('/admin')
-          const pagesCard = page.locator('#approval-card-pages')
-          await expect(pagesCard).toContainText(/\d+ pages? waiting/, { timeout: 20_000 })
-          await expect(page.locator('#approval-card-posts')).toContainText(/announcements? waiting/)
-          expect(await blockingViolations(page)).toEqual([])
+        await page.goto('/admin')
+        const pagesCard = page.locator('#approval-card-pages')
+        await expect(pagesCard).toContainText(/\d+ pages? waiting/, { timeout: 20_000 })
+        await expect(page.locator('#approval-card-posts')).toContainText(/announcements? waiting/)
+        expect(await blockingViolations(page)).toEqual([])
 
-          const open = pagesCard.getByRole('link', { name: /^Open the \d+ pages? waiting/ })
-          await expect(open).toHaveAttribute('href', '/admin/approvals?kind=pages')
-          await open.click()
-          await expect(page).toHaveURL(/\/admin\/approvals\?kind=pages$/)
-          await expect(page.locator('#approvals').getByRole('status')).toHaveText(
-            /pages? (is|are) waiting/,
-          )
-          await expect(page.getByText('Showing pages only.')).toBeVisible()
-          await expect(page.locator(`#approval-pages-${fixture.id}`)).toBeVisible()
-          // Only pages: no announcement is listed here.
-          await expect(page.locator('[id^="approval-posts-"]')).toHaveCount(0)
-          expect(await blockingViolations(page)).toEqual([])
+        const open = pagesCard.getByRole('link', { name: /^Open the \d+ pages? waiting/ })
+        await expect(open).toHaveAttribute('href', '/admin/approvals?kind=pages')
+        await open.click()
+        await expect(page).toHaveURL(/\/admin\/approvals\?kind=pages$/)
+        await expect(page.locator('#approvals').getByRole('status')).toHaveText(
+          /pages? (is|are) waiting/,
+        )
+        await expect(page.getByText('Showing pages only.')).toBeVisible()
+        await expect(page.locator(`#approval-pages-${fixture.id}`)).toBeVisible()
+        // Only pages: no announcement is listed here.
+        await expect(page.locator('[id^="approval-posts-"]')).toHaveCount(0)
+        expect(await blockingViolations(page)).toEqual([])
 
-          await page.getByRole('link', { name: 'Show everything waiting' }).click()
-          await expect(page).toHaveURL(/\/admin\/approvals$/)
-          await expect(page.locator('#approvals').getByRole('status')).toHaveText(
-            /submissions? (is|are) waiting/,
-          )
-        } finally {
-          await school.dispose()
-          await dropPage(fixture)
-        }
-      },
-    )
-  }
+        await page.getByRole('link', { name: 'Show everything waiting' }).click()
+        await expect(page).toHaveURL(/\/admin\/approvals$/)
+        await expect(page.locator('#approvals').getByRole('status')).toHaveText(
+          /submissions? (is|are) waiting/,
+        )
+      } finally {
+        await school.dispose()
+        await dropPage(fixture)
+      }
+    },
+  )
 
   adminTest('needs freshening names what is stale, or says nothing is', async ({ page }) => {
     await page.goto('/admin')
@@ -152,152 +149,143 @@ adminTest.describe('the district dashboard', () => {
     )
   })
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    adminTest(
-      `@a11y what needs freshening is a table, a site with nothing published first — ${colorScheme}`,
-      async ({ page }) => {
-        await page.emulateMedia({ colorScheme })
-        // A new site with nothing on it: "Nothing published yet", so it sorts to the top.
-        const stamp = uniqueTitle('quiet').replace(/\W+/g, '-').toLowerCase()
-        const name = uniqueTitle('Quiet School')
-        const made = await page.request.post('/api/tenants?depth=0', {
-          data: {
-            name,
-            slug: stamp,
-            hostname: `${stamp}.localhost`,
-            type: 'school',
-            status: 'active',
-          },
+  adminTest(
+    `@a11y what needs freshening is a table, a site with nothing published first`,
+    async ({ page }) => {
+      // A new site with nothing on it: "Nothing published yet", so it sorts to the top.
+      const stamp = uniqueTitle('quiet').replace(/\W+/g, '-').toLowerCase()
+      const name = uniqueTitle('Quiet School')
+      const made = await page.request.post('/api/tenants?depth=0', {
+        data: {
+          name,
+          slug: stamp,
+          hostname: `${stamp}.localhost`,
+          type: 'school',
+          status: 'active',
+        },
+      })
+      expect(made.ok(), await made.text()).toBe(true)
+      const id = ((await made.json()).doc as { id: number }).id
+      try {
+        await page.goto('/admin')
+        const panel = page.locator('#freshness-panel')
+        const table = panel.getByRole('table')
+        await expect(table).toBeVisible({ timeout: 20_000 })
+        await expect(table.getByRole('columnheader')).toHaveText(['Site', 'What', 'Last changed'])
+        const row = table.getByRole('row').filter({ hasText: name })
+        await expect(row.getByRole('cell')).toHaveText([
+          name,
+          'The whole site',
+          'Nothing published yet',
+        ])
+        // Never-published sites lead; ours is one of them, so it sits above any dated row.
+        const firstRow = table.getByRole('row').nth(1)
+        await expect(firstRow.getByRole('cell').nth(2)).toHaveText('Nothing published yet')
+        expect(await blockingViolations(page)).toEqual([])
+      } finally {
+        const gone = await page.request.delete(`/api/tenants/${id}`)
+        expect(gone.ok(), await gone.text()).toBe(true)
+      }
+    },
+  )
+
+  adminTest(
+    `@a11y a calendar feed that failed is a banner, linking to the calendar`,
+    async ({ page, baseURL }) => {
+      const fixture = await makePage(baseURL, { title: uniqueTitle('Feed banner') })
+      let calendar: number | null = null
+      try {
+        const tenant = (
+          (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json()) as {
+            tenant: number
+          }
+        ).tenant
+        // `.invalid` never resolves, so the copy fails and the problem is recorded in words.
+        const name = uniqueTitle('Broken feed')
+        const made = await fixture.admin.post('/api/calendars?depth=0', {
+          data: { tenant, name, source: 'feed', feedUrl: 'https://example.invalid/feed.ics' },
         })
         expect(made.ok(), await made.text()).toBe(true)
-        const id = ((await made.json()).doc as { id: number }).id
-        try {
-          await page.goto('/admin')
-          const panel = page.locator('#freshness-panel')
-          const table = panel.getByRole('table')
-          await expect(table).toBeVisible({ timeout: 20_000 })
-          await expect(table.getByRole('columnheader')).toHaveText(['Site', 'What', 'Last changed'])
-          const row = table.getByRole('row').filter({ hasText: name })
-          await expect(row.getByRole('cell')).toHaveText([
-            name,
-            'The whole site',
-            'Nothing published yet',
-          ])
-          // Never-published sites lead; ours is one of them, so it sits above any dated row.
-          const firstRow = table.getByRole('row').nth(1)
-          await expect(firstRow.getByRole('cell').nth(2)).toHaveText('Nothing published yet')
-          expect(await blockingViolations(page)).toEqual([])
-        } finally {
-          const gone = await page.request.delete(`/api/tenants/${id}`)
-          expect(gone.ok(), await gone.text()).toBe(true)
-        }
-      },
-    )
-  }
+        calendar = ((await made.json()).doc as { id: number }).id
+        // The job runner's own endpoint (district-only) instead of waiting for its cron.
+        await expect
+          .poll(
+            async () => {
+              await fixture.admin.get('/api/payload-jobs/run?queue=default&limit=50')
+              const doc = (await (
+                await fixture.admin.get(`/api/calendars/${calendar}?depth=0`)
+              ).json()) as { feedError?: string | null }
+              return doc.feedError ?? ''
+            },
+            { timeout: 30_000 },
+          )
+          .not.toBe('')
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    adminTest(
-      `@a11y a calendar feed that failed is a banner, linking to the calendar — ${colorScheme}`,
-      async ({ page, baseURL }) => {
-        await page.emulateMedia({ colorScheme })
-        const fixture = await makePage(baseURL, { title: uniqueTitle('Feed banner') })
-        let calendar: number | null = null
-        try {
-          const tenant = (
-            (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json()) as {
-              tenant: number
-            }
-          ).tenant
-          // `.invalid` never resolves, so the copy fails and the problem is recorded in words.
-          const name = uniqueTitle('Broken feed')
-          const made = await fixture.admin.post('/api/calendars?depth=0', {
-            data: { tenant, name, source: 'feed', feedUrl: 'https://example.invalid/feed.ics' },
-          })
-          expect(made.ok(), await made.text()).toBe(true)
-          calendar = ((await made.json()).doc as { id: number }).id
-          // The job runner's own endpoint (district-only) instead of waiting for its cron.
-          await expect
-            .poll(
-              async () => {
-                await fixture.admin.get('/api/payload-jobs/run?queue=default&limit=50')
-                const doc = (await (
-                  await fixture.admin.get(`/api/calendars/${calendar}?depth=0`)
-                ).json()) as { feedError?: string | null }
-                return doc.feedError ?? ''
-              },
-              { timeout: 30_000 },
-            )
-            .not.toBe('')
-
-          await page.goto('/admin')
-          const attention = page.locator('#attention-panel')
-          await expect(attention.getByRole('heading', { name: 'Needs attention' })).toBeVisible({
-            timeout: 20_000,
-          })
-          const banner = attention.getByRole('link', {
-            name: new RegExp(`${name}: the calendar feed could not be copied`),
-          })
-          await expect(banner).toHaveAttribute('href', `/admin/collections/calendars/${calendar}`)
-          expect(await blockingViolations(page)).toEqual([])
-        } finally {
-          if (calendar !== null) await fixture.admin.delete(`/api/calendars/${calendar}`)
-          await dropPage(fixture)
-        }
-      },
-    )
-  }
+        await page.goto('/admin')
+        const attention = page.locator('#attention-panel')
+        await expect(attention.getByRole('heading', { name: 'Needs attention' })).toBeVisible({
+          timeout: 20_000,
+        })
+        const banner = attention.getByRole('link', {
+          name: new RegExp(`${name}: the calendar feed could not be copied`),
+        })
+        await expect(banner).toHaveAttribute('href', `/admin/collections/calendars/${calendar}`)
+        expect(await blockingViolations(page)).toEqual([])
+      } finally {
+        if (calendar !== null) await fixture.admin.delete(`/api/calendars/${calendar}`)
+        await dropPage(fixture)
+      }
+    },
+  )
 
   /**
    * Documents not yet checked for accessibility (Jason, 2026-11-16; `07` §5): the district's work
    * queue, oldest first, each linking to the file where it is marked checked.
    */
-  for (const colorScheme of ['light', 'dark'] as const) {
-    adminTest(
-      `@a11y a document not checked for accessibility is listed, linking to its file — ${colorScheme}`,
-      async ({ page, baseURL }) => {
-        await page.emulateMedia({ colorScheme })
-        const admin = await playwrightRequest.newContext({
-          ...(baseURL ? { baseURL } : {}),
-          storageState: ADMIN_STORAGE_STATE,
+  adminTest(
+    `@a11y a document not checked for accessibility is listed, linking to its file`,
+    async ({ page, baseURL }) => {
+      const admin = await playwrightRequest.newContext({
+        ...(baseURL ? { baseURL } : {}),
+        storageState: ADMIN_STORAGE_STATE,
+      })
+      const title = uniqueTitle('Unchecked form')
+      const pdf = tinyPdf()
+      const made = await admin.post('/api/resources?depth=0', {
+        multipart: {
+          file: { name: pdf.name, mimeType: pdf.mimetype, buffer: pdf.data },
+          _payload: JSON.stringify({
+            tenant: await tenantIdFor(admin, 'a.localhost'),
+            title,
+            remediationStatus: 'not-attested',
+          }),
+        },
+      })
+      expect(made.ok(), await made.text()).toBe(true)
+      const id = ((await made.json()).doc as { id: number }).id
+      try {
+        await page.goto('/admin')
+        const panel = page.locator('#unchecked-panel')
+        await expect(panel.getByRole('heading', { name: 'Documents to check' })).toBeVisible({
+          timeout: 20_000,
         })
-        const title = uniqueTitle('Unchecked form')
-        const pdf = tinyPdf()
-        const made = await admin.post('/api/resources?depth=0', {
-          multipart: {
-            file: { name: pdf.name, mimeType: pdf.mimetype, buffer: pdf.data },
-            _payload: JSON.stringify({
-              tenant: await tenantIdFor(admin, 'a.localhost'),
-              title,
-              remediationStatus: 'not-attested',
-            }),
-          },
-        })
-        expect(made.ok(), await made.text()).toBe(true)
-        const id = ((await made.json()).doc as { id: number }).id
-        try {
-          await page.goto('/admin')
-          const panel = page.locator('#unchecked-panel')
-          await expect(panel.getByRole('heading', { name: 'Documents to check' })).toBeVisible({
-            timeout: 20_000,
-          })
-          await expect(panel).toContainText(/haven’t|hasn’t/)
-          // Other specs may leave more than ten waiting: the newest may be past the shown ten.
-          const link = panel.getByRole('link', { name: title })
-          const seeAll = panel.getByRole('link', { name: /^See all \d+$/ })
-          if ((await link.count()) > 0) {
-            await expect(link).toHaveAttribute('href', `/admin/collections/resources/${id}`)
-          } else {
-            await expect(seeAll).toHaveAttribute(
-              'href',
-              '/admin/collections/resources?where[remediationStatus][equals]=not-attested',
-            )
-          }
-          expect(await blockingViolations(page)).toEqual([])
-        } finally {
-          await admin.delete(`/api/resources/${id}`)
-          await admin.dispose()
+        await expect(panel).toContainText(/haven’t|hasn’t/)
+        // Other specs may leave more than ten waiting: the newest may be past the shown ten.
+        const link = panel.getByRole('link', { name: title })
+        const seeAll = panel.getByRole('link', { name: /^See all \d+$/ })
+        if ((await link.count()) > 0) {
+          await expect(link).toHaveAttribute('href', `/admin/collections/resources/${id}`)
+        } else {
+          await expect(seeAll).toHaveAttribute(
+            'href',
+            '/admin/collections/resources?where[remediationStatus][equals]=not-attested',
+          )
         }
-      },
-    )
-  }
+        expect(await blockingViolations(page)).toEqual([])
+      } finally {
+        await admin.delete(`/api/resources/${id}`)
+        await admin.dispose()
+      }
+    },
+  )
 })

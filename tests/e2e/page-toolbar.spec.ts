@@ -71,75 +71,67 @@ test.describe('the district page toolbar', () => {
   test.skip(credentials === null, SKIP)
   test.use({ storageState: ADMIN_STORAGE_STATE })
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    test(`@a11y shows the contents, and the gear opens Page settings — ${colorScheme}`, async ({
-      page,
-      baseURL,
-    }) => {
-      await page.emulateMedia({ colorScheme })
-      const admin = await asDistrict(baseURL)
-      const made = await mkPage(admin, 'b.localhost')
-      try {
-        await openForm(page, made.id)
+  test(`@a11y shows the contents, and the gear opens Page settings`, async ({ page, baseURL }) => {
+    const admin = await asDistrict(baseURL)
+    const made = await mkPage(admin, 'b.localhost')
+    try {
+      await openForm(page, made.id)
 
-        // Closed: the words are there, the settings are not.
-        await expect(page.locator('#field-title')).toBeHidden()
-        await expect(page.locator('.ContentEditable__root').first()).toBeVisible()
-        for (const action of ['History', 'Clone', 'Delete', 'Page settings']) {
-          await expect(
-            page.locator('#page-toolbar').getByText(action, { exact: true }),
-          ).toBeVisible()
-        }
-        expect(await blockingViolations(page)).toEqual([])
-
-        // Open: a dialog, named, focused on its heading, in tabs (Jason, 2026-11-11).
-        const gear = page.getByRole('button', { name: 'Page settings' })
-        const dialog = await openPageSettings(page)
-        await expect(page.locator('#page-settings-title')).toBeFocused()
-        await expect(page.locator('.ContentEditable__root').first()).toBeHidden()
-        await expect(dialog.getByRole('tab')).toHaveText(['Page', 'Linking', 'SEO', 'Access'])
-        await expect(dialog.getByRole('tabpanel', { name: 'Page' })).toBeVisible()
-
-        /** Each tab holds its own settings and none of the others' — and passes axe. */
-        const tabs = {
-          Page: [
-            '#field-title',
-            '#field-slug',
-            '#field-parent',
-            '#field-hideFromNavigation',
-            '#field-hideFromSiteSearch',
-            '#field-hideFromSearchEngines',
-          ],
-          Linking: ['#field-linkMode'],
-          SEO: ['#field-meta'],
-          Access: ['#field-visibility'],
-        } as const
-        for (const [name, fields] of Object.entries(tabs)) {
-          await showSettingsTab(page, name as keyof typeof tabs)
-          await expect(dialog.getByRole('tabpanel', { name })).toBeVisible()
-          for (const field of fields) await expect(page.locator(field)).toBeVisible()
-          for (const [other, theirs] of Object.entries(tabs)) {
-            if (other === name) continue
-            for (const field of theirs) await expect(page.locator(field)).toBeHidden()
-          }
-          if (name === 'SEO') {
-            // Payload builds a group's fields as they come near the view.
-            await expect(page.locator('[name="meta.title"]')).toBeVisible()
-          }
-          await expect(dialog.getByRole('button', { name: 'Done' })).toBeVisible()
-          expect(await blockingViolations(page), name).toEqual([])
-        }
-
-        // Escape closes it and gives focus back to the gear.
-        await page.keyboard.press('Escape')
-        await expect(dialog).toBeHidden()
-        await expect(gear).toBeFocused()
-      } finally {
-        await admin.delete(`/api/pages/${made.id}`)
-        await admin.dispose()
+      // Closed: the words are there, the settings are not.
+      await expect(page.locator('#field-title')).toBeHidden()
+      await expect(page.locator('.ContentEditable__root').first()).toBeVisible()
+      for (const action of ['History', 'Clone', 'Delete', 'Page settings']) {
+        await expect(page.locator('#page-toolbar').getByText(action, { exact: true })).toBeVisible()
       }
-    })
-  }
+      expect(await blockingViolations(page)).toEqual([])
+
+      // Open: a dialog, named, focused on its heading, in tabs (Jason, 2026-11-11).
+      const gear = page.getByRole('button', { name: 'Page settings' })
+      const dialog = await openPageSettings(page)
+      await expect(page.locator('#page-settings-title')).toBeFocused()
+      await expect(page.locator('.ContentEditable__root').first()).toBeHidden()
+      await expect(dialog.getByRole('tab')).toHaveText(['Page', 'Linking', 'SEO', 'Access'])
+      await expect(dialog.getByRole('tabpanel', { name: 'Page' })).toBeVisible()
+
+      /** Each tab holds its own settings and none of the others' — and passes axe. */
+      const tabs = {
+        Page: [
+          '#field-title',
+          '#field-slug',
+          '#field-parent',
+          '#field-hideFromNavigation',
+          '#field-hideFromSiteSearch',
+          '#field-hideFromSearchEngines',
+        ],
+        Linking: ['#field-linkMode'],
+        SEO: ['#field-meta'],
+        Access: ['#field-visibility'],
+      } as const
+      for (const [name, fields] of Object.entries(tabs)) {
+        await showSettingsTab(page, name as keyof typeof tabs)
+        await expect(dialog.getByRole('tabpanel', { name })).toBeVisible()
+        for (const field of fields) await expect(page.locator(field)).toBeVisible()
+        for (const [other, theirs] of Object.entries(tabs)) {
+          if (other === name) continue
+          for (const field of theirs) await expect(page.locator(field)).toBeHidden()
+        }
+        if (name === 'SEO') {
+          // Payload builds a group's fields as they come near the view.
+          await expect(page.locator('[name="meta.title"]')).toBeVisible()
+        }
+        await expect(dialog.getByRole('button', { name: 'Done' })).toBeVisible()
+        expect(await blockingViolations(page), name).toEqual([])
+      }
+
+      // Escape closes it and gives focus back to the gear.
+      await page.keyboard.press('Escape')
+      await expect(dialog).toBeHidden()
+      await expect(gear).toBeFocused()
+    } finally {
+      await admin.delete(`/api/pages/${made.id}`)
+      await admin.dispose()
+    }
+  })
 
   test('changes the page’s address from the dialog', async ({ page, baseURL }) => {
     const admin = await asDistrict(baseURL)

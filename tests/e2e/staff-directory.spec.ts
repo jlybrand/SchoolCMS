@@ -91,70 +91,67 @@ const open = async (page: Page, baseURL: string | undefined, slug: string) =>
 test.describe('a staff list on a page', () => {
   test.skip(credentials === null, SKIP)
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    test(`@a11y a school's staff and a sub-group, A–Z, each with an email link — ${colorScheme}`, async ({
-      page,
-      baseURL,
-    }) => {
-      await page.emulateMedia({ colorScheme })
-      const fixture = await setUp(baseURL)
-      try {
-        await open(page, baseURL, fixture.slug)
-        const all = page.getByRole('region', { name: 'All staff' })
-        // A–Z by last name.
-        await expect(all.getByRole('listitem').locator('p:first-child')).toHaveText([
-          'José Álvarez-Mock',
-          'Dana Example',
-          'Finley Fixture',
-          'Avery Mockwell',
-          'Emery Placeholder',
-          'Casey Sample',
-          'Gray Stub',
-          'Blake Testman',
-        ])
-        // Titles as CSI gives them; an email link named for its person.
-        await expect(all.getByText('Admin/teacher', { exact: true })).toBeVisible()
-        const email = all.getByRole('link', { name: 'Email Dana Example' })
-        await expect(email).toHaveAttribute('href', /^mailto:.+@example\.org$/)
-        // Eight people: no filter yet (it appears from ten).
-        await expect(all.getByRole('searchbox')).toHaveCount(0)
-        // At most N side by side, at desktop width (Jason, 2026-11-13): exactly N share the
-        // first row and the next person starts the second. 3 and 4 need more room than the text
-        // column, so those lists widen — short of the screen's edges, never scrolling sideways.
-        for (const [name, n] of [
-          ['All staff', 4],
-          ['Three across', 3],
-          ['Two across', 2],
-        ] as const) {
-          const tops = await page
-            .getByRole('region', { name })
-            .getByRole('listitem')
-            .evaluateAll((items) => items.map((li) => Math.round(li.getBoundingClientRect().top)))
-          expect(tops.slice(0, n), `${name}: the first row`).toEqual(Array(n).fill(tops[0]))
-          expect(tops[n], `${name}: the next row`).toBeGreaterThan(tops[0]!)
-        }
-        const edges = await all.evaluate((el) => {
-          const box = el.getBoundingClientRect()
-          const page = document.documentElement
-          return {
-            start: box.left,
-            end: page.clientWidth - box.right,
-            sideways: page.scrollWidth - page.clientWidth,
-          }
-        })
-        expect(edges.start).toBeGreaterThanOrEqual(24)
-        expect(edges.end).toBeGreaterThanOrEqual(24)
-        expect(edges.sideways).toBe(0)
-
-        const counselors = page.getByRole('region', { name: 'Counselors' })
-        await expect(counselors.getByRole('listitem')).toHaveCount(1)
-        await expect(counselors).toContainText('Casey Sample')
-        await expect(counselors).toContainText('School Counselor')
-
-        expect(await blockingViolations(page)).toEqual([])
-      } finally {
-        await tearDown(fixture)
+  test(`@a11y a school's staff and a sub-group, A–Z, each with an email link`, async ({
+    page,
+    baseURL,
+  }) => {
+    const fixture = await setUp(baseURL)
+    try {
+      await open(page, baseURL, fixture.slug)
+      const all = page.getByRole('region', { name: 'All staff' })
+      // A–Z by last name.
+      await expect(all.getByRole('listitem').locator('p:first-child')).toHaveText([
+        'José Álvarez-Mock',
+        'Dana Example',
+        'Finley Fixture',
+        'Avery Mockwell',
+        'Emery Placeholder',
+        'Casey Sample',
+        'Gray Stub',
+        'Blake Testman',
+      ])
+      // Titles as CSI gives them; an email link named for its person.
+      await expect(all.getByText('Admin/teacher', { exact: true })).toBeVisible()
+      const email = all.getByRole('link', { name: 'Email Dana Example' })
+      await expect(email).toHaveAttribute('href', /^mailto:.+@example\.org$/)
+      // Eight people: no filter yet (it appears from ten).
+      await expect(all.getByRole('searchbox')).toHaveCount(0)
+      // At most N side by side, at desktop width (Jason, 2026-11-13): exactly N share the
+      // first row and the next person starts the second. 3 and 4 need more room than the text
+      // column, so those lists widen — short of the screen's edges, never scrolling sideways.
+      for (const [name, n] of [
+        ['All staff', 4],
+        ['Three across', 3],
+        ['Two across', 2],
+      ] as const) {
+        const tops = await page
+          .getByRole('region', { name })
+          .getByRole('listitem')
+          .evaluateAll((items) => items.map((li) => Math.round(li.getBoundingClientRect().top)))
+        expect(tops.slice(0, n), `${name}: the first row`).toEqual(Array(n).fill(tops[0]))
+        expect(tops[n], `${name}: the next row`).toBeGreaterThan(tops[0]!)
       }
-    })
-  }
+      const edges = await all.evaluate((el) => {
+        const box = el.getBoundingClientRect()
+        const page = document.documentElement
+        return {
+          start: box.left,
+          end: page.clientWidth - box.right,
+          sideways: page.scrollWidth - page.clientWidth,
+        }
+      })
+      expect(edges.start).toBeGreaterThanOrEqual(24)
+      expect(edges.end).toBeGreaterThanOrEqual(24)
+      expect(edges.sideways).toBe(0)
+
+      const counselors = page.getByRole('region', { name: 'Counselors' })
+      await expect(counselors.getByRole('listitem')).toHaveCount(1)
+      await expect(counselors).toContainText('Casey Sample')
+      await expect(counselors).toContainText('School Counselor')
+
+      expect(await blockingViolations(page)).toEqual([])
+    } finally {
+      await tearDown(fixture)
+    }
+  })
 })

@@ -139,32 +139,24 @@ schoolTest.describe('Live Preview — a school manager', () => {
     },
   )
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    schoolTest(
-      `@a11y the page form with the preview open — ${colorScheme}`,
-      async ({ page, baseURL }) => {
-        const fixture = await makePage(baseURL, { title: uniqueTitle('Axe preview') })
-        try {
-          await page.emulateMedia({ colorScheme })
-          await page.goto(`/admin/collections/pages/${fixture.id}`)
-          await openPreview(page)
-          try {
-            await expect(preview(page).locator('h1')).toBeVisible({ timeout: 20_000 })
-            // The repairs (`A11yPatch`) have landed before anything is audited.
-            await expect(page.locator('#live-preview-iframe[title="Page preview"]')).toBeAttached()
-            await expect(
-              page.locator('input[name="live-preview-width"][aria-label]'),
-            ).toBeAttached()
-            await expectNoBlockingViolations(page, 'body')
-          } finally {
-            await closePreview(page)
-          }
-        } finally {
-          await dropPage(fixture)
-        }
-      },
-    )
-  }
+  schoolTest(`@a11y the page form with the preview open`, async ({ page, baseURL }) => {
+    const fixture = await makePage(baseURL, { title: uniqueTitle('Axe preview') })
+    try {
+      await page.goto(`/admin/collections/pages/${fixture.id}`)
+      await openPreview(page)
+      try {
+        await expect(preview(page).locator('h1')).toBeVisible({ timeout: 20_000 })
+        // The repairs (`A11yPatch`) have landed before anything is audited.
+        await expect(page.locator('#live-preview-iframe[title="Page preview"]')).toBeAttached()
+        await expect(page.locator('input[name="live-preview-width"][aria-label]')).toBeAttached()
+        await expectNoBlockingViolations(page, 'body')
+      } finally {
+        await closePreview(page)
+      }
+    } finally {
+      await dropPage(fixture)
+    }
+  })
 })
 
 schoolTest.describe('Live Preview — who sees a draft', () => {

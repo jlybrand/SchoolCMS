@@ -143,40 +143,37 @@ const openFile = async (page: Page, fixture: Fixture) => {
 schoolTest.describe('a school’s file library', () => {
   schoolTest.skip(credentials === null, SKIP)
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    schoolTest(
-      `@a11y from the menu to a file’s details, with where it’s used — ${colorScheme}`,
-      async ({ page, baseURL }) => {
-        await page.emulateMedia({ colorScheme })
-        const fixture = await setUp(baseURL)
-        try {
-          // A card on the school's start screen (Jason, 2026-11-17), and in the side menu.
-          await page.goto('/admin')
-          await expect(
-            page.locator('#school-home').getByRole('link', { name: /Manage your files/ }),
-          ).toHaveAttribute('href', '/admin/file-library', { timeout: 20_000 })
-          // Files in their menu opens their folders beside it (Jason, 2026-11-18).
-          await expect(page.locator('#nav-file-library')).toHaveAttribute(
-            'aria-controls',
-            'site-flyout',
-          )
-          await page.goto('/admin/file-library')
-          await expect(page.getByRole('heading', { level: 1, name: 'File library' })).toBeVisible()
-          // In Payload's frame (Jason, 2026-11-17): the side menu is on the library itself.
-          await expect(page.locator('#nav-file-library')).toBeAttached()
-          expect(await blockingViolations(page)).toEqual([])
+  schoolTest(
+    `@a11y from the menu to a file’s details, with where it’s used`,
+    async ({ page, baseURL }) => {
+      const fixture = await setUp(baseURL)
+      try {
+        // A card on the school's start screen (Jason, 2026-11-17), and in the side menu.
+        await page.goto('/admin')
+        await expect(
+          page.locator('#school-home').getByRole('link', { name: /Manage your files/ }),
+        ).toHaveAttribute('href', '/admin/file-library', { timeout: 20_000 })
+        // Files in their menu opens their folders beside it (Jason, 2026-11-18).
+        await expect(page.locator('#nav-file-library')).toHaveAttribute(
+          'aria-controls',
+          'site-flyout',
+        )
+        await page.goto('/admin/file-library')
+        await expect(page.getByRole('heading', { level: 1, name: 'File library' })).toBeVisible()
+        // In Payload's frame (Jason, 2026-11-17): the side menu is on the library itself.
+        await expect(page.locator('#nav-file-library')).toBeAttached()
+        expect(await blockingViolations(page)).toEqual([])
 
-          await openFile(page, fixture)
-          await expect(page.locator('#library-used-on')).toContainText(fixture.pageTitle)
-          await expect(page.locator('#replace-used-on')).toHaveText('Used on 1 page.')
-          expect(await blockingViolations(page)).toEqual([])
-          expect(await smallestText(page)).toBeGreaterThanOrEqual(15)
-        } finally {
-          await tearDown(fixture)
-        }
-      },
-    )
-  }
+        await openFile(page, fixture)
+        await expect(page.locator('#library-used-on')).toContainText(fixture.pageTitle)
+        await expect(page.locator('#replace-used-on')).toHaveText('Used on 1 page.')
+        expect(await blockingViolations(page)).toEqual([])
+        expect(await smallestText(page)).toBeGreaterThanOrEqual(15)
+      } finally {
+        await tearDown(fixture)
+      }
+    },
+  )
 
   schoolTest('edit the details, then move it to another folder', async ({ page, baseURL }) => {
     const fixture = await setUp(baseURL)
@@ -274,58 +271,52 @@ schoolTest.describe('a school’s file library', () => {
 adminTest.describe('the district’s file library', () => {
   adminTest.skip(credentials === null, SKIP)
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    adminTest(
-      `@a11y chooses a site first, then a file — ${colorScheme}`,
-      async ({ page, baseURL }) => {
-        await page.emulateMedia({ colorScheme })
-        const fixture = await setUp(baseURL)
-        try {
-          await page.goto('/admin/file-library')
-          await expect(page.getByText('Choose a folder to see its files.')).toBeVisible({
-            timeout: 20_000,
-          })
-          expect(await blockingViolations(page)).toEqual([])
+  adminTest(`@a11y chooses a site first, then a file`, async ({ page, baseURL }) => {
+    const fixture = await setUp(baseURL)
+    try {
+      await page.goto('/admin/file-library')
+      await expect(page.getByText('Choose a folder to see its files.')).toBeVisible({
+        timeout: 20_000,
+      })
+      expect(await blockingViolations(page)).toEqual([])
 
-          // The list that slides out of the menu (Jason, 2026-11-18), not a select: EVERY folder,
-          // under its site's name, then the folder's files in their place.
-          await page.locator('#library-change-site').click()
-          const panel = page.locator('#site-flyout')
-          await expect(panel.getByRole('heading', { level: 2, name: 'Files' })).toBeFocused()
-          await expect(panel).toContainText('Choose a folder')
-          const schoolA = panel.getByRole('region', { name: 'School A', exact: true })
-          const folder = schoolA.getByRole('button', { name: fixture.menus.name, exact: true })
-          await expect(folder).toBeVisible({ timeout: 20_000 })
-          expect(await blockingViolations(page)).toEqual([])
-          await folder.click()
-          await expect(panel.getByRole('heading', { name: fixture.menus.name })).toBeFocused()
-          await expect(panel).toContainText('School A')
-          const file = panel.getByRole('link', { name: new RegExp(`^${fixture.imageTitle}`) })
-          await expect(file).toContainText('Image', { timeout: 20_000 })
-          expect(await blockingViolations(page)).toEqual([])
-          // Back a level: the folders again.
-          await panel.getByRole('button', { name: 'All folders' }).click()
-          await expect(panel.getByRole('heading', { level: 2, name: 'Files' })).toBeFocused()
-          await schoolA.getByRole('button', { name: fixture.menus.name, exact: true }).click()
+      // The list that slides out of the menu (Jason, 2026-11-18), not a select: EVERY folder,
+      // under its site's name, then the folder's files in their place.
+      await page.locator('#library-change-site').click()
+      const panel = page.locator('#site-flyout')
+      await expect(panel.getByRole('heading', { level: 2, name: 'Files' })).toBeFocused()
+      await expect(panel).toContainText('Choose a folder')
+      const schoolA = panel.getByRole('region', { name: 'School A', exact: true })
+      const folder = schoolA.getByRole('button', { name: fixture.menus.name, exact: true })
+      await expect(folder).toBeVisible({ timeout: 20_000 })
+      expect(await blockingViolations(page)).toEqual([])
+      await folder.click()
+      await expect(panel.getByRole('heading', { name: fixture.menus.name })).toBeFocused()
+      await expect(panel).toContainText('School A')
+      const file = panel.getByRole('link', { name: new RegExp(`^${fixture.imageTitle}`) })
+      await expect(file).toContainText('Image', { timeout: 20_000 })
+      expect(await blockingViolations(page)).toEqual([])
+      // Back a level: the folders again.
+      await panel.getByRole('button', { name: 'All folders' }).click()
+      await expect(panel.getByRole('heading', { level: 2, name: 'Files' })).toBeFocused()
+      await schoolA.getByRole('button', { name: fixture.menus.name, exact: true }).click()
 
-          // A file opens in the library, in its folder, its details showing.
-          await file.click()
-          await expect(page).toHaveURL(
-            new RegExp(
-              `/admin/file-library\\?site=${fixture.tenant}&folder=${fixture.menus.id}&file=${fixture.image}$`,
-            ),
-          )
-          await expect(panel).toBeHidden()
-          await expect(
-            page.getByRole('heading', { level: 2, name: fixture.imageTitle }),
-          ).toBeVisible({ timeout: 20_000 })
-          await expect(page.locator('#library-site')).toHaveText('School A')
-          expect(await blockingViolations(page)).toEqual([])
-          expect(await smallestText(page)).toBeGreaterThanOrEqual(15)
-        } finally {
-          await tearDown(fixture)
-        }
-      },
-    )
-  }
+      // A file opens in the library, in its folder, its details showing.
+      await file.click()
+      await expect(page).toHaveURL(
+        new RegExp(
+          `/admin/file-library\\?site=${fixture.tenant}&folder=${fixture.menus.id}&file=${fixture.image}$`,
+        ),
+      )
+      await expect(panel).toBeHidden()
+      await expect(page.getByRole('heading', { level: 2, name: fixture.imageTitle })).toBeVisible({
+        timeout: 20_000,
+      })
+      await expect(page.locator('#library-site')).toHaveText('School A')
+      expect(await blockingViolations(page)).toEqual([])
+      expect(await smallestText(page)).toBeGreaterThanOrEqual(15)
+    } finally {
+      await tearDown(fixture)
+    }
+  })
 })

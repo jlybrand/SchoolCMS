@@ -31,7 +31,7 @@ export const SchoolHome = async (props: DashboardViewServerProps) => {
   return (
     <Gutter>
       <div className={styles.view} id="school-home">
-        <BrandBand payload={req.payload} {...(schools[0] ? { school: schools[0].name } : {})} />
+        <BrandBand payload={req.payload} {...(schools[0] ? { school: schools[0] } : {})} />
         <h1 className={styles.title}>What would you like to do?</h1>
 
         <ul className={styles.tasks}>

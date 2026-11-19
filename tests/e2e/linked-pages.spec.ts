@@ -286,152 +286,211 @@ test.describe('linked pages — reuse content', () => {
   test.describe('in Page settings', () => {
     test.use({ storageState: ADMIN_STORAGE_STATE })
 
-    for (const colorScheme of ['light', 'dark'] as const) {
-      test(`@a11y choosing "show a district page's content" offers the district picker only — ${colorScheme}`, async ({
-        page,
-        baseURL,
-      }) => {
-        await page.emulateMedia({ colorScheme })
-        const admin = await asDistrict(baseURL)
-        const made: number[] = []
-        try {
-          const source = await mkPage(admin, 'localhost')
-          made.push(source.id)
-          const reuse = await mkPage(admin, 'b.localhost', {
-            linkMode: 'reuse',
-            districtLinkTarget: source.id,
-          })
-          made.push(reuse.id)
+    /**
+     * The picker's list drops down whole (Jason, 2026-11-19): the dialog's panel clipped it at
+     * its bottom edge, leaving one option showing. And Live Preview shows what a visitor gets —
+     * the district page's title and words — not the page's own sections.
+     */
+    test('the district picker’s list shows whole, and the preview shows the district page', async ({
+      page,
+      baseURL,
+    }) => {
+      const admin = await asDistrict(baseURL)
+      const made: number[] = []
+      try {
+        // Enough district pages that the list is taller than the space under the picker.
+        for (let i = 0; i < 4; i += 1) made.push((await mkPage(admin, 'localhost')).id)
+        const sourceRes = await admin.get(`/api/pages/${made[0]}?depth=0`)
+        const sourceTitle = ((await sourceRes.json()) as { title: string }).title
+        const own = await mkPage(admin, 'b.localhost', {
+          layout: [wordsSection('The school page’s own words.')],
+        })
+        made.push(own.id)
 
-          await page.goto(`/admin/collections/pages/${reuse.id}`)
-          await openPageSettings(page)
-          await showSettingsTab(page, 'Linking')
-          await expect(page.getByRole('checkbox', { name: 'This page is linked' })).toBeChecked()
-          await expect(page.getByRole('radio', { name: 'Reuse content' })).toBeChecked()
-          await expect(page.locator('#field-districtLinkTarget')).toBeVisible()
-          await expect(page.locator('#field-linkTo')).toHaveCount(0)
-          await expect(page.locator('#field-linkTarget')).toHaveCount(0)
-          await expect(
-            page.locator(
-              '#field-districtLinkTarget .clear-indicator[aria-hidden="true"][tabindex="-1"]',
-            ),
-          ).toBeAttached({ timeout: 20_000 })
-          const results = await new AxeBuilder({ page })
-            .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-            .analyze()
-          expect(
-            results.violations.filter((v) => BLOCKING.includes(v.impact ?? '')).map((v) => v.id),
-          ).toEqual([])
-        } finally {
-          for (const id of made.reverse()) await admin.delete(`/api/pages/${id}`)
-          await admin.dispose()
-        }
-      })
-    }
+        await page.goto(`/admin/collections/pages/${own.id}`)
+        await openPageSettings(page)
+        await showSettingsTab(page, 'Linking')
+        await page.getByRole('checkbox', { name: 'This page is linked' }).check()
+        await page.getByRole('radio', { name: 'Reuse content' }).check()
+        await page.locator('#field-districtLinkTarget .rs__control').click()
+        const options = page.locator('#field-districtLinkTarget .rs__option')
+        await expect(options.nth(3)).toBeVisible({ timeout: 20_000 })
+        // Not just in the DOM: the panel no longer hides it — the option is what a click hits.
+        const box = (await options.nth(3).boundingBox())!
+        const hit = await page.evaluate(
+          ([x, y]) => document.elementFromPoint(x!, y!)?.closest('.rs__option') !== null,
+          [box.x + box.width / 2, box.y + box.height / 2],
+        )
+        expect(hit).toBe(true)
+        await page
+          .locator('#field-districtLinkTarget .rs__option', { hasText: sourceTitle })
+          .click()
+        await page.getByRole('button', { name: 'Done' }).click()
+        // The autosaved draft is what the preview reads.
+        await expect
+          .poll(
+            async () =>
+              (
+                (await (await admin.get(`/api/pages/${own.id}?draft=true&depth=0`)).json()) as {
+                  linkMode?: string
+                }
+              ).linkMode,
+            { timeout: 20_000 },
+          )
+          .toBe('reuse')
+
+        await page.goto(`/admin-preview/pages/${own.id}`)
+        await expect(page.getByRole('heading', { level: 1, name: sourceTitle })).toBeVisible({
+          timeout: 20_000,
+        })
+        await expect(page.getByText('Words on the page.')).toBeVisible()
+        await expect(page.getByText('The school page’s own words.')).toHaveCount(0)
+        await expect(
+          page.getByText('This page shows the district page at localhost/'),
+        ).toBeVisible()
+      } finally {
+        for (const id of made.reverse()) await admin.delete(`/api/pages/${id}`)
+        await admin.dispose()
+      }
+    })
+
+    test(`@a11y choosing "show a district page's content" offers the district picker only`, async ({
+      page,
+      baseURL,
+    }) => {
+      const admin = await asDistrict(baseURL)
+      const made: number[] = []
+      try {
+        const source = await mkPage(admin, 'localhost')
+        made.push(source.id)
+        const reuse = await mkPage(admin, 'b.localhost', {
+          linkMode: 'reuse',
+          districtLinkTarget: source.id,
+        })
+        made.push(reuse.id)
+
+        await page.goto(`/admin/collections/pages/${reuse.id}`)
+        await openPageSettings(page)
+        await showSettingsTab(page, 'Linking')
+        await expect(page.getByRole('checkbox', { name: 'This page is linked' })).toBeChecked()
+        await expect(page.getByRole('radio', { name: 'Reuse content' })).toBeChecked()
+        await expect(page.locator('#field-districtLinkTarget')).toBeVisible()
+        await expect(page.locator('#field-linkTo')).toHaveCount(0)
+        await expect(page.locator('#field-linkTarget')).toHaveCount(0)
+        await expect(
+          page.locator(
+            '#field-districtLinkTarget .clear-indicator[aria-hidden="true"][tabindex="-1"]',
+          ),
+        ).toBeAttached({ timeout: 20_000 })
+        const results = await new AxeBuilder({ page })
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+          .analyze()
+        expect(
+          results.violations.filter((v) => BLOCKING.includes(v.impact ?? '')).map((v) => v.id),
+        ).toEqual([])
+      } finally {
+        for (const id of made.reverse()) await admin.delete(`/api/pages/${id}`)
+        await admin.dispose()
+      }
+    })
   })
 })
 
-/** The mark on both planes, with no blocking axe violations, in both themes. */
-for (const colorScheme of ['light', 'dark'] as const) {
-  test.describe(`the linked mark — ${colorScheme}`, () => {
-    test.skip(credentials === null, SKIP)
-    test.use({ colorScheme })
+/** The mark on both planes, with no blocking axe violations. */
+test.describe(`the linked mark`, () => {
+  test.skip(credentials === null, SKIP)
 
-    test.describe('district', () => {
-      test.use({ storageState: ADMIN_STORAGE_STATE })
+  test.describe('district', () => {
+    test.use({ storageState: ADMIN_STORAGE_STATE })
 
-      test(`@a11y the page list marks it with the icon, and Page settings shows the choice — ${colorScheme}`, async ({
-        page,
-        baseURL,
-      }) => {
-        const admin = await asDistrict(baseURL)
-        const made: number[] = []
-        try {
-          const district = await mkPage(admin, 'localhost')
-          made.push(district.id)
-          const linked = await mkPage(admin, 'b.localhost', {
-            title: uniqueTitle('Marked'),
-            linkMode: 'redirect',
-            linkTo: 'district',
-            districtLinkTarget: district.id,
-          })
-          made.push(linked.id)
+    test(`@a11y the page list marks it with the icon, and Page settings shows the choice`, async ({
+      page,
+      baseURL,
+    }) => {
+      const admin = await asDistrict(baseURL)
+      const made: number[] = []
+      try {
+        const district = await mkPage(admin, 'localhost')
+        made.push(district.id)
+        const linked = await mkPage(admin, 'b.localhost', {
+          title: uniqueTitle('Marked'),
+          linkMode: 'redirect',
+          linkTo: 'district',
+          districtLinkTarget: district.id,
+        })
+        made.push(linked.id)
 
-          // The mark alone identifies a linked page (Jason, 2026-10-29) — no word beside it.
-          await page.goto(`/admin/collections/pages?where[id][equals]=${linked.id}`)
-          await expect(
-            page.locator('tbody tr').first().getByRole('img', { name: 'Linked page' }),
-          ).toBeVisible({ timeout: 20_000 })
-          await expect(page.locator('tbody tr').first()).not.toContainText('Linked', {
-            useInnerText: true,
-          })
+        // The mark alone identifies a linked page (Jason, 2026-10-29) — no word beside it.
+        await page.goto(`/admin/collections/pages?where[id][equals]=${linked.id}`)
+        await expect(
+          page.locator('tbody tr').first().getByRole('img', { name: 'Linked page' }),
+        ).toBeVisible({ timeout: 20_000 })
+        await expect(page.locator('tbody tr').first()).not.toContainText('Linked', {
+          useInnerText: true,
+        })
 
-          await page.goto(`/admin/collections/pages/${linked.id}`)
-          // The choice is a Page setting, on its Linking tab (Jason, 2026-10-29 and 2026-11-11).
-          await openPageSettings(page)
-          await showSettingsTab(page, 'Linking')
-          await expect(page.getByRole('radio', { name: 'Internal redirect' })).toBeChecked({
-            timeout: 20_000,
-          })
-          // Repaired by A11yPatch before the audit: the chosen page's clear button.
-          await expect(
-            page.locator(
-              '#field-districtLinkTarget .clear-indicator[aria-hidden="true"][tabindex="-1"]',
-            ),
-          ).toBeAttached({ timeout: 20_000 })
-          await expect(page.locator('.ContentEditable__root[aria-label]').first()).toBeAttached({
-            timeout: 20_000,
-          })
-          const results = await new AxeBuilder({ page })
-            .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-            .analyze()
-          expect(
-            results.violations.filter((v) => BLOCKING.includes(v.impact ?? '')).map((v) => v.id),
-          ).toEqual([])
-        } finally {
-          for (const id of made.reverse()) await admin.delete(`/api/pages/${id}`)
-          await admin.dispose()
-        }
-      })
+        await page.goto(`/admin/collections/pages/${linked.id}`)
+        // The choice is a Page setting, on its Linking tab (Jason, 2026-10-29 and 2026-11-11).
+        await openPageSettings(page)
+        await showSettingsTab(page, 'Linking')
+        await expect(page.getByRole('radio', { name: 'Internal redirect' })).toBeChecked({
+          timeout: 20_000,
+        })
+        // Repaired by A11yPatch before the audit: the chosen page's clear button.
+        await expect(
+          page.locator(
+            '#field-districtLinkTarget .clear-indicator[aria-hidden="true"][tabindex="-1"]',
+          ),
+        ).toBeAttached({ timeout: 20_000 })
+        await expect(page.locator('.ContentEditable__root[aria-label]').first()).toBeAttached({
+          timeout: 20_000,
+        })
+        const results = await new AxeBuilder({ page })
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+          .analyze()
+        expect(
+          results.violations.filter((v) => BLOCKING.includes(v.impact ?? '')).map((v) => v.id),
+        ).toEqual([])
+      } finally {
+        for (const id of made.reverse()) await admin.delete(`/api/pages/${id}`)
+        await admin.dispose()
+      }
     })
-
-    schoolTest(
-      `@a11y "Update a page" marks a linked page — ${colorScheme}`,
-      async ({ page, baseURL }) => {
-        const admin = await asDistrict(baseURL)
-        const made: number[] = []
-        try {
-          const title = uniqueTitle('School redirect')
-          const target = await mkPage(admin, SCHOOL_HOSTNAME, { _status: 'draft' })
-          made.push(target.id)
-          const linked = await mkPage(admin, SCHOOL_HOSTNAME, {
-            title,
-            linkMode: 'redirect',
-            linkTo: 'site',
-            linkTarget: target.id,
-            _status: 'draft',
-          })
-          made.push(linked.id)
-
-          await page.goto('/admin/update-page')
-          const row = page.locator('#update-page li', { hasText: title })
-          await expect(row.getByRole('img', { name: 'Linked page' })).toBeVisible({
-            timeout: 20_000,
-          })
-          await expect(row).not.toContainText('Linked', { useInnerText: true })
-
-          const results = await new AxeBuilder({ page })
-            .include('#update-page')
-            .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-            .analyze()
-          expect(
-            results.violations.filter((v) => BLOCKING.includes(v.impact ?? '')).map((v) => v.id),
-          ).toEqual([])
-        } finally {
-          for (const id of made.reverse()) await admin.delete(`/api/pages/${id}`)
-          await admin.dispose()
-        }
-      },
-    )
   })
-}
+
+  schoolTest(`@a11y "Update a page" marks a linked page`, async ({ page, baseURL }) => {
+    const admin = await asDistrict(baseURL)
+    const made: number[] = []
+    try {
+      const title = uniqueTitle('School redirect')
+      const target = await mkPage(admin, SCHOOL_HOSTNAME, { _status: 'draft' })
+      made.push(target.id)
+      const linked = await mkPage(admin, SCHOOL_HOSTNAME, {
+        title,
+        linkMode: 'redirect',
+        linkTo: 'site',
+        linkTarget: target.id,
+        _status: 'draft',
+      })
+      made.push(linked.id)
+
+      await page.goto('/admin/update-page')
+      const row = page.locator('#update-page li', { hasText: title })
+      await expect(row.getByRole('img', { name: 'Linked page' })).toBeVisible({
+        timeout: 20_000,
+      })
+      await expect(row).not.toContainText('Linked', { useInnerText: true })
+
+      const results = await new AxeBuilder({ page })
+        .include('#update-page')
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+        .analyze()
+      expect(
+        results.violations.filter((v) => BLOCKING.includes(v.impact ?? '')).map((v) => v.id),
+      ).toEqual([])
+    } finally {
+      for (const id of made.reverse()) await admin.delete(`/api/pages/${id}`)
+      await admin.dispose()
+    }
+  })
+})

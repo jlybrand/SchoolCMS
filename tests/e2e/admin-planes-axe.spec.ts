@@ -81,12 +81,7 @@ let columnsPage: number
 let linksPage: number
 let event: number
 /** A calendar copied from an outside address (Jason, 2026-11-11). */
-/**
- * One feed calendar PER COLOR SCHEME: the light and dark runs open the form together, and Payload's
- * document lock showed the second one its locked, unrepaired view (axe failed 2026-11-12, twice on
- * 2026-11-16; see the e2e flake notes).
- */
-const feedCalendars: Record<'light' | 'dark', number> = { light: 0, dark: 0 }
+let feedCalendar: number
 let staffGroup: number
 let staffPage: number
 let imageFile: number
@@ -121,66 +116,60 @@ schoolTest.describe('school plane — whole screens', () => {
     await dropPost(post)
   })
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    schoolTest.describe(colorScheme, () => {
-      schoolTest.use({ colorScheme })
-
-      schoolTest(`@a11y home — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin')
-        await auditScreen(page, 'h1')
-      })
-      schoolTest(`@a11y update a page — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/update-page')
-        await auditScreen(page, 'h1')
-      })
-      schoolTest(`@a11y add a page — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/new-page')
-        await auditScreen(page, '#new-page')
-      })
-      schoolTest(`@a11y post an announcement — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/new-post')
-        await auditScreen(page, '#new-post')
-      })
-      schoolTest(`@a11y pages list, with its task button — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/collections/pages')
-        await auditScreen(page, '#list-task', ...LIST_REPAIRED)
-      })
-      schoolTest(`@a11y news and announcements list — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/collections/posts')
-        await auditScreen(page, '#announcements #create-post')
-      })
-      schoolTest(`@a11y add an event — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/new-event')
-        await auditScreen(page, '#new-event')
-      })
-      schoolTest(`@a11y events list, with its task button — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/collections/events')
-        await auditScreen(page, '#list-task', ...LIST_REPAIRED)
-      })
-      schoolTest(`@a11y the event form — ${colorScheme}`, async ({ page }) => {
-        await page.goto(`/admin/collections/events/${schoolEvent}`)
-        await auditScreen(
-          page,
-          '#action-save',
-          '#field-title',
-          '#field-calendar input[aria-label="Calendar"]',
-          '#field-start .date-time-picker__clear-button[aria-label="Clear Starts"]',
-        )
-      })
-      schoolTest(`@a11y their account — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/account')
-        await auditScreen(page, '#your-school')
-      })
-      schoolTest(`@a11y the page form — ${colorScheme}`, async ({ page }) => {
-        await page.goto(`/admin/collections/pages/${fixture.id}`)
-        await auditScreen(page, '#action-send-for-approval', ...PAGE_FORM_REPAIRED)
-      })
-      schoolTest(`@a11y the post form — ${colorScheme}`, async ({ page }) => {
-        await page.goto(`/admin/collections/posts/${post.id}`)
-        await auditScreen(page, '#action-send-for-approval', ...POST_FORM_REPAIRED)
-      })
-    })
-  }
+  schoolTest(`@a11y home`, async ({ page }) => {
+    await page.goto('/admin')
+    await auditScreen(page, 'h1')
+  })
+  schoolTest(`@a11y update a page`, async ({ page }) => {
+    await page.goto('/admin/update-page')
+    await auditScreen(page, 'h1')
+  })
+  schoolTest(`@a11y add a page`, async ({ page }) => {
+    await page.goto('/admin/new-page')
+    await auditScreen(page, '#new-page')
+  })
+  schoolTest(`@a11y post an announcement`, async ({ page }) => {
+    await page.goto('/admin/new-post')
+    await auditScreen(page, '#new-post')
+  })
+  schoolTest(`@a11y pages list, with its task button`, async ({ page }) => {
+    await page.goto('/admin/collections/pages')
+    await auditScreen(page, '#list-task', ...LIST_REPAIRED)
+  })
+  schoolTest(`@a11y news and announcements list`, async ({ page }) => {
+    await page.goto('/admin/collections/posts')
+    await auditScreen(page, '#announcements #create-post')
+  })
+  schoolTest(`@a11y add an event`, async ({ page }) => {
+    await page.goto('/admin/new-event')
+    await auditScreen(page, '#new-event')
+  })
+  schoolTest(`@a11y events list, with its task button`, async ({ page }) => {
+    await page.goto('/admin/collections/events')
+    await auditScreen(page, '#list-task', ...LIST_REPAIRED)
+  })
+  schoolTest(`@a11y the event form`, async ({ page }) => {
+    await page.goto(`/admin/collections/events/${schoolEvent}`)
+    await auditScreen(
+      page,
+      '#action-save',
+      '#field-title',
+      '#field-calendar input[aria-label="Calendar"]',
+      '#field-start .date-time-picker__clear-button[aria-label="Clear Starts"]',
+    )
+  })
+  schoolTest(`@a11y their account`, async ({ page }) => {
+    await page.goto('/admin/account')
+    await auditScreen(page, '#your-school')
+  })
+  schoolTest(`@a11y the page form`, async ({ page }) => {
+    await page.goto(`/admin/collections/pages/${fixture.id}`)
+    await auditScreen(page, '#action-send-for-approval', ...PAGE_FORM_REPAIRED)
+  })
+  schoolTest(`@a11y the post form`, async ({ page }) => {
+    await page.goto(`/admin/collections/posts/${post.id}`)
+    await auditScreen(page, '#action-send-for-approval', ...POST_FORM_REPAIRED)
+  })
 })
 
 adminTest.describe('district plane — whole screens', () => {
@@ -283,19 +272,16 @@ adminTest.describe('district plane — whole screens', () => {
     expect(madeEvent.ok(), await madeEvent.text()).toBe(true)
     event = ((await madeEvent.json()).doc as { id: number }).id
     // `.invalid` never resolves: if the job runner copies it, the form shows the problem in words.
-    for (const scheme of ['light', 'dark'] as const) {
-      const madeFeed = await fixture.admin.post('/api/calendars?depth=0', {
-        data: {
-          tenant: (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json())
-            .tenant,
-          name: `Axe feed calendar (${scheme})`,
-          source: 'feed',
-          feedUrl: 'https://example.invalid/athletics.ics',
-        },
-      })
-      expect(madeFeed.ok(), await madeFeed.text()).toBe(true)
-      feedCalendars[scheme] = ((await madeFeed.json()).doc as { id: number }).id
-    }
+    const madeFeed = await fixture.admin.post('/api/calendars?depth=0', {
+      data: {
+        tenant: (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json()).tenant,
+        name: `Axe feed calendar`,
+        source: 'feed',
+        feedUrl: 'https://example.invalid/athletics.ics',
+      },
+    })
+    expect(madeFeed.ok(), await madeFeed.text()).toBe(true)
+    feedCalendar = ((await madeFeed.json()).doc as { id: number }).id
     // The staff directory (2026-11-13): the seed's mock school and one of its staff (staff come
     // from CSI, never the dashboard), and a sub-group the district makes in it.
     const schools = await fixture.admin.get(
@@ -379,8 +365,7 @@ adminTest.describe('district plane — whole screens', () => {
     await fixture.admin.delete(`/api/resource-folders/${docsFolder}`)
     await fixture.admin.delete(`/api/resources/${imageFile}`)
     await fixture.admin.delete(`/api/staff-groups/${staffGroup}`)
-    for (const id of Object.values(feedCalendars))
-      await fixture.admin.delete(`/api/calendars/${id}`)
+    await fixture.admin.delete(`/api/calendars/${feedCalendar}`)
     await fixture.admin.delete(`/api/events/${event}`)
     await fixture.admin.delete(`/api/pages/${feedPage}`)
     await fixture.admin.delete(`/api/pages/${columnsPage}`)
@@ -389,298 +374,277 @@ adminTest.describe('district plane — whole screens', () => {
     await dropPost(post)
   })
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    adminTest.describe(colorScheme, () => {
-      adminTest.use({ colorScheme })
+  adminTest(`@a11y activity log`, async ({ page }) => {
+    await page.goto('/admin/collections/audit-events')
+    await auditScreen(page, ...LIST_REPAIRED)
+  })
+  adminTest(`@a11y an activity entry`, async ({ page }) => {
+    await page.goto('/admin/collections/audit-events')
+    await followLink(page, page.locator('tbody tr a').first(), /\/audit-events\/[^/]+$/)
+    await auditScreen(page, '#field-actorLabel')
+  })
 
-      adminTest(`@a11y activity log — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/collections/audit-events')
-        await auditScreen(page, ...LIST_REPAIRED)
+  adminTest(`@a11y approval queue`, async ({ page }) => {
+    await page.goto('/admin/approvals')
+    await auditScreen(page, 'h1')
+  })
+  adminTest(`@a11y dashboard`, async ({ page }) => {
+    await page.goto('/admin')
+    await auditScreen(
+      page,
+      '#approvals-panel',
+      '#freshness-panel',
+      '#activity-panel',
+      '#grants-panel',
+      '#everything-else',
+      '.dashboard-breadcrumb-select input[aria-label="Choose a view"]',
+    )
+  })
+  adminTest(`@a11y a site's pages`, async ({ page }) => {
+    await page.goto('/admin/site-pages')
+    await page.locator('#site-pages-change').click()
+    await page
+      .locator('#site-flyout')
+      .getByRole('button', { name: 'School A', exact: true })
+      .click()
+    await page.locator('#site-flyout').getByRole('link', { name: 'Add or move pages' }).click()
+    await expect(page).toHaveURL(/\/admin\/site-pages\?site=\d+$/)
+    await auditScreen(page, '#site-pages li', '#action-menu')
+  })
+  adminTest(`@a11y pages list`, async ({ page }) => {
+    await page.goto('/admin/collections/pages')
+    await auditScreen(page, ...LIST_REPAIRED, '.clickable-arrow--right[aria-label="Next page"]')
+  })
+  adminTest(`@a11y users list`, async ({ page }) => {
+    await page.goto('/admin/collections/users')
+    await auditScreen(page, ...LIST_REPAIRED)
+  })
+  adminTest(`@a11y the page form`, async ({ page }) => {
+    await page.goto(`/admin/collections/pages/${fixture.id}`)
+    await auditScreen(page, ...PAGE_FORM_REPAIRED, '#field-parent input[aria-label="Parent"]')
+  })
+  adminTest(`@a11y a page with a news feed`, async ({ page }) => {
+    await page.goto(`/admin/collections/pages/${feedPage}`)
+    await auditScreen(
+      page,
+      '#field-title',
+      '#field-layout__0__boards input[aria-label="Boards"]',
+      '#field-layout__0__tags input[aria-label="Only these tags"]',
+      '#field-layout__0__limit',
+      // The block row's controls, named by the patch.
+      '.collapsible__drag[aria-label="Reorder"]',
+      '.array-actions__button[aria-label="Row actions"]',
+      '.clipboard-action__popup .popup-button[aria-label="Copy or paste"]',
+    )
+  })
+  adminTest(`@a11y a page with a staff list`, async ({ page }) => {
+    await page.goto(`/admin/collections/pages/${staffPage}`)
+    await auditScreen(
+      page,
+      '#field-title',
+      '#field-layout__0__heading',
+      '#field-layout__0__group input[aria-label="Group"]',
+      '.collapsible__drag[aria-label="Reorder"]',
+      '.array-actions__button[aria-label="Row actions"]',
+    )
+  })
+  adminTest(`@a11y a page with columns holding blocks`, async ({ page }) => {
+    await page.goto(`/admin/collections/pages/${columnsPage}`)
+    await auditScreen(
+      page,
+      '#field-title',
+      '#field-layout__0__heading',
+      '#field-layout__0__columns__1__heading',
+      '.collapsible__drag[aria-label="Reorder"]',
+      '.array-actions__button[aria-label="Row actions"]',
+    )
+  })
+  adminTest(`@a11y a page with buttons and cards linking to pages`, async ({ page }) => {
+    await page.goto(`/admin/collections/pages/${linksPage}`)
+    /**
+     * A saved block's nested rows open collapsed; open the cards so theirs are audited.
+     * Retried: Payload keeps which rows are open in the USER's preferences, and the other
+     * theme's run, as the same user on the same page, can close them again mid-way.
+     */
+    await expect(async () => {
+      // The layout's own "Show All" too, when the other run has collapsed the blocks.
+      for (const showAll of await page.getByRole('button', { name: 'Show All' }).all()) {
+        await showAll.click()
+      }
+      await expect(page.locator('#field-layout__1__cards__1__href')).toBeAttached({
+        timeout: 2_000,
       })
-      adminTest(`@a11y an activity entry — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/collections/audit-events')
-        await followLink(page, page.locator('tbody tr a').first(), /\/audit-events\/[^/]+$/)
-        await auditScreen(page, '#field-actorLabel')
+    }).toPass({ timeout: 20_000 })
+    await auditScreen(
+      page,
+      '#field-title',
+      '#field-layout__0__page input[aria-label="Page"]',
+      '#field-layout__1__cards__0__page input[aria-label="Page"]',
+      '#field-layout__1__cards__1__href',
+      // Each chosen page's clear button, taken out of the tab order by the patch.
+      '#field-layout__0__page .clear-indicator[aria-hidden="true"][tabindex="-1"]',
+      '#field-layout__1__cards__0__page .clear-indicator[aria-hidden="true"][tabindex="-1"]',
+      '.collapsible__drag[aria-label="Reorder"]',
+    )
+  })
+  adminTest(`@a11y announcement boards, folders open`, async ({ page }) => {
+    await page.goto('/admin/collections/post-boards')
+    await expect(page.locator('#boards details').first()).toBeAttached({ timeout: 20_000 })
+    // Every folder open, so every board link is audited.
+    await page
+      .locator('#boards details')
+      .evaluateAll((all) => all.forEach((d) => d.setAttribute('open', '')))
+    await auditScreen(page, '#boards h1', '#boards details[open] li a')
+  })
+  adminTest(`@a11y a board`, async ({ page }) => {
+    await page.goto('/admin/collections/post-boards')
+    await page.locator('#boards summary').first().click()
+    await page.locator('#boards details[open] li a').first().click()
+    await auditScreen(
+      page,
+      '#field-name',
+      '#field-folder input[aria-label="Folder"]',
+      // The chosen folder's clear button, taken out of the tab order by the patch.
+      '#field-folder .clear-indicator[aria-hidden="true"][tabindex="-1"]',
+    )
+  })
+  adminTest(`@a11y post an announcement on a board`, async ({ page }) => {
+    const boards = await page.request.get('/api/post-boards?limit=1&depth=0')
+    const [board] = (await boards.json()).docs as { id: number }[]
+    await page.goto(`/admin/new-post?board=${board!.id}`)
+    await auditScreen(page, '#board-heading', '#new-post form')
+  })
+  adminTest(`@a11y calendars list`, async ({ page }) => {
+    await page.goto('/admin/collections/calendars')
+    await auditScreen(page, ...LIST_REPAIRED)
+  })
+  adminTest(`@a11y a feed calendar’s form`, async ({ page }) => {
+    await page.goto(`/admin/collections/calendars/${feedCalendar}`)
+    await auditScreen(page, '#field-name', '#field-source', '#field-feedUrl')
+  })
+  adminTest(`@a11y a page with a hero, an image and a document list`, async ({ page }) => {
+    await page.goto(`/admin/collections/pages/${picturesPage}`)
+    await auditScreen(
+      page,
+      '#field-title',
+      '#field-layout__0__heading',
+      '#field-layout__1__caption',
+      '#field-layout__2__heading',
+      '.collapsible__drag[aria-label="Reorder"]',
+      ...TABS_REPAIRED,
+    )
+  })
+  adminTest(`@a11y files list`, async ({ page }) => {
+    await page.goto('/admin/collections/resources')
+    await auditScreen(page, ...LIST_REPAIRED)
+  })
+  adminTest(`@a11y an image's form`, async ({ page }) => {
+    await page.goto(`/admin/collections/resources/${imageFile}`)
+    await auditScreen(page, '#field-title', '#field-alt', ...TABS_REPAIRED)
+  })
+  adminTest(`@a11y uploading a new file`, async ({ page }) => {
+    await page.goto('/admin/collections/resources/create')
+    await auditScreen(page, '#field-title', 'input[type="file"]')
+  })
+  adminTest(`@a11y the file library, a file open`, async ({ page }) => {
+    const file = (await (await page.request.get(`/api/resources/${imageFile}?depth=0`)).json()) as {
+      tenant: number | { id: number }
+    }
+    const site = typeof file.tenant === 'object' ? file.tenant.id : file.tenant
+    await page.goto(`/admin/file-library?site=${site}&file=${imageFile}`)
+    await auditScreen(page, '#file-details', '#library-used-on')
+  })
+  adminTest(`@a11y folders list`, async ({ page }) => {
+    await page.goto('/admin/collections/resource-folders')
+    await expect(page.locator('h1')).toBeVisible({ timeout: 20_000 })
+    await auditScreen(page)
+  })
+  adminTest(`@a11y staff list`, async ({ page }) => {
+    await page.goto('/admin/collections/people')
+    await auditScreen(page, ...LIST_REPAIRED)
+  })
+  adminTest(`@a11y a staff member's form`, async ({ page }) => {
+    await page.goto(`/admin/collections/people/${person}`)
+    await auditScreen(page, '#field-name', '#field-title', '#field-sortName', ...TABS_REPAIRED)
+  })
+  adminTest(`@a11y a sub-group's form, with its checklist`, async ({ page }) => {
+    await page.goto(`/admin/collections/staff-groups/${staffGroup}`)
+    await auditScreen(
+      page,
+      '#field-name',
+      '#staff-group-members input[type="checkbox"]',
+      ...TABS_REPAIRED,
+    )
+  })
+  adminTest(`@a11y staff groups list`, async ({ page }) => {
+    await page.goto('/admin/collections/staff-groups')
+    await auditScreen(page, ...LIST_REPAIRED)
+  })
+  adminTest(`@a11y events list`, async ({ page }) => {
+    await page.goto('/admin/collections/events')
+    await auditScreen(page, ...LIST_REPAIRED)
+  })
+  adminTest(`@a11y the event form, repeating`, async ({ page }) => {
+    await page.goto(`/admin/collections/events/${event}`)
+    await expect(page.locator('#field-title')).toBeAttached({ timeout: 20_000 })
+    // Payload draws a field only once it scrolls into view; Notes is below the fold.
+    await expect(async () => {
+      await page.mouse.wheel(0, 2000)
+      await expect(page.locator('[data-lexical-editor="true"]')).toBeAttached({
+        timeout: 1_000,
       })
-
-      adminTest(`@a11y approval queue — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/approvals')
-        await auditScreen(page, 'h1')
-      })
-      adminTest(`@a11y dashboard — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin')
-        await auditScreen(
-          page,
-          '#approvals-panel',
-          '#freshness-panel',
-          '#activity-panel',
-          '#grants-panel',
-          '#everything-else',
-          '.dashboard-breadcrumb-select input[aria-label="Choose a view"]',
-        )
-      })
-      adminTest(`@a11y a site's pages — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/site-pages')
-        await page.locator('#site-pages-change').click()
-        await page
-          .locator('#site-flyout')
-          .getByRole('button', { name: 'School A', exact: true })
-          .click()
-        await page.locator('#site-flyout').getByRole('link', { name: 'Add or move pages' }).click()
-        await expect(page).toHaveURL(/\/admin\/site-pages\?site=\d+$/)
-        await auditScreen(page, '#site-pages li', '#action-menu')
-      })
-      adminTest(`@a11y pages list — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/collections/pages')
-        await auditScreen(page, ...LIST_REPAIRED, '.clickable-arrow--right[aria-label="Next page"]')
-      })
-      adminTest(`@a11y users list — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/collections/users')
-        await auditScreen(page, ...LIST_REPAIRED)
-      })
-      adminTest(`@a11y the page form — ${colorScheme}`, async ({ page }) => {
-        await page.goto(`/admin/collections/pages/${fixture.id}`)
-        await auditScreen(page, ...PAGE_FORM_REPAIRED, '#field-parent input[aria-label="Parent"]')
-      })
-      adminTest(`@a11y a page with a news feed — ${colorScheme}`, async ({ page }) => {
-        await page.goto(`/admin/collections/pages/${feedPage}`)
-        await auditScreen(
-          page,
-          '#field-title',
-          '#field-layout__0__boards input[aria-label="Boards"]',
-          '#field-layout__0__tags input[aria-label="Only these tags"]',
-          '#field-layout__0__limit',
-          // The block row's controls, named by the patch.
-          '.collapsible__drag[aria-label="Reorder"]',
-          '.array-actions__button[aria-label="Row actions"]',
-          '.clipboard-action__popup .popup-button[aria-label="Copy or paste"]',
-        )
-      })
-      adminTest(`@a11y a page with a staff list — ${colorScheme}`, async ({ page }) => {
-        await page.goto(`/admin/collections/pages/${staffPage}`)
-        await auditScreen(
-          page,
-          '#field-title',
-          '#field-layout__0__heading',
-          '#field-layout__0__group input[aria-label="Group"]',
-          '.collapsible__drag[aria-label="Reorder"]',
-          '.array-actions__button[aria-label="Row actions"]',
-        )
-      })
-      adminTest(`@a11y a page with columns holding blocks — ${colorScheme}`, async ({ page }) => {
-        await page.goto(`/admin/collections/pages/${columnsPage}`)
-        await auditScreen(
-          page,
-          '#field-title',
-          '#field-layout__0__heading',
-          '#field-layout__0__columns__1__heading',
-          '.collapsible__drag[aria-label="Reorder"]',
-          '.array-actions__button[aria-label="Row actions"]',
-        )
-      })
-      adminTest(
-        `@a11y a page with buttons and cards linking to pages — ${colorScheme}`,
-        async ({ page }) => {
-          await page.goto(`/admin/collections/pages/${linksPage}`)
-          /**
-           * A saved block's nested rows open collapsed; open the cards so theirs are audited.
-           * Retried: Payload keeps which rows are open in the USER's preferences, and the other
-           * theme's run, as the same user on the same page, can close them again mid-way.
-           */
-          await expect(async () => {
-            // The layout's own "Show All" too, when the other run has collapsed the blocks.
-            for (const showAll of await page.getByRole('button', { name: 'Show All' }).all()) {
-              await showAll.click()
-            }
-            await expect(page.locator('#field-layout__1__cards__1__href')).toBeAttached({
-              timeout: 2_000,
-            })
-          }).toPass({ timeout: 20_000 })
-          await auditScreen(
-            page,
-            '#field-title',
-            '#field-layout__0__page input[aria-label="Page"]',
-            '#field-layout__1__cards__0__page input[aria-label="Page"]',
-            '#field-layout__1__cards__1__href',
-            // Each chosen page's clear button, taken out of the tab order by the patch.
-            '#field-layout__0__page .clear-indicator[aria-hidden="true"][tabindex="-1"]',
-            '#field-layout__1__cards__0__page .clear-indicator[aria-hidden="true"][tabindex="-1"]',
-            '.collapsible__drag[aria-label="Reorder"]',
-          )
-        },
-      )
-      adminTest(`@a11y announcement boards, folders open — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/collections/post-boards')
-        await expect(page.locator('#boards details').first()).toBeAttached({ timeout: 20_000 })
-        // Every folder open, so every board link is audited.
-        await page
-          .locator('#boards details')
-          .evaluateAll((all) => all.forEach((d) => d.setAttribute('open', '')))
-        await auditScreen(page, '#boards h1', '#boards details[open] li a')
-      })
-      adminTest(`@a11y a board — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/collections/post-boards')
-        await page.locator('#boards summary').first().click()
-        await page.locator('#boards details[open] li a').first().click()
-        await auditScreen(
-          page,
-          '#field-name',
-          '#field-folder input[aria-label="Folder"]',
-          // The chosen folder's clear button, taken out of the tab order by the patch.
-          '#field-folder .clear-indicator[aria-hidden="true"][tabindex="-1"]',
-        )
-      })
-      adminTest(`@a11y post an announcement on a board — ${colorScheme}`, async ({ page }) => {
-        const boards = await page.request.get('/api/post-boards?limit=1&depth=0')
-        const [board] = (await boards.json()).docs as { id: number }[]
-        await page.goto(`/admin/new-post?board=${board!.id}`)
-        await auditScreen(page, '#board-heading', '#new-post form')
-      })
-      adminTest(`@a11y calendars list — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/collections/calendars')
-        await auditScreen(page, ...LIST_REPAIRED)
-      })
-      adminTest(`@a11y a feed calendar’s form — ${colorScheme}`, async ({ page }) => {
-        await page.goto(`/admin/collections/calendars/${feedCalendars[colorScheme]}`)
-        await auditScreen(page, '#field-name', '#field-source', '#field-feedUrl')
-      })
-      adminTest(
-        `@a11y a page with a hero, an image and a document list — ${colorScheme}`,
-        async ({ page }) => {
-          await page.goto(`/admin/collections/pages/${picturesPage}`)
-          await auditScreen(
-            page,
-            '#field-title',
-            '#field-layout__0__heading',
-            '#field-layout__1__caption',
-            '#field-layout__2__heading',
-            '.collapsible__drag[aria-label="Reorder"]',
-            ...TABS_REPAIRED,
-          )
-        },
-      )
-      adminTest(`@a11y files list — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/collections/resources')
-        await auditScreen(page, ...LIST_REPAIRED)
-      })
-      adminTest(`@a11y an image's form — ${colorScheme}`, async ({ page }) => {
-        await page.goto(`/admin/collections/resources/${imageFile}`)
-        await auditScreen(page, '#field-title', '#field-alt', ...TABS_REPAIRED)
-      })
-      adminTest(`@a11y uploading a new file — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/collections/resources/create')
-        await auditScreen(page, '#field-title', 'input[type="file"]')
-      })
-      adminTest(`@a11y the file library, a file open — ${colorScheme}`, async ({ page }) => {
-        const file = (await (
-          await page.request.get(`/api/resources/${imageFile}?depth=0`)
-        ).json()) as { tenant: number | { id: number } }
-        const site = typeof file.tenant === 'object' ? file.tenant.id : file.tenant
-        await page.goto(`/admin/file-library?site=${site}&file=${imageFile}`)
-        await auditScreen(page, '#file-details', '#library-used-on')
-      })
-      adminTest(`@a11y folders list — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/collections/resource-folders')
-        await expect(page.locator('h1')).toBeVisible({ timeout: 20_000 })
-        await auditScreen(page)
-      })
-      adminTest(`@a11y staff list — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/collections/people')
-        await auditScreen(page, ...LIST_REPAIRED)
-      })
-      adminTest(`@a11y a staff member's form — ${colorScheme}`, async ({ page }) => {
-        await page.goto(`/admin/collections/people/${person}`)
-        await auditScreen(page, '#field-name', '#field-title', '#field-sortName', ...TABS_REPAIRED)
-      })
-      adminTest(
-        `@a11y a sub-group's form, with its checklist — ${colorScheme}`,
-        async ({ page }) => {
-          await page.goto(`/admin/collections/staff-groups/${staffGroup}`)
-          await auditScreen(
-            page,
-            '#field-name',
-            '#staff-group-members input[type="checkbox"]',
-            ...TABS_REPAIRED,
-          )
-        },
-      )
-      adminTest(`@a11y staff groups list — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/collections/staff-groups')
-        await auditScreen(page, ...LIST_REPAIRED)
-      })
-      adminTest(`@a11y events list — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/collections/events')
-        await auditScreen(page, ...LIST_REPAIRED)
-      })
-      adminTest(`@a11y the event form, repeating — ${colorScheme}`, async ({ page }) => {
-        await page.goto(`/admin/collections/events/${event}`)
-        await expect(page.locator('#field-title')).toBeAttached({ timeout: 20_000 })
-        // Payload draws a field only once it scrolls into view; Notes is below the fold.
-        await expect(async () => {
-          await page.mouse.wheel(0, 2000)
-          await expect(page.locator('[data-lexical-editor="true"]')).toBeAttached({
-            timeout: 1_000,
-          })
-        }).toPass({ timeout: 20_000 })
-        await auditScreen(
-          page,
-          '#field-title',
-          '#field-calendar input[aria-label="Calendar"]',
-          '#field-repeatUntil',
-          '[data-lexical-editor="true"]',
-          // The chosen calendar's clear button, taken out of the tab order by the patch.
-          '#field-calendar .clear-indicator[aria-hidden="true"][tabindex="-1"]',
-          // Each date's "×", named by the patch ("Clear Starts").
-          '#field-start .date-time-picker__clear-button[aria-label="Clear Starts"]',
-        )
-      })
-      adminTest(`@a11y announcement folders list — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/collections/post-folders')
-        await auditScreen(page, ...LIST_REPAIRED)
-      })
-      adminTest(`@a11y announcement tags list — ${colorScheme}`, async ({ page }) => {
-        await page.goto('/admin/collections/post-tags')
-        await auditScreen(page, ...LIST_REPAIRED)
-      })
-      adminTest(`@a11y news and announcements, a board open — ${colorScheme}`, async ({ page }) => {
-        const stored = await page.request.get(`/api/posts/${post.id}?draft=true&depth=0`)
-        const { board } = (await stored.json()) as { board: number }
-        await page.goto(`/admin/collections/posts?board=${board}`)
-        await auditScreen(
-          page,
-          '#announcements details[open] a[aria-current="page"]',
-          '#announcements tbody tr',
-        )
-      })
-      adminTest(
-        `@a11y news and announcements, no board chosen — ${colorScheme}`,
-        async ({ page }) => {
-          await page.goto('/admin/collections/posts')
-          await auditScreen(page, '#announcements #board-heading')
-        },
-      )
-      adminTest(
-        `@a11y the post form, shared with chosen sites, with an image — ${colorScheme}`,
-        async ({ page }) => {
-          await page.goto(`/admin/collections/posts/${post.id}`)
-          // Payload renders a field only once it scrolls into view, and the dates (Jason,
-          // 2026-11-04) put the sharing settings below the fold at this window size.
-          await page.locator('#field-syndication').scrollIntoViewIfNeeded({ timeout: 20_000 })
-          await auditScreen(
-            page,
-            ...POST_FORM_REPAIRED,
-            '#field-syndication__syndicatedTo input[aria-label="Sites"]',
-            // The chosen sites' clear button, taken out of the tab order by the patch.
-            '#field-syndication__syndicatedTo .clear-indicator[aria-hidden="true"][tabindex="-1"]',
-            '#field-board input[aria-label="Board"]',
-            '#field-tags input[aria-label="Tags"]',
-            // The chosen image's buttons, named by the patch (Phase 6 B1).
-            '#field-heroImage button.upload-relationship-details__remove[aria-label]',
-          )
-        },
-      )
-    })
-  }
+    }).toPass({ timeout: 20_000 })
+    await auditScreen(
+      page,
+      '#field-title',
+      '#field-calendar input[aria-label="Calendar"]',
+      '#field-repeatUntil',
+      '[data-lexical-editor="true"]',
+      // The chosen calendar's clear button, taken out of the tab order by the patch.
+      '#field-calendar .clear-indicator[aria-hidden="true"][tabindex="-1"]',
+      // Each date's "×", named by the patch ("Clear Starts").
+      '#field-start .date-time-picker__clear-button[aria-label="Clear Starts"]',
+    )
+  })
+  adminTest(`@a11y announcement folders list`, async ({ page }) => {
+    await page.goto('/admin/collections/post-folders')
+    await auditScreen(page, ...LIST_REPAIRED)
+  })
+  adminTest(`@a11y announcement tags list`, async ({ page }) => {
+    await page.goto('/admin/collections/post-tags')
+    await auditScreen(page, ...LIST_REPAIRED)
+  })
+  adminTest(`@a11y news and announcements, a board open`, async ({ page }) => {
+    const stored = await page.request.get(`/api/posts/${post.id}?draft=true&depth=0`)
+    const { board } = (await stored.json()) as { board: number }
+    await page.goto(`/admin/collections/posts?board=${board}`)
+    await auditScreen(
+      page,
+      '#announcements details[open] a[aria-current="page"]',
+      '#announcements tbody tr',
+    )
+  })
+  adminTest(`@a11y news and announcements, no board chosen`, async ({ page }) => {
+    await page.goto('/admin/collections/posts')
+    await auditScreen(page, '#announcements #board-heading')
+  })
+  adminTest(`@a11y the post form, shared with chosen sites, with an image`, async ({ page }) => {
+    await page.goto(`/admin/collections/posts/${post.id}`)
+    // Payload renders a field only once it scrolls into view, and the dates (Jason,
+    // 2026-11-04) put the sharing settings below the fold at this window size.
+    await page.locator('#field-syndication').scrollIntoViewIfNeeded({ timeout: 20_000 })
+    await auditScreen(
+      page,
+      ...POST_FORM_REPAIRED,
+      '#field-syndication__syndicatedTo input[aria-label="Sites"]',
+      // The chosen sites' clear button, taken out of the tab order by the patch.
+      '#field-syndication__syndicatedTo .clear-indicator[aria-hidden="true"][tabindex="-1"]',
+      '#field-board input[aria-label="Board"]',
+      '#field-tags input[aria-label="Tags"]',
+      // The chosen image's buttons, named by the patch (Phase 6 B1).
+      '#field-heroImage button.upload-relationship-details__remove[aria-label]',
+    )
+  })
 })
 
 /**
@@ -689,9 +653,8 @@ adminTest.describe('district plane — whole screens', () => {
  * 1280px) ran with it closed and never saw its group labels ("Content", "Administration"),
  * drawn #9a9a9a on white at 2.81:1. A district admin on a desktop monitor sees them every day.
  */
-const auditOpenSidebar = async (page: Page, colorScheme: 'light' | 'dark') => {
+const auditOpenSidebar = async (page: Page) => {
   await page.setViewportSize({ width: 1600, height: 1000 })
-  await page.emulateMedia({ colorScheme })
   await page.goto('/admin')
   // The district's groups are folded under "Everything else" (2026-11-18): audit them open —
   // WITHOUT saving that, since the open state is the admin user's, and side-nav.spec checks it.
@@ -714,19 +677,11 @@ const auditOpenSidebar = async (page: Page, colorScheme: 'light' | 'dark') => {
   ).toEqual([])
 }
 
-for (const colorScheme of ['light', 'dark'] as const) {
-  adminTest(
-    `@a11y the open sidebar on a wide screen, district — ${colorScheme}`,
-    async ({ page }) => {
-      adminTest.skip(credentials === null, SKIP)
-      await auditOpenSidebar(page, colorScheme)
-    },
-  )
-  schoolTest(
-    `@a11y the open sidebar on a wide screen, school — ${colorScheme}`,
-    async ({ page }) => {
-      schoolTest.skip(credentials === null, SKIP)
-      await auditOpenSidebar(page, colorScheme)
-    },
-  )
-}
+adminTest(`@a11y the open sidebar on a wide screen, district`, async ({ page }) => {
+  adminTest.skip(credentials === null, SKIP)
+  await auditOpenSidebar(page)
+})
+schoolTest(`@a11y the open sidebar on a wide screen, school`, async ({ page }) => {
+  schoolTest.skip(credentials === null, SKIP)
+  await auditOpenSidebar(page)
+})

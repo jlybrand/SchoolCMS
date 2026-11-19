@@ -8,7 +8,7 @@ import { toPageBlocks } from './blocks'
 import { pathIndex, segmentsFor, type PagePaths, type TreeRow } from './page-tree'
 import { rehomeBlocks } from './rehome-links'
 import { listActiveTenants } from './tenants'
-import type { ContentContext, Page, PageLink, PageRedirect, Visibility } from './types'
+import type { ContentContext, Page, PageBlock, PageLink, PageRedirect, Visibility } from './types'
 
 /**
  * Page lookups (`02` §11, ADR-5).
@@ -245,6 +245,42 @@ const resolveLinks = async (
     )
   }
   return result
+}
+
+/**
+ * What a LINKED page shows in Live Preview (Jason, 2026-11-19): what a visitor gets. A reuse page
+ * shows the district page's title and sections (`from` names it); a redirect shows none and names
+ * where visitors go; a link to nothing live yet shows none either — visitors get "not found".
+ */
+export type PreviewLink =
+  | { kind: 'reuse'; from: PageRedirect; title: string; layout: PageBlock[] }
+  | { kind: 'redirect'; to: PageRedirect }
+  | { kind: 'unresolved' }
+
+/**
+ * `doc` — any version of a page, a draft too — resolved as the public route resolves it
+ * (`resolveLinks`: the same targets, the district's published public pages as reuse sources), or
+ * null when it is not linked.
+ */
+export const resolvePreviewLink = async (
+  ctx: ContentContext,
+  doc: unknown,
+): Promise<PreviewLink | null> => {
+  const page = doc as PayloadPage
+  if (!isLinked(page)) return null
+  const links = await resolveLinks(ctx, [page], await listPagePathIndex(ctx))
+  const link = links.get(String(page.id)) ?? null
+  if (!link) return { kind: 'unresolved' }
+  if (link.kind === 'redirect') return { kind: 'redirect', to: link.target }
+  return {
+    kind: 'reuse',
+    from: link.from,
+    title: link.source.title,
+    layout: rehomeBlocks(
+      toPageBlocks(link.source.layout, link.paths),
+      siteOrigin(link.from.hostname),
+    ),
+  }
 }
 
 /** A linked page with nowhere to go and nothing to show is not a page (see `resolveLinks`). */

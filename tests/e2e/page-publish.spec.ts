@@ -38,75 +38,72 @@ type Draft = { _status: string; reviewState: string | null; publishAt: string | 
 adminTest.describe('publishing a page', () => {
   adminTest.skip(credentials === null, SKIP)
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    adminTest(
-      `@a11y schedule, then cancel — from the one Publish button — ${colorScheme}`,
-      async ({ page, baseURL }) => {
-        await page.emulateMedia({ colorScheme })
-        const fixture = await makePage(baseURL, { title: uniqueTitle('Schedule me') })
-        const draft = async () =>
-          (await (
-            await fixture.admin.get(`/api/pages/${fixture.id}?draft=true&depth=0`)
-          ).json()) as Draft
-        try {
-          await openPage(page, fixture.id)
-          const publish = page.locator('#action-publish')
-          await expect(publish).toHaveText('Publish')
-          // One button: no second publish action beside it, and no Start field anywhere.
-          await expect(page.getByRole('button', { name: 'Publish now' })).toHaveCount(0)
-          await expect(page.locator('#field-publishAt')).toBeHidden()
+  adminTest(
+    `@a11y schedule, then cancel — from the one Publish button`,
+    async ({ page, baseURL }) => {
+      const fixture = await makePage(baseURL, { title: uniqueTitle('Schedule me') })
+      const draft = async () =>
+        (await (
+          await fixture.admin.get(`/api/pages/${fixture.id}?draft=true&depth=0`)
+        ).json()) as Draft
+      try {
+        await openPage(page, fixture.id)
+        const publish = page.locator('#action-publish')
+        await expect(publish).toHaveText('Publish')
+        // One button: no second publish action beside it, and no Start field anywhere.
+        await expect(page.getByRole('button', { name: 'Publish now' })).toHaveCount(0)
+        await expect(page.locator('#field-publishAt')).toBeHidden()
 
-          // The dialog opens on "Now", with focus on it.
-          await publish.click()
-          const dialog = page.getByRole('dialog', { name: 'Publish this page' })
-          await expect(dialog).toBeVisible()
-          await expect(dialog.getByLabel('Now')).toBeChecked()
-          await expect(dialog.getByLabel('Now')).toBeFocused()
-          await expect(scheduleTime(dialog, 'Goes live on')).toHaveCount(0)
-          await expect(dialog.getByRole('button', { name: 'Publish now' })).toBeVisible()
-          expect(await blockingViolations(page)).toEqual([])
+        // The dialog opens on "Now", with focus on it.
+        await publish.click()
+        const dialog = page.getByRole('dialog', { name: 'Publish this page' })
+        await expect(dialog).toBeVisible()
+        await expect(dialog.getByLabel('Now')).toBeChecked()
+        await expect(dialog.getByLabel('Now')).toBeFocused()
+        await expect(scheduleTime(dialog, 'Goes live on')).toHaveCount(0)
+        await expect(dialog.getByRole('button', { name: 'Publish now' })).toBeVisible()
+        expect(await blockingViolations(page)).toEqual([])
 
-          // "At a set time": a labelled day-and-time, and a refusal for a time gone by.
-          await dialog.getByLabel('At a set time').check()
-          // A day and a Time list in five-minute steps — nothing between them is offered.
-          const at = scheduleTime(dialog, 'Goes live on')
-          await expect(at.getByLabel('Time').locator('option[value="09:05"]')).toHaveCount(1)
-          await expect(at.getByLabel('Time').locator('option[value="09:03"]')).toHaveCount(0)
-          await setScheduleTime(at, daysAhead(-1))
-          await dialog.getByRole('button', { name: 'Schedule', exact: true }).click()
-          await expect(dialog.getByRole('alert')).toHaveText('Choose a time in the future.')
-          await expect(at.getByLabel('Day')).toHaveAttribute('aria-invalid', 'true')
-          await expect(at.getByLabel('Day')).toBeFocused()
-          expect(await blockingViolations(page)).toEqual([])
+        // "At a set time": a labelled day-and-time, and a refusal for a time gone by.
+        await dialog.getByLabel('At a set time').check()
+        // A day and a Time list in five-minute steps — nothing between them is offered.
+        const at = scheduleTime(dialog, 'Goes live on')
+        await expect(at.getByLabel('Time').locator('option[value="09:05"]')).toHaveCount(1)
+        await expect(at.getByLabel('Time').locator('option[value="09:03"]')).toHaveCount(0)
+        await setScheduleTime(at, daysAhead(-1))
+        await dialog.getByRole('button', { name: 'Schedule', exact: true }).click()
+        await expect(dialog.getByRole('alert')).toHaveText('Choose a time in the future.')
+        await expect(at.getByLabel('Day')).toHaveAttribute('aria-invalid', 'true')
+        await expect(at.getByLabel('Day')).toBeFocused()
+        expect(await blockingViolations(page)).toEqual([])
 
-          await setScheduleTime(at, daysAhead(3))
-          await dialog.getByRole('button', { name: 'Schedule', exact: true }).click()
-          await expect(dialog).toBeHidden()
-          await expect(publish).toHaveText(/^Scheduled for /, { timeout: 20_000 })
-          await expect.poll(async () => (await draft()).reviewState).toBe('scheduled')
-          const stored = await draft()
-          expect(stored._status).toBe('draft')
-          expect(new Date(stored.publishAt as string).getTime()).toBe(
-            new Date(daysAhead(3)).getTime(),
-          )
+        await setScheduleTime(at, daysAhead(3))
+        await dialog.getByRole('button', { name: 'Schedule', exact: true }).click()
+        await expect(dialog).toBeHidden()
+        await expect(publish).toHaveText(/^Scheduled for /, { timeout: 20_000 })
+        await expect.poll(async () => (await draft()).reviewState).toBe('scheduled')
+        const stored = await draft()
+        expect(stored._status).toBe('draft')
+        expect(new Date(stored.publishAt as string).getTime()).toBe(
+          new Date(daysAhead(3)).getTime(),
+        )
 
-          // Opened again: on "At a set time", with its time — change it, or cancel it.
-          await publish.click()
-          const change = page.getByRole('dialog', { name: 'Change when this page goes live' })
-          await expect(change.getByLabel('At a set time')).toBeChecked()
-          await expectScheduleTime(scheduleTime(change, 'Goes live on'), daysAhead(3))
-          await expect(change.getByRole('button', { name: 'Save the new time' })).toBeVisible()
-          expect(await blockingViolations(page)).toEqual([])
-          await change.getByRole('button', { name: 'Cancel the schedule' }).click()
-          await expect(publish).toHaveText('Publish', { timeout: 20_000 })
-          await expect.poll(async () => (await draft()).reviewState).toBeNull()
-          expect((await draft()).publishAt).toBeNull()
-        } finally {
-          await dropPage(fixture)
-        }
-      },
-    )
-  }
+        // Opened again: on "At a set time", with its time — change it, or cancel it.
+        await publish.click()
+        const change = page.getByRole('dialog', { name: 'Change when this page goes live' })
+        await expect(change.getByLabel('At a set time')).toBeChecked()
+        await expectScheduleTime(scheduleTime(change, 'Goes live on'), daysAhead(3))
+        await expect(change.getByRole('button', { name: 'Save the new time' })).toBeVisible()
+        expect(await blockingViolations(page)).toEqual([])
+        await change.getByRole('button', { name: 'Cancel the schedule' }).click()
+        await expect(publish).toHaveText('Publish', { timeout: 20_000 })
+        await expect.poll(async () => (await draft()).reviewState).toBeNull()
+        expect((await draft()).publishAt).toBeNull()
+      } finally {
+        await dropPage(fixture)
+      }
+    },
+  )
 
   adminTest('“Publish now” in the dialog puts a new page live', async ({ page, baseURL }) => {
     const fixture = await makePage(baseURL, { title: uniqueTitle('Straight up') })
@@ -171,66 +168,63 @@ adminTest.describe('publishing a page', () => {
     }
   })
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    adminTest(
-      `@a11y a change to a page on the site is scheduled, and the site keeps the page as it was — ${colorScheme}`,
-      async ({ page, baseURL }) => {
-        await page.emulateMedia({ colorScheme })
-        const fixture = await makePage(baseURL, { title: uniqueTitle('Already live') })
-        const onSite = async () =>
-          (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json()) as Draft & {
-            title: string
-          }
-        try {
-          await fixture.admin.patch(`/api/pages/${fixture.id}?depth=0`, {
-            data: { _status: 'published' },
-          })
-          const before = (await onSite()).title
-          await openPage(page, fixture.id)
-          const publish = page.locator('#action-publish')
-          // Nothing new to publish yet, and no Start in Page settings.
-          await expect(publish).toHaveText('Publish changes')
-          await expect(publish).toBeDisabled()
-          const settings = await openPageSettings(page)
-          await expect(settings.getByText('Start', { exact: true })).toHaveCount(0)
-
-          // A change saved but not published — as autosave leaves one.
-          const res = await fixture.admin.patch(`/api/pages/${fixture.id}?draft=true&depth=0`, {
-            data: { title: `${before} (changed)` },
-          })
-          expect(res.ok(), await res.text()).toBe(true)
-          await openPage(page, fixture.id)
-          await expect(publish).toBeEnabled()
-
-          await publish.click()
-          const dialog = page.getByRole('dialog', { name: 'Publish your changes' })
-          await expect(dialog.getByLabel('Now')).toBeChecked()
-          await dialog.getByLabel('At a set time').check()
-          await expect(
-            dialog.getByText('The page on the site stays as it is until then.', { exact: false }),
-          ).toBeVisible()
-          await setScheduleTime(scheduleTime(dialog, 'Goes live on'), daysAhead(2))
-          expect(await blockingViolations(page)).toEqual([])
-          await dialog.getByRole('button', { name: 'Schedule', exact: true }).click()
-
-          await expect(publish).toHaveText(/^Changes scheduled for /, { timeout: 20_000 })
-          // The site still has the page, as it was.
-          expect(await onSite()).toMatchObject({ _status: 'published', title: before })
-
-          // Cancelled: still up, the change kept as a draft, nothing scheduled.
-          await publish.click()
-          const change = page.getByRole('dialog', { name: 'Change when your changes go live' })
-          await expectScheduleTime(scheduleTime(change, 'Goes live on'), daysAhead(2))
-          expect(await blockingViolations(page)).toEqual([])
-          await change.getByRole('button', { name: 'Cancel the schedule' }).click()
-          await expect(publish).toHaveText('Publish changes', { timeout: 20_000 })
-          expect(await onSite()).toMatchObject({ _status: 'published', title: before })
-        } finally {
-          await dropPage(fixture)
+  adminTest(
+    `@a11y a change to a page on the site is scheduled, and the site keeps the page as it was`,
+    async ({ page, baseURL }) => {
+      const fixture = await makePage(baseURL, { title: uniqueTitle('Already live') })
+      const onSite = async () =>
+        (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json()) as Draft & {
+          title: string
         }
-      },
-    )
-  }
+      try {
+        await fixture.admin.patch(`/api/pages/${fixture.id}?depth=0`, {
+          data: { _status: 'published' },
+        })
+        const before = (await onSite()).title
+        await openPage(page, fixture.id)
+        const publish = page.locator('#action-publish')
+        // Nothing new to publish yet, and no Start in Page settings.
+        await expect(publish).toHaveText('Publish changes')
+        await expect(publish).toBeDisabled()
+        const settings = await openPageSettings(page)
+        await expect(settings.getByText('Start', { exact: true })).toHaveCount(0)
+
+        // A change saved but not published — as autosave leaves one.
+        const res = await fixture.admin.patch(`/api/pages/${fixture.id}?draft=true&depth=0`, {
+          data: { title: `${before} (changed)` },
+        })
+        expect(res.ok(), await res.text()).toBe(true)
+        await openPage(page, fixture.id)
+        await expect(publish).toBeEnabled()
+
+        await publish.click()
+        const dialog = page.getByRole('dialog', { name: 'Publish your changes' })
+        await expect(dialog.getByLabel('Now')).toBeChecked()
+        await dialog.getByLabel('At a set time').check()
+        await expect(
+          dialog.getByText('The page on the site stays as it is until then.', { exact: false }),
+        ).toBeVisible()
+        await setScheduleTime(scheduleTime(dialog, 'Goes live on'), daysAhead(2))
+        expect(await blockingViolations(page)).toEqual([])
+        await dialog.getByRole('button', { name: 'Schedule', exact: true }).click()
+
+        await expect(publish).toHaveText(/^Changes scheduled for /, { timeout: 20_000 })
+        // The site still has the page, as it was.
+        expect(await onSite()).toMatchObject({ _status: 'published', title: before })
+
+        // Cancelled: still up, the change kept as a draft, nothing scheduled.
+        await publish.click()
+        const change = page.getByRole('dialog', { name: 'Change when your changes go live' })
+        await expectScheduleTime(scheduleTime(change, 'Goes live on'), daysAhead(2))
+        expect(await blockingViolations(page)).toEqual([])
+        await change.getByRole('button', { name: 'Cancel the schedule' }).click()
+        await expect(publish).toHaveText('Publish changes', { timeout: 20_000 })
+        expect(await onSite()).toMatchObject({ _status: 'published', title: before })
+      } finally {
+        await dropPage(fixture)
+      }
+    },
+  )
 })
 
 schoolTest.describe('a school manager publishing a page', () => {

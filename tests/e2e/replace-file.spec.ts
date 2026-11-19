@@ -113,78 +113,70 @@ const stored = async (admin: APIRequestContext, id: number) =>
 schoolTest.describe('a school replaces a file', () => {
   schoolTest.skip(credentials === null, SKIP)
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    schoolTest(
-      `@a11y an image: chosen from the list, its description asked again, and the page shows the new one — ${colorScheme}`,
-      async ({ page, baseURL }) => {
-        await page.emulateMedia({ colorScheme })
-        const fixture = await setUp(baseURL)
-        try {
-          const before = await stored(fixture.admin, fixture.image)
+  schoolTest(
+    `@a11y an image: chosen from the list, its description asked again, and the page shows the new one`,
+    async ({ page, baseURL }) => {
+      const fixture = await setUp(baseURL)
+      try {
+        const before = await stored(fixture.admin, fixture.image)
 
-          // From the start screen.
-          await page.goto('/admin')
-          await followLink(
-            page,
-            page.getByRole('link', { name: /Replace a file/ }),
-            /\/admin\/replace-file$/,
-          )
-          await expect(
-            page.getByRole('heading', { name: 'Which file do you want to replace?' }),
-          ).toBeVisible()
-          expect(await blockingViolations(page)).toEqual([])
+        // From the start screen.
+        await page.goto('/admin')
+        await followLink(
+          page,
+          page.getByRole('link', { name: /Replace a file/ }),
+          /\/admin\/replace-file$/,
+        )
+        await expect(
+          page.getByRole('heading', { name: 'Which file do you want to replace?' }),
+        ).toBeVisible()
+        expect(await blockingViolations(page)).toEqual([])
 
-          // Same path, a new query: click, and wait for the form itself.
-          await page.getByRole('link', { name: before.title }).click()
-          await expect(
-            page.getByRole('heading', { name: `Replace “${before.title}”` }),
-          ).toBeVisible()
-          // The description is asked again, prefilled with the one it has.
-          const description = page.getByLabel('Describe the new image')
-          await expect(description).toHaveValue('Students at last year’s fair')
-          expect(await blockingViolations(page)).toEqual([])
+        // Same path, a new query: click, and wait for the form itself.
+        await page.getByRole('link', { name: before.title }).click()
+        await expect(page.getByRole('heading', { name: `Replace “${before.title}”` })).toBeVisible()
+        // The description is asked again, prefilled with the one it has.
+        const description = page.getByLabel('Describe the new image')
+        await expect(description).toHaveValue('Students at last year’s fair')
+        expect(await blockingViolations(page)).toEqual([])
 
-          await page.getByLabel('The new file').setInputFiles({
-            name: `fair-new-${Date.now()}.png`,
-            mimeType: 'image/png',
-            buffer: PNG_NEW,
-          })
-          await description.fill('Students at this year’s fair')
-          await page.getByRole('button', { name: 'Replace' }).click()
-          await expect(page.locator('#replace-file').getByRole('status')).toContainText(
-            `Replaced “${before.title}”`,
-            { timeout: 20_000 },
-          )
-          expect(await blockingViolations(page)).toEqual([])
+        await page.getByLabel('The new file').setInputFiles({
+          name: `fair-new-${Date.now()}.png`,
+          mimeType: 'image/png',
+          buffer: PNG_NEW,
+        })
+        await description.fill('Students at this year’s fair')
+        await page.getByRole('button', { name: 'Replace' }).click()
+        await expect(page.locator('#replace-file').getByRole('status')).toContainText(
+          `Replaced “${before.title}”`,
+          { timeout: 20_000 },
+        )
+        expect(await blockingViolations(page)).toEqual([])
 
-          // The same entry, a new file and description.
-          const after = await stored(fixture.admin, fixture.image)
-          expect(after.filename).not.toBe(before.filename)
-          expect(after.alt).toBe('Students at this year’s fair')
+        // The same entry, a new file and description.
+        const after = await stored(fixture.admin, fixture.image)
+        expect(after.filename).not.toBe(before.filename)
+        expect(after.alt).toBe('Students at this year’s fair')
 
-          // "Now" shows the new file at once, with no reload. (These PNGs are too small for a
-          // thumbnail, so it is the link to the file that's checked.)
-          await expect(page.getByRole('link', { name: 'Open it' })).toHaveAttribute(
-            'href',
-            new RegExp(after.filename.replace(/\.png$/, '')),
-          )
+        // "Now" shows the new file at once, with no reload. (These PNGs are too small for a
+        // thumbnail, so it is the link to the file that's checked.)
+        await expect(page.getByRole('link', { name: 'Open it' })).toHaveAttribute(
+          'href',
+          new RegExp(after.filename.replace(/\.png$/, '')),
+        )
 
-          // The page using it shows the new one — no page edit, refreshed within seconds.
-          await expect(async () => {
-            await page.goto(siteUrl(baseURL, 'a.localhost', `/${fixture.slug}`))
-            const img = page.getByRole('img', { name: 'Students at this year’s fair' })
-            await expect(img).toBeVisible({ timeout: 1_000 })
-            await expect(img).toHaveAttribute(
-              'src',
-              new RegExp(after.filename.replace(/\.png$/, '')),
-            )
-          }).toPass({ timeout: 20_000 })
-        } finally {
-          await tearDown(fixture)
-        }
-      },
-    )
-  }
+        // The page using it shows the new one — no page edit, refreshed within seconds.
+        await expect(async () => {
+          await page.goto(siteUrl(baseURL, 'a.localhost', `/${fixture.slug}`))
+          const img = page.getByRole('img', { name: 'Students at this year’s fair' })
+          await expect(img).toBeVisible({ timeout: 1_000 })
+          await expect(img).toHaveAttribute('src', new RegExp(after.filename.replace(/\.png$/, '')))
+        }).toPass({ timeout: 20_000 })
+      } finally {
+        await tearDown(fixture)
+      }
+    },
+  )
 
   schoolTest(
     'a document is marked not checked; a file of the other kind is refused at the file',

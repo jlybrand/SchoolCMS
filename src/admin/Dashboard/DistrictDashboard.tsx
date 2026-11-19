@@ -87,7 +87,7 @@ export const DistrictDashboard = async ({
   return (
     <div className={styles.dashboard} id="district-dashboard">
       <BrandBand payload={payload} />
-      <h1 className={styles.title}>District dashboard</h1>
+      <h1 className={styles.title}>District Dashboard</h1>
 
       {attention.length > 0 ? (
         <section

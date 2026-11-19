@@ -153,18 +153,15 @@ const checkPanel = async (page: Page, fixture: Fixture) => {
 schoolTest.describe('a school sees where its file is used', () => {
   schoolTest.skip(credentials === null, SKIP)
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    schoolTest(`@a11y the file’s sidebar — ${colorScheme}`, async ({ page, baseURL }) => {
-      await page.emulateMedia({ colorScheme })
-      const fixture = await setUp(baseURL)
-      try {
-        await checkPanel(page, fixture)
-        expect(await blockingViolations(page)).toEqual([])
-      } finally {
-        await tearDown(fixture)
-      }
-    })
-  }
+  schoolTest(`@a11y the file’s sidebar`, async ({ page, baseURL }) => {
+    const fixture = await setUp(baseURL)
+    try {
+      await checkPanel(page, fixture)
+      expect(await blockingViolations(page)).toEqual([])
+    } finally {
+      await tearDown(fixture)
+    }
+  })
 
   schoolTest('the replace form says what the replace affects', async ({ page, baseURL }) => {
     const fixture = await setUp(baseURL)
@@ -183,16 +180,13 @@ schoolTest.describe('a school sees where its file is used', () => {
 adminTest.describe('the district sees where a file is used', () => {
   adminTest.skip(credentials === null, SKIP)
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    adminTest(`@a11y the file’s sidebar — ${colorScheme}`, async ({ page, baseURL }) => {
-      await page.emulateMedia({ colorScheme })
-      const fixture = await setUp(baseURL)
-      try {
-        await checkPanel(page, fixture)
-        expect(await blockingViolations(page)).toEqual([])
-      } finally {
-        await tearDown(fixture)
-      }
-    })
-  }
+  adminTest(`@a11y the file’s sidebar`, async ({ page, baseURL }) => {
+    const fixture = await setUp(baseURL)
+    try {
+      await checkPanel(page, fixture)
+      expect(await blockingViolations(page)).toEqual([])
+    } finally {
+      await tearDown(fixture)
+    }
+  })
 })

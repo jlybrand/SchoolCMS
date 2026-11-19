@@ -180,27 +180,24 @@ test.describe('announcement pages', () => {
     }
   })
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    test(`@a11y the list and an announcement have zero critical or serious axe violations — ${colorScheme}`, async ({
-      page,
-      baseURL,
-    }) => {
-      const admin = await asDistrict(baseURL)
-      const post = await makePost(admin, 'a.localhost', { title: uniqueTitle('Book fair') })
-      try {
-        await page.emulateMedia({ colorScheme })
-        await expect(async () => {
-          await page.goto(siteUrl(baseURL, 'a.localhost', '/news'))
-          await expect(page.getByRole('link', { name: post.title })).toBeVisible({ timeout: 1_000 })
-        }).toPass({ timeout: 15_000 })
-        await axe(page)
-        await page.goto(siteUrl(baseURL, 'a.localhost', `/news/${post.slug}`))
-        await expect(page.getByRole('heading', { level: 1, name: post.title })).toBeVisible()
-        await axe(page)
-      } finally {
-        await admin.delete(`/api/posts/${post.id}`)
-        await admin.dispose()
-      }
-    })
-  }
+  test(`@a11y the list and an announcement have zero critical or serious axe violations`, async ({
+    page,
+    baseURL,
+  }) => {
+    const admin = await asDistrict(baseURL)
+    const post = await makePost(admin, 'a.localhost', { title: uniqueTitle('Book fair') })
+    try {
+      await expect(async () => {
+        await page.goto(siteUrl(baseURL, 'a.localhost', '/news'))
+        await expect(page.getByRole('link', { name: post.title })).toBeVisible({ timeout: 1_000 })
+      }).toPass({ timeout: 15_000 })
+      await axe(page)
+      await page.goto(siteUrl(baseURL, 'a.localhost', `/news/${post.slug}`))
+      await expect(page.getByRole('heading', { level: 1, name: post.title })).toBeVisible()
+      await axe(page)
+    } finally {
+      await admin.delete(`/api/posts/${post.id}`)
+      await admin.dispose()
+    }
+  })
 })

@@ -108,45 +108,40 @@ const tearDown = async ({ admin, page, folder, files }: Fixture) => {
 test.describe('a document list on a page', () => {
   test.skip(credentials === null, SKIP)
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    test(`@a11y a folder’s documents, A–Z, with the note on the unchecked one — ${colorScheme}`, async ({
-      page,
-      baseURL,
-    }) => {
-      await page.emulateMedia({ colorScheme })
-      const fixture = await setUp(baseURL)
-      try {
-        await expect(async () => {
-          await page.goto(siteUrl(baseURL, HOST, `/${fixture.slug}`))
-          await expect(page.getByRole('heading', { name: 'Enrollment forms' })).toBeVisible({
-            timeout: 1_000,
-          })
-        }).toPass({ timeout: 15_000 })
+  test(`@a11y a folder’s documents, A–Z, with the note on the unchecked one`, async ({
+    page,
+    baseURL,
+  }) => {
+    const fixture = await setUp(baseURL)
+    try {
+      await expect(async () => {
+        await page.goto(siteUrl(baseURL, HOST, `/${fixture.slug}`))
+        await expect(page.getByRole('heading', { name: 'Enrollment forms' })).toBeVisible({
+          timeout: 1_000,
+        })
+      }).toPass({ timeout: 15_000 })
 
-        // A named region at the block's level, under the page's own title.
-        const region = page.getByRole('region', { name: 'Enrollment forms' })
-        await expect(
-          page.getByRole('heading', { name: 'Enrollment forms', level: 2 }),
-        ).toBeVisible()
+      // A named region at the block's level, under the page's own title.
+      const region = page.getByRole('region', { name: 'Enrollment forms' })
+      await expect(page.getByRole('heading', { name: 'Enrollment forms', level: 2 })).toBeVisible()
 
-        // A–Z; each link says what it opens.
-        const links = region.getByRole('link')
-        await expect(links).toHaveText([
-          /^Allergy plan \(PDF, \d+ KB\)$/,
-          /^Bus request \(PDF, \d+ KB\)$/,
-        ])
-        await expect(links.first()).toHaveAttribute('href', /^\/api\/resources\/file\//)
+      // A–Z; each link says what it opens.
+      const links = region.getByRole('link')
+      await expect(links).toHaveText([
+        /^Allergy plan \(PDF, \d+ KB\)$/,
+        /^Bus request \(PDF, \d+ KB\)$/,
+      ])
+      await expect(links.first()).toHaveAttribute('href', /^\/api\/resources\/file\//)
 
-        // The note only on the one nobody has checked.
-        const items = region.getByRole('listitem')
-        await expect(items.nth(0)).toContainText('may not be fully accessible')
-        await expect(items.nth(1)).not.toContainText('may not be fully accessible')
-        await expect(items.nth(1)).toContainText('Return it to the front office.')
+      // The note only on the one nobody has checked.
+      const items = region.getByRole('listitem')
+      await expect(items.nth(0)).toContainText('may not be fully accessible')
+      await expect(items.nth(1)).not.toContainText('may not be fully accessible')
+      await expect(items.nth(1)).toContainText('Return it to the front office.')
 
-        expect(await blockingViolations(page)).toEqual([])
-      } finally {
-        await tearDown(fixture)
-      }
-    })
-  }
+      expect(await blockingViolations(page)).toEqual([])
+    } finally {
+      await tearDown(fixture)
+    }
+  })
 })

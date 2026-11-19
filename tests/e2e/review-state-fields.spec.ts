@@ -42,33 +42,27 @@ test.describe('review state on the page form', () => {
     await expect(page.locator('#field-reviewNote')).toHaveCount(0)
   })
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    test.describe(`in the ${colorScheme} theme`, () => {
-      test.use({ colorScheme })
+  test('@smoke @a11y has zero critical or serious axe violations', async ({ page }) => {
+    await expect(page.locator('#field-reviewState')).toBeVisible({ timeout: 20_000 })
 
-      test('@smoke @a11y has zero critical or serious axe violations', async ({ page }) => {
-        await expect(page.locator('#field-reviewState')).toBeVisible({ timeout: 20_000 })
+    const results = await new AxeBuilder({ page })
+      .include('#field-reviewState')
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze()
 
-        const results = await new AxeBuilder({ page })
-          .include('#field-reviewState')
-          .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-          .analyze()
+    const blocking = results.violations.filter((v) => BLOCKING_IMPACTS.includes(v.impact ?? ''))
 
-        const blocking = results.violations.filter((v) => BLOCKING_IMPACTS.includes(v.impact ?? ''))
-
-        expect(
-          blocking,
-          `Blocking a11y violations in the review-state field:\n${blocking
-            .map(
-              (v) =>
-                `  [${v.impact}] ${v.id}: ${v.help}\n` +
-                v.nodes
-                  .map((n) => `      ${n.html.slice(0, 160)}\n      ${n.any[0]?.message ?? ''}`)
-                  .join('\n'),
-            )
-            .join('\n')}`,
-        ).toEqual([])
-      })
-    })
-  }
+    expect(
+      blocking,
+      `Blocking a11y violations in the review-state field:\n${blocking
+        .map(
+          (v) =>
+            `  [${v.impact}] ${v.id}: ${v.help}\n` +
+            v.nodes
+              .map((n) => `      ${n.html.slice(0, 160)}\n      ${n.any[0]?.message ?? ''}`)
+              .join('\n'),
+        )
+        .join('\n')}`,
+    ).toEqual([])
+  })
 })

@@ -37,7 +37,7 @@ export const makePost = async (
   baseURL: string | undefined,
   {
     /**
-     * Unique by default: the axe spec's light and dark passes each make one at once, and two
+     * Unique by default: the axe spec's runs each make one at once, and two
      * posts of the same title race for the same numbered address (`uniquePostSlug`) — one lost.
      */
     title = uniqueTitle('Axe announcement'),

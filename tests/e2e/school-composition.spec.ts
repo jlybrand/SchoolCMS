@@ -120,36 +120,28 @@ schoolTest.describe('a school composes its page', () => {
     },
   )
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    schoolTest(
-      `@a11y the school’s composed-page form — ${colorScheme}`,
-      async ({ page, baseURL }) => {
-        const admin = await asDistrict(baseURL)
-        const id = await districtPage(admin, uniqueTitle('Axe composed'))
-        try {
-          await page.emulateMedia({ colorScheme })
-          await page.goto(`/admin/collections/pages/${id}`)
-          await expect(page.locator('#field-layout')).toBeVisible({ timeout: 20_000 })
-          await expect(
-            page.locator('.collapsible__drag[aria-label="Reorder"]').first(),
-          ).toBeAttached({
-            timeout: 20_000,
-          })
-          // The news feed's chosen board: its clear button is taken out of the tab order by the
-          // patch (`A11yPatch`). Axe before that lands reports aria-hidden-focus.
-          await expect(
-            page.locator(
-              '#field-layout__1__boards .clear-indicator[aria-hidden="true"][tabindex="-1"]',
-            ),
-          ).toBeAttached({ timeout: 20_000 })
-          await expectNoBlockingViolations(page, '#field-layout')
-        } finally {
-          await deletePage(admin, id)
-          await admin.dispose()
-        }
-      },
-    )
-  }
+  schoolTest(`@a11y the school’s composed-page form`, async ({ page, baseURL }) => {
+    const admin = await asDistrict(baseURL)
+    const id = await districtPage(admin, uniqueTitle('Axe composed'))
+    try {
+      await page.goto(`/admin/collections/pages/${id}`)
+      await expect(page.locator('#field-layout')).toBeVisible({ timeout: 20_000 })
+      await expect(page.locator('.collapsible__drag[aria-label="Reorder"]').first()).toBeAttached({
+        timeout: 20_000,
+      })
+      // The news feed's chosen board: its clear button is taken out of the tab order by the
+      // patch (`A11yPatch`). Axe before that lands reports aria-hidden-focus.
+      await expect(
+        page.locator(
+          '#field-layout__1__boards .clear-indicator[aria-hidden="true"][tabindex="-1"]',
+        ),
+      ).toBeAttached({ timeout: 20_000 })
+      await expectNoBlockingViolations(page, '#field-layout')
+    } finally {
+      await deletePage(admin, id)
+      await admin.dispose()
+    }
+  })
 })
 
 adminTest.describe('the district sees a school’s sections in the queue', () => {

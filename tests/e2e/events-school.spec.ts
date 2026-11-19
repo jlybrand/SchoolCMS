@@ -129,18 +129,15 @@ schoolTest.describe('add an event — school manager', () => {
     await expect(page.locator('#list-task')).toHaveAttribute('href', '/admin/new-event')
   })
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    schoolTest(`@a11y the new-event screen, errors showing — ${colorScheme}`, async ({ page }) => {
-      await page.emulateMedia({ colorScheme })
-      await page.goto('/admin/new-event')
-      const view = page.locator('#new-event')
-      await expect(async () => {
-        await view.getByRole('button', { name: 'Add the details' }).click()
-        await expect(view.getByText('Give the event a name.')).toBeVisible({ timeout: 1_000 })
-      }).toPass({ timeout: 20_000 })
-      await expectNoBlockingViolations(page, '#new-event')
-    })
-  }
+  schoolTest(`@a11y the new-event screen, errors showing`, async ({ page }) => {
+    await page.goto('/admin/new-event')
+    const view = page.locator('#new-event')
+    await expect(async () => {
+      await view.getByRole('button', { name: 'Add the details' }).click()
+      await expect(view.getByText('Give the event a name.')).toBeVisible({ timeout: 1_000 })
+    }).toPass({ timeout: 20_000 })
+    await expectNoBlockingViolations(page, '#new-event')
+  })
 })
 
 schoolTest.describe('remove an event — school manager', () => {

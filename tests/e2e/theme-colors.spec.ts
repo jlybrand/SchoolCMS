@@ -57,32 +57,27 @@ test.describe('the theme form', () => {
     site = null
   })
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    test(`@a11y a low-contrast main color is WARNED about, and saved — ${colorScheme}`, async ({
-      page,
-    }) => {
-      await page.emulateMedia({ colorScheme })
-      const main = page.locator('[name="primaryColor"]')
-      await expect(main).toBeEnabled({ timeout: 20_000 })
-      const note = page.locator('#brand-contrast-note')
+  test(`@a11y a low-contrast main color is WARNED about, and saved`, async ({ page }) => {
+    const main = page.locator('[name="primaryColor"]')
+    await expect(main).toBeEnabled({ timeout: 20_000 })
+    const note = page.locator('#brand-contrast-note')
 
-      // #1e891e: 4.5:1 on white, under it on the light-grey panels — the case that was refused.
-      await main.fill('#1e891e')
-      await expect(note).toContainText('the light-grey panels (4.2:1)')
-      await expect(note).toContainText('Large or bold text needs only 3:1')
-      await expect(note).not.toContainText('white page')
-      expect(await blockingViolations(page)).toEqual([])
+    // #1e891e: 4.5:1 on white, under it on the light-grey panels — the case that was refused.
+    await main.fill('#1e891e')
+    await expect(note).toContainText('the light-grey panels (4.2:1)')
+    await expect(note).toContainText('Large or bold text needs only 3:1')
+    await expect(note).not.toContainText('white page')
+    expect(await blockingViolations(page)).toEqual([])
 
-      // A warning, not a refusal: it saves.
-      await page.getByRole('button', { name: 'Save' }).click()
-      await expect(page).toHaveURL(/\/collections\/theme\/\d+/, { timeout: 20_000 })
-      await expect(page.locator('.field-error, .tooltip--error')).toHaveCount(0)
+    // A warning, not a refusal: it saves.
+    await page.getByRole('button', { name: 'Save' }).click()
+    await expect(page).toHaveURL(/\/collections\/theme\/\d+/, { timeout: 20_000 })
+    await expect(page.locator('.field-error, .tooltip--error')).toHaveCount(0)
 
-      // A dark color: nothing to say.
-      await main.fill('#0f4c81')
-      await expect(note).toHaveText('')
-    })
-  }
+    // A dark color: nothing to say.
+    await main.fill('#0f4c81')
+    await expect(note).toHaveText('')
+  })
 
   test('refuses a value that is not a color, and says how to write one', async ({ page }) => {
     const main = page.locator('[name="primaryColor"]')

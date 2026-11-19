@@ -151,15 +151,12 @@ schoolTest.describe('post an announcement — school manager', () => {
       let postId: string | null = null
       try {
         // Two boards: none is assumed — the task lands on the folders to choose one.
-        for (const colorScheme of ['light', 'dark'] as const) {
-          await page.emulateMedia({ colorScheme })
-          await page.goto('/admin/new-post')
-          await expect(page.locator('#board-heading')).toHaveText('Choose a board', {
-            timeout: 20_000,
-          })
-          await expect(page.locator('#new-post')).toHaveCount(0)
-          await expectNoBlockingViolations(page, '#announcements')
-        }
+        await page.goto('/admin/new-post')
+        await expect(page.locator('#board-heading')).toHaveText('Choose a board', {
+          timeout: 20_000,
+        })
+        await expect(page.locator('#new-post')).toHaveCount(0)
+        await expectNoBlockingViolations(page, '#announcements')
 
         const tree = page.getByRole('navigation', { name: 'Folders and boards' })
         // Retried: Payload rewrites a list's address just after it loads and re-renders the
@@ -192,23 +189,17 @@ schoolTest.describe('post an announcement — school manager', () => {
     },
   )
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    schoolTest(
-      `@a11y the new-announcement screen, errors showing — ${colorScheme}`,
-      async ({ page }) => {
-        await page.emulateMedia({ colorScheme })
-        await page.goto('/admin/new-post')
-        const view = page.locator('#new-post')
-        await expect(async () => {
-          await view.getByRole('button', { name: 'Write the announcement' }).click()
-          await expect(view.getByText('Give the announcement a headline.')).toBeVisible({
-            timeout: 1_000,
-          })
-        }).toPass({ timeout: 20_000 })
-        await expectNoBlockingViolations(page, '#new-post')
-      },
-    )
-  }
+  schoolTest(`@a11y the new-announcement screen, errors showing`, async ({ page }) => {
+    await page.goto('/admin/new-post')
+    const view = page.locator('#new-post')
+    await expect(async () => {
+      await view.getByRole('button', { name: 'Write the announcement' }).click()
+      await expect(view.getByText('Give the announcement a headline.')).toBeVisible({
+        timeout: 1_000,
+      })
+    }).toPass({ timeout: 20_000 })
+    await expectNoBlockingViolations(page, '#new-post')
+  })
 })
 
 adminTest.describe('an announcement in the approval queue — district admin', () => {

@@ -3,9 +3,9 @@ import { getPayload, type TypedUser } from 'payload'
 import config from '@payload-config'
 
 import { toPageBlocks } from './blocks'
-import { listPagePathIndex } from './pages'
+import { listPagePathIndex, resolvePreviewLink } from './pages'
 import { getTenantByHostname } from './tenants'
-import type { PageBlock } from './types'
+import type { PageBlock, PageRedirect } from './types'
 
 /**
  * LIVE PREVIEW (Jason, 2026-11-10): the page being edited, beside its form, in the site's own
@@ -33,6 +33,17 @@ export type PagePreview = {
   hostname: string
   title: string
   layout: PageBlock[]
+  /**
+   * A LINKED page (Jason, 2026-11-19): what a visitor gets instead of its own sections — a reuse
+   * page's title and layout above are the district page's; a redirect or a link to nothing live
+   * has no layout, and the route says where visitors go (or that they find nothing). Null when
+   * the page is not linked.
+   */
+  link:
+    | { kind: 'reuse'; from: PageRedirect }
+    | { kind: 'redirect'; to: PageRedirect }
+    | { kind: 'unresolved' }
+    | null
 }
 
 /** A page's newest version, as `previewer` may see it, or null. */
@@ -60,9 +71,20 @@ export const getPagePreview = async (
   const tenant = await getTenantByHostname(hostname)
   if (!tenant) return null
 
+  const ctx = { tenant, locale: 'en' } as const
+  const link = await resolvePreviewLink(ctx, doc)
+  if (link?.kind === 'reuse')
+    return {
+      hostname,
+      title: link.title,
+      layout: link.layout,
+      link: { kind: 'reuse', from: link.from },
+    }
+  if (link) return { hostname, title: doc.title, layout: [], link }
   return {
     hostname,
     title: doc.title,
-    layout: toPageBlocks(doc.layout, await listPagePathIndex({ tenant, locale: 'en' })),
+    layout: toPageBlocks(doc.layout, await listPagePathIndex(ctx)),
+    link: null,
   }
 }
