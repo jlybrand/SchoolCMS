@@ -6,6 +6,7 @@ import {
   escapeText,
   foldLine,
   plainTextOf,
+  subscribeOrigin,
   subscribeUrl,
   toICalendar,
 } from '@/lib/ical'
@@ -228,6 +229,22 @@ describe('the subscribe address', () => {
     expect(subscribeUrl('https://admin.dd2.org', 'a.dd2.org', '12')).toBe(
       'webcal://a.dd2.org/calendars/12.ics',
     )
+  })
+
+  it('several calendars share ONE feed, its ids in order — one address per set (Jason, 2026-11-19)', () => {
+    expect(calendarFeedPath(['12', '3', '7'])).toBe('/calendars/3-7-12.ics')
+    expect(calendarFeedPath(['12', '3', '12'])).toBe('/calendars/3-12.ics')
+  })
+
+  it('a set of one is that calendar’s own address', () => {
+    expect(calendarFeedPath(['12'])).toBe('/calendars/12.ics')
+  })
+
+  it('a site’s webcal origin, for several calendars’ one feed on it', () => {
+    expect(subscribeOrigin('http://localhost:3000', 'b.localhost')).toBe(
+      'webcal://b.localhost:3000',
+    )
+    expect(subscribeOrigin('https://admin.dd2.org', 'b.dd2.org')).toBe('webcal://b.dd2.org')
   })
 
   it('keeps a developer’s port, as approval emails do', () => {

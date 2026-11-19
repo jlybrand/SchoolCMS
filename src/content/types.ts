@@ -449,12 +449,26 @@ export type ResolvedCalendarBlock = BlockBase & {
    * One per calendar shown, in the block's order: its name and its `webcal:` feed on its own site
    * (Jason, 2026-11-11). Empty when none can be named.
    */
-  subscribe: { name: string; href: string }[]
+  /**
+   * The calendars a visitor can filter by, in the block's order (Jason, 2026-11-18), each with its
+   * own `webcal:` feed on its own site. The filter is offered only when there are two or more.
+   */
+  calendars: { id: string; name: string; href: string }[]
+  /**
+   * ONE Subscribe link per block (Jason, 2026-11-19), following the filter: one calendar on is its
+   * own `href`; several are their one feed on THIS site — `webcal://host[:port]`, to which the
+   * block adds `/calendars/<ids>.ics` (`subscribeTarget`).
+   */
+  feedOrigin: string
 } & (
     | {
         display: 'list'
-        /** The next events, earliest first, at most the block's number. */
+        /**
+         * Each calendar's next events, earliest first, at most the block's number EACH
+         * (`firstPerCalendar`): the page shows the first `limit` of whichever calendars are on.
+         */
         events: EventOccurrence[]
+        limit: number
       }
     | {
         display: 'grid'
@@ -758,6 +772,8 @@ export type EventOccurrence = {
   /** Unique within a calendar block: the event id and the local date it starts on. */
   key: string
   eventId: string
+  /** The calendar it is on — what a visitor filters a block by (Jason, 2026-11-18). */
+  calendarId: string
   title: string
   location: string | null
   notes: RichText

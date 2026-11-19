@@ -1,0 +1,70 @@
+/*
+ * A calendar block's calendars as checkboxes (`CalendarsField`). Payload's theme variables, as the
+ * rest of its form. Nothing under 15px (min-text-15px): px, since the admin root is 13px.
+ * Logical properties only (CLAUDE.md rule 5).
+ */
+
+.field {
+  margin-block: 0 24px;
+  margin-inline: 0;
+  padding: 0;
+  border: 0;
+  color: var(--theme-text);
+  font-size: 15px;
+}
+
+.legend {
+  margin-block-end: 4px;
+  padding: 0;
+  font-weight: 600;
+}
+
+.description {
+  margin-block: 0 12px;
+  color: var(--theme-elevation-800);
+}
+
+.error {
+  margin-block: 0 12px;
+  font-weight: 600;
+  color: var(--theme-error-500);
+}
+
+/* Each site's calendars, side by side when there is room. */
+.site {
+  display: inline-block;
+  vertical-align: top;
+  min-inline-size: 220px;
+  margin-block: 0 12px;
+  margin-inline: 0 24px;
+  padding: 0;
+  border: 0;
+}
+
+.siteName {
+  margin-block-end: 6px;
+  padding: 0;
+  font-weight: 600;
+}
+
+.option {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-block-end: 6px;
+}
+
+.option input {
+  inline-size: 18px;
+  block-size: 18px;
+  margin: 0;
+}
+
+.option input:focus-visible {
+  outline: 2px solid var(--theme-text);
+  outline-offset: 2px;
+}
+
+.note {
+  color: var(--theme-elevation-800);
+}

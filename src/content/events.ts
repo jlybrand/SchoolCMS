@@ -157,3 +157,38 @@ export const getCalendarFeed = async (
   })
   return { name: String((calendar as { name?: unknown }).name ?? tenant.name), events }
 }
+
+/**
+ * Several calendars' ONE feed (Jason, 2026-11-19: one Subscribe link per calendar block, following
+ * its filter) — `/calendars/3-7-12.ics` on the site whose page offers it. Any site's calendars, as
+ * the block that offers it shows them: a published event is public already, and this only lists
+ * them together. Null when any id is not a calendar, so a stale or crafted address 404s whole.
+ * The address's form (ascending, distinct, at most twenty) is checked by the route (`feedIds`).
+ */
+export const getCombinedCalendarFeed = async (
+  calendarIds: readonly string[],
+  today: string,
+): Promise<{ name: string; events: CalendarEvent[] } | null> => {
+  const payload = await getPayload({ config })
+  const { docs } = await payload.find({
+    collection: 'calendars',
+    where: { id: { in: [...calendarIds] } },
+    pagination: false,
+    depth: 0,
+    overrideAccess: true,
+    select: { name: true },
+  })
+  if (docs.length !== new Set(calendarIds).size) return null
+  const names = new Map(docs.map((doc) => [String(doc.id), String(doc.name ?? '').trim()]))
+  const events = await listEvents({
+    calendars: calendarIds,
+    range: { from: addDays(today, -FEED_DAYS_BACK), to: addDays(today, FEED_DAYS_AHEAD) },
+  })
+  return {
+    name: calendarIds
+      .map((id) => names.get(id))
+      .filter(Boolean)
+      .join(', '),
+    events,
+  }
+}

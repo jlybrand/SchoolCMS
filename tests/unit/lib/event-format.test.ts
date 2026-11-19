@@ -59,6 +59,11 @@ describe('toEventOccurrences', () => {
     expect(plain(only!.timeLabel)).toBe('6:00 – 8:00 PM')
   })
 
+  it('says which calendar each time is on, so a visitor can filter by it (Jason, 2026-11-18)', () => {
+    const [only] = toEventOccurrences([event({ calendarId: '12' })], december, opts)
+    expect(only?.calendarId).toBe('12')
+  })
+
   it('a start with no end is the start time alone', () => {
     const [only] = toEventOccurrences([event({ timing: { end: null } })], december, opts)
     expect(plain(only!.timeLabel)).toBe('6:00 PM')

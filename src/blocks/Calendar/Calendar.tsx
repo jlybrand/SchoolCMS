@@ -1,10 +1,10 @@
 import { Heading, nextHeadingLevel } from '@/components/Heading'
 import type { HeadingLevel } from '@/components/Heading'
-import { Link } from '@/components/Link'
 import { RichText } from '@/components/RichText'
 import { Section } from '@/components/Section'
 import type { CalendarMonth, EventOccurrence, ResolvedCalendarBlock } from '@/content/types'
 
+import { CalendarFilterRoot, CalendarToolbar, FilteredList } from './CalendarFilter'
 import { EventDialogButton } from './EventDialogButton'
 import { MonthSwitcher } from './MonthSwitcher'
 import styles from './Calendar.module.css'
@@ -28,8 +28,13 @@ import styles from './Calendar.module.css'
  * month's name (grid) sit one below. Without a heading they take the block's level, so no level is
  * skipped wherever the district places it (`03` §3.2).
  *
- * Two small client components — the month switcher and the button that opens a dialog — are
- * the public site's only script here; everything else renders on the server.
+ * FILTER, SUBSCRIBE AND PRINT (Jason, 2026-11-18 and 2026-11-19), as icons above the events:
+ * the filter opens a dialog of the calendars the block pulls in, all on at first; Subscribe is
+ * one link to what is on; Print prints this calendar as it is on screen (`CalendarFilter`). Every event is still rendered here, tagged with its calendar; the filter only
+ * chooses which `FilteredList` shows.
+ *
+ * Small client components — the month switcher, the button that opens an event, and the filter —
+ * are the public site's only script here; everything else renders on the server.
  */
 export type CalendarProps = {
   readonly block: ResolvedCalendarBlock
@@ -50,12 +55,17 @@ const Where = ({ occurrence }: { readonly occurrence: EventOccurrence }) =>
 const EventList = ({
   events,
   level,
+  limit,
 }: {
   readonly events: readonly EventOccurrence[]
   readonly level: HeadingLevel
+  readonly limit: number
 }) => (
-  <ol className={styles.list}>
-    {events.map((occurrence) => {
+  <FilteredList
+    as="ol"
+    className={styles.list}
+    empty={<p className={styles.when}>No events from the chosen calendars.</p>}
+    items={events.map((occurrence) => {
       const title = (
         <Heading level={level} size="lg">
           {occurrence.title}
@@ -67,8 +77,8 @@ const EventList = ({
           <Where occurrence={occurrence} />
         </>
       )
-      return (
-        <li className={styles.item} key={occurrence.key}>
+      const node = (
+        <li className={styles.item}>
           {occurrence.notes.length === 0 ? (
             <div className={styles.plain}>
               {title}
@@ -87,8 +97,10 @@ const EventList = ({
           )}
         </li>
       )
+      return { key: occurrence.key, calendarId: occurrence.calendarId, node }
     })}
-  </ol>
+    limit={limit}
+  />
 )
 
 const dialogIdOf = (blockId: string, key: string) => `${blockId}-event-${key}`
@@ -143,6 +155,12 @@ const MonthPanel = ({
       {children}
     </EventDialogButton>
   )
+  /** The occurrences behind `keys`, each as the `<li>` `toNode` makes, for `FilteredList`. */
+  const itemsOf = (keys: readonly string[], toNode: (o: EventOccurrence) => React.ReactNode) =>
+    keys.flatMap((key) => {
+      const o = byKey.get(key)
+      return o === undefined ? [] : [{ key, calendarId: o.calendarId, node: toNode(o) }]
+    })
   return (
     <>
       <table aria-labelledby={labelId} className={styles.table}>
@@ -168,16 +186,12 @@ const MonthPanel = ({
                     key={day.date}
                   >
                     <span className={styles.dayNumber}>{day.day}</span>
-                    {day.eventKeys.length === 0 ? null : (
-                      <ul className={styles.dayEvents}>
-                        {day.eventKeys.map((key) => {
-                          const o = byKey.get(key)
-                          return o === undefined ? null : (
-                            <li key={key}>{open(key, styles.dayEvent ?? '', o.title)}</li>
-                          )
-                        })}
-                      </ul>
-                    )}
+                    <FilteredList
+                      className={styles.dayEvents}
+                      items={itemsOf(day.eventKeys, (o) => (
+                        <li>{open(o.key, styles.dayEvent ?? '', o.title)}</li>
+                      ))}
+                    />
                   </td>
                 ),
               )}
@@ -186,21 +200,16 @@ const MonthPanel = ({
         </tbody>
       </table>
       <div className={styles.agenda}>
-        {month.eventKeys.length === 0 ? (
-          <p className={styles.when}>No events this month.</p>
-        ) : (
-          <ul className={styles.list}>
-            {month.eventKeys.map((key) => {
-              const o = byKey.get(key)
-              return o === undefined ? null : (
-                <li className={styles.item} key={key}>
-                  {open(key, styles.agendaEvent ?? '', o.title)}
-                  <When occurrence={o} />
-                </li>
-              )
-            })}
-          </ul>
-        )}
+        <FilteredList
+          className={styles.list}
+          empty={<p className={styles.when}>No events this month.</p>}
+          items={itemsOf(month.eventKeys, (o) => (
+            <li className={styles.item}>
+              {open(o.key, styles.agendaEvent ?? '', o.title)}
+              <When occurrence={o} />
+            </li>
+          ))}
+        />
       </div>
     </>
   )
@@ -209,34 +218,19 @@ const MonthPanel = ({
 export const Calendar = ({ block, baseLevel }: CalendarProps) => {
   if (block.display === 'list' && block.events.length === 0) return null
 
-  /**
-   * "Subscribe to School A" for each calendar shown (Jason, 2026-11-11): a `webcal:` link, so a
-   * click opens the reader's calendar app to subscribe. The calendar's name is in the link's own
-   * words, so each link makes sense read alone.
-   */
-  const subscribe =
-    block.subscribe.length === 0 ? null : (
-      <ul className={styles.subscribe}>
-        {block.subscribe.map((calendar) => (
-          <li key={calendar.href}>
-            <Link href={calendar.href}>Subscribe to {calendar.name}</Link>
-          </li>
-        ))}
-      </ul>
-    )
-
   const body = (level: HeadingLevel) => {
     if (block.display === 'list')
       return (
         <>
-          <EventList events={block.events} level={level} />
-          {subscribe}
+          <CalendarToolbar />
+          <EventList events={block.events} level={level} limit={block.limit} />
         </>
       )
     const byKey = new Map(block.events.map((o) => [o.key, o]))
     const labelId = `${block.id}-month`
     return (
       <div className={styles.grid}>
+        <CalendarToolbar />
         <MonthSwitcher
           labelId={labelId}
           labels={block.months.map((m) => m.label)}
@@ -260,16 +254,23 @@ export const Calendar = ({ block, baseLevel }: CalendarProps) => {
             occurrence={occurrence}
           />
         ))}
-        {subscribe}
       </div>
     )
   }
 
-  if (block.heading === null) return body(baseLevel)
-
   return (
-    <Section heading={block.heading} headingId={`${block.id}-heading`} level={baseLevel}>
-      {body(nextHeadingLevel(baseLevel))}
-    </Section>
+    <CalendarFilterRoot
+      calendars={block.calendars}
+      className={styles.root}
+      feedOrigin={block.feedOrigin}
+    >
+      {block.heading === null ? (
+        body(baseLevel)
+      ) : (
+        <Section heading={block.heading} headingId={`${block.id}-heading`} level={baseLevel}>
+          {body(nextHeadingLevel(baseLevel))}
+        </Section>
+      )}
+    </CalendarFilterRoot>
   )
 }

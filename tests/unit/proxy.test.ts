@@ -66,6 +66,8 @@ describe('proxy — a calendar’s iCal feed (Jason, 2026-11-11)', () => {
   it.each([
     ['/calendars/12.ics', 'a.localhost', '/sites/a.localhost/calendar-feed/12'],
     ['/calendars/7.ics', 'B.LOCALHOST:3000', '/sites/b.localhost/calendar-feed/7'],
+    // Several calendars' one feed (Jason, 2026-11-19).
+    ['/calendars/3-7-12.ics', 'a.localhost', '/sites/a.localhost/calendar-feed/3-7-12'],
   ])('rewrites %s on %s to the tenant’s feed route', (path, host, expected) => {
     expect(rewriteOf(`http://${host}${path}`, host)).toBe(expected)
   })
@@ -74,6 +76,7 @@ describe('proxy — a calendar’s iCal feed (Jason, 2026-11-11)', () => {
     ['not a calendar id', '/calendars/abc.ics', '/sites/a.localhost/en/calendars/abc.ics'],
     ['under a locale', '/es/calendars/12.ics', '/sites/a.localhost/es/calendars/12.ics'],
     ['nested', '/calendars/12/13.ics', '/sites/a.localhost/en/calendars/12/13.ics'],
+    ['a trailing dash', '/calendars/3-.ics', '/sites/a.localhost/en/calendars/3-.ics'],
   ])('%s is an ordinary page path, and 404s as one', (_label, path, expected) => {
     expect(rewriteOf(`http://a.localhost${path}`, 'a.localhost')).toBe(expected)
   })

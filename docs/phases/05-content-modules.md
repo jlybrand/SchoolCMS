@@ -1229,6 +1229,41 @@ block that shows them as a list or a month grid. Clicking an event reveals its n
 `ReviewedCollection` includes `events` (approve endpoint, `NOUN`), and the audit trail records
 them (`REVIEWED.events = 'Event'`). The queue does not list them yet (`queue-data.ts` `REVIEWED`).
 
+### Filter and print (Jason, 2026-11-18; built 2026-11-19)
+
+| File                                      | Holds                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/calendar-filter.ts`              | `visibleItems(items, shown, limit?)` — the chosen calendars' items, capped after the filter; `firstPerCalendar(items, limit)` — each calendar's first N                                                                                                                                                                                                                                                                          |
+| `src/lib/event-format.ts`                 | each `EventOccurrence` carries its `calendarId`                                                                                                                                                                                                                                                                                                                                                                                  |
+| `src/content/resolve-blocks.ts`           | `resolveCalendar`: `calendars` (id + name, block order, from `listCalendarRefs`); a list keeps `firstPerCalendar(…, limit)` and hands `limit` on, so whichever calendars are on, the first N of them show                                                                                                                                                                                                                        |
+| `src/blocks/Calendar/CalendarFilter.tsx`  | client: `CalendarFilterRoot` (the choice, in memory — all on at first; marks the block `data-calendar-printing` while printing, then `window.print()`, cleared on `afterprint`), `CalendarToolbar` (icon buttons, named in words: a funnel "Filter calendars" when 2+, a printer "Print this calendar"; a polite "Showing 1 of 2 calendars"; the native `<dialog>` with a checkbox per calendar, Show all, Done), `FilteredList` |
+| `src/blocks/Calendar/Calendar.tsx`        | the list, each day's events and the narrow-screen list are `FilteredList`s of server-rendered `<li>`s tagged with their calendar; "No events from the chosen calendars." when a list is filtered empty                                                                                                                                                                                                                           |
+| `src/blocks/Calendar/Calendar.module.css` | `@media print`: while marked, everything that neither holds nor sits inside the block is `display: none` (`:has`); the toolbar, month buttons and subscribe links go; the month prints as its table; today keeps its gray cell (today is the whole cell in `--color-surface-raised`, Jason 2026-11-19, not a fill behind its number)                                                                                             |
+
+Subscribe (Jason, 2026-11-19): ONE calendar icon per block, following the filter (`subscribeTarget`)
+— one calendar on is its own feed on its own site; several are their one feed on the page's site,
+`/calendars/3-7-12.ics` (`feedSegment`/`feedIds`: ascending, distinct, ≤ 20; `src/proxy.ts`
+`CALENDAR_FEED`; the route's `getCombinedCalendarFeed`, any site's calendars, 404 on an unknown
+id). It opens a dialog (`SubscribeDialog`, `subscribeOptions`): Apple Calendar (`webcal:`), Google
+Calendar (`render?cid=`), Outlook.com and Outlook (Microsoft 365) (`addfromweb?url=&name=`), and the
+standard iCal address with Copy. The old row of per-calendar subscribe links is gone. The grid's
+today is its whole cell in `--color-surface-raised` (days outside the month are unfilled), and an
+event title wraps only between words, a too-long word ending in "…".
+
+Choosing the block's calendars (Jason, 2026-11-19): `src/admin/CalendarPicker/CalendarsField.tsx`
+replaces Payload's multi-select on `calendarBlock.calendars` — a checkbox per calendar, grouped by
+site (`calendarsBySite`: the district first, then schools A–Z; each site's own calendar first;
+imported ones marked), ticked in at the end (`toggleCalendar`). Stores the same relationship ids.
+
+Each block has its own choice. Imported (feed) calendars filter like local ones. Printing from
+the browser's own menu prints the whole page, as before.
+
+Tests: `tests/unit/lib/calendar-filter.test.ts`, `event-format.test.ts` (calendarId);
+`tests/integration/events.test.ts` (calendars named, each calendar's next N);
+`tests/e2e/calendar.spec.ts` ("a calendar of several calendars": the dialog, all on, one off,
+that block only, none on, Show all, axe; Print marks the block and prints only it, filtered);
+the `ListOfSeveralCalendars` story in the component axe gate.
+
 ### Not here yet
 
 (The school's task: §27 — events skip approval. iCal links: §28. Event pages: skipped, Jason

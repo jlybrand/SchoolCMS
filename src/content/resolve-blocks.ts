@@ -1,3 +1,4 @@
+import { firstPerCalendar } from '@/lib/calendar-filter'
 import { toGridMonths, weekdayNames } from '@/lib/calendar-view'
 import { localizedPath } from '@/lib/locales'
 import { monthRange, monthsFrom } from '@/lib/month-grid'
@@ -5,7 +6,7 @@ import { NEWS_PATH, toNewsItems } from '@/lib/post-url'
 import { DISTRICT_TIME_ZONE } from '@/lib/queue-age'
 import { addDays, localDateOf } from '@/lib/recurrence'
 
-import { subscribeUrl } from '@/lib/ical'
+import { subscribeOrigin, subscribeUrl } from '@/lib/ical'
 
 import { listCalendarRefs, listEventOccurrences } from './events'
 import { listStaff } from './people'
@@ -76,18 +77,29 @@ const resolveCalendar = async (
   today: string,
   serverUrl: string,
 ): Promise<ResolvedCalendarBlock | null> => {
-  const subscribe = (await listCalendarRefs(block.calendars)).map((ref) => ({
+  const refs = await listCalendarRefs(block.calendars)
+  const calendars = refs.map((ref) => ({
+    id: ref.id,
     name: ref.name,
     href: subscribeUrl(serverUrl, ref.hostname, ref.id),
   }))
-  const base = { kind: 'calendar' as const, id: block.id, heading: block.heading, subscribe }
+  const base = {
+    kind: 'calendar' as const,
+    id: block.id,
+    heading: block.heading,
+    calendars,
+    feedOrigin: subscribeOrigin(serverUrl, ctx.tenant.hostname),
+  }
   if (block.display === 'list') {
-    const events = await listEventOccurrences(ctx, {
-      calendars: block.calendars,
-      range: { from: today, to: addDays(today, LIST_DAYS_AHEAD) },
-      limit: block.limit,
-    })
-    return events.length === 0 ? null : { ...base, display: 'list', events }
+    // Each calendar's next N, so a visitor's filter still fills the list (`firstPerCalendar`).
+    const events = firstPerCalendar(
+      await listEventOccurrences(ctx, {
+        calendars: block.calendars,
+        range: { from: today, to: addDays(today, LIST_DAYS_AHEAD) },
+      }),
+      block.limit,
+    )
+    return events.length === 0 ? null : { ...base, display: 'list', events, limit: block.limit }
   }
   const months = monthsFrom(today, GRID_MONTHS)
   const range = { from: monthRange(months[0]!).from, to: monthRange(months.at(-1)!).to }

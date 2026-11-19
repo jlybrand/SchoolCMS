@@ -553,7 +553,7 @@ export interface CalendarBlockRow {
    */
   heading?: string | null;
   /**
-   * Which calendars to show events from — any site’s.
+   * Tick every calendar this section shows events from — any site’s.
    */
   calendars: (number | Calendar)[];
   display?: ('list' | 'grid') | null;
