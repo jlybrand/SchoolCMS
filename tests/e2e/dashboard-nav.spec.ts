@@ -62,31 +62,22 @@ const leadsHome = async (page: Page, from: string, home: string) => {
 adminTest.describe('the dashboard icon — district', () => {
   adminTest.skip(credentials === null, SKIP)
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    adminTest(`@a11y leads home from anywhere — ${colorScheme}`, async ({ page }) => {
-      await page.emulateMedia({ colorScheme })
-      await leadsHome(page, '/admin/collections/pages', '#district-dashboard')
-      expect(await blockingViolations(page)).toEqual([])
-    })
-  }
+  adminTest(`@a11y leads home from anywhere`, async ({ page }) => {
+    await leadsHome(page, '/admin/collections/pages', '#district-dashboard')
+    expect(await blockingViolations(page)).toEqual([])
+  })
 })
 
 schoolTest.describe('the dashboard icon — school', () => {
   schoolTest.skip(credentials === null, SKIP)
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    schoolTest(
-      `@a11y leads to the school's home, above its name — ${colorScheme}`,
-      async ({ page }) => {
-        await page.emulateMedia({ colorScheme })
-        await leadsHome(page, '/admin/collections/pages', '#school-home')
-        // Above "Your school".
-        const order = await page
-          .locator('#nav-dashboard, #nav-school')
-          .evaluateAll((els) => els.map((el) => el.id))
-        expect(order).toEqual(['nav-dashboard', 'nav-school'])
-        expect(await blockingViolations(page)).toEqual([])
-      },
-    )
-  }
+  schoolTest(`@a11y leads to the school's home, above its name`, async ({ page }) => {
+    await leadsHome(page, '/admin/collections/pages', '#school-home')
+    // Above "Your school".
+    const order = await page
+      .locator('#nav-dashboard, #nav-school')
+      .evaluateAll((els) => els.map((el) => el.id))
+    expect(order).toEqual(['nav-dashboard', 'nav-school'])
+    expect(await blockingViolations(page)).toEqual([])
+  })
 })

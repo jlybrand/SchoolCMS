@@ -94,40 +94,35 @@ const tearDown = async ({ admin, page, files }: Fixture) => {
 test.describe('images on a page', () => {
   test.skip(credentials === null, SKIP)
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    test(`@a11y a hero with words, an image with a caption, a hero with none — ${colorScheme}`, async ({
-      page,
-      baseURL,
-    }) => {
-      await page.emulateMedia({ colorScheme })
-      const fixture = await setUp(baseURL)
-      try {
-        await expect(async () => {
-          await page.goto(siteUrl(baseURL, 'b.localhost', `/${fixture.slug}`))
-          await expect(page.getByRole('heading', { name: 'Welcome to School B' })).toBeVisible({
-            timeout: 1_000,
-          })
-        }).toPass({ timeout: 15_000 })
+  test(`@a11y a hero with words, an image with a caption, a hero with none`, async ({
+    page,
+    baseURL,
+  }) => {
+    const fixture = await setUp(baseURL)
+    try {
+      await expect(async () => {
+        await page.goto(siteUrl(baseURL, 'b.localhost', `/${fixture.slug}`))
+        await expect(page.getByRole('heading', { name: 'Welcome to School B' })).toBeVisible({
+          timeout: 1_000,
+        })
+      }).toPass({ timeout: 15_000 })
 
-        // The hero's words: its heading takes the block's level, under the page's own title.
-        await expect(
-          page.getByRole('heading', { name: 'Welcome to School B', level: 2 }),
-        ).toBeVisible()
-        await expect(page.getByText('Home of the Hawks.')).toBeVisible()
-        await expect(page.getByRole('link', { name: 'Start enrollment' })).toHaveAttribute(
-          'href',
-          '/enroll',
-        )
-        // Every image with the library's alt text; the image-only hero is just its image.
-        await expect(page.getByRole('img', { name: 'The front of the school' })).toHaveCount(2)
-        const fair = page.getByRole('figure').filter({ hasText: 'The science fair, in the gym.' })
-        await expect(
-          fair.getByRole('img', { name: 'Students showing their volcano' }),
-        ).toBeVisible()
-        expect(await blockingViolations(page)).toEqual([])
-      } finally {
-        await tearDown(fixture)
-      }
-    })
-  }
+      // The hero's words: its heading takes the block's level, under the page's own title.
+      await expect(
+        page.getByRole('heading', { name: 'Welcome to School B', level: 2 }),
+      ).toBeVisible()
+      await expect(page.getByText('Home of the Hawks.')).toBeVisible()
+      await expect(page.getByRole('link', { name: 'Start enrollment' })).toHaveAttribute(
+        'href',
+        '/enroll',
+      )
+      // Every image with the library's alt text; the image-only hero is just its image.
+      await expect(page.getByRole('img', { name: 'The front of the school' })).toHaveCount(2)
+      const fair = page.getByRole('figure').filter({ hasText: 'The science fair, in the gym.' })
+      await expect(fair.getByRole('img', { name: 'Students showing their volcano' })).toBeVisible()
+      expect(await blockingViolations(page)).toEqual([])
+    } finally {
+      await tearDown(fixture)
+    }
+  })
 })

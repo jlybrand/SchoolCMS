@@ -76,16 +76,11 @@ test.describe('school plane — home', () => {
     }
   })
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    test(`@smoke @a11y has zero critical or serious axe violations — ${colorScheme}`, async ({
-      page,
-    }) => {
-      await page.emulateMedia({ colorScheme })
-      await page.goto('/admin')
-      await expect(page.locator('#school-home h1')).toBeVisible({ timeout: 20_000 })
-      await expectNoBlockingViolations(page, '#school-home')
-    })
-  }
+  test(`@smoke @a11y has zero critical or serious axe violations`, async ({ page }) => {
+    await page.goto('/admin')
+    await expect(page.locator('#school-home h1')).toBeVisible({ timeout: 20_000 })
+    await expectNoBlockingViolations(page, '#school-home')
+  })
 })
 
 test.describe('school plane — update a page', () => {
@@ -119,14 +114,11 @@ test.describe('school plane — update a page', () => {
     }
   })
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    test(`@a11y has zero critical or serious axe violations — ${colorScheme}`, async ({ page }) => {
-      await page.emulateMedia({ colorScheme })
-      await page.goto('/admin/update-page')
-      await expect(page.locator('#update-page h1')).toBeVisible({ timeout: 20_000 })
-      await expectNoBlockingViolations(page, '#update-page')
-    })
-  }
+  test(`@a11y has zero critical or serious axe violations`, async ({ page }) => {
+    await page.goto('/admin/update-page')
+    await expect(page.locator('#update-page h1')).toBeVisible({ timeout: 20_000 })
+    await expectNoBlockingViolations(page, '#update-page')
+  })
 })
 
 test.describe('school plane — add a page', () => {
@@ -194,20 +186,15 @@ test.describe('school plane — add a page', () => {
     }
   })
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    test(`@a11y has zero critical or serious axe violations, errors showing — ${colorScheme}`, async ({
-      page,
-    }) => {
-      await page.emulateMedia({ colorScheme })
-      await page.goto('/admin/new-page')
-      const view = page.locator('#new-page')
-      await expect(async () => {
-        await view.getByRole('button', { name: 'Create the page' }).click()
-        await expect(view.getByText('Give the page a title.')).toBeVisible({ timeout: 1_000 })
-      }).toPass({ timeout: 20_000 })
-      await expectNoBlockingViolations(page, '#new-page')
-    })
-  }
+  test(`@a11y has zero critical or serious axe violations, errors showing`, async ({ page }) => {
+    await page.goto('/admin/new-page')
+    const view = page.locator('#new-page')
+    await expect(async () => {
+      await view.getByRole('button', { name: 'Create the page' }).click()
+      await expect(view.getByText('Give the page a title.')).toBeVisible({ timeout: 1_000 })
+    }).toPass({ timeout: 20_000 })
+    await expectNoBlockingViolations(page, '#new-page')
+  })
 })
 
 /**

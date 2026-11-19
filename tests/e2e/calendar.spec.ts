@@ -214,28 +214,25 @@ test.describe('a calendar on a page', () => {
     }
   })
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    test(`@a11y no critical or serious axe violations, notes and dialog open — ${colorScheme}`, async ({
-      page,
-      baseURL,
-    }) => {
-      const title = uniqueTitle('Open house')
-      const f = await setUp(baseURL, title, 'Tours every half hour.')
-      try {
-        await page.emulateMedia({ colorScheme })
-        await open(page, baseURL, f.slug)
-        expect(await blocking(page)).toEqual([])
+  test(`@a11y no critical or serious axe violations, notes and dialog open`, async ({
+    page,
+    baseURL,
+  }) => {
+    const title = uniqueTitle('Open house')
+    const f = await setUp(baseURL, title, 'Tours every half hour.')
+    try {
+      await open(page, baseURL, f.slug)
+      expect(await blocking(page)).toEqual([])
 
-        const list = page.getByRole('region', { name: 'Upcoming events' })
-        await list.getByRole('listitem').filter({ hasText: title }).getByText(title).click()
-        expect(await blocking(page)).toEqual([])
+      const list = page.getByRole('region', { name: 'Upcoming events' })
+      await list.getByRole('listitem').filter({ hasText: title }).getByText(title).click()
+      expect(await blocking(page)).toEqual([])
 
-        await (await gridEvent(page, title)).click()
-        await expect(page.getByRole('dialog', { name: title })).toBeVisible()
-        expect(await blocking(page)).toEqual([])
-      } finally {
-        await tearDown(f)
-      }
-    })
-  }
+      await (await gridEvent(page, title)).click()
+      await expect(page.getByRole('dialog', { name: title })).toBeVisible()
+      expect(await blocking(page)).toEqual([])
+    } finally {
+      await tearDown(f)
+    }
+  })
 })

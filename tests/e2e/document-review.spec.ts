@@ -42,48 +42,45 @@ const sentPage = async (baseURL: string | undefined, title: string) => {
 adminTest.describe('reviewing on the page itself', () => {
   adminTest.skip(credentials === null, SKIP)
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    adminTest(
-      `@a11y a waiting page shows the diff and approves from there — ${colorScheme}`,
-      async ({ page, baseURL }) => {
-        await page.emulateMedia({ colorScheme })
-        const fixture = await sentPage(baseURL, 'Review here')
-        const stored = async () =>
-          (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json()) as Doc
-        try {
-          await page.goto(`/admin/collections/pages/${fixture.id}`)
-          const panel = page.locator('#document-review')
-          await expect(panel).toBeVisible({ timeout: 20_000 })
-          await expect(panel).toContainText('School A sent this page for approval.')
-          await expect(panel.getByRole('heading', { name: fixture.title })).toBeVisible()
-          // The way to the rest of the queue stays — in the panel and in the header.
-          await expect(
-            panel.getByRole('link', { name: 'Review in the approval queue' }),
-          ).toHaveAttribute('href', `/admin/approvals#approval-pages-${fixture.id}`)
-          await expect(page.locator('#action-review-in-queue')).toBeVisible()
-          // Audit only once A11yPatch has named the editor and its toolbar (it runs after Payload
-          // renders) — auditing before it raced under load.
-          await expect(page.locator('.ContentEditable__root[aria-label]').first()).toBeAttached()
-          await expect(
-            page.locator('button.toolbar-popup__button-bold[aria-label="Bold"]').first(),
-          ).toBeAttached()
-          expect(await blockingViolations(page)).toEqual([])
+  adminTest(
+    `@a11y a waiting page shows the diff and approves from there`,
+    async ({ page, baseURL }) => {
+      const fixture = await sentPage(baseURL, 'Review here')
+      const stored = async () =>
+        (await (await fixture.admin.get(`/api/pages/${fixture.id}?depth=0`)).json()) as Doc
+      try {
+        await page.goto(`/admin/collections/pages/${fixture.id}`)
+        const panel = page.locator('#document-review')
+        await expect(panel).toBeVisible({ timeout: 20_000 })
+        await expect(panel).toContainText('School A sent this page for approval.')
+        await expect(panel.getByRole('heading', { name: fixture.title })).toBeVisible()
+        // The way to the rest of the queue stays — in the panel and in the header.
+        await expect(
+          panel.getByRole('link', { name: 'Review in the approval queue' }),
+        ).toHaveAttribute('href', `/admin/approvals#approval-pages-${fixture.id}`)
+        await expect(page.locator('#action-review-in-queue')).toBeVisible()
+        // Audit only once A11yPatch has named the editor and its toolbar (it runs after Payload
+        // renders) — auditing before it raced under load.
+        await expect(page.locator('.ContentEditable__root[aria-label]').first()).toBeAttached()
+        await expect(
+          page.locator('button.toolbar-popup__button-bold[aria-label="Bold"]').first(),
+        ).toBeAttached()
+        expect(await blockingViolations(page)).toEqual([])
 
-          await panel.getByRole('button', { name: 'Approve and publish' }).click()
-          await expect(page.getByText(/^Published\. “/).first()).toBeVisible({ timeout: 20_000 })
-          await expect.poll(async () => (await stored())._status).toBe('published')
-          expect((await stored()).reviewState ?? null).toBeNull()
-          // The form reads what is true now: no review, and the page's own Publish changes.
-          await expect(panel).toBeHidden({ timeout: 20_000 })
-          await expect(page.locator('#action-publish')).toHaveText('Publish changes', {
-            timeout: 20_000,
-          })
-        } finally {
-          await dropPage(fixture)
-        }
-      },
-    )
-  }
+        await panel.getByRole('button', { name: 'Approve and publish' }).click()
+        await expect(page.getByText(/^Published\. “/).first()).toBeVisible({ timeout: 20_000 })
+        await expect.poll(async () => (await stored())._status).toBe('published')
+        expect((await stored()).reviewState ?? null).toBeNull()
+        // The form reads what is true now: no review, and the page's own Publish changes.
+        await expect(panel).toBeHidden({ timeout: 20_000 })
+        await expect(page.locator('#action-publish')).toHaveText('Publish changes', {
+          timeout: 20_000,
+        })
+      } finally {
+        await dropPage(fixture)
+      }
+    },
+  )
 
   adminTest(
     'Request changes from the page sends it back with the note',

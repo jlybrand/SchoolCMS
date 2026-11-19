@@ -111,60 +111,57 @@ const tearDown = async ({ admin, pages, files }: Fixture) => {
 test.describe('site search', () => {
   test.skip(credentials === null, SKIP)
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    test(`@a11y from the header box to the results, then across every site — ${colorScheme}`, async ({
-      page,
-      baseURL,
-    }) => {
-      await page.emulateMedia({ colorScheme })
-      const fixture = await setUp(baseURL)
-      try {
-        // Any page: the header holds a named search landmark.
-        await page.goto(siteUrl(baseURL, 'b.localhost', '/'))
-        const box = page.getByRole('search', { name: 'Site search' })
-        await box.getByRole('searchbox', { name: 'Search this site' }).fill(fixture.word)
-        await box.getByRole('button', { name: 'Search' }).click()
-        await expect(page).toHaveURL(new RegExp(`/search\\?q=${fixture.word}$`))
+  test(`@a11y from the header box to the results, then across every site`, async ({
+    page,
+    baseURL,
+  }) => {
+    const fixture = await setUp(baseURL)
+    try {
+      // Any page: the header holds a named search landmark.
+      await page.goto(siteUrl(baseURL, 'b.localhost', '/'))
+      const box = page.getByRole('search', { name: 'Site search' })
+      await box.getByRole('searchbox', { name: 'Search this site' }).fill(fixture.word)
+      await box.getByRole('button', { name: 'Search' }).click()
+      await expect(page).toHaveURL(new RegExp(`/search\\?q=${fixture.word}$`))
 
-        // This site only: its page and its document, not School A's page.
-        await expect(page.getByRole('heading', { level: 1, name: 'Search' })).toBeVisible()
-        await expect(
-          page.getByText(`2 results for “${fixture.word}” on School B Elementary.`),
-        ).toBeVisible()
-        const results = page
-          .getByRole('list')
-          .filter({ has: page.getByRole('heading', { level: 2 }) })
-        await expect(
-          results.getByRole('heading', { level: 2, name: `Enrollment ${fixture.word}` }),
-        ).toBeVisible()
-        const doc = results.getByRole('listitem').filter({ hasText: 'Bus request form' })
-        await expect(doc).toContainText(/Document · PDF, \d+ KB/)
-        await expect(doc.getByRole('link', { name: 'Bus request form' })).toHaveAttribute(
-          'href',
-          /^\/api\/resources\/file\//,
-        )
-        await expect(results.getByText('School A’s page')).toHaveCount(0)
-        // The matched word is marked.
-        await expect(results.locator('mark').first()).toHaveText(new RegExp(fixture.word, 'i'))
-        expect(await blockingViolations(page)).toEqual([])
+      // This site only: its page and its document, not School A's page.
+      await expect(page.getByRole('heading', { level: 1, name: 'Search' })).toBeVisible()
+      await expect(
+        page.getByText(`2 results for “${fixture.word}” on School B Elementary.`),
+      ).toBeVisible()
+      const results = page
+        .getByRole('list')
+        .filter({ has: page.getByRole('heading', { level: 2 }) })
+      await expect(
+        results.getByRole('heading', { level: 2, name: `Enrollment ${fixture.word}` }),
+      ).toBeVisible()
+      const doc = results.getByRole('listitem').filter({ hasText: 'Bus request form' })
+      await expect(doc).toContainText(/Document · PDF, \d+ KB/)
+      await expect(doc.getByRole('link', { name: 'Bus request form' })).toHaveAttribute(
+        'href',
+        /^\/api\/resources\/file\//,
+      )
+      await expect(results.getByText('School A’s page')).toHaveCount(0)
+      // The matched word is marked.
+      await expect(results.locator('mark').first()).toHaveText(new RegExp(fixture.word, 'i'))
+      expect(await blockingViolations(page)).toEqual([])
 
-        // Every site: School A's page too, labelled with its site.
-        await page.getByRole('link', { name: 'Search all DD2 sites' }).click()
-        await expect(page).toHaveURL(/scope=all/)
-        await expect(
-          page.getByText(`3 results for “${fixture.word}” across all DD2 sites.`),
-        ).toBeVisible()
-        const theirs = page.getByRole('listitem').filter({ hasText: 'School A’s page' })
-        await expect(theirs).toContainText('Page · School A')
-        await expect(
-          page.getByRole('link', { name: 'Search only School B Elementary' }),
-        ).toBeVisible()
-        expect(await blockingViolations(page)).toEqual([])
-      } finally {
-        await tearDown(fixture)
-      }
-    })
-  }
+      // Every site: School A's page too, labelled with its site.
+      await page.getByRole('link', { name: 'Search all DD2 sites' }).click()
+      await expect(page).toHaveURL(/scope=all/)
+      await expect(
+        page.getByText(`3 results for “${fixture.word}” across all DD2 sites.`),
+      ).toBeVisible()
+      const theirs = page.getByRole('listitem').filter({ hasText: 'School A’s page' })
+      await expect(theirs).toContainText('Page · School A')
+      await expect(
+        page.getByRole('link', { name: 'Search only School B Elementary' }),
+      ).toBeVisible()
+      expect(await blockingViolations(page)).toEqual([])
+    } finally {
+      await tearDown(fixture)
+    }
+  })
 
   test('@a11y nothing found says so, and offers every site; no words, a hint', async ({
     page,

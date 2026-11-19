@@ -7,7 +7,7 @@ import { BlockList } from '@/blocks'
 import { Container } from '@/components/Container'
 import { Heading, PAGE_TITLE_LEVEL } from '@/components/Heading'
 import { Stack } from '@/components/Stack'
-import { getPagePreview, getPreviewer } from '@/content/preview'
+import { getPagePreview, getPreviewer, type PagePreview } from '@/content/preview'
 import { resolvePageBlocks } from '@/content/resolve-blocks'
 import { getTheme } from '@/content/theme'
 
@@ -27,6 +27,21 @@ import { resolveSite, SiteFrame } from '../../../../(frontend)/sites/[hostname]/
  */
 export const dynamic = 'force-dynamic'
 
+/** Where a linked page's link points, as an address: `a.example.org/calendar`. */
+const address = (to: { hostname: string; path: string }) => `${to.hostname}${to.path}`
+
+/**
+ * A LINKED page's line under its title (Jason, 2026-11-19): the preview shows what a visitor
+ * gets, and this says why it is not the page's own sections. Plain text, not a link — the
+ * public address is on another host, and the preview frame is the admin's.
+ */
+const linkNote = (link: PagePreview['link']): string | null => {
+  if (!link) return null
+  if (link.kind === 'reuse') return `This page shows the district page at ${address(link.from)}.`
+  if (link.kind === 'redirect') return `Visitors to this page are sent to ${address(link.to)}.`
+  return 'Visitors find nothing here: the page this is linked to is not published, or is staff only.'
+}
+
 export default async function PagePreview({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const requestHeaders = await headers()
@@ -39,6 +54,7 @@ export default async function PagePreview({ params }: { params: Promise<{ id: st
   const blocks = await resolvePageBlocks(site.ctx, preview.layout, {
     serverUrl: process.env.NEXT_PUBLIC_SERVER_URL ?? '',
   })
+  const note = linkNote(preview.link)
   const serverURL = `${requestHeaders.get('x-forwarded-proto') ?? 'http'}://${requestHeaders.get('host')}`
 
   return (
@@ -53,6 +69,7 @@ export default async function PagePreview({ params }: { params: Promise<{ id: st
         <Container>
           <Stack space="lg">
             <Heading level={PAGE_TITLE_LEVEL}>{preview.title}</Heading>
+            {note ? <p>{note}</p> : null}
             <BlockList blocks={blocks} childPages={[]} />
           </Stack>
         </Container>

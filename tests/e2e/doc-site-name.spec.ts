@@ -31,31 +31,28 @@ const blockingViolations = async (page: Page) =>
 adminTest.describe('the district sees which site a document is on', () => {
   adminTest.skip(credentials === null, SKIP)
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    adminTest(`@a11y on a page’s form — ${colorScheme}`, async ({ page, baseURL }) => {
-      await page.emulateMedia({ colorScheme })
-      const fixture = await makePage(baseURL, { title: uniqueTitle('Families') })
-      try {
-        await page.goto(`/admin/collections/pages/${fixture.id}`)
-        const site = page.locator('#doc-site')
-        await expect(site).toHaveText(/Site\s*School A/, { timeout: 20_000 })
-        // Atop the form, before the page's own fields.
-        const before = await page.evaluate(() => {
-          const badge = document.getElementById('doc-site')
-          const title = document.querySelector('[name="title"]')
-          return Boolean(badge && title && badge.compareDocumentPosition(title) & 4)
-        })
-        expect(before).toBe(true)
-        expect(await blockingViolations(page)).toEqual([])
-        const sizes = await site
-          .locator('span, strong')
-          .evaluateAll((els) => els.map((el) => parseFloat(getComputedStyle(el).fontSize)))
-        expect(Math.min(...sizes)).toBeGreaterThanOrEqual(15)
-      } finally {
-        await dropPage(fixture)
-      }
-    })
-  }
+  adminTest(`@a11y on a page’s form`, async ({ page, baseURL }) => {
+    const fixture = await makePage(baseURL, { title: uniqueTitle('Families') })
+    try {
+      await page.goto(`/admin/collections/pages/${fixture.id}`)
+      const site = page.locator('#doc-site')
+      await expect(site).toHaveText(/Site\s*School A/, { timeout: 20_000 })
+      // Atop the form, before the page's own fields.
+      const before = await page.evaluate(() => {
+        const badge = document.getElementById('doc-site')
+        const title = document.querySelector('[name="title"]')
+        return Boolean(badge && title && badge.compareDocumentPosition(title) & 4)
+      })
+      expect(before).toBe(true)
+      expect(await blockingViolations(page)).toEqual([])
+      const sizes = await site
+        .locator('span, strong')
+        .evaluateAll((els) => els.map((el) => parseFloat(getComputedStyle(el).fontSize)))
+      expect(Math.min(...sizes)).toBeGreaterThanOrEqual(15)
+    } finally {
+      await dropPage(fixture)
+    }
+  })
 
   adminTest('on an announcement’s form', async ({ page, baseURL }) => {
     const post = await makePost(baseURL, { title: uniqueTitle('Picture day') })
@@ -105,23 +102,20 @@ const mainCalendar = async (request: Page['request']) => {
 adminTest.describe('…and above a calendar’s list of events', () => {
   adminTest.skip(credentials === null, SKIP)
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    adminTest(`@a11y the site and the calendar — ${colorScheme}`, async ({ page }) => {
-      await page.emulateMedia({ colorScheme })
-      const calendar = await mainCalendar(page.request)
-      // The address the Events panel writes (`calendarEventsHref`).
-      await page.goto(`/admin/collections/events?where%5Bcalendar%5D%5Bequals%5D=${calendar}`)
-      const heading = page.locator('#list-site')
-      await expect(heading).toHaveText(/Site\s*School A\s*Calendar\s*School A/, {
-        timeout: 20_000,
-      })
-      const results = await new AxeBuilder({ page })
-        .include('#list-site')
-        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-        .analyze()
-      expect(results.violations.filter((v) => BLOCKING.includes(v.impact ?? ''))).toEqual([])
+  adminTest(`@a11y the site and the calendar`, async ({ page }) => {
+    const calendar = await mainCalendar(page.request)
+    // The address the Events panel writes (`calendarEventsHref`).
+    await page.goto(`/admin/collections/events?where%5Bcalendar%5D%5Bequals%5D=${calendar}`)
+    const heading = page.locator('#list-site')
+    await expect(heading).toHaveText(/Site\s*School A\s*Calendar\s*School A/, {
+      timeout: 20_000,
     })
-  }
+    const results = await new AxeBuilder({ page })
+      .include('#list-site')
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze()
+    expect(results.violations.filter((v) => BLOCKING.includes(v.impact ?? ''))).toEqual([])
+  })
 
   adminTest('the whole list, every calendar: nothing to name', async ({ page }) => {
     await page.goto('/admin/collections/events')

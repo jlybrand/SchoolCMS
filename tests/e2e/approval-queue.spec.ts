@@ -168,10 +168,7 @@ test.describe('approval queue — district admin', () => {
       // Neither Publish nor "Revert to published": both would replace the school's submission.
       await expect(controls.getByRole('button', { name: /publish/i })).toHaveCount(0)
 
-      for (const colorScheme of ['light', 'dark'] as const) {
-        await page.emulateMedia({ colorScheme })
-        await expectNoBlockingViolations(page, '#action-review-in-queue')
-      }
+      await expectNoBlockingViolations(page, '#action-review-in-queue')
 
       await toQueue.click()
       await expect(page).toHaveURL(new RegExp(`/admin/approvals#approval-pages-${sent.id}$`))
@@ -213,31 +210,28 @@ test.describe('approval queue — district admin', () => {
     await expect(page).toHaveURL(/\/admin\/approvals/)
   })
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    test(`@smoke @a11y the queue has zero critical or serious axe violations — ${colorScheme}`, async ({
-      page,
-      baseURL,
-    }) => {
-      const sent = await publishedThenSent(baseURL)
-      try {
-        await page.emulateMedia({ colorScheme })
-        await page.goto('/admin/approvals')
-        const item = page.getByRole('article', { name: sent.newTitle })
-        await expect(item).toBeVisible({ timeout: 20_000 })
-        // The note open, with its error showing: the most the item ever renders.
-        await item.getByRole('button', { name: 'Request changes' }).click()
-        await item.getByRole('button', { name: 'Send back to the school' }).click()
-        await expect(item).toContainText('Say what needs to change')
-        await expectNoBlockingViolations(page, '#approvals')
+  test(`@smoke @a11y the queue has zero critical or serious axe violations`, async ({
+    page,
+    baseURL,
+  }) => {
+    const sent = await publishedThenSent(baseURL)
+    try {
+      await page.goto('/admin/approvals')
+      const item = page.getByRole('article', { name: sent.newTitle })
+      await expect(item).toBeVisible({ timeout: 20_000 })
+      // The note open, with its error showing: the most the item ever renders.
+      await item.getByRole('button', { name: 'Request changes' }).click()
+      await item.getByRole('button', { name: 'Send back to the school' }).click()
+      await expect(item).toContainText('Say what needs to change')
+      await expectNoBlockingViolations(page, '#approvals')
 
-        await page.goto('/admin')
-        await expect(page.locator('#approvals-panel')).toBeVisible({ timeout: 20_000 })
-        await expectNoBlockingViolations(page, '#district-dashboard')
-      } finally {
-        await drop(sent)
-      }
-    })
-  }
+      await page.goto('/admin')
+      await expect(page.locator('#approvals-panel')).toBeVisible({ timeout: 20_000 })
+      await expectNoBlockingViolations(page, '#district-dashboard')
+    } finally {
+      await drop(sent)
+    }
+  })
 })
 
 schoolTest.describe('approval queue — school manager', () => {

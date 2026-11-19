@@ -169,37 +169,34 @@ test.describe('a news feed on a page', () => {
     }
   })
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    test(`@a11y a page with a feed has zero critical or serious axe violations — ${colorScheme}`, async ({
-      page,
-      baseURL,
-    }) => {
-      const admin = await asDistrict(baseURL)
-      const { board } = await boardOf(admin, 'localhost')
-      const post = await sharedPost(admin, uniqueTitle('Book fair'))
-      const made = await pageWithFeed(admin, 'b.localhost', {
-        heading: 'District news',
-        boards: [board],
-      })
-      try {
-        await page.emulateMedia({ colorScheme })
-        await expect(async () => {
-          await page.goto(siteUrl(baseURL, 'b.localhost', `/${made.slug}`))
-          await expect(page.getByRole('region', { name: 'District news' })).toBeVisible({
-            timeout: 1_000,
-          })
-        }).toPass({ timeout: 15_000 })
-        const results = await new AxeBuilder({ page })
-          .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-          .analyze()
-        expect(
-          results.violations.filter((v) => ['critical', 'serious'].includes(v.impact ?? '')),
-        ).toEqual([])
-      } finally {
-        await admin.delete(`/api/pages/${made.id}`)
-        await admin.delete(`/api/posts/${post.id}`)
-        await admin.dispose()
-      }
+  test(`@a11y a page with a feed has zero critical or serious axe violations`, async ({
+    page,
+    baseURL,
+  }) => {
+    const admin = await asDistrict(baseURL)
+    const { board } = await boardOf(admin, 'localhost')
+    const post = await sharedPost(admin, uniqueTitle('Book fair'))
+    const made = await pageWithFeed(admin, 'b.localhost', {
+      heading: 'District news',
+      boards: [board],
     })
-  }
+    try {
+      await expect(async () => {
+        await page.goto(siteUrl(baseURL, 'b.localhost', `/${made.slug}`))
+        await expect(page.getByRole('region', { name: 'District news' })).toBeVisible({
+          timeout: 1_000,
+        })
+      }).toPass({ timeout: 15_000 })
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+        .analyze()
+      expect(
+        results.violations.filter((v) => ['critical', 'serious'].includes(v.impact ?? '')),
+      ).toEqual([])
+    } finally {
+      await admin.delete(`/api/pages/${made.id}`)
+      await admin.delete(`/api/posts/${post.id}`)
+      await admin.dispose()
+    }
+  })
 })

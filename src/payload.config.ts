@@ -56,6 +56,11 @@ export default buildConfig({
   admin: {
     /** Browser tabs read "Approvals - DDTwo Websites", not Payload's default "- Payload". */
     meta: { titleSuffix: `- ${PLATFORM_NAME}` },
+    /**
+     * Light only (Jason, 2026-11-18): no dark mode, and no theme choice on the Account screen.
+     * The side menu is the one dark part — `admin-brand.css`.
+     */
+    theme: 'light',
     user: Users.slug,
     importMap: { baseDir: path.resolve(dirname) },
     /**

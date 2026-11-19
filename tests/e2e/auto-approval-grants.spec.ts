@@ -161,33 +161,27 @@ test.describe('auto-approval grants', () => {
     await expect(panel.getByText(HOLDER_NAME)).toHaveCount(0)
   })
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    test.describe(`in the ${colorScheme} theme`, () => {
-      test.use({ colorScheme })
-
-      test('@smoke @a11y the grant field has zero critical or serious axe violations', async ({
-        page,
-      }) => {
-        await page.goto(`/admin/collections/users/${holderId}`)
-        await expect(page.locator('#field-autoApprove').getByRole('checkbox').first()).toBeEnabled({
-          timeout: 20_000,
-        })
-        await audit(page, '#field-autoApprove')
-      })
-
-      test('@smoke @a11y the dashboard panel has zero critical or serious axe violations', async ({
-        page,
-      }) => {
-        // With a holder listed, so the link is audited too.
-        await page.request.patch(`/api/users/${holderId}`, {
-          data: { autoApprove: ['posts.routine'] },
-        })
-        await page.goto('/admin')
-        await expect(
-          page.locator('#grants-panel').getByRole('link', { name: HOLDER_NAME }),
-        ).toBeVisible({ timeout: 20_000 })
-        await audit(page, '#grants-panel')
-      })
+  test('@smoke @a11y the grant field has zero critical or serious axe violations', async ({
+    page,
+  }) => {
+    await page.goto(`/admin/collections/users/${holderId}`)
+    await expect(page.locator('#field-autoApprove').getByRole('checkbox').first()).toBeEnabled({
+      timeout: 20_000,
     })
-  }
+    await audit(page, '#field-autoApprove')
+  })
+
+  test('@smoke @a11y the dashboard panel has zero critical or serious axe violations', async ({
+    page,
+  }) => {
+    // With a holder listed, so the link is audited too.
+    await page.request.patch(`/api/users/${holderId}`, {
+      data: { autoApprove: ['posts.routine'] },
+    })
+    await page.goto('/admin')
+    await expect(
+      page.locator('#grants-panel').getByRole('link', { name: HOLDER_NAME }),
+    ).toBeVisible({ timeout: 20_000 })
+    await audit(page, '#grants-panel')
+  })
 })

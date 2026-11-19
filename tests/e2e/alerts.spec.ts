@@ -34,52 +34,46 @@ const asDistrict = (baseURL: string | undefined) =>
 adminTest.describe('posting an alert', () => {
   adminTest.skip(credentials === null, SKIP)
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    adminTest(
-      `@a11y a closure from its template, on home pages — ${colorScheme}`,
-      async ({ page, baseURL }) => {
-        await page.emulateMedia({ colorScheme })
-        const reason = uniqueTitle('snow')
-        const admin = await asDistrict(baseURL)
-        let id: number | null = null
-        try {
-          await page.goto('/admin/collections/alerts/create')
-          await expect(page.getByLabel('Use a template')).toBeChecked({ timeout: 20_000 })
-          // Payload draws its own circle over each radio, so the option is chosen by its label.
-          await page.getByText('School closure (emergency)', { exact: true }).click()
-          await expect(page.getByLabel('School closure (emergency)')).toBeChecked()
-          await page.getByLabel('Day').fill('Tuesday, January 14')
-          await page.getByLabel('Reason').fill(reason)
-          await page.getByText('Home pages only', { exact: true }).click()
-          await expect(page.getByLabel('Home pages only')).toBeChecked()
-          expect(await blockingViolations(page)).toEqual([])
-          await page.locator('#action-save').click()
-          await expect(page).toHaveURL(/\/admin\/collections\/alerts\/\d+$/, { timeout: 20_000 })
-          id = Number(/\/alerts\/(\d+)$/.exec(page.url())?.[1])
+  adminTest(`@a11y a closure from its template, on home pages`, async ({ page, baseURL }) => {
+    const reason = uniqueTitle('snow')
+    const admin = await asDistrict(baseURL)
+    let id: number | null = null
+    try {
+      await page.goto('/admin/collections/alerts/create')
+      await expect(page.getByLabel('Use a template')).toBeChecked({ timeout: 20_000 })
+      // Payload draws its own circle over each radio, so the option is chosen by its label.
+      await page.getByText('School closure (emergency)', { exact: true }).click()
+      await expect(page.getByLabel('School closure (emergency)')).toBeChecked()
+      await page.getByLabel('Day').fill('Tuesday, January 14')
+      await page.getByLabel('Reason').fill(reason)
+      await page.getByText('Home pages only', { exact: true }).click()
+      await expect(page.getByLabel('Home pages only')).toBeChecked()
+      expect(await blockingViolations(page)).toEqual([])
+      await page.locator('#action-save').click()
+      await expect(page).toHaveURL(/\/admin\/collections\/alerts\/\d+$/, { timeout: 20_000 })
+      id = Number(/\/alerts\/(\d+)$/.exec(page.url())?.[1])
 
-          // On a school's home page, above the header, in words, with no way to close it.
-          const visitor = page
-          await visitor.goto(siteUrl(baseURL, SCHOOL_HOSTNAME, '/'))
-          const alerts = visitor.getByRole('region', { name: 'Alerts' })
-          await expect(alerts).toContainText(
-            `Emergency: Schools are closed on Tuesday, January 14 because of ${reason}.`,
-          )
-          // This banner, not the region: other tests' alerts (a closable warning on every page of
-          // the same school) can be showing alongside it.
-          const closure = alerts.locator('[data-severity]').filter({ hasText: reason })
-          await expect(closure).toHaveAttribute('data-severity', 'emergency')
-          await expect(closure.getByRole('button')).toHaveCount(0)
+      // On a school's home page, above the header, in words, with no way to close it.
+      const visitor = page
+      await visitor.goto(siteUrl(baseURL, SCHOOL_HOSTNAME, '/'))
+      const alerts = visitor.getByRole('region', { name: 'Alerts' })
+      await expect(alerts).toContainText(
+        `Emergency: Schools are closed on Tuesday, January 14 because of ${reason}.`,
+      )
+      // This banner, not the region: other tests' alerts (a closable warning on every page of
+      // the same school) can be showing alongside it.
+      const closure = alerts.locator('[data-severity]').filter({ hasText: reason })
+      await expect(closure).toHaveAttribute('data-severity', 'emergency')
+      await expect(closure.getByRole('button')).toHaveCount(0)
 
-          // Home pages only: not on another page.
-          await visitor.goto(siteUrl(baseURL, SCHOOL_HOSTNAME, '/about'))
-          await expect(visitor.getByText(reason, { exact: false })).toHaveCount(0)
-        } finally {
-          if (id !== null) await admin.delete(`/api/alerts/${id}`)
-          await admin.dispose()
-        }
-      },
-    )
-  }
+      // Home pages only: not on another page.
+      await visitor.goto(siteUrl(baseURL, SCHOOL_HOSTNAME, '/about'))
+      await expect(visitor.getByText(reason, { exact: false })).toHaveCount(0)
+    } finally {
+      if (id !== null) await admin.delete(`/api/alerts/${id}`)
+      await admin.dispose()
+    }
+  })
 
   adminTest(
     '@a11y a warning can be closed by a visitor, and stays closed on the next page',

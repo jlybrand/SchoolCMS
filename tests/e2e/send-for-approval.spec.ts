@@ -102,34 +102,28 @@ test.describe('send for approval — school manager', () => {
     await expect(page.locator('.doc-controls').getByRole('button', SEND)).toBeVisible()
   })
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    test.describe(`in the ${colorScheme} theme`, () => {
-      test.use({ colorScheme })
-
-      test('@smoke @a11y the controls and status have zero critical or serious axe violations', async ({
-        page,
-      }) => {
-        await page.request.patch(`/api/pages/${fixture.id}?draft=true`, {
-          data: { reviewState: 'submitted' },
-        })
-        await fixture.admin.patch(`/api/pages/${fixture.id}?draft=true`, {
-          data: { reviewState: 'changes-requested', reviewNote: 'Please add the return date.' },
-        })
-        await openPage(page, fixture.id)
-        // The note is the longest state the status line has; audit that one.
-        await expect(
-          page.getByRole('status').filter({ hasText: 'Please add the return date.' }),
-        ).toBeVisible()
-        /**
-         * Scoped to what this PR adds, as the other admin specs scope to their fields. The rest
-         * of `.doc-controls` is Payload's, and fails on its own: the "more options" button has
-         * no accessible name (button-name, critical). Not hidden here — tracked separately.
-         */
-        await expectNoBlockingViolations(page, '#action-send-for-approval')
-        await expectNoBlockingViolations(page, '#review-status')
-      })
+  test('@smoke @a11y the controls and status have zero critical or serious axe violations', async ({
+    page,
+  }) => {
+    await page.request.patch(`/api/pages/${fixture.id}?draft=true`, {
+      data: { reviewState: 'submitted' },
     })
-  }
+    await fixture.admin.patch(`/api/pages/${fixture.id}?draft=true`, {
+      data: { reviewState: 'changes-requested', reviewNote: 'Please add the return date.' },
+    })
+    await openPage(page, fixture.id)
+    // The note is the longest state the status line has; audit that one.
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Please add the return date.' }),
+    ).toBeVisible()
+    /**
+     * Scoped to what this PR adds, as the other admin specs scope to their fields. The rest
+     * of `.doc-controls` is Payload's, and fails on its own: the "more options" button has
+     * no accessible name (button-name, critical). Not hidden here — tracked separately.
+     */
+    await expectNoBlockingViolations(page, '#action-send-for-approval')
+    await expectNoBlockingViolations(page, '#review-status')
+  })
 })
 
 adminTest.describe('send for approval — district admin', () => {

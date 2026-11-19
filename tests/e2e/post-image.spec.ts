@@ -108,40 +108,37 @@ const tearDown = async ({ admin, post, file }: Fixture) => {
 test.describe('an announcement’s image', () => {
   test.skip(credentials === null, SKIP)
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    test(`@a11y under the headline on its page; a thumbnail in the news list — ${colorScheme}`, async ({
-      page,
-      baseURL,
-    }) => {
-      await page.emulateMedia({ colorScheme })
-      const fixture = await setUp(baseURL)
-      try {
-        // Its page: the headline, then the image with the library's alt text.
-        await expect(async () => {
-          await page.goto(siteUrl(baseURL, HOST, `/news/${fixture.slug}`))
-          await expect(page.getByRole('heading', { name: fixture.title, level: 1 })).toBeVisible({
-            timeout: 1_000,
-          })
-        }).toPass({ timeout: 15_000 })
-        const image = page.getByRole('img', { name: 'Students lined up for photos' })
-        await expect(image).toBeVisible()
-        await expect(image).toHaveAttribute('loading', 'eager')
-        expect(await blockingViolations(page)).toEqual([])
+  test(`@a11y under the headline on its page; a thumbnail in the news list`, async ({
+    page,
+    baseURL,
+  }) => {
+    const fixture = await setUp(baseURL)
+    try {
+      // Its page: the headline, then the image with the library's alt text.
+      await expect(async () => {
+        await page.goto(siteUrl(baseURL, HOST, `/news/${fixture.slug}`))
+        await expect(page.getByRole('heading', { name: fixture.title, level: 1 })).toBeVisible({
+          timeout: 1_000,
+        })
+      }).toPass({ timeout: 15_000 })
+      const image = page.getByRole('img', { name: 'Students lined up for photos' })
+      await expect(image).toBeVisible()
+      await expect(image).toHaveAttribute('loading', 'eager')
+      expect(await blockingViolations(page)).toEqual([])
 
-        // The news list: a thumbnail beside the headline, with empty alt text.
-        await expect(async () => {
-          await page.goto(siteUrl(baseURL, HOST, '/news'))
-          await expect(page.getByRole('link', { name: fixture.title })).toBeVisible({
-            timeout: 1_000,
-          })
-        }).toPass({ timeout: 15_000 })
-        const item = page.getByRole('listitem').filter({ hasText: fixture.title })
-        await expect(item.locator('img')).toHaveAttribute('alt', '')
-        await expect(page.getByRole('img', { name: 'Students lined up for photos' })).toHaveCount(0)
-        expect(await blockingViolations(page)).toEqual([])
-      } finally {
-        await tearDown(fixture)
-      }
-    })
-  }
+      // The news list: a thumbnail beside the headline, with empty alt text.
+      await expect(async () => {
+        await page.goto(siteUrl(baseURL, HOST, '/news'))
+        await expect(page.getByRole('link', { name: fixture.title })).toBeVisible({
+          timeout: 1_000,
+        })
+      }).toPass({ timeout: 15_000 })
+      const item = page.getByRole('listitem').filter({ hasText: fixture.title })
+      await expect(item.locator('img')).toHaveAttribute('alt', '')
+      await expect(page.getByRole('img', { name: 'Students lined up for photos' })).toHaveCount(0)
+      expect(await blockingViolations(page)).toEqual([])
+    } finally {
+      await tearDown(fixture)
+    }
+  })
 })

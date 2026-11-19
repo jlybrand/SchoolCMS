@@ -59,74 +59,67 @@ const asDistrict = (baseURL: string | undefined) =>
 schoolTest.describe('a school uploads a file', () => {
   schoolTest.skip(credentials === null, SKIP)
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    schoolTest(
-      `@a11y an image from the start screen: alt text asked, then uploaded — ${colorScheme}`,
-      async ({ page, baseURL }) => {
-        await page.emulateMedia({ colorScheme })
-        const district = await asDistrict(baseURL)
-        const title = uniqueTitle('Science fair')
-        try {
-          await page.goto('/admin')
-          await page.getByRole('link', { name: /^Upload a file/ }).click({ timeout: 20_000 })
-          await expect(page).toHaveURL(/\/admin\/upload-file$/)
-          await expect(page.getByRole('heading', { name: 'Upload a file', level: 1 })).toBeVisible()
+  schoolTest(
+    `@a11y an image from the start screen: alt text asked, then uploaded`,
+    async ({ page, baseURL }) => {
+      const district = await asDistrict(baseURL)
+      const title = uniqueTitle('Science fair')
+      try {
+        await page.goto('/admin')
+        await page.getByRole('link', { name: /^Upload a file/ }).click({ timeout: 20_000 })
+        await expect(page).toHaveURL(/\/admin\/upload-file$/)
+        await expect(page.getByRole('heading', { name: 'Upload a file', level: 1 })).toBeVisible()
 
-          // Nothing chosen: what's missing, beside each field.
-          await page.getByRole('button', { name: 'Upload' }).click()
-          await expect(page.getByText('Choose a file to upload.')).toBeVisible()
-          await expect(page.getByText('Give the file a title.')).toBeVisible()
-          await expect(page.getByLabel('The file')).toBeFocused()
-          expect(await blockingViolations(page)).toEqual([])
+        // Nothing chosen: what's missing, beside each field.
+        await page.getByRole('button', { name: 'Upload' }).click()
+        await expect(page.getByText('Choose a file to upload.')).toBeVisible()
+        await expect(page.getByText('Give the file a title.')).toBeVisible()
+        await expect(page.getByLabel('The file')).toBeFocused()
+        expect(await blockingViolations(page)).toEqual([])
 
-          // An image: its title starts from the name; it asks for alt text.
-          await page.getByLabel('The file').setInputFiles({
-            name: 'science-fair.png',
-            mimeType: 'image/png',
-            buffer: PNG,
-          })
-          await expect(page.getByLabel('Title')).toHaveValue('science fair')
-          await expect(page.getByRole('group', { name: /checked for accessibility/ })).toHaveCount(
-            0,
+        // An image: its title starts from the name; it asks for alt text.
+        await page.getByLabel('The file').setInputFiles({
+          name: 'science-fair.png',
+          mimeType: 'image/png',
+          buffer: PNG,
+        })
+        await expect(page.getByLabel('Title')).toHaveValue('science fair')
+        await expect(page.getByRole('group', { name: /checked for accessibility/ })).toHaveCount(0)
+        await page.getByLabel('Title').fill(title)
+        await page.getByRole('button', { name: 'Upload' }).click()
+        await expect(
+          page.getByText('Describe the image for people who can’t see it, or mark it decorative.'),
+        ).toBeVisible()
+        await expect(page.getByLabel('Describe the image')).toBeFocused()
+        expect(await blockingViolations(page)).toEqual([])
+
+        await page.getByLabel('Describe the image').fill('Students showing their volcano')
+        await page.getByRole('button', { name: 'Upload' }).click()
+        await expect(page.locator('#upload-file').getByRole('status')).toContainText(
+          `Uploaded “${title}” to your school’s library.`,
+          { timeout: 20_000 },
+        )
+        expect(await blockingViolations(page)).toEqual([])
+
+        const found = (await (
+          await district.get(
+            `/api/resources?where[title][equals]=${encodeURIComponent(title)}&depth=1`,
           )
-          await page.getByLabel('Title').fill(title)
-          await page.getByRole('button', { name: 'Upload' }).click()
-          await expect(
-            page.getByText(
-              'Describe the image for people who can’t see it, or mark it decorative.',
-            ),
-          ).toBeVisible()
-          await expect(page.getByLabel('Describe the image')).toBeFocused()
-          expect(await blockingViolations(page)).toEqual([])
-
-          await page.getByLabel('Describe the image').fill('Students showing their volcano')
-          await page.getByRole('button', { name: 'Upload' }).click()
-          await expect(page.locator('#upload-file').getByRole('status')).toContainText(
-            `Uploaded “${title}” to your school’s library.`,
-            { timeout: 20_000 },
-          )
-          expect(await blockingViolations(page)).toEqual([])
-
-          const found = (await (
-            await district.get(
-              `/api/resources?where[title][equals]=${encodeURIComponent(title)}&depth=1`,
-            )
-          ).json()) as {
-            docs: { id: number; alt: string; kind: string; tenant: { hostname: string } }[]
-          }
-          expect(found.docs).toHaveLength(1)
-          expect(found.docs[0]).toMatchObject({
-            alt: 'Students showing their volcano',
-            kind: 'image',
-            tenant: { hostname: 'a.localhost' },
-          })
-          await district.delete(`/api/resources/${found.docs[0]!.id}`)
-        } finally {
-          await district.dispose()
+        ).json()) as {
+          docs: { id: number; alt: string; kind: string; tenant: { hostname: string } }[]
         }
-      },
-    )
-  }
+        expect(found.docs).toHaveLength(1)
+        expect(found.docs[0]).toMatchObject({
+          alt: 'Students showing their volcano',
+          kind: 'image',
+          tenant: { hostname: 'a.localhost' },
+        })
+        await district.delete(`/api/resources/${found.docs[0]!.id}`)
+      } finally {
+        await district.dispose()
+      }
+    },
+  )
 
   schoolTest(
     'a document asks whether it was checked for accessibility',

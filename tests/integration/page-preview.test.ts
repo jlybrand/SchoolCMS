@@ -99,4 +99,86 @@ describe('getPagePreview', () => {
     expect(await getPagePreview('999999', as(f.districtAdmin))).toBeNull()
     expect(await getPagePreview('not-a-number', as(f.districtAdmin))).toBeNull()
   })
+
+  /**
+   * A LINKED page (Jason, 2026-11-19: "selecting internal redirect or reuse content … does not
+   * change the page content"). The preview shows what a visitor gets, not the page's own
+   * sections, which a linked page does not show.
+   */
+  describe('a linked page', () => {
+    const live = async (tenant: number, title: string, text: string) => {
+      const page = await payload.create({
+        collection: 'pages',
+        data: {
+          tenant,
+          title,
+          slug: `linked-src-${Date.now()}-${made.length}`,
+          visibility: 'public',
+          layout: [{ blockType: 'richText', content: words(text) as never }],
+          _status: 'published',
+        },
+        user: f.districtAdmin,
+        overrideAccess: true,
+      })
+      made.push(page.id as number)
+      return page
+    }
+    const linkedDraft = async (data: Record<string, unknown>) => {
+      const id = await pageWithDraft(f.tenantA)
+      await payload.update({
+        collection: 'pages',
+        id,
+        data,
+        draft: true,
+        user: f.districtAdmin,
+        overrideAccess: true,
+      })
+      return id
+    }
+
+    it('reusing content: the district page’s title and words, not its own', async () => {
+      const source = await live(f.districtTenant, 'Enrollment', 'District words.')
+      const id = await linkedDraft({ linkMode: 'reuse', districtLinkTarget: source.id })
+      const preview = await getPagePreview(id, as(f.districtAdmin))
+      expect(preview?.title).toBe('Enrollment')
+      expect(JSON.stringify(preview?.layout)).toContain('District words.')
+      expect(JSON.stringify(preview?.layout)).not.toContain('Draft words.')
+      expect(preview?.link).toEqual({
+        kind: 'reuse',
+        from: { hostname: 'localhost', path: `/${source.slug}` },
+      })
+    })
+
+    it('a redirect: where visitors are sent, and no sections', async () => {
+      const target = await live(f.tenantA, 'Calendar', 'Target words.')
+      const id = await linkedDraft({ linkMode: 'redirect', linkTo: 'site', linkTarget: target.id })
+      const preview = await getPagePreview(id, as(f.districtAdmin))
+      expect(preview?.link).toEqual({
+        kind: 'redirect',
+        to: { hostname: 'a.localhost', path: `/${target.slug}` },
+      })
+      expect(preview?.layout).toEqual([])
+    })
+
+    it('linked to a page that is not live: says so, and no sections', async () => {
+      const source = await live(f.districtTenant, 'Staff notes', 'Staff words.')
+      const id = await linkedDraft({ linkMode: 'reuse', districtLinkTarget: source.id })
+      // Made staff-only after: a visitor to the linked page now finds nothing.
+      await payload.update({
+        collection: 'pages',
+        id: source.id,
+        data: { visibility: 'staff' },
+        user: f.districtAdmin,
+        overrideAccess: true,
+      })
+      const preview = await getPagePreview(id, as(f.districtAdmin))
+      expect(preview?.link).toEqual({ kind: 'unresolved' })
+      expect(preview?.layout).toEqual([])
+    })
+
+    it('not linked: its own sections, and no link', async () => {
+      const id = await pageWithDraft(f.tenantA)
+      expect((await getPagePreview(id, as(f.districtAdmin)))?.link).toBeNull()
+    })
+  })
 })

@@ -2,7 +2,9 @@
  * The brand band (Jason, 2026-11-18). WHITE in both of Payload's themes, so a district logo made
  * for a white page shows as made; the name in the district's primary (#2b3170 on white, 11.8:1).
  * A primary rule and a secondary stripe below — no text on the secondary, which is 2.4:1 on white.
- * The colors are the `--dd2-brand-*` variables set once in `admin-overrides.css`.
+ * The colors are the `--dd2-brand-*` variables (`admin-brand.css`); on a school manager's band the
+ * rule and stripe take the school's two colors instead (`--band-rule`, `--band-stripe`, set on
+ * the band by `BrandBand`; Jason, 2026-11-19). Decorative: no text is read against either.
  *
  * Nothing under 15px (min-text-15px): px, since the admin root is 13px. Logical properties only.
  */
@@ -15,18 +17,19 @@
   padding-block: 14px;
   padding-inline: 20px;
   border-radius: 6px;
-  border-block-end: 4px solid var(--dd2-brand-primary);
+  border-block-end: 4px solid var(--band-rule, var(--dd2-brand-primary));
   background: var(--dd2-brand-surface);
-  box-shadow: inset 0 -8px 0 -4px var(--dd2-brand-secondary);
+  box-shadow: inset 0 -8px 0 -4px var(--band-stripe, var(--dd2-brand-secondary));
   color: var(--dd2-brand-primary);
 }
 
 .logo {
   display: block;
   inline-size: auto;
-  max-inline-size: 240px;
+  /* Larger (Jason, 2026-11-19): 56px tall was too small to read a school's crest. */
+  max-inline-size: 360px;
   block-size: auto;
-  max-block-size: 56px;
+  max-block-size: 96px;
 }
 
 .name {

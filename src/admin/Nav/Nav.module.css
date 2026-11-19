@@ -73,7 +73,7 @@
 
 .menuItem[aria-current='page'] {
   font-weight: 600;
-  /* The brand accent (`admin-brand.css`): primary in the light theme, secondary in the dark. */
+  /* The brand accent (`admin-brand.css`): secondary, on the menu's primary background. */
   color: var(--dd2-brand-accent);
 }
 

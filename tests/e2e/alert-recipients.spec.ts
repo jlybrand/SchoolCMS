@@ -45,22 +45,12 @@ test.describe('district alert recipients', () => {
     await expect(page.getByRole('checkbox', { name: LABEL })).toHaveCount(0)
   })
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    test.describe(`in the ${colorScheme} theme`, () => {
-      test.use({ colorScheme })
-
-      test('@smoke @a11y the setting has zero critical or serious axe violations', async ({
-        page,
-      }) => {
-        await page.goto(
-          `/admin/collections/users/${await userId(page.request, credentials!.email)}`,
-        )
-        await expect(page.getByRole('checkbox', { name: LABEL })).toBeEnabled({ timeout: 20_000 })
-        const field = '.field-type.checkbox:has(#field-receivesAlerts)'
-        // axe passes an empty selection, so prove the selector reaches the field first.
-        await expect(page.locator(field)).toHaveCount(1)
-        await expectNoBlockingViolations(page, field)
-      })
-    })
-  }
+  test('@smoke @a11y the setting has zero critical or serious axe violations', async ({ page }) => {
+    await page.goto(`/admin/collections/users/${await userId(page.request, credentials!.email)}`)
+    await expect(page.getByRole('checkbox', { name: LABEL })).toBeEnabled({ timeout: 20_000 })
+    const field = '.field-type.checkbox:has(#field-receivesAlerts)'
+    // axe passes an empty selection, so prove the selector reaches the field first.
+    await expect(page.locator(field)).toHaveCount(1)
+    await expectNoBlockingViolations(page, field)
+  })
 })

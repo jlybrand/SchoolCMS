@@ -82,37 +82,34 @@ adminTest.describe('dates in the approval queue', () => {
     },
   )
 
-  for (const colorScheme of ['light', 'dark'] as const) {
-    adminTest(
-      `@a11y a wrong date is said beside it, and nothing is sent — ${colorScheme}`,
-      async ({ page, baseURL }) => {
-        const title = uniqueTitle('Book fair')
-        const post = await sentPost(baseURL, title)
-        try {
-          await page.emulateMedia({ colorScheme })
-          await page.goto('/admin/approvals')
-          const item = page.getByRole('article', { name: new RegExp(title) })
-          await expect(item).toBeVisible({ timeout: 20_000 })
-          await item.getByText('Set dates').click()
-          await setScheduleTime(scheduleTime(item, 'Start'), localInput(48))
-          await setScheduleTime(scheduleTime(item, 'Expires'), localInput(24))
-          await item.getByRole('button', { name: 'Approve and schedule' }).click()
+  adminTest(
+    `@a11y a wrong date is said beside it, and nothing is sent`,
+    async ({ page, baseURL }) => {
+      const title = uniqueTitle('Book fair')
+      const post = await sentPost(baseURL, title)
+      try {
+        await page.goto('/admin/approvals')
+        const item = page.getByRole('article', { name: new RegExp(title) })
+        await expect(item).toBeVisible({ timeout: 20_000 })
+        await item.getByText('Set dates').click()
+        await setScheduleTime(scheduleTime(item, 'Start'), localInput(48))
+        await setScheduleTime(scheduleTime(item, 'Expires'), localInput(24))
+        await item.getByRole('button', { name: 'Approve and schedule' }).click()
 
-          await expect(scheduleTime(item, 'Expires').getByLabel('Day')).toHaveAttribute(
-            'aria-invalid',
-            'true',
-          )
-          await expect(item).toContainText('Choose an expiration after the announcement goes live.')
-          await expectNoBlockingViolations(page, `[id="${await item.getAttribute('id')}"]`)
+        await expect(scheduleTime(item, 'Expires').getByLabel('Day')).toHaveAttribute(
+          'aria-invalid',
+          'true',
+        )
+        await expect(item).toContainText('Choose an expiration after the announcement goes live.')
+        await expectNoBlockingViolations(page, `[id="${await item.getAttribute('id')}"]`)
 
-          const stored = await post.admin.get(`/api/posts/${post.id}?draft=true&depth=0`)
-          expect(((await stored.json()) as { reviewState: string }).reviewState).toBe('submitted')
-        } finally {
-          await dropPost(post)
-        }
-      },
-    )
-  }
+        const stored = await post.admin.get(`/api/posts/${post.id}?draft=true&depth=0`)
+        expect(((await stored.json()) as { reviewState: string }).reviewState).toBe('submitted')
+      } finally {
+        await dropPost(post)
+      }
+    },
+  )
 
   adminTest('the district’s post form has the dates', async ({ page, baseURL }) => {
     const post = await makePost(baseURL, { title: uniqueTitle('Form dates') })
