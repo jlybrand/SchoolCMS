@@ -28,10 +28,12 @@ const list = (node: RichTextList, rewrite: Rewrite): RichTextList => ({
   })),
 })
 
-const block = (node: RichTextBlock, rewrite: Rewrite): RichTextBlock =>
-  node.kind === 'list'
-    ? list(node, rewrite)
-    : { ...node, children: node.children.map((child) => inline(child, rewrite)) }
+const block = (node: RichTextBlock, rewrite: Rewrite): RichTextBlock => {
+  if (node.kind === 'list') return list(node, rewrite)
+  // A line and an image hold no links.
+  if (node.kind === 'rule' || node.kind === 'image') return node
+  return { ...node, children: node.children.map((child) => inline(child, rewrite)) }
+}
 
 /** Every link in the words, through `rewrite`. */
 export const mapRichTextLinks = (words: RichText, rewrite: Rewrite): RichText =>

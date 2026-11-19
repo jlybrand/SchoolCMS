@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { textImagesAreThisSites } from '@/collections/hooks/text-images'
 
 import {
   eventsCreateAccess,
@@ -93,7 +94,7 @@ export const Events: CollectionConfig = {
   hooks: {
     beforeOperation: [restoreIsDistrictOnly],
     /** The site's own calendar when none is chosen, and never another site's. */
-    beforeValidate: [eventCalendarIsThisSites],
+    beforeValidate: [eventCalendarIsThisSites, textImagesAreThisSites],
     /** The dates, so a refusal names the field. No publish gate: events skip approval. */
     beforeChange: [eventDatesHook],
     afterChange: [

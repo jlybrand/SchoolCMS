@@ -6,6 +6,7 @@ import { postPath } from '@/lib/post-url'
 
 import { relationshipIdOf } from '@/access/predicates'
 
+import { fillRichTextImages } from './rich-text-images'
 import { listPagePathIndex } from './pages'
 import { toPost } from './post-mapper'
 import { getImageAssets } from './resources'
@@ -97,7 +98,8 @@ export const getPostBySlug = async (ctx: ContentContext, slug: string): Promise<
   const [paths, images] = await Promise.all([listPagePathIndex(ctx), imagesFor(docs)])
   const post = toPost(docs[0], paths, images)
   if (!post) return null
-  return { ...post, homeHostname: ctx.tenant.hostname }
+  // Images in its words, filled in from the library (Jason, 2026-11-19).
+  return fillRichTextImages({ ...post, homeHostname: ctx.tenant.hostname })
 }
 
 /** Every page path of this site's own published, public posts — for its sitemap. */

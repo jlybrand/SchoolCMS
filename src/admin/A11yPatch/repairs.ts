@@ -42,6 +42,22 @@ const words = (key: string) => {
   return spaced.charAt(0).toUpperCase() + spaced.slice(1)
 }
 
+/**
+ * The editor toolbar's buttons in a school manager's words (Jason, 2026-11-19), by Payload's key.
+ * A key not here is named from the key itself (`words`).
+ */
+const TOOLBAR_NAMES: Readonly<Record<string, string>> = {
+  upload: 'Insert an image',
+  horizontalRule: 'Insert a line',
+  paragraph: 'Normal text',
+  h2: 'Heading',
+  h3: 'Subheading',
+  h4: 'Minor heading',
+  unorderedList: 'Bulleted list',
+  orderedList: 'Numbered list',
+  blockquote: 'Quotation',
+}
+
 const all = (root: ParentNode, selector: string) => Array.from(root.querySelectorAll(selector))
 
 export const repairAdminA11y = (root: ParentNode): void => {
@@ -67,9 +83,20 @@ export const repairAdminA11y = (root: ParentNode): void => {
     if (button.textContent?.trim() === '') name(button, 'More actions')
   }
 
-  // 4.1.2 — rich-text toolbar icon buttons, named from Payload's own key.
+  // 4.1.2 — rich-text toolbar icon buttons, named in plain words (`TOOLBAR_NAMES`, Jason
+  // 2026-11-19: "a better toolbar") or from Payload's own key, and shown on hover too.
   for (const button of all(root, 'button.toolbar-popup__button[data-button-key]')) {
-    name(button, words(button.getAttribute('data-button-key') ?? ''))
+    const key = button.getAttribute('data-button-key') ?? ''
+    const label = TOOLBAR_NAMES[key] ?? words(key)
+    name(button, label)
+    if (!button.hasAttribute('title') && label) button.setAttribute('title', label)
+  }
+  // The align menu: Payload names it "align dropdown".
+  for (const button of all(root, 'button.toolbar-popup__dropdown-align')) {
+    if (button.getAttribute('aria-label') !== 'Align text') {
+      button.setAttribute('aria-label', 'Align text')
+      button.setAttribute('title', 'Align text')
+    }
   }
 
   // 4.1.2 — the list's "someone is editing this" lock: a focusable button whose only words are

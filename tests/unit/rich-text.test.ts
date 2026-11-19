@@ -373,3 +373,146 @@ describe('toRichText — links to a page', () => {
     })
   })
 })
+
+/**
+ * The editor's added features (Jason, 2026-11-19): alignment (start, center, end — never
+ * justify), block quotes, a horizontal line, and images from the site's library.
+ */
+describe('toRichText — alignment, quotes, lines and images', () => {
+  const para = (format: string) => ({ type: 'paragraph', format, children: [text('Hi')] })
+
+  it('center and end are kept; start, left, justify and none are the default', () => {
+    const [center, right, end, left, start, justify, none] = toRichText(
+      root(
+        para('center'),
+        para('right'),
+        para('end'),
+        para('left'),
+        para('start'),
+        para('justify'),
+        para(''),
+      ),
+    )
+    expect(center).toMatchObject({ kind: 'paragraph', align: 'center' })
+    // Right is END: an English page's right edge is an Arabic translation's left (`08` §6).
+    expect(right).toMatchObject({ align: 'end' })
+    expect(end).toMatchObject({ align: 'end' })
+    for (const block of [left, start, justify, none]) expect(block).not.toHaveProperty('align')
+  })
+
+  it('a heading keeps its alignment too', () => {
+    expect(
+      toRichText(root({ type: 'heading', tag: 'h2', format: 'center', children: [text('Hi')] })),
+    ).toEqual([
+      {
+        kind: 'heading',
+        level: 2,
+        align: 'center',
+        children: [{ kind: 'text', text: 'Hi', marks: [] }],
+      },
+    ])
+  })
+
+  it('maps a quote; an empty one is dropped', () => {
+    expect(toRichText(root({ type: 'quote', children: [text('We grow together.')] }))).toEqual([
+      { kind: 'quote', children: [{ kind: 'text', text: 'We grow together.', marks: [] }] },
+    ])
+    expect(toRichText(root({ type: 'quote', children: [text('  ')] }))).toEqual([])
+  })
+
+  it('maps a horizontal line', () => {
+    expect(toRichText(root({ type: 'horizontalrule' }))).toEqual([{ kind: 'rule' }])
+  })
+
+  it('an image from the library, by its id — the content layer fills it in', () => {
+    expect(
+      toRichText(root({ type: 'upload', relationTo: 'resources', value: 7, fields: {} })),
+    ).toEqual([{ kind: 'image', id: '7', image: null, size: 'full', position: 'block' }])
+  })
+
+  it('an image already filled in is read as the library’s, alt text and all', () => {
+    const [image] = toRichText(
+      root({
+        type: 'upload',
+        relationTo: 'resources',
+        value: {
+          id: 7,
+          kind: 'image',
+          url: '/api/resources/file/bus.jpg',
+          width: 800,
+          height: 600,
+          alt: 'A yellow school bus',
+        },
+      }),
+    )
+    expect(image).toMatchObject({
+      kind: 'image',
+      id: '7',
+      image: { src: '/api/resources/file/bus.jpg', alt: 'A yellow school bus' },
+    })
+  })
+
+  it('an upload from anywhere but the library, or with no id, is dropped', () => {
+    expect(toRichText(root({ type: 'upload', relationTo: 'media', value: 7 }))).toEqual([])
+    expect(toRichText(root({ type: 'upload', relationTo: 'resources' }))).toEqual([])
+  })
+})
+
+/** Jason, 2026-11-19: a minor heading, one "Large text" style, and an image's size and place. */
+describe('toRichText — minor heading, large text, image size and position', () => {
+  it('maps h4 to a minor heading, level 4', () => {
+    expect(toRichText(root({ type: 'heading', tag: 'h4', children: [text('Bus 12')] }))).toEqual([
+      { kind: 'heading', level: 4, children: [{ kind: 'text', text: 'Bus 12', marks: [] }] },
+    ])
+  })
+
+  it('reads the one text style, "Large text", as a mark beside bold and italic', () => {
+    const [block] = toRichText(
+      root({
+        type: 'paragraph',
+        children: [{ type: 'text', text: 'Welcome!', format: 1, $: { size: 'large' } }],
+      }),
+    )
+    expect(block).toEqual({
+      kind: 'paragraph',
+      children: [{ kind: 'text', text: 'Welcome!', marks: ['strong', 'large'] }],
+    })
+  })
+
+  it('any other text state — a color, an unknown size — is dropped; the words stay', () => {
+    const [block] = toRichText(
+      root({
+        type: 'paragraph',
+        children: [{ type: 'text', text: 'Hi', $: { size: 'huge', color: 'red' } }],
+      }),
+    )
+    expect(block).toEqual({
+      kind: 'paragraph',
+      children: [{ kind: 'text', text: 'Hi', marks: [] }],
+    })
+  })
+
+  it('an image keeps its size and position', () => {
+    const [image] = toRichText(
+      root({
+        type: 'upload',
+        relationTo: 'resources',
+        value: 7,
+        fields: { size: 'small', position: 'end' },
+      }),
+    )
+    expect(image).toEqual({ kind: 'image', id: '7', image: null, size: 'small', position: 'end' })
+  })
+
+  it('an image with no or unknown settings is full width, on its own line', () => {
+    const [image] = toRichText(
+      root({
+        type: 'upload',
+        relationTo: 'resources',
+        value: 7,
+        fields: { size: 'giant', position: 'left' },
+      }),
+    )
+    expect(image).toMatchObject({ size: 'full', position: 'block' })
+  })
+})

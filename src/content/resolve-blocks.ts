@@ -1,15 +1,15 @@
 import { firstPerCalendar } from '@/lib/calendar-filter'
 import { toGridMonths, weekdayNames } from '@/lib/calendar-view'
+import { subscribeOrigin, subscribeUrl } from '@/lib/ical'
 import { localizedPath } from '@/lib/locales'
 import { monthRange, monthsFrom } from '@/lib/month-grid'
 import { NEWS_PATH, toNewsItems } from '@/lib/post-url'
 import { DISTRICT_TIME_ZONE } from '@/lib/queue-age'
 import { addDays, localDateOf } from '@/lib/recurrence'
 
-import { subscribeOrigin, subscribeUrl } from '@/lib/ical'
-
 import { listCalendarRefs, listEventOccurrences } from './events'
 import { listStaff } from './people'
+import { fillRichTextImages } from './rich-text-images'
 import { getImageAsset, listFolderDocuments } from './resources'
 import { listPosts } from './posts'
 import type {
@@ -113,7 +113,17 @@ const resolveCalendar = async (
   }
 }
 
+/**
+ * A page's sections, ready to render — and the images in their words filled in from the library,
+ * once for the whole page (`fillRichTextImages`, Jason 2026-11-19).
+ */
 export const resolvePageBlocks = async (
+  ctx: ContentContext,
+  blocks: readonly PageBlock[],
+  options: Options,
+): Promise<ResolvedPageBlock[]> => fillRichTextImages(await resolveBlocks(ctx, blocks, options))
+
+const resolveBlocks = async (
   ctx: ContentContext,
   blocks: readonly PageBlock[],
   options: Options,
@@ -168,7 +178,7 @@ export const resolvePageBlocks = async (
             columns: await Promise.all(
               block.columns.map(async (column) => ({
                 heading: column.heading,
-                blocks: await resolvePageBlocks(ctx, column.blocks, { ...options, today }),
+                blocks: await resolveBlocks(ctx, column.blocks, { ...options, today }),
               })),
             ),
           }

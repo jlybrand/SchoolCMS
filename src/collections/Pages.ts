@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { textImagesAreThisSites } from '@/collections/hooks/text-images'
 
 import {
   pagesCreateAccess,
@@ -180,7 +181,13 @@ export const Pages: CollectionConfig = {
      * parent guard is independent of both and runs last, so a page with two problems reports
      * the slug one first — the field the author was most likely editing.
      */
-    beforeValidate: [deriveSlugFromTitle, uniqueSlugWithinParent, rootPageCannotBeParent],
+    beforeValidate: [
+      deriveSlugFromTitle,
+      uniqueSlugWithinParent,
+      rootPageCannotBeParent,
+      // An image in the words is this site's (Jason, 2026-11-19).
+      textImagesAreThisSites,
+    ],
     /**
      * The hook half of two release-blocking gates. The access functions above are the other
      * half; see src/collections/hooks/publish-gate.ts for why one layer is not enough.

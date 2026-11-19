@@ -48,6 +48,37 @@ describe('unnamed buttons', () => {
     expect($('button').getAttribute('aria-label')).toBe(label)
   })
 
+  /**
+   * The editor's toolbar as buttons (Jason, 2026-11-19: "a better toolbar"): each named in plain
+   * words, and shown on hover — Payload's keys ("h2", "blockquote") are not words a school
+   * manager uses.
+   */
+  it.each([
+    ['upload', 'Insert an image'],
+    ['horizontalRule', 'Insert a line'],
+    ['paragraph', 'Normal text'],
+    ['h2', 'Heading'],
+    ['h3', 'Subheading'],
+    ['h4', 'Minor heading'],
+    ['unorderedList', 'Bulleted list'],
+    ['orderedList', 'Numbered list'],
+    ['blockquote', 'Quotation'],
+  ])('names the toolbar’s %s button "%s", with a tooltip', (key, label) => {
+    render(
+      `<button class="toolbar-popup__button toolbar-popup__button-${key}" data-button-key="${key}" type="button"><svg></svg></button>`,
+    )
+    expect($('button').getAttribute('aria-label')).toBe(label)
+    expect($('button').getAttribute('title')).toBe(label)
+  })
+
+  it('renames the align menu from Payload’s "align dropdown"', () => {
+    render(
+      '<button aria-label="align dropdown" class="toolbar-popup__dropdown toolbar-popup__dropdown-align" type="button"><svg></svg></button>',
+    )
+    expect($('button').getAttribute('aria-label')).toBe('Align text')
+    expect($('button').getAttribute('title')).toBe('Align text')
+  })
+
   it('names a date’s clear button after its field — an "×" with no words (events, 2026-11-11)', () => {
     render(
       '<div class="field-type date-time-field"><label class="field-label">Starts<span class="required">*</span></label><div class="date-time-picker"><div class="date-time-picker__icon-wrap"><button class="date-time-picker__clear-button" type="button"></button></div></div></div>',

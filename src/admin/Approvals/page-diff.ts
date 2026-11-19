@@ -134,7 +134,11 @@ const keyed = (block: RichTextBlock): KeyedBlock => ({
     lines:
       block.kind === 'list'
         ? block.items.map((item) => inlineText(item.children))
-        : [inlineText(block.children)],
+        : block.kind === 'rule'
+          ? ['(a horizontal line)']
+          : block.kind === 'image'
+            ? [`(an image${block.image?.alt ? `: ${block.image.alt}` : ''})`]
+            : [inlineText(block.children)],
   },
 })
 

@@ -1,4 +1,5 @@
 import type { CollectionConfig, Field } from 'payload'
+import { textImagesAreThisSites } from '@/collections/hooks/text-images'
 
 import {
   postsCreateAccess,
@@ -144,7 +145,12 @@ export const Posts: CollectionConfig = {
   hooks: {
     beforeOperation: [restoreIsDistrictOnly],
     /** Derive the slug from the title, then make it this school's own. */
-    beforeValidate: [deriveSlugFromTitle, uniquePostSlug, boardIsThisSchools],
+    beforeValidate: [
+      deriveSlugFromTitle,
+      uniquePostSlug,
+      boardIsThisSchools,
+      textImagesAreThisSites,
+    ],
     /**
      * The publish gate first, the review state last — the order pages use, for its reason.
      * `postNeedsWordsHook` reads the REQUESTED review state, so it runs before

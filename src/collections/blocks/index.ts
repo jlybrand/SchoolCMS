@@ -40,7 +40,10 @@ export const richTextBlock: Block = {
       type: 'richText',
       required: true,
       label: 'Words',
-      admin: { description: 'Paragraphs, headings and lists.' },
+      admin: {
+        description:
+          'Paragraphs, headings, lists and quotations — and images and lines, from the buttons above.',
+      },
     },
   ],
 }

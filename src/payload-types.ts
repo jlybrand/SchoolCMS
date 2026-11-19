@@ -347,7 +347,7 @@ export interface Page {
  */
 export interface RichTextBlock {
   /**
-   * Paragraphs, headings and lists.
+   * Paragraphs, headings, lists and quotations — and images and lines, from the buttons above.
    */
   content: {
     root: {
