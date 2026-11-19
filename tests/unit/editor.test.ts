@@ -6,6 +6,7 @@ import {
   CONSTRAINED_FEATURE_KEYS,
   DD2_FEATURE_KEYS,
   EDITOR_ELEMENTS,
+  EDITOR_ONLY_ELEMENTS,
   TRIAGED_FEATURES,
 } from '@/lib/editor'
 import { ALLOWED_ELEMENTS } from '@/lib/paste-normalizer'
@@ -39,6 +40,12 @@ describe('the editor allowlist', () => {
         'orderedList',
         'paragraph',
         'unorderedList',
+        // Jason, 2026-11-19 ("a more robust text editor"): see the triage table for each.
+        'align',
+        'blockquote',
+        'horizontalRule',
+        'upload',
+        'textState',
         // Presentation, not a content capability: it renders the controls for the features
         // above and adds none of its own. A school manager who logs in twice a year needs
         // to SEE the controls rather than discover a floating toolbar (CLAUDE.md usability
@@ -70,10 +77,29 @@ describe('the editor allowlist', () => {
      * strips would vanish on the author's next paste, and an element the normalizer admits
      * but the editor cannot produce is unreachable markup in the database.
      */
-    expect([...EDITOR_ELEMENTS].sort()).toEqual([...ALLOWED_ELEMENTS].sort())
+    const editorOnly = Object.keys(EDITOR_ONLY_ELEMENTS)
+    expect([...EDITOR_ELEMENTS].sort()).toEqual([...ALLOWED_ELEMENTS, ...editorOnly].sort())
+    // Each difference is named, with its reason, and is not also on the paste list.
+    for (const element of editorOnly) {
+      expect(ALLOWED_ELEMENTS as readonly string[]).not.toContain(element)
+      expect(EDITOR_ONLY_ELEMENTS[element]!.length).toBeGreaterThan(20)
+    }
   })
 
-  it('restricts headings to h2 and h3 — h1 belongs to the page, not the body', () => {
+  it('the one text style is "Large text" — no color, no free size (`07` §3)', () => {
+    const state = CONSTRAINED_FEATURES.find((f) => f.key === 'textState')
+    const props = state?.serverFeatureProps as { state?: Record<string, Record<string, unknown>> }
+    expect(Object.keys(props.state ?? {})).toEqual(['size'])
+    expect(Object.keys(props.state?.size ?? {})).toEqual(['large'])
+  })
+
+  it('images come only from the library, where alt text is required (rule 7)', () => {
+    const upload = CONSTRAINED_FEATURES.find((f) => f.key === 'upload')
+    const props = upload?.serverFeatureProps as { enabledCollections?: string[] } | undefined
+    expect(props?.enabledCollections).toEqual(['resources'])
+  })
+
+  it('restricts headings to h2–h4 — h1 belongs to the page, not the body', () => {
     /**
      * Blocks own their heading levels (`03` §3, CLAUDE.md working conventions): an editor
      * must not be able to produce a heading-order violation. `h1` is the page title,
@@ -84,18 +110,13 @@ describe('the editor allowlist', () => {
     const sizes = (heading?.serverFeatureProps as { enabledHeadingSizes?: string[] } | undefined)
       ?.enabledHeadingSizes
 
-    expect(sizes).toEqual(['h2', 'h3'])
+    expect(sizes).toEqual(['h2', 'h3', 'h4'])
   })
 
   it.each([
-    ['align', 'text alignment is a design decision, and centred text harms readability'],
     ['indent', 'indentation fakes structure that screen readers cannot see'],
     ['underline', 'underlined text that is not a link is a usability trap'],
     ['strikethrough', 'conveys meaning by appearance alone'],
-    ['textState', 'arbitrary color and styling defeats the token-level contrast guarantee'],
-    ['blockquote', 'not in the `07` §4.2 allowlist'],
-    ['horizontalrule', 'decorative separators carry no semantics'],
-    ['upload', 'images go through the media flow so alt text is captured (`07` §4.3)'],
   ])('does not enable %s — %s', (key) => {
     expect(CONSTRAINED_FEATURE_KEYS.map((k) => k.toLowerCase())).not.toContain(key)
   })

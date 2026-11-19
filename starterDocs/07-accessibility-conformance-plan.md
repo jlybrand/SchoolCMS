@@ -109,6 +109,16 @@ color controls. Editors cannot express a formatting idea the design system hasn'
 made accessible. This is a feature, and it should be explained to communications staff as
 one.
 
+_Widened by decision (Jason, 2026-11-19, "a more robust text editor"), for schools and the district
+alike:_ **alignment** (rendered as center or end only — logical, so a translation mirrors (`08`
+§6); justify is never rendered, WCAG 1.4.8), **block quotations**, a **horizontal line**, and
+**images from the site's library**, where alt text is required at upload (rule 7; an image from
+another site's library or a document placed as an image is refused on save). Color, underline,
+strikethrough and tables stay out. The editor's triage table (`src/lib/editor.ts`) records each
+verdict. Still to come in the same direction: an Embed section for named services, and "Insert
+HTML" that is checked against WCAG 2.1 AA and converted into these same elements before it goes in
+— never stored raw.
+
 ### 4.5 Structured content over prose
 
 Meeting dates, staff records, events, and documents are typed fields rendered by tested

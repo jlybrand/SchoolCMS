@@ -95,7 +95,11 @@ const listText = (list: RichTextList, depth: number): string[] =>
 export const plainTextOf = (words: RichText): string =>
   words
     .map((block) =>
-      block.kind === 'list' ? listText(block, 0).join('\n') : inlineText(block.children),
+      block.kind === 'list'
+        ? listText(block, 0).join('\n')
+        : block.kind === 'rule' || block.kind === 'image'
+          ? ''
+          : inlineText(block.children),
     )
     .filter((text) => text.trim() !== '')
     .join('\n\n')

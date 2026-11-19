@@ -1,8 +1,11 @@
+import { toImageAsset } from './image-asset'
 import { NO_PAGE_PATHS, pathOfPage, type PagePaths } from './page-tree'
 import type {
   RichText,
+  RichTextAlign,
   RichTextBlock,
   RichTextInline,
+  RichTextImage,
   RichTextList,
   RichTextListItem,
   RichTextMark,
@@ -52,9 +55,18 @@ const marksOf = (format: unknown): RichTextMark[] => {
   return marks
 }
 
+/**
+ * The one text style, "Large text" (Jason, 2026-11-19), stored by Payload's text state as
+ * `$: { size: 'large' }`. Any other state — a color, another size — is dropped; the words stay.
+ */
+const stateMarks = (node: Node): RichTextMark[] => {
+  const state = isNode(node.$) ? node.$ : {}
+  return state.size === 'large' ? ['large'] : []
+}
+
 const toText = (node: Node): RichTextText | null => {
   if (typeof node.text !== 'string') return null
-  return { kind: 'text', text: node.text, marks: marksOf(node.format) }
+  return { kind: 'text', text: node.text, marks: [...marksOf(node.format), ...stateMarks(node)] }
 }
 
 /**
@@ -138,7 +150,40 @@ const toList = (node: Node, paths: PagePaths): RichTextList | null => {
   return { kind: 'list', ordered: node.listType === 'number', items }
 }
 
-const HEADING_LEVELS: Record<string, 2 | 3> = { h2: 2, h3: 3 }
+const HEADING_LEVELS: Record<string, 2 | 3 | 4> = { h2: 2, h3: 3, h4: 4 }
+
+const IMAGE_SIZES = new Set(['small', 'medium', 'full'] as const)
+const IMAGE_POSITIONS = new Set(['block', 'start', 'end'] as const)
+
+/** An image's size and place (Jason, 2026-11-19); anything else is full width, on its own line. */
+const imageSettings = (fields: unknown): Pick<RichTextImage, 'size' | 'position'> => {
+  const node = isNode(fields) ? fields : {}
+  return {
+    size: IMAGE_SIZES.has(node.size as never) ? (node.size as RichTextImage['size']) : 'full',
+    position: IMAGE_POSITIONS.has(node.position as never)
+      ? (node.position as RichTextImage['position'])
+      : 'block',
+  }
+}
+
+/**
+ * Lexical's element `format` as DD2 alignment (Jason, 2026-11-19): center stays center; right or
+ * end is END, so the translated page mirrors; left, start and justify are the default — justify
+ * is never rendered (WCAG 1.4.8).
+ */
+const ALIGN: Record<string, RichTextAlign> = { center: 'center', right: 'end', end: 'end' }
+const aligned = (node: Node): { align?: RichTextAlign } => {
+  const align = typeof node.format === 'string' ? ALIGN[node.format] : undefined
+  return align ? { align } : {}
+}
+
+/** The id of an upload node's file, populated or not. */
+const uploadId = (value: unknown): string | null => {
+  if (typeof value === 'number' || typeof value === 'string') return String(value)
+  if (isNode(value) && (typeof value.id === 'number' || typeof value.id === 'string'))
+    return String(value.id)
+  return null
+}
 
 const toBlock = (value: unknown, paths: PagePaths): RichTextBlock | null => {
   if (!isNode(value)) return null
@@ -148,7 +193,7 @@ const toBlock = (value: unknown, paths: PagePaths): RichTextBlock | null => {
       const children = childrenOf(value).flatMap((child) => toInline(child, paths))
       // Word pastes are full of spacer paragraphs — vertical rhythm expressed as content,
       // which the design system owns instead.
-      return hasContent(children) ? { kind: 'paragraph', children } : null
+      return hasContent(children) ? { kind: 'paragraph', ...aligned(value), children } : null
     }
 
     case 'heading': {
@@ -157,11 +202,27 @@ const toBlock = (value: unknown, paths: PagePaths): RichTextBlock | null => {
       if (!level) return null
 
       const children = childrenOf(value).flatMap((child) => toInline(child, paths))
-      return hasContent(children) ? { kind: 'heading', level, children } : null
+      return hasContent(children) ? { kind: 'heading', level, ...aligned(value), children } : null
     }
 
     case 'list':
       return toList(value, paths)
+
+    case 'quote': {
+      const children = childrenOf(value).flatMap((child) => toInline(child, paths))
+      return hasContent(children) ? { kind: 'quote', children } : null
+    }
+
+    case 'horizontalrule':
+      return { kind: 'rule' }
+
+    // Library images only: the library is where alt text is required (rule 7).
+    case 'upload': {
+      const id = value.relationTo === 'resources' ? uploadId(value.value) : null
+      return id === null
+        ? null
+        : { kind: 'image', id, image: toImageAsset(value.value), ...imageSettings(value.fields) }
+    }
 
     default:
       return null

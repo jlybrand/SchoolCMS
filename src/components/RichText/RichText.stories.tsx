@@ -90,3 +90,81 @@ export const NestedDeeper: Story = { args: { content: AGENDA, baseLevel: 3 } }
  * cannot analyse clean and report conformance for nothing. A story that renders nothing hangs
  * that wait, and there is no accessibility question to ask about nothing anyway.
  */
+
+/** A small inline picture, so the story needs no file: a sky-blue field with a sun. */
+const PICTURE =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="320"><rect width="640" height="320" fill="#cfe8ff"/><circle cx="520" cy="90" r="50" fill="#ffd166"/><rect y="250" width="640" height="70" fill="#7cc576"/></svg>',
+  )
+
+/**
+ * What the editor added (Jason, 2026-11-19): a centered heading and paragraph, a paragraph at the
+ * END (it mirrors in RTL), a quotation, a line, and an image from the library with its alt text.
+ */
+export const AlignmentQuoteLineAndImage: Story = {
+  args: {
+    content: [
+      { kind: 'heading', level: 2, align: 'center', children: [text('Welcome back, Eagles')] },
+      {
+        kind: 'paragraph',
+        align: 'center',
+        children: [text('The first day of school is Monday, August 17.')],
+      },
+      { kind: 'quote', children: [text('Every student, every day, ready for what comes next.')] },
+      { kind: 'rule' },
+      {
+        kind: 'image',
+        id: '1',
+        image: {
+          src: PICTURE,
+          srcSet: '',
+          width: 640,
+          height: 320,
+          alt: 'A green field under a sunny sky',
+        },
+        size: 'full',
+        position: 'block',
+      },
+      { kind: 'paragraph', align: 'end', children: [text('— The principal')] },
+    ],
+  },
+}
+
+/**
+ * Jason, 2026-11-19: a Minor heading, "Large text" for an introduction, and a small image beside
+ * the words at the start (it mirrors in RTL; on a phone it is its own line, full width).
+ */
+export const LargeTextMinorHeadingAndASmallImage: Story = {
+  args: {
+    content: [
+      {
+        kind: 'paragraph',
+        children: [{ kind: 'text', text: 'Welcome to a new year at Alston.', marks: ['large'] }],
+      },
+      {
+        kind: 'image',
+        id: '1',
+        image: {
+          src: PICTURE,
+          srcSet: '',
+          width: 640,
+          height: 320,
+          alt: 'A green field under a sunny sky',
+        },
+        size: 'small',
+        position: 'start',
+      },
+      {
+        kind: 'paragraph',
+        children: [
+          text(
+            'Our doors open at 7:15 each morning. Breakfast is served in the cafeteria until 7:45, and the first bell rings at 7:50. Students arriving after the bell check in at the front office.',
+          ),
+        ],
+      },
+      { kind: 'heading', level: 4, children: [text('Bus 12')] },
+      { kind: 'paragraph', children: [text('Bus 12 now stops at the corner of Elm and Fifth.')] },
+    ],
+  },
+}

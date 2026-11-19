@@ -654,11 +654,16 @@ export type ResolvedPageBlock =
  * these; `src/content/rich-text.ts` maps Lexical into them exactly once. That mapping is the
  * whole reason a CMS swap costs one file rather than every template (`02` §11, ADR-5).
  *
- * The vocabulary is the `07` §4.2 allowlist and nothing else. There is no node here for
- * alignment, color, underline or a table, because there is no way to author one — see
- * `src/lib/editor.ts`. Adding a node type to this file is a conformance decision.
+ * The vocabulary is the `07` §4.2 allowlist and nothing else. There is no node here for color,
+ * underline or a table, because there is no way to author one — see `src/lib/editor.ts`. Adding a
+ * node type to this file is a conformance decision: alignment, quotes, a line and library images
+ * were added by Jason's 2026-11-19 decision (the editor's triage table records why).
  */
-export type RichTextMark = 'strong' | 'em'
+/**
+ * `large` is the one text style (Jason, 2026-11-19): "Large text", for an introduction — a preset
+ * from the design, not a free size, so no word can be made too small or too big to read.
+ */
+export type RichTextMark = 'strong' | 'em' | 'large'
 
 export type RichTextText = {
   kind: 'text'
@@ -688,22 +693,55 @@ export type RichTextList = {
   items: RichTextListItem[]
 }
 
+/**
+ * Alignment (Jason, 2026-11-19): center, or END — never left/right, so a translated page mirrors
+ * (`08` §6), and never justify (WCAG 1.4.8). Absent is the default, the start.
+ */
+export type RichTextAlign = 'center' | 'end'
+
 export type RichTextParagraph = {
   kind: 'paragraph'
+  align?: RichTextAlign
   children: RichTextInline[]
 }
 
 /**
- * Levels 2 and 3 only. Level 1 is the page title, owned by the template — a body `h1` would
- * give the page two (`03` §3, `07` §3).
+ * Levels 2 to 4 — Heading, Subheading and Minor heading (Jason, 2026-11-19). Level 1 is the page
+ * title, owned by the template — a body `h1` would give the page two (`03` §3, `07` §3).
  */
 export type RichTextHeading = {
   kind: 'heading'
-  level: 2 | 3
+  level: 2 | 3 | 4
+  align?: RichTextAlign
   children: RichTextInline[]
 }
 
-export type RichTextBlock = RichTextParagraph | RichTextHeading | RichTextList
+/** A quotation (Jason, 2026-11-19) — `<blockquote>`. */
+export type RichTextQuote = {
+  kind: 'quote'
+  children: RichTextInline[]
+}
+
+/** A horizontal line (Jason, 2026-11-19) — `<hr>`, a thematic break. */
+export type RichTextRule = { kind: 'rule' }
+
+/**
+ * An image from the site's library (Jason, 2026-11-19), its alt text the library's (rule 7).
+ * `image` is null until the content layer fills it in by `id` (`fillRichTextImages`) — read at
+ * depth 0, a page's words name the file, not its address — and a renderer skips one still null.
+ */
+export type RichTextImage = {
+  kind: 'image'
+  id: string
+  image: ImageAsset | null
+  /** Small (a third of the text's width), medium (half) or full width (Jason, 2026-11-19). */
+  size: 'small' | 'medium' | 'full'
+  /** On its own line, or beside the text at its start or end — logical, so it mirrors. */
+  position: 'block' | 'start' | 'end'
+}
+
+export type RichTextBlock =
+  RichTextParagraph | RichTextHeading | RichTextList | RichTextQuote | RichTextRule | RichTextImage
 
 /** A whole rich-text document. Empty is a legitimate value, not an error. */
 export type RichText = RichTextBlock[]

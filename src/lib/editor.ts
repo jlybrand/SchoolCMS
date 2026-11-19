@@ -1,12 +1,17 @@
 import {
+  AlignFeature,
+  BlockquoteFeature,
   BoldFeature,
   FixedToolbarFeature,
   HeadingFeature,
+  HorizontalRuleFeature,
   ItalicFeature,
   LinkFeature,
   OrderedListFeature,
   ParagraphFeature,
   UnorderedListFeature,
+  TextStateFeature,
+  UploadFeature,
   createServerFeature,
   lexicalEditor,
 } from '@payloadcms/richtext-lexical'
@@ -70,11 +75,22 @@ export const DD2_FEATURE_KEYS: readonly string[] = ['pasteNormalizer']
 export const CONSTRAINED_FEATURES = [
   ParagraphFeature(),
   /**
-   * h2 and h3 only. `h1` is the page title, rendered by the template through
-   * `PAGE_TITLE_LEVEL` — a body `h1` would give the page two, which is a heading-order
-   * violation an editor could produce by accident (`03` §3, `07` §3).
+   * h2 to h4 — Heading, Subheading, Minor heading (the third, Jason 2026-11-19: "sometimes it is
+   * helpful to resize headers" — a smaller heading that is still a heading, so the outline stays
+   * true). `h1` is the page title, rendered by the template through `PAGE_TITLE_LEVEL` — a body
+   * `h1` would give the page two, which is a heading-order violation an editor could produce by
+   * accident (`03` §3, `07` §3).
    */
-  HeadingFeature({ enabledHeadingSizes: ['h2', 'h3'] }),
+  HeadingFeature({ enabledHeadingSizes: ['h2', 'h3', 'h4'] }),
+  /**
+   * ONE text style, "Large text" (Jason, 2026-11-19), for an introduction — a preset size from
+   * the design, never a free one or a color, so the contrast and legibility guarantees hold
+   * (`07` §3). The page renders it from `src/components/RichText` (`--font-size-lg`); the css
+   * here is only the editor's preview of it.
+   */
+  TextStateFeature({
+    state: { size: { large: { label: 'Large text', css: { 'font-size': '1.25em' } } } },
+  }),
   BoldFeature(),
   ItalicFeature(),
   /**
@@ -87,12 +103,75 @@ export const CONSTRAINED_FEATURES = [
   UnorderedListFeature(),
   OrderedListFeature(),
   /**
+   * ADDED BY JASON'S DECISION, 2026-11-19 ("a more robust text editor"), for schools and the
+   * district alike. Each was denied before; the triage table below records why it is allowed now
+   * and what keeps it safe.
+   *
+   * Alignment: rendered as center or END only (`src/content/rich-text.ts`) — a translated page
+   * mirrors (`08` §6) and justify is never rendered (WCAG 1.4.8). An exception to `07` §4.4.
+   */
+  AlignFeature(),
+  /** A real quotation, `<blockquote>`. */
+  BlockquoteFeature(),
+  /** A line, `<hr>` — a thematic break, as the Divider section between sections. */
+  HorizontalRuleFeature(),
+  /**
+   * Images from the site's LIBRARY only (`resources`), where alt text is required at upload or a
+   * file is marked decorative (CLAUDE.md rule 7) — the governed flow `07` §4.3 asks for, now
+   * reachable from the text. No per-image fields: the alt text is the library's. Stored by id
+   * (`maxDepth: 0`); the content layer fills the image in (`fillRichTextImages`).
+   */
+  UploadFeature({
+    enabledCollections: ['resources'],
+    maxDepth: 0,
+    /**
+     * Each image's size and place (Jason, 2026-11-19: "can the image that is inserted be
+     * resized?") — presets, so it reads on a phone: on a narrow screen every image is full width
+     * on its own line. Left and right are START and END when stored, so a translation mirrors.
+     */
+    collections: {
+      resources: {
+        fields: [
+          {
+            name: 'size',
+            type: 'radio',
+            label: 'Size',
+            defaultValue: 'full',
+            options: [
+              { label: 'Small', value: 'small' },
+              { label: 'Medium', value: 'medium' },
+              { label: 'Full width', value: 'full' },
+            ],
+          },
+          {
+            name: 'position',
+            type: 'radio',
+            label: 'Place',
+            defaultValue: 'block',
+            options: [
+              { label: 'On its own line', value: 'block' },
+              { label: 'Left of the text, which wraps round it', value: 'start' },
+              { label: 'Right of the text, which wraps round it', value: 'end' },
+            ],
+          },
+        ],
+      },
+    },
+  }),
+  /**
    * Presentation only — it renders the controls for the features above and adds no content
    * capability of its own. Fixed rather than floating because the usability bar is a school
    * manager who last logged in five months ago and read no documentation: the controls have
    * to be visible, not discovered.
    */
-  FixedToolbarFeature(),
+  FixedToolbarFeature({
+    /**
+     * A BETTER TOOLBAR (Jason, 2026-11-19): the text styles and the things to insert as buttons
+     * in plain sight, not in menus — a school manager who logs in twice a year sees every choice.
+     * Alignment stays a menu. Each control is named in words by `A11yPatch` (`TOOLBAR_NAMES`).
+     */
+    customGroups: { text: { type: 'buttons' }, add: { type: 'buttons' } },
+  }),
   /**
    * Last, so its `PASTE_COMMAND` handler registers after the features whose nodes it
    * produces. It contributes no toolbar control and no node type of its own.
@@ -120,7 +199,25 @@ export const EDITOR_ELEMENTS: readonly string[] = [
   'ul',
   'ol',
   'li',
+  'blockquote',
+  'hr',
+  'img',
+  'h4',
+  'span',
 ]
+
+/**
+ * Elements the editor makes that a PASTE does not keep (yet), each with why. The two allowlists
+ * are otherwise the same rule (`07` §4.2); the test holds the difference to exactly this list.
+ */
+export const EDITOR_ONLY_ELEMENTS: Readonly<Record<string, string>> = {
+  img: 'An image comes from the library, where alt text is required (rule 7). A pasted image has neither, so paste keeps refusing it.',
+  blockquote:
+    'Added 2026-11-19. Paste still flattens a quotation to paragraphs; keeping it is the Word-paste work that follows.',
+  hr: 'Added 2026-11-19. Paste still drops a line; keeping it is the Word-paste work that follows.',
+  h4: 'Added 2026-11-19 (Minor heading). Paste still makes a deeper heading a Subheading; the Word-paste work follows.',
+  span: 'The one text style, "Large text" (2026-11-19) — a size, not a meaning. Paste never brings a size in.',
+}
 
 export type FeatureVerdict = { allowed: true; key: string } | { allowed: false; reason: string }
 
@@ -132,6 +229,14 @@ export type FeatureVerdict = { allowed: true; key: string } | { allowed: false; 
  * would let an author do, not by someone making a red test green.
  */
 export const TRIAGED_FEATURES: Record<string, FeatureVerdict> = {
+  // ---- Allowed: Jason's decision, 2026-11-19 ("a more robust text editor") --------------
+  AlignFeature: { allowed: true, key: 'align' },
+  BlockquoteFeature: { allowed: true, key: 'blockquote' },
+  HorizontalRuleFeature: { allowed: true, key: 'horizontalRule' },
+  UploadFeature: { allowed: true, key: 'upload' },
+  /** One preset only, "Large text" — never a color or a free size. */
+  TextStateFeature: { allowed: true, key: 'textState' },
+
   // ---- Allowed: the `07` §4.2 vocabulary ----------------------------------
   ParagraphFeature: { allowed: true, key: 'paragraph' },
   HeadingFeature: { allowed: true, key: 'heading' },
@@ -143,11 +248,6 @@ export const TRIAGED_FEATURES: Record<string, FeatureVerdict> = {
   FixedToolbarFeature: { allowed: true, key: 'toolbarFixed' },
 
   // ---- Denied: appearance standing in for structure -----------------------
-  AlignFeature: {
-    allowed: false,
-    reason:
-      'Alignment is a design decision the theme owns. Centred body text also harms readability for dyslexic readers, and `08` §6 needs alignment to follow writing direction rather than an author’s choice.',
-  },
   IndentFeature: {
     allowed: false,
     reason:
@@ -163,11 +263,6 @@ export const TRIAGED_FEATURES: Record<string, FeatureVerdict> = {
     reason:
       'Conveys "cancelled" or "superseded" by appearance alone, which fails WCAG 1.4.1. Say it in words instead.',
   },
-  TextStateFeature: {
-    allowed: false,
-    reason:
-      'Arbitrary color and styling defeats the token-level contrast guarantee (`07` §3) — the palette is validated, ad-hoc colors are not.',
-  },
   SubscriptFeature: { allowed: false, reason: 'Not in the `07` §4.2 allowlist; no DD2 use case.' },
   SuperscriptFeature: {
     allowed: false,
@@ -177,16 +272,6 @@ export const TRIAGED_FEATURES: Record<string, FeatureVerdict> = {
     allowed: false,
     reason: 'Not in the `07` §4.2 allowlist. A school site has no code samples.',
   },
-  BlockquoteFeature: {
-    allowed: false,
-    reason:
-      'Not in the `07` §4.2 allowlist. Commonly misused for visual emphasis rather than quotation, which is exactly the appearance-as-structure problem.',
-  },
-  HorizontalRuleFeature: {
-    allowed: false,
-    reason:
-      'A decorative separator carrying no semantics. Sections are separated by headings, which are navigable.',
-  },
   ChecklistFeature: {
     allowed: false,
     reason:
@@ -194,11 +279,6 @@ export const TRIAGED_FEATURES: Record<string, FeatureVerdict> = {
   },
 
   // ---- Denied: belongs to another, governed flow --------------------------
-  UploadFeature: {
-    allowed: false,
-    reason:
-      'Images go through the media flow so alt text is captured at upload (`07` §4.3). An inline upload path would bypass that enforcement.',
-  },
   RelationshipFeature: {
     allowed: false,
     reason:

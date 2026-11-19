@@ -1,0 +1,91 @@
+/*
+ * What the editor's added features need (Jason, 2026-11-19). Logical properties only (rule 5):
+ * `end`, never `right`, so a translated page mirrors (`08` §6).
+ */
+
+.center {
+  text-align: center;
+}
+
+.end {
+  text-align: end;
+}
+
+/* A quotation: set apart by a rule down its start edge, in the body's own color and size. */
+.quote {
+  border-inline-start: 4px solid var(--color-border-strong);
+  margin-block: var(--space-md);
+  margin-inline: 0;
+  padding-inline-start: var(--space-md);
+}
+
+.quote > p {
+  margin-block: 0;
+}
+
+/* A thematic break. Decorative: a hairline, as `Divider`. */
+.rule {
+  border: 0;
+  border-block-start: 1px solid var(--color-border);
+  margin-block: var(--space-lg);
+}
+
+/* A library image, never wider than the text, its proportions kept. */
+.image {
+  block-size: auto;
+  display: block;
+  margin-block: var(--space-md);
+  max-inline-size: 100%;
+}
+
+/* Its size (Jason, 2026-11-19): a third, half, or the text's full width. */
+.small {
+  inline-size: 33%;
+}
+
+.medium {
+  inline-size: 50%;
+}
+
+.full {
+  inline-size: 100%;
+}
+
+/* Its place: beside the text at its start or end — logical, so it mirrors in RTL — with the words
+   wrapping round it. The section clears it (`.flow`, on the Text section). */
+.at-start {
+  float: inline-start;
+  margin-block: var(--space-2xs) var(--space-sm);
+  margin-inline: 0 var(--space-md);
+}
+
+.at-end {
+  float: inline-end;
+  margin-block: var(--space-2xs) var(--space-sm);
+  margin-inline: var(--space-md) 0;
+}
+
+/* On a phone a third of the width is too small to see, and words beside it too narrow to read:
+   every image is its own line, at full width. */
+@media (width < 40rem) {
+  .small,
+  .medium {
+    inline-size: 100%;
+  }
+
+  .at-start,
+  .at-end {
+    float: none;
+    margin-inline: 0;
+  }
+}
+
+/* "Large text" (Jason, 2026-11-19): one size up, from the design's scale. */
+.large {
+  font-size: var(--font-size-lg);
+}
+
+/* Holds an image floated beside the words, so it never hangs into the next section. */
+.flow {
+  display: flow-root;
+}

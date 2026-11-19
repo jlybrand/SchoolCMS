@@ -68,7 +68,12 @@ const listText = (list: RichTextList): string[] =>
 
 /** A rich-text document's words, block by block. */
 const richWords = (richText: RichText): string[] =>
-  richText.flatMap((block) => (block.kind === 'list' ? listText(block) : [inline(block.children)]))
+  richText.flatMap((block) => {
+    if (block.kind === 'list') return listText(block)
+    // A line has no words; an image's are its alt text, which belongs to the file, not the page.
+    if (block.kind === 'rule' || block.kind === 'image') return []
+    return [inline(block.children)]
+  })
 
 const lexicalWords = (state: unknown): string[] => richWords(toRichText(state))
 

@@ -2,8 +2,11 @@ import { Heading, clampHeadingLevel, nextHeadingLevel } from '../Heading'
 import type { HeadingLevel } from '../Heading'
 import { Link } from '../Link'
 
+import styles from './RichText.module.css'
+
 import type {
   RichText as RichTextDoc,
+  RichTextAlign,
   RichTextBlock,
   RichTextInline,
   RichTextList,
@@ -33,9 +36,13 @@ import type {
  *   - **Links through `Link`**, which owns the underline, the new-window announcement, and the
  *     `rel` that must accompany `target`.
  *
- * NO CSS MODULE. Paragraph and list spacing already live in `src/styles/globals.css`, on the
- * elements themselves. A module here would either duplicate those rules or fight them, and an
- * empty one is worse than none.
+ *   - **What the editor added** (Jason, 2026-11-19): alignment as a class (`text-align: center`
+ *     or `end`, logical so a translation mirrors), a quotation as `<blockquote>`, a line as
+ *     `<hr>`, and a library image as `<img>` with the library's alt text. An image the content
+ *     layer has not filled in renders nothing.
+ *
+ * Paragraph and list spacing live in `src/styles/globals.css`, on the elements themselves; the
+ * module holds only what the added features need.
  */
 
 export type RichTextProps = {
@@ -57,6 +64,8 @@ const markUp = (node: Extract<RichTextInline, { kind: 'text' }>) => {
   // Innermost first, so both marks nest rather than one replacing the other.
   if (node.marks.includes('em')) out = <em>{out}</em>
   if (node.marks.includes('strong')) out = <strong>{out}</strong>
+  // "Large text" (Jason, 2026-11-19): a size from the design, not emphasis — a span, no meaning.
+  if (node.marks.includes('large')) out = <span className={styles.large}>{out}</span>
   return out
 }
 
@@ -111,6 +120,9 @@ const List = ({
   )
 }
 
+const alignClass = (align: RichTextAlign | undefined): string | undefined =>
+  align === 'center' ? styles.center : align === 'end' ? styles.end : undefined
+
 const Block = ({
   block,
   baseLevel,
@@ -123,18 +135,58 @@ const Block = ({
      * The author's level 2 is `baseLevel`; their level 3 is one step deeper. `nextHeadingLevel`
      * saturates at h6 rather than emitting an invalid h7 or wrapping to h1.
      */
-    const level = block.level === 2 ? baseLevel : nextHeadingLevel(baseLevel)
-    return (
+    // Heading, Subheading, Minor heading: one step deeper each (Jason, 2026-11-19, the third).
+    const level =
+      block.level === 2
+        ? baseLevel
+        : block.level === 3
+          ? nextHeadingLevel(baseLevel)
+          : nextHeadingLevel(nextHeadingLevel(baseLevel))
+    const heading = (
       <Heading level={level}>
         <Inlines nodes={block.children} />
       </Heading>
     )
+    // `Heading` owns its element and class; alignment is inherited from a plain wrapper.
+    return block.align ? <div className={alignClass(block.align)}>{heading}</div> : heading
   }
 
   if (block.kind === 'list') return <List baseLevel={baseLevel} list={block} />
 
+  if (block.kind === 'quote')
+    return (
+      <blockquote className={styles.quote}>
+        <p>
+          <Inlines nodes={block.children} />
+        </p>
+      </blockquote>
+    )
+
+  if (block.kind === 'rule') return <hr className={styles.rule} />
+
+  if (block.kind === 'image') {
+    const { image } = block
+    if (!image) return null
+    return (
+      // A library image of any size, held to the text's width, its height following.
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        alt={image.alt}
+        className={[styles.image, styles[block.size], styles[`at-${block.position}`]]
+          .filter(Boolean)
+          .join(' ')}
+        loading="lazy"
+        sizes="(min-width: 48rem) 48rem, 100vw"
+        src={image.src}
+        {...(image.srcSet ? { srcSet: image.srcSet } : {})}
+        {...(image.width ? { width: image.width } : {})}
+        {...(image.height ? { height: image.height } : {})}
+      />
+    )
+  }
+
   return (
-    <p>
+    <p className={alignClass(block.align)}>
       <Inlines nodes={block.children} />
     </p>
   )
@@ -151,11 +203,13 @@ export const RichText = ({ content, baseLevel = 2 }: RichTextProps) => {
    */
   const resolved = clampHeadingLevel(Math.max(2, baseLevel))
 
-  return (
-    <>
-      {content.map((block, index) => (
-        <Block baseLevel={resolved} block={block} key={index} />
-      ))}
-    </>
-  )
+  const blocks = content.map((block, index) => (
+    <Block baseLevel={resolved} block={block} key={index} />
+  ))
+  /**
+   * An image beside the text floats; the words are held in a box of their own then, so the image
+   * cannot hang into the next section. Otherwise no wrapper, as before.
+   */
+  const floats = content.some((block) => block.kind === 'image' && block.position !== 'block')
+  return floats ? <div className={styles.flow}>{blocks}</div> : <>{blocks}</>
 }
